@@ -1,0 +1,39 @@
+TITLE:		GTK+ compilation problems
+LFS VERSION:	any
+AUTHOR:		unknown <unknown>
+
+SYNOPSIS:
+	This addresses compilation problems in the 1.2.7 version of GTK+. (ed. note: this problem has been fixed in 1.2.8)
+
+HINT:
+One major blunder I think I found was when I tried to compile gtk+1.2.7.
+I couldn't first but I found the solution and so here it is:
+
+tar xfz gtk+1.2.7.tar.gz ; rm gtk+1.2.7.tar.gz
+cd gtk+1.2.7 ( There is a gdk and a gtk directory in the main direcotory )
+Thus: cd gtk 
+rm Makefile ; rm Makefile.in
+vi Makefile.am
+Search for the following lines:
+
+# GTK+ header files that don't get installed
+gtk_private_h_sources = @STRIP_BEGIN	\
+@STRIP_END@
+
+If you don't put something in there and you try to compile it, you get the
+following error message:
+ Insufficient number of arguments (0) to function `strip'.  Stop.
+So I copied a header file from the gdk directory to the gtk directory and named
+it dummy.h
+cp gdk.h ../gtk/dummy.h. Put this dummy.h into the Makefile.am - Now it has an
+argument, right?-: (don't forget the Tab's!)
+
+# GTK+ header files that don't get installed
+gtk_private_h_sources = @STRIP_BEGIN	\
+		dummy.h		\
+@STRIP_END@
+Now you can do in the main directory an automake and compile it. make and make
+install. voila.
+It took me one whole day to figure this out, so I hope this will be usefull to
+you when you get there.
+I know it's not the best way, but it worked for me.

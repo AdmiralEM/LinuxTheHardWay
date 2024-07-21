@@ -1,0 +1,347 @@
+AUTHOR:   Randy McMurchy <LFS-User_at_mcmurchy_dot_com>
+
+DATE:     2004-06-10
+
+LICENSE:  Creative Commons Attribution-NonCommercial-ShareAlike License
+          http://creativecommons.org/licenses/by-nc-sa/1.0/
+
+SYNOPSIS: Installing the sysstat package for system performance monitoring
+
+DESCRIPTION:
+
+This hint provides instructions for the installation of Sebastien Godard's
+sysstat package and for setting up a cron schedule to keep daily reports of
+of system activity. The sysstat package includes the "sar" utilities found on
+major commerical Unix flavors.
+
+ATTACHMENTS:
+
+none
+
+PREREQUISITES:
+
+Nothing is required except a base LFS system.
+
+HINT:
+
+=========
+CONTENTS:
+=========
+
+        1. Introduction
+        2. Package Dependencies
+        3. Package Installation
+            Download the package
+            Configure the build
+            Build the package
+            Checking the build
+            Install the package
+            Stripping the binaries
+            Installing the init script
+        4. Setting Up A Crontab
+        5. Using The Sysstat Utilities
+        6. Closing
+
+================
+1. INTRODUCTION:
+================
+
+The sysstat package provides system performance monitoring and daily activity
+report gathering. This package provides all the capabilites found in the sar
+utilities installed on major commercial Unix flavors. The package is stable,
+easy to install and set up and can be used with all Linux kernels.
+
+The sysstat utilities provide information from the kernel proc filesystem,
+and as such, cannot display statistics that Linux does not provide, or can
+they be more accurate than Linux is.
+
+The sysstat package has been designed with National Language Support (NLS) in
+mind, using the GNU gettext package. At the present time, English, French,
+German, Spanish, Portuguese, Afrikaans, Norwegian, Italian, Russian,
+Romanian, Polish, Slovak and Japanese translations are available.
+
+Check out the SYSSTAT utilities home page at:
+http://perso.wanadoo.fr/sebastien.godard/
+
+========================
+2. PACKAGE DEPENDENCIES:
+========================
+
+The only dependency of the sysstat package is a cron scheduler. This is
+optional. However, without a cron scheduler, daily activity reports can not
+be retained.
+
+I use Paul Vixie's old cron package as this package most closely resembles
+the cron facilities I am used to. I've not looked at Fcron yet, but my
+understanding is it aims to replace Vixie Cron and operates in a very similar
+manner. Instructions for downloading and installing both packages can be
+found at the following URLs.
+
+Vixie Cron:
+
+http://www.linuxfromscratch.org/hints/downloads/files/vixie-cron.txt
+Alternate download location: http://www.mcmurchy.com/lfs/vixie-cron-3.0.1.tar.bz2
+
+Fcron:
+
+http://www.linuxfromscratch.org/blfs/view/stable/general/fcron.html
+
+========================
+3. PACKAGE INSTALLATION:
+========================
+
+---------------------
+Download the package:
+---------------------
+
+The current stable release of the sysstat package is sysstat-5.05 and can be
+downloaded using the following URL's:
+
+Anonymous FTP:
+
+ftp://ibiblio.org/pub/linux/system/status/sysstat-5.0.5.tar.gz
+
+HTTP:
+
+http://perso.wanadoo.fr/sebastien.godard/sysstat-5.0.5.tar.gz
+
+--------------------
+Configure the Build:
+--------------------
+
+You may wish to view the README file included in the root of the source tree
+before we begin. This file provides an overview of the installation process,
+as well as a list of all files which will be installed on your system.
+
+The configuration process is interactive. You'll be prompted to supply the
+required configuration information. I'll try to explain (if necessary) the
+information as we go along. After the "make config" command below, everything
+else you see is what you will be prompted for, with the supplied parameter I
+use. If there is no parameter listed after the prompt, I simply hit "Enter"
+to use the default.
+
+Note: I manually put the ==> arrow in after the prompt and before the
+supplied parameter. You won't see this arrow, it's only there to separate the
+prompt from the supplied parameter.
+
+Begin the configuration script by running the following command:
+
+make config
+
+Installation directory: [/usr/local] ==> /usr
+System activity directory: [/var/log/sa] ==>
+Clean system activity directory? [n] ==>
+Enable National Language Support (NLS)? [y] ==>
+Linux SMP race in serial driver workaround? [n] ==> (typically not required,
+                                                     see the FAQ)
+sa2 uses daily data file of previous day? [n] ==>
+Number of daily data files to keep: [7] ==> (should be less than 29)
+Group for manual pages: [root] ==>
+Set crontab to start sar automatically? [n] ==> (we'll do this later,
+                                                 if desired)
+
+------------------
+Build the Package:
+------------------
+
+Simply running the "make" command will build the package.
+
+-------------------
+Checking the Build:
+-------------------
+
+There are no "check" rules in the various subdirectory makefiles, so there's
+nothing to check. Running the "make check" command is pointless.
+
+--------------------
+Install the Package:
+--------------------
+
+****************************************************************************
+*****                                                                  *****
+*****  The remainder of this hint must be performed by the root user   *****
+*****                                                                  *****
+****************************************************************************
+
+Simply issue a "make install" command to install the package.
+
+-----------------------
+Stripping the Binaries:
+-----------------------
+
+If desired, strip the unnecessary symbols from the installed binaries by
+issuing the following commands:
+
+strip --strip-all /usr/bin/sar /usr/bin/iostat /usr/bin/mpstat
+strip --strip-debug /usr/lib/sa/sadc
+
+---------------------------
+Installing the Init Script:
+---------------------------
+
+An init script is required for the sysstat package, but not for conventional
+reasons. Typically, a package init script is used to start a daemon. For the
+sysstat package, an init script is provided simply to run the sadc program
+at boot time. This is required so that the LINUX RESTART message can be
+inserted into the daily data file, indicating that the relevant kernel
+counters have been reinitialized.
+
+If your plans for the sysstat package do not include using cron to store
+daily information in activity files, an init script is not necessary.
+
+To create a BLFS-compliant boot script, issue the following command:
+
+cat > /etc/rc.d/init.d/sysstat << "EOF"
+
+#!/bin/sh
+# Begin $rc_base/init.d/sysstat
+
+# Based on sysklogd script from LFS-3.1 and earlier.
+# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+# SYSSTAT bootscript submitted by Randy McMurchy - LFS-User_at_mcmurchy_dot_com
+# SYSSTAT bootscript commands by Sebastien Godard <sebastien dot godard at wanadoo dot fr>
+
+. /etc/sysconfig/rc
+. $rc_functions
+
+case "$1" in
+        start)
+                echo "Calling the system activity data collector (sadc)..."
+                /usr/lib/sa/sadc -F -L -
+                evaluate_retval
+                ;;
+
+        *)
+                echo "Usage: $0 start"
+                exit 1
+                ;;
+esac
+
+# End $rc_base/init.d/sysstat
+EOF
+
+Now create the required symbolic link(s) to the init script in your required
+start-up directory(ies). The following is an example:
+
+ln -sf  ../init.d/sysstat /etc/rc.d/rc3.d/S10sysstat
+
+Do substitute your desired startup directory(ies) and S##.
+
+========================
+4. SETTING UP A CRONTAB:
+========================
+
+To keep daily reports of system activity, you'll need to add entries to the
+crontab table for whatever user you use for maintenance activities. I use
+root's crontab entry for this. If you use a user other than root, make the
+appropriate ownership changes to the /var/log/sa directory.
+
+Sample crontab entries can be found in the crontab.sample file found in the
+root of the sysstat source tree. I use the following:
+
+# minute  hour  monthday  month  weekday      command
+
+# activity reports every 20 minutes everyday
+   0       *       *        *       *         /usr/lib/sa/sa1 1200 3 &
+
+# Daily summary prepared at 19:05
+   5       19      *        *       *         /usr/lib/sa/sa2 -A &
+
+See the man pages for sa1 and sa2 for more information on these commands.
+If you use an external crontab file to create/modify the entries, don't
+forget to submit the crontab file after you are finished.
+
+==============================
+5. USING THE SYSTAT UTILITIES:
+==============================
+
+The utilities included with the sysstat package include sar, iostat, mpstat,
+sa1, sa2 and sadc. The sar, iostat and mpstat utilities are meant to be used
+as command-line utilities. The others are used within the cron system.
+
+Reference the respective man pages for each of these command's capabilities,
+switches and parameters. After you've installed the package, and started
+collecting activity statistics, simply running the sar command will list the
+current day's activity summary. Here's a sample display of sar's output when
+when run without any switches or parameters:
+
+13:00:00          CPU     %user     %nice   %system   %iowait     %idle
+13:00:00          all      0.09      0.00      0.06      0.01     99.85
+13:20:00          all      0.09      0.00      0.05      0.01     99.85
+13:40:00          all      0.09      0.00      0.05      0.00     99.85
+14:00:00          all      0.09      0.00      0.06      0.01     99.85
+14:20:00          all      2.68      0.00      1.56      0.54     95.22
+14:40:00          all      4.14      0.00      7.69      0.28     87.89
+15:00:00          all     16.20      0.00      5.43      1.30     77.07
+15:20:00          all      0.71      0.00      0.38      0.09     98.82
+15:40:00          all      4.67      0.00      6.18      0.11     89.04
+16:00:00          all      5.80      0.00      6.11      0.14     87.96
+16:20:00          all     16.01      0.00      8.75      0.16     75.07
+16:40:00          all      4.25      0.00     10.47      0.04     85.23
+17:00:00          all     10.40      0.00     13.39      0.04     76.17
+17:20:00          all     13.43      0.00      9.62      0.05     76.89
+17:40:00          all      6.89      0.00      9.24      0.03     83.85
+18:00:00          all      6.99      0.00     12.48      0.18     80.35
+18:20:00          all      5.56      0.00      8.28      0.05     86.11
+18:40:00          all      2.95      0.00      4.23      0.02     92.80
+19:00:00          all      1.68      0.00      2.69      0.04     95.59
+19:20:00          all      0.68      0.00      0.15      0.02     99.15
+19:40:00          all      0.67      0.00      0.15      0.01     99.17
+20:00:00          all      1.28      0.00      1.70      0.02     97.00
+20:20:00          all      0.69      0.00      0.15      0.01     99.15
+20:40:00          all      1.11      0.00      1.38      0.01     97.50
+21:00:00          all      0.71      0.00      0.15      0.00     99.14
+21:20:00          all      4.29      0.00      9.81      0.05     85.86
+21:40:00          all     15.37      0.00      8.93      0.04     75.67
+22:00:00          all     14.50      0.00      5.21      0.08     80.21
+22:20:00          all     24.87      0.00     25.53      0.01     49.59
+22:40:00          all      5.52      0.00      8.14      0.03     86.31
+23:00:00          all      0.94      0.00      0.30      0.04     98.72
+23:20:00          all      1.24      0.00      0.51      0.04     98.21
+23:40:00          all      0.46      0.00      0.08      0.00     99.46
+Average:          all      2.51      0.00      2.40      0.05     95.04
+
+(The average is skewed in this example, as this output only shows eleven
+hours of activity)
+
+Here is sample output of the very tail end of a program compilation, using
+the command "sar 2 5" (get 5 statistics displays, every 2 seconds):
+
+Linux 2.6.4 (rmlinux)   06/10/04
+
+14:26:28          CPU     %user     %nice   %system   %iowait     %idle
+14:26:30          all     97.50      0.00      2.50      0.00      0.00
+14:26:32          all     41.29      0.00      3.48      5.47     49.75
+14:26:34          all      0.00      0.00      0.00      0.00    100.00
+14:26:36          all      0.00      0.00      0.00      0.00    100.00
+14:26:38          all      0.00      0.00      0.00      0.00    100.00
+Average:          all     27.77      0.00      1.20      1.10     69.93
+
+There are many, many switches and parameters to use with the sar command
+to provide many other performance statistics.
+
+===========
+6. CLOSING:
+===========
+
+I find the sysstat package very useful. As a Linux system administrator, you
+hardly can live without it. Sure, there are other utilities that can provide
+the same information (top, procinfo, etc.), but the sysstat package provides
+the capability for retaining historical information.
+
+It's my belief that the sysstat package belongs in the BLFS book, as there is
+currently no performance monitoring and statistics gathering package
+available. Perhaps one day the decision will be made to include the sysstat
+package in the BLFS book. Until then, I'll keep this hint updated with
+anything I discover that needs mentioning. Enjoy!
+
+
+ACKNOWLEDGEMENTS:
+
+Sébastien Godard <sebastien dot godard at wanadoo dot fr> for creating and
+maintaining the package.
+
+CHANGELOG:
+
+[2004-06-10]
+    * Original draft

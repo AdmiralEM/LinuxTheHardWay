@@ -1,0 +1,695 @@
+TITLE:		How to get the most from KDE
+LFS VERSION:	2.4
+AUTHOR:		Sergey Ostrovsky <sostrovsky@snip.net>
+
+SYNOPSIS:
+	Simply, how to get from a plain vanilla LFS system to a fully working KDE2 environment.
+
+HINT:
+How to get most from KDE - or rather how I did it
+-------------------------------------------------
+ver 1.02
+
+09/16/2000
+
+1. Preface
+   I would call it now 'How to get most from KDE - how I did it'.
+   Gerard Beekmans - author, maintainer, fire keeper, etc. of LFS
+   said that would be a good idea to write some notes about X - stuff.
+   What you are reading now is probably not what he meant.
+   No wonder - I'm usually busy writing programs, not novels.
+   The rule that I used to choose which packages are needed is simple -
+   For each package ( starting from X ) I checked if there are additional
+   tools this one can make use of.
+   This rule is just an instance of "freedom of choice".
+   So if you think different, I just hope that you can still find something
+   useful in this writing.
+   Order of packages installation is important. In general, every package depends
+   on package(s) previously installed.
+
+   Enjoy yourself!
+
+   Sergey Ostrovsky
+   sostrovsky@snip.net
+
+   09/15/2000
+
+2. Packages to download
+
+   zlib-1.1.3.tar.gz
+	ftp://ftp.uu.net/graphics/png/src
+
+   libpng-1.0.8.tar.gz
+	ftp://ftp.uu.net/graphics/png/src
+
+   jpegsrc.v6b.tar.gz
+	ftp://ftp.uu.net/graphics/jpeg/
+
+   lcms-1.06.tar.gz
+	http://www.abaforum.es/martim/lcms.htm
+
+   libmng-0.9.2.tar.gz
+	http://www.libmng.com
+   doctools-1.2.tgz
+   X401src-1.tgz
+   X401src-2.tgz
+   X401src-3.tgz
+	ftp://ftp.xfree86.org/pub/XFree86/4.0.1/source/
+
+   xpm-3.4k
+	ftp://avahi.inria.fr/pub/xpm
+
+   tiff-v3.5.5.tar.gz
+	ftp://ftp.onshore.com/pub/libtiff/
+
+   qt-x11-2.2.0.tar.gz
+	http://www.trolltech.com
+
+   kdesupport-1.94.tar.bz2
+   kdelibs-1.94.tar.bz2
+   kdebase-1.94.tar.bz2
+   kdeutils-1.94.tar.bz2
+   kdegraphics-1.94.tar.bz2
+   kdemultimedia-1.94.tar.bz2
+   kdenetwork-1.94.tar.bz2
+   kdeadmin-1.94.tar.bz2
+   kdepim-1.94.tar.bz2
+   koffice-1.94.tar.bz2
+   kdegames-1.94.tar.bz2
+   kdetoys-1.94.tar.bz2
+	http://www.kde.org
+
+3. Installation.
+   For each package I assume you have it unpacked somewhere
+   and this somewhere is your current directory.
+   Also, it is worth nothing that -mcpu=i586 and -march=i586
+   should be changed according to your preferences.
+   If you see -O2 optimization level - it's mine.
+   If you see -O3 that means the package's developer approved
+   this, and it isn't gonna hurt.
+   Neither does it hurt to run ldconfig after installing a package.
+   As Mr.Almesberger said, "You can't run lilo too often ...".
+
+3.1 zlib
+--------
+     Zlib is the library used for compression.
+   In particular, it used by X. Actually, X by default installs the
+   version of zlib, which is a) just static; and b) old.
+
+3.1.1
+   In Makefile.in find target rule
+	$(SHAREDLIB).$(VER):
+   In the two lines following former you'll see
+   $(OBJS). In these two lines insert $(OBJA) after each occurence
+   of $(OBJS), so it'll look like
+	$(OBJS) $(OBJA)
+
+3.1.2
+   Subdirectory ./contrib has bunch of directories,
+   each for particular processor architecture, i.e.asm586, and so on.
+   There are Assembler source files for time-critical functions.
+   Run
+
+	cp -v contrib/< dir for your processor architecture >/match.S ./
+
+3.1.3
+   Run
+
+	CFLAGS="-O3 -DASMV -mcpu=i586 -march=i586"	\
+	./configure					\
+	--prefix=/usr					\
+	--shared
+
+	OBJA=match.o make -e
+
+	make install
+
+	cp -va zlib.3 /usr/share/man/man3
+
+3.2 libpng
+----------
+    Portable network graphics support. Used by KDE
+
+3.2.1
+   Copy the right makefile to the package's toplevel directory :
+
+	cp -va scripts/makefile.linux Makefile
+
+3.2.2
+   In this Makefile correct :
+
+	prefix=/usr
+
+	ZLIBLIB=/usr/lib
+
+	ZLIBINC=/usr/include
+
+   Add to CFLAGS
+
+	-mcpu=i586 -march=i586
+
+3.2.3 Run
+
+	make test
+
+	make install
+
+	cp -va libpng.3 libpngpf.3 /usr/share/man/man3
+
+	cp -va png.5 /usr/share/man/man5
+
+3.3 libjpeg
+-----------
+   Jpeg graphics format support. Used by KDE.
+
+3.3.1
+   Run
+	CFLAGS="-O3 -mcpu=i586 -march=i586"	\
+	./configure				\
+	--prefix=/usr				\
+	--enable-shared				\
+	--enable-maxmem=100
+
+	make
+
+	mandir=/usr/share/man/man1 make -e install
+
+3.4 lcms
+-------
+
+3.4.1
+   Run
+
+	CFLAGS="-O2 -mcpu=i586 -march=i586"		\
+	./configure					\
+	--prefix=/usr
+
+	make
+
+	make install
+
+3.4.2
+   Find in /usr/include/lcms/lcms.h
+   defines of PACKAGE and VERSION an embrace it with
+   #ifndef / #endif, so
+                                 #ifndef PACKAGE
+   #define PACKAGE <blah>   -->  #define PACKAGE <blah>
+                                 #endif
+
+                                 #ifndef VERSION
+   #define VERSION <blah>   -->  #define VERSION <blah>
+                                 #endif
+
+   This done in order to remove conflicts with libmng ( follows ).
+
+3.5 libmng
+----------
+3.5.1
+   In configure.in find the piece of script :
+
+  AC_CHECK_HEADER(lcms.h,
+    AC_CHECK_LIB(lcms, cmsCreateRGBProfile, [
+      LIBS="$LIBS -llcms"
+      AC_DEFINE(MNG_INCLUDE_LCMS)], [
+      test $_restore -eq 1 && CPPFLAGS=$_cppflags LDFLAGS=$_ldflags
+      AC_MSG_WARN(lcms library not found)]),
+    test $_restore -eq 1 && CPPFLAGS=$_cppflags LDFLAGS=$_ldflags
+    AC_MSG_WARN(lcms header not found))])
+
+  and replace it with
+
+    AC_CHECK_LIB(lcms, cmsCreateRGBProfile, [
+      LIBS="$LIBS -llcms"
+      AC_DEFINE(MNG_FULL_CMS)], [
+      test $_restore -eq 1 && CPPFLAGS=$_cppflags LDFLAGS=$_ldflags
+      AC_MSG_WARN(lcms library not found)])])
+
+  Yes, this is a hack. I avoid checking if lcms.h exists and is a valid
+  C/C++ header. The thing is, cpp ( which AC_CHECK_HEADER uses for this
+  test ) returns non-zero on this header, and I don't care why.
+  Have plenty of fixin' crap at full-time job.
+
+3.5.2
+   Run
+        autoconf
+
+	CFLAGS="-O2 -mcpu=i586 -march=i586"		\
+	./configure					\
+	--prefix=/usr					\
+	--with-zlib=/usr				\
+	--with-lcms=/usr				\
+	--with-jpeg=/usr
+
+	make
+
+	make install
+
+5.6 doctools
+------------
+
+5.6.1
+  Edit jade/Makefile
+
+  Find:
+
+#LIBDIRS=$(SP_LIBDIRS) $(JADE_LIBDIRS)
+LIBDIRS=$(SP_LIBDIRS)
+#PROGDIRS=$(SP_PROGDIRS) $(JADE_PROGDIRS)
+PROGDIRS=$(SP_PROGDIRS)
+
+  Change to :
+
+LIBDIRS=$(SP_LIBDIRS) $(JADE_LIBDIRS)
+#LIBDIRS=$(SP_LIBDIRS)
+PROGDIRS=$(SP_PROGDIRS) $(JADE_PROGDIRS)
+#PROGDIRS=$(SP_PROGDIRS)
+
+  Although full doctools package is included, only part of it
+  gets compiled and installed - just to support X11-supplied docs.
+  The full package is a good thing itself. KDE stuff makes use of it.
+
+  DO NOT run autoconf or automake ! This Makefile heavily patched, while Makefile.in
+  is virgin.
+
+5.6.2
+  Run ( from top - level package directory, as I said at the beginning )
+
+  make
+
+  make install
+
+5.6.3
+  In the script /usr/local/bin/sgmlfmt change the first line
+
+  #!/usr/local/bin/perl
+
+  to :
+
+  #!/usr/bin/perl
+
+  or whatever place your perl lives.
+
+5.7 XFree86-4.01 ( finally ... )
+--------------------------------
+  This section has to do with X installation only.
+  After successful ( I wish you so ) installation you should configure X.
+  README ( or something like ) which comes with X explains this very well.
+  NOTE : I have plain vanilla Matrox Millenium 4M card 1996 vintage.
+  Configuration files that you'll deal with have quite a few definitions
+  for new fancy cards. If you are lucky owner of these, you are on your own.
+
+5.7.1
+   cp config/cf/xf86site.def config/cf/host.def
+
+   in the file config/cf/host.def uncomment and define following symbols :
+
+/*        Here touch only -mcpu=i586 -march=i586 !  S.O.  */
+
+#define DefaultGcc2i386Opt	-O2 -fno-strict-aliasing -fno-strength-reduce	\
+				-pipe -mcpu=i586 -march=i586
+
+/* This is not in the file ! Type it yourself.
+   And please, do it. This is not about -Wall which,
+   as you know, makes no impact to the mode the compiler
+   works in. If not set here, the default options will be used,
+   which is probably not what you want.  S.O.
+*/
+
+#define DefaultCCOptions  -Wall
+
+/*      No questions, I hope. S.O. */
+
+#define TermcapLibrary		-lncurses
+
+/*      You'll see the list of drivers bundled into distribution.
+        Pick just your(s). Otherwise might have a headache with
+        compiling stuff which is actually useless for you. S.O.
+*/
+
+#define XF86CardDrivers		<your driver(s)>
+
+#define InstallXinitConfig	YES
+#define InstallXdmConfig	YES
+#define InstallFSConfig		YES
+
+#define HasSgmlFmt		YES
+
+/* This is not in the file ! Type yourself. S.O. */
+#define BuildAllDocs		YES
+
+#define BuildSpecsDocs		YES
+#define SpecsDocDirs		Xext Xv xterm
+
+
+/* This is not in the file ! Type yourself. S.O. */
+#define	HasZlib	YES
+
+5.7.2
+   in the file config/cf/site.def
+
+   Find definition of InstallXserverSetUID and replace with :
+
+#ifdef	InstallXserverSetUID
+#undef	InstallXserverSetUID
+#endif
+#define InstallXserverSetUID	YES
+
+   Insert definition of ManDirectoryRoot :
+
+#ifdef	ManDirectoryRoot
+#undef	ManDirectoryRoot
+#endif
+#define ManDirectoryRoot	/usr/share/man
+
+   Find definition of ProjectRoot and replace ( if needed ) with :
+
+#ifndef ProjectRoot
+#define ProjectRoot /usr/X11R6
+#endif
+
+5.7.3
+   in the file config/cf/Imake.rules
+   find definition of InstallHtmlManPageAliases macro and replace
+   it with:
+
+#ifndef InstallHtmlManPageAliases
+#if BuildHtmlManPages
+#define InstallHtmlManPageAliases(file,aliases,suffix)			@@\
+install.man:: file.suffix.html						@@\
+	@(SUF=`expr file.suffix.html \: '.*\.\(.\).*\.'`; \		@@\
+	for i in aliases; do (set -x; \					@@\
+	  RemoveFile($(DESTDIR)$(DOCHTMLDIR)/$$i.$$SUF.html); \		@@\
+	  (cd $(DESTDIR)$(DOCHTMLDIR); \				@@\
+	    $(LN) file.$$SUF.html $$i.$$SUF.html)); \			@@\
+	done)
+#else
+#define InstallHtmlManPageAliases(file,aliases,suffix) /**/
+#endif
+#endif
+
+  Yes, this is broken links' fix I posted earlier.
+
+5.7.4
+  Run
+
+  make World
+
+  make install
+
+  make install.man
+
+  Insert in /etc/ld.so.conf
+
+        /usr/X11R6/lib
+
+  and run ldconfig
+
+5.7.5
+  HINTS. ( it's better later than never ... )
+  Now your X is present in the system. It is installed in traditional
+  place, so configuration scripts from any decent X-aware package
+  will find it immediately. Some application that you already have
+  are X-capable ( if configured and compiled with X ). Vim, for instance.
+  Thus, if you wish to recompile X-aware package, it is right time to do this.
+  In addition, KDE installation scripts check if your system has already
+  some traditional X-apps. If so, they will be insert to the system menu.
+  It's nice.
+  Configuration scripts from some packages find and use X automatically,
+  others should be explicitely told to do so ( often using --with-x option ).
+  Check yourself.
+  IF YOU EVER WILL REINSTALL X11-4.01 ( re - "make install" ) in-place,
+  first remove /usr/include/GL softlink. or your install
+  will be aborted prematurely.
+
+5.8 xpm
+-------
+
+5.8.1
+  Run
+	xmkmf -a
+
+	make
+
+	make install
+
+	make install.man
+
+5.9 tiff
+--------
+
+5.9.1
+  Make the following changes in ./configure :
+
+	DIR_BIN=/usr/bin
+
+	DIR_LIB=/usr/lib
+
+	DIR_INC=/usr/include
+
+	DIR_JPEGLIB=/usr/lib
+
+	DIR_GZLIB=/usr/lib
+
+	JPEG=yes
+
+	ZIP=yes
+
+	DIR_HTML=/usr/share/doc/tiff
+
+	HTML=yes
+
+	DIR_MAN=/usr/share/man
+
+	GCOPTS="-O2 -mcpu=i586 -march=i586"
+
+   In DSO section find *-linux*) case
+   and correct the appropriate _if_ operator
+   from :
+	if [ -r /lib/libc.so.6 || -r /lib/libc.so.5 ]; then
+   to :
+	if [ \( -r /lib/libc.so.6 \) -o \( -r /lib/libc.so.5 \) ]; then
+
+5.9.2
+  Run
+	./configure
+
+	make
+
+	make install
+
+	cd /usr/lib
+
+	mv libtiff.so.3.5. libtiff.so.3.5.5
+
+	ln -s libtiff.so.3.5.5 libtiff.so
+
+5.10 Qt
+-------
+
+5.10.1
+   cd /opt
+   tar -xzpvf qt-2.2.0.tar.gz
+   ln -s qt-2.2.0 qt
+   cd qt
+
+5.10.2
+   Read INSTALL file and do exactly as it says about shell variables.
+   Additionally insert /opt/qt/lib line to your /etc/ld.so.conf. Won't hurt.
+
+5.10.3
+   After re-logging in
+
+   cd /opt/qt
+
+   ./configure
+   -gif                 \
+   -thread              \
+   -system-zlib         \
+   -system-libpng       \
+   -system-libmng       \
+   -system-jpeg         \
+   -L/usr/X11R6/lib             /* Yes, I know what you want to say. It
+                                ( -L<...> ) doesn't hurt. Don't want - don't put */
+   make
+
+   ldconfig
+
+5.10.4
+  If you will want to have Qt Designer KDE-extentions installed, rebuild Qt after
+  installing KDE suite one more time ( 5.10.3 ), just add
+  the option -kde to that ./configure command line.
+
+5.11 KDE2-beta4
+---------------
+
+5.11.1
+  Run
+
+  cd /lib
+
+  ln -s libshadow.so.0.0.0 libshadow.so
+
+  There was a discussion about "rightness" of doing so.
+  I am not going to start it over again here. Don't want - don't do.
+  Then when compiling kdebase ( below ) omit --with-shadow.
+
+5.11.2
+ There is nothing special about building KDE. It would be boring to write
+ how to install each of 12 packages. Instead, I'll insert the script I used
+ for this.
+
+
+#! /bin/bash
+date > ~/_kde-1.94.buildtime
+echo -e "\n" >> ~/_kde-1.94.buildtime
+cd /usr/src
+ldconfig
+mount /mnt/Helena
+#=================================================================
+tar -xypvf /mnt/Helena/ZipArchives/4/KDE/kdesupport-1.94.tar.bz2
+cd kdesupport-1.94
+./configure --prefix=/opt/kde --with-audiofile --with-aps i586-chechaco-linux \
+2>&1 | tee ~/_kdesupport-1.94_config_.log
+make \
+2>&1 | tee ~/_kdesupport-1.94_make_.log
+make install \
+2>&1 | tee ~/_kdesupport-1.94_make_install_.log
+cd ..
+ldconfig
+rm -r kdesupport-1.94
+#=================================================================
+tar -xypvf /mnt/Helena/ZipArchives/4/KDE/kdelibs-1.94.tar.bz2
+cd kdelibs-1.94
+./configure --prefix=/opt/kde i586-chechaco-linux \
+2>&1 | tee ~/_kdelibs-1.94_config_.log
+make \
+2>&1 | tee ~/_kdelibs-1.94_make_.log
+make install \
+2>&1 | tee ~/_kdelibs-1.94_make_install_.log
+cd ..
+ldconfig
+rm -r kdelibs-1.94
+#=================================================================
+tar -xypvf /mnt/Helena/ZipArchives/4/KDE/kdebase-1.94.tar.bz2
+cd kdebase-1.94
+./configure --prefix=/opt/kde --with-shadow i586-chechaco-linux \
+2>&1 | tee ~/_kdebase-1.94_config_.log
+make \
+2>&1 | tee ~/_kdebase-1.94_make_.log
+make install \
+2>&1 | tee ~/_kdebase-1.94_make_install_.log
+cd ..
+ldconfig
+rm -r kdebase-1.94
+#=================================================================
+tar -xypvf /mnt/Helena/ZipArchives/4/KDE/kdeutils-1.94.tar.bz2
+cd kdeutils-1.94
+./configure --prefix=/opt/kde i586-chechaco-linux \
+2>&1 | tee ~/_kdeutils-1.94_config_.log
+make \
+2>&1 | tee ~/_kdeutils-1.94_make_.log
+make install \
+2>&1 | tee ~/_kdeutils-1.94_make_install_.log
+cd ..
+ldconfig
+rm -r kdeutils-1.94
+#=================================================================
+tar -xypvf /mnt/Helena/ZipArchives/4/KDE/kdegraphics-1.94.tar.bz2
+cd kdegraphics-1.94
+./configure --prefix=/opt/kde i586-chechaco-linux \
+2>&1 | tee ~/_kdegraphics-1.94_config_.log
+make \
+2>&1 | tee ~/_kdegraphics-1.94_make_.log
+make install \
+2>&1 | tee ~/_kdegraphics-1.94_make_install_.log
+cd ..
+ldconfig
+rm -r kdegraphics-1.94
+#=================================================================
+tar -xypvf /mnt/Helena/ZipArchives/4/KDE/kdemultimedia-1.94.tar.bz2
+cd kdemultimedia-1.94
+./configure --prefix=/opt/kde i586-chechaco-linux \
+2>&1 | tee ~/_kdemultimedia-1.94_config_.log
+make \
+2>&1 | tee ~/_kdemultimedia-1.94_make_.log
+make install \
+2>&1 | tee ~/_kdemultimedia-1.94_make_install_.log
+cd ..
+ldconfig
+rm -r kdemultimedia-1.94
+#=================================================================
+tar -xypvf /mnt/Helena/ZipArchives/4/KDE/kdenetwork-1.94.tar.bz2
+cd kdenetwork-1.94
+./configure --prefix=/opt/kde i586-chechaco-linux \
+2>&1 | tee ~/_kdenetwork-1.94_config_.log
+make \
+2>&1 | tee ~/_kdenetwork-1.94_make_.log
+make install \
+2>&1 | tee ~/_kdenetwork-1.94_make_install_.log
+cd ..
+ldconfig
+rm -r kdenetwork-1.94
+#=================================================================
+tar -xypvf /mnt/Helena/ZipArchives/4/KDE/kdeadmin-1.94.tar.bz2
+cd kdeadmin-1.94
+./configure --prefix=/opt/kde i586-chechaco-linux \
+2>&1 | tee ~/_kdeadmin-1.94_config_.log
+make \
+2>&1 | tee ~/_kdeadmin-1.94_make_.log
+make install \
+2>&1 | tee ~/_kdeadmin-1.94_make_install_.log
+cd ..
+ldconfig
+rm -r kdeadmin-1.94
+#=================================================================
+tar -xypvf /mnt/Helena/ZipArchives/4/KDE/kdepim-1.94.tar.bz2
+cd kdepim-1.94
+./configure --prefix=/opt/kde i586-chechaco-linux \
+2>&1 | tee ~/_kdepim-1.94_config_.log
+make \
+2>&1 | tee ~/_kdepim-1.94_make_.log
+make install \
+2>&1 | tee ~/_kdepim-1.94_make_install_.log
+cd ..
+ldconfig
+rm -r kdepim-1.94
+#=================================================================
+tar -xypvf /mnt/Helena/ZipArchives/4/KDE/koffice-1.94.tar.bz2
+cd koffice-1.94
+./configure --prefix=/opt/kde i586-chechaco-linux \
+2>&1 | tee ~/_koffice-1.94_config_.log
+make \
+2>&1 | tee ~/_koffice-1.94_make_.log
+make install \
+2>&1 | tee ~/_koffice-1.94_make_install_.log
+cd ..
+ldconfig
+rm -r koffice-1.94
+#=================================================================
+tar -xypvf /mnt/Helena/ZipArchives/4/KDE/kdegames-1.94.tar.bz2
+cd kdegames-1.94
+./configure --prefix=/opt/kde i586-chechaco-linux \
+2>&1 | tee ~/_kdegames-1.94_config_.log
+make \
+2>&1 | tee ~/_kdegames-1.94_make_.log
+make install \
+2>&1 | tee ~/_kdegames-1.94_make_install_.log
+cd ..
+ldconfig
+rm -r kdegames-1.94
+#=================================================================
+tar -xypvf /mnt/Helena/ZipArchives/4/KDE/kdetoys-1.94.tar.bz2
+cd kdetoys-1.94
+./configure --prefix=/opt/kde i586-chechaco-linux \
+2>&1 | tee ~/_kdetoys-1.94_config_.log
+make \
+2>&1 | tee ~/_kdetoys-1.94_make_.log
+make install \
+2>&1 | tee ~/_kdetoys-1.94_make_install_.log
+cd ..
+ldconfig
+rm -r kdetoys-1.94
+#=================================================================
+umount /mnt/Helena
+date >> ~/_kde-1.94.buildtime
+#=================================================================

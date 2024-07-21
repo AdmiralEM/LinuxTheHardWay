@@ -1,0 +1,136 @@
+TITLE:		Make xconsole work (v.02)
+LFS VERSION:	all
+AUTHOR:		Matthias S. Benkmann  <m.s.b@gmx.net>
+
+SYNOPSIS:
+	xconsole gave me a lot of trouble. It wouldn't work when started
+	as a normal user, even when made setuid root. And when reading 
+	from /dev/console (default) it intercepted keystrokes intended for 
+	xterm windows. If you have the same problems, read this hint. 
+
+HINT:
+
+I checked out a SuSE system and saw that they did not have xconsole read
+from /dev/console. Instead is was set up to read from a FIFO /dev/xconsole that
+was fed by syslogd. This has the advantage that you
+can use syslog.conf to control exactly which messages you want to be displayed
+by xconsole.
+
+To set it up like this do the following:
+
+1. Create the /dev/xconsole FIFO
+
+     mkfifo /dev/xconsole
+     chmod 640 /dev/xconsole
+     chown root.tty /dev/xconsole
+
+2. Tell syslogd to write messages to /dev/xconsole by adding a line like
+   the following to /etc/syslog.conf
+   
+      *.err;auth,authpriv.none		|/dev/xconsole
+
+   This will write all messages with priority err or higher to /dev/xconsole,
+   with the exception of auth and authpriv messages (because these may contain
+   secret data).
+
+
+Now you can start xconsole like this
+
+     xconsole -file /dev/xconsole
+     
+and it will use the FIFO.
+
+The above fixes the strange keystroke-grabbing problems. There still remains
+the problem that xconsole only works when started by root. Neither making it
+setuid root nor setgid tty will help. A look at the source code reveals the
+reason for this. xconsole uses the access() function to test if it can access
+the file it's told to read from. Unfortunately access() only checks the
+real uid and not the effective uid of the process, and setuid root only
+changes the effective uid. The reason for this is probably that otherwise
+a setuid root xconsole could be used to spy on other users. 
+To work around this issue I wrote the following program:
+
+------------------- begin startxconsole.c -----------------------------------
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <pwd.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <signal.h>
+int main()
+{
+  int i, fd;
+  struct passwd* pw;
+  char* xauth;
+  char* env[32];
+  
+  /* set XAUTHORITY to real home directory of user instead of allowing
+  user to specify something */
+  pw=getpwuid(getuid());
+  if (pw==NULL) {perror("getpwuid"); return 1;};
+  xauth=malloc(strlen(pw->pw_dir)+128);
+  if (xauth==NULL) {perror("malloc"); return 1;};
+  strcpy(xauth,"XAUTHORITY=");
+  strcat(xauth,pw->pw_dir);
+  strcat(xauth,"/.Xauthority");
+  
+  /* empty environment (except for std path, DISPLAY and XAUTHORITY) */
+  env[0]="PATH=/bin:/usr/bin";
+  env[1]="DISPLAY=:0.0";
+  env[2]=xauth;
+  env[3]=NULL;
+  
+  /* reset signal handlers to default */
+  for (i = 1; i < NSIG; i++) signal (i, SIG_DFL); 
+  
+  /* stdin="/dev/null" (to prevent users from passing insecure data) */
+  close(0);
+  if ( open("/dev/null",O_RDONLY) != 0 )
+  {
+    fprintf(stderr,"Unable to redirect /dev/null -> stdin\n");
+    return 1;
+  };
+  
+  /* close all fds except stdin,stdout,stderr (just for paranoia) */
+  i = getdtablesize ();
+  for (fd = 3; fd < i; ++fd) close (fd);
+  
+  /* set real ids to effective ids */
+  setreuid(geteuid(),geteuid());
+  setregid(getegid(),getegid()); 
+  execle("/usr/X11R6/bin/xconsole","xconsole","-file","/dev/xconsole",
+  "-notify","-verbose","-geometry","-0-0",NULL,env);
+  perror("/usr/X11R6/bin/xconsole");
+  return 1;
+};
+------------------- end startxconsole.c -----------------------------------
+
+Compile it with 
+
+   gcc -W -Wall -O2 -o startxconsole startxconsole.c
+ 
+
+startxconsole makes setuid and setgid behave as expected. So you can do
+the following:
+
+   chgrp tty startxconsole
+   chmod g+s startxconsole
+   
+and you can call startxconsole as a normal user (you should probably put
+it into xinitrc) and it will start up xconsole.
+Note that for security reasons, startxconsole has the command line for
+xconsole hardwired. That way users can't pass their own arguments to xconsole.
+If they were allowed to pass their own arguments they could specify some
+other user's tty device as -file to spy on this user.
+In addition to this startxconsole always sets the location of the .Xauthority
+file (via the XAUTHORITY environment variable) to <home>/.Xauthority where
+<home> is the home directory of the calling user. This makes sure that a
+user can't use XAUTHORITY to cause a read access to a file not belonging to 
+him. DISPLAY is always set to :0.0.
+All other environment variables are removed (or rather, not passed to xconsole),
+signal handlers are reset to the default, stdin is set to /dev/null and all
+other file descriptors except for stdout and stderr are closed. This should
+eliminate every possibility for the user to pass insecure data to xconsole.

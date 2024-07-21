@@ -1,0 +1,767 @@
+Hint to allow static IPv6 in LFS
+Sun Dec  8 13:33:36 PST 2019
+        
+AUTHOR: Joel Bion <jpbipv6hints at gmail.com>
+
+DATE: 2019-12-08
+
+LICENSE:
+
+GNU Free Documentation License Version 1.2, with the additional requirement
+that the "WARRANTY DISCLAIMER" sections are strictly adhered to by all users of
+this document and/or its contents.
+
+SYNOPSIS: Using a static IPv6 address with LFS
+
+DESCRIPTION:
+
+This hint describes how a static IPv6 address can be added to a system built
+with LFS.
+
+WARRANTY DISCLAIMER:
+
+1. DISCLAIMER OF WARRANTY
+
+THERE IS NO WARRANTY FOR THIS DOCUMENT, TO THE EXTENT PERMITTED BY APPLICABLE
+LAW. THE COPYRIGHT HOLDER, AUTHORS, AND/OR OTHER PARTIES PROVIDE THE DOCUMENT
+AND/OR ITS INFORMATION "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED
+OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. THE ENTIRE RISK AS TO THE
+QUALITY AND PERFORMANCE OF THE DOCUMENT AND/OR ITS INFORMATION IS WITH YOU.
+SHOULD THE DOCUMENT AND/OR ITS INFORMATION PROVE DEFECTIVE, YOU ASSUME THE COST
+OF ALL NECESSARY SERVICING, REPAIR OR CORRECTION.
+
+2. Limitation of Liability.
+
+IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING WILL ANY
+COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MODIFIES AND/OR CONVEYS THE DOCUMENT
+AND/OR ITS INFORMATION AS PERMITTED IN ITS LICENSE, BE LIABLE TO YOU FOR
+DAMAGES, INCLUDING ANY GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES
+ARISING OUT OF THE USE OR INABILITY TO USE THE DOCUMENT AND/OR ITS INFORMATION
+(INCLUDING BUT NOT LIMITED TO LOSS OF DATA OR DATA BEING RENDERED INACCURATE OR
+LOSSES SUSTAINED BY YOU OR THIRD PARTIES OR A FAILURE OF THE DOCUMENT AND/OR
+ITS INFORMATION TO ACHIEVE ITS INTENDED RESULT), EVEN IF SUCH HOLDER OR OTHER
+PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+3. Interpretation of Sections 1 and 2.
+
+If the disclaimer of warranty and limitation of liability provided above cannot
+be given local legal effect according to their terms, reviewing courts shall
+apply local law that most closely approximates an absolute waiver of all civil
+liability in connection with the documentation and/or its contents.
+
+ATTACHMENTS:
+
+None
+
+PREREQUISITES:
+
+This hint requires you to have a working LFS system, with a static IPv4
+address. The hint was built with LFS version 9.0, but is likely to work back to
+version 7.0.
+
+This hint requires that you have a good understanding of IPv6, including, but
+not limited to, IPv6 address formats, the differences between things such as
+link-local addresses vs. global addresses, what IPv6 Router Advertisements are,
+and what they usually provide to a host, what prefix delegation is, etc.  In
+other words, you should be fully IPv6 knowledgeable, and are just looking for
+how to incorporate IPv6 into your LFS system.
+
+Note: ISPs have not completely standardized on how they provide IPv6
+connectivity. This hint works with ISPs that let you choose an IPv6 address
+within the range of a prefix delegation you've been assigned, and do not filter
+your choice of that address. Further, the default use of the system is one
+where the default gateway is given to the system via IPv6-RD. It may also work
+with ISPs who are similar to the above description, but require you to
+configure a default gateway address.
+
+SECURITY CONSIDERATIONS:
+
+THERE ARE PLENTY OF SECURITY CONSIDERATIONS!
+
+It is assumed that you have a deep understanding of the security implications
+of adding IPv6 support to a network and/or hosts (server, client, etc.).  If
+you do not have such an understanding, or/and have not configured and tested
+your network and end systems to ensure they will be equally or better protected
+with IPv6 enabled, you need to question whether or not you are properly ready,
+from a security standpoint, to enable IPv6. Security and protection are 100%
+your responsibility! For example, the original author of this hint does not
+enable global IPv6 in his home network out of concern over IPv6 security.
+You've been warned!
+
+HINT:
+
+Used in this hint:
+
+   IPv6 address: 2001:DB8:1234::123:150
+   IPv6 prefix: 112
+   IPv4 address: 192.51.100.93
+   IPv4 broadcast: 192.51.100.255
+   IPv4 prefix: 24
+   IPv4 gateway: 192.51.100.1
+   Domain name: example.com
+   Interface name: eth0
+
+HINT STEP 1 - PREPARING FOR IPv6
+
+How you exactly and completely do this is well beyond the scope of this hint.
+It turns out simply enabling IPv6 is quite easy. But, preparing for it and
+adjusting to its consequences can be difficult. This hint step describes the
+various things you must consider before you introduce IPv6 to your system. As a
+point of reference: the hint author spent perhaps a few hours figuring out how
+to add IPv6 to his LFS system. But he spent multiple weekends preparing for it,
+and the last repercussions (the creation of a PTR record by his ISP) took over
+a week.
+
+HINT STEP 1A - SECURITY
+
+As said above, protecting your host and network with IPv6 enabled is different
+than doing this in an IPv4 world. Some things are similar, but other things are
+quite different. You cannot assume that a good knowledge of IPv4 security is
+all you need to know to make the same network/server secure when running IPv6.
+Study up on this, read a book or two about it, etc. Learn more than you know
+about IPv4 security because IPv6 security is more complex, and introduces
+concepts (such as global reach-ability of your systems) that you may never have
+faced before. YOU are responsible for your system's security and to know the
+risks that enabling ipv6 creates!
+
+HINT STEP 1B - DNS CONSIDERATIONS
+
+Depending on your needs, do you have all the proper IPv6-supporting records you
+need in your domain's zone file? Depending on how you have previously set
+things up, you may need to not just add a AAAA edit DMARC, MX, etc records set
+up at your domain name provider? If you are sending email from your LFS system,
+you may need to have a PTR record created by your ISP that provides 'reverse
+DNS' support. This PTR record may take your ISP days or weeks to set up - so
+plan ahead, and verify that all is set up property (even your ISP's PTR record)
+rather than assuming it all will work!
+
+HINT STEP 1C - COPING WITH IP ADDRESS OR IPv4 PROTOCOL-SPECIFIC CONFIGURATIONS
+
+Most likely, you are familiar with IPv4 addresses in /etc/hosts, but a system
+that has been using a static IPv4 address for some time may have its numeric
+IPv4 address stored in many configurations. It may also have the network
+portion of the IPv4 address stored in places, with the host portion of the
+number zeroed out (for example: 192.51.100.0) or perhaps specify the broadcast
+address explicitly (for example: 192.51.100.255.) You may also have
+applications that need to have IPv6 support configured in, or may make new
+decisions when they discover IPv6 is enabled that you need to configure around,
+etc. You need to figure this out to get your system up and properly behaving
+with both IPv4 and IPv6 configured.
+
+HINT STEP 1D - OBTAINING ADDITIONAL PACKAGES REQUIRED TO SUPPORT IPv6.
+
+There is the occasional package that needs to have an additional package added
+to the system to support IPv6. This is particularly true of applications that
+are written in languages that encourage the use of widely-available libraries
+to perform much of the work (examples include Perl and Python.) So, for your
+installed packages, check out which ones are directly utilizing the Internet in
+any way, and see if they require any extra packages to support IPv6.
+
+HINT STEP 1E - ENABLE IPv6 IN THE LINUX KERNEL
+
+Rebuild the Linux kernel, as specified in the LFS documentation, but examine
+your configuration file, and edit it to ensure the following lines are set.
+
+    CONFIG_IPV6=y
+      - Essential IPv6 support
+    CONFIG_IPV6_SIT=y
+      - Enables use of IPv6-in-IPv4 tunnels - one day you may need this
+    CONFIG_IPV6_NDISC_NODETYPE=y
+      - Enables certain checks on neighbor discovery
+    CONFIG_IPV6_TUNNEL=y
+      - Supports RFC2473 IPv6-in-IPv6 and IPv4-in-IPv6 tunnels- one day you
+        may need this
+    CONFIG_IPV6_MULTIPLE_TABLES=y
+    CONFIG_IPV6_SUBTREES=y
+      - Together, the above two enable support for multiple IPv6 routingi tables
+        (such as source-addressed based routing)
+    CONFIG_INET6_AH=y
+    CONFIG_INET6_ESP=y
+    CONFIG_INET6_IPCOMP=y
+    CONFIG_INET6_XFRM_TUNNEL=y
+    CONFIG_INET6_TUNNEL=y
+      - Above needed for IPsec with IPv6. You may not use this; the hint author
+        does.
+    CONFIG_NF_SOCKET_IPV6=m
+    CONFIG_NF_TPROXY_IPV6=m
+    CONFIG_NF_TABLES_IPV6=y
+    CONFIG_NFT_REJECT_IPV6=m
+    CONFIG_NFT_FIB_IPV6=m
+    CONFIG_NF_REJECT_IPV6=y
+    CONFIG_NF_LOG_IPV6=m
+    CONFIG_IP6_NF_MATCH_IPV6HEADER=y
+    CONFIG_NF_DEFRAG_IPV6=y
+     - Netfilter support for various commonly-referenced elements of IPv6
+       packet filtering. Many host-based firewall tools need these to be
+       enabled.
+
+HINT STEP 2 - INSTALL NEW VERSIONS OF MULTIPLE LFS SCRIPTS
+
+Script copies are given at the end of this hint. Put them in place in the
+location specified, overwriting the files you have in some cases with these new
+versions. You should save backup copies of any scripts you are about to replace
+or modify. The modified scripts have been tested in the hint author's system to
+still work even if IPv6 is NOT used.
+
+NOTE: THESE VERSIONS OF THE SCRIPT ARE KNOWN TO WORK IN LFS 9.0, IN SYSTEMS
+USING THE LFS-Bootscripts PACKAGE DATED 20191031. IF YOUR BOOTSCRIPTS ARE FROM
+A DIFFERENT VERSION, YOU SHOULD CHECK TO SEE THESE STILL CAN BE USED BY CLOSELY
+COMPARING THESE GIVEN VERSIONS TO THE ONES ON YOUR SYSTEM.  HINT STEP 3 -
+MODIFY VARIOUS CONFIGURATION FILES
+
+HINT STEP 3A - MODIFY /etc/sysconfig/ifconfig.eth0
+
+In /etc/sysconfig/ifconfig.eth0, add in your IPv6 address and prefix, and
+change the service pointer to ipv46-static, to create a resulting file that
+looks something like this.  Obviously, edit to match your setup.
+
+    ONBOOT=yes
+    IFACE=eth0
+    SERVICE=ipv46-static
+    IP=192.51.100.93
+    PREFIX=24
+    GATEWAY=192.51.100.1
+    BROADCAST=192.51.100.255
+    IP6=2001:DB8:1234::123:150
+    PREFIX6=112
+
+HINT STEP 3B - MODIFY /etc/hosts
+
+Add the following to /etc/hosts, if not already there. Obviously, edit to match
+your setup.
+
+   2001:DB8:1234::123:150 example.com
+   2001:DB8:1234::123:150 www.example.com (maybe)
+   ::1     localhost ip6-localhost ip6-loopback ourserver
+   fe00::0 ip6-localnet
+   ff00::0 ip6-mcastprefix
+   ff02::1 ip6-allnodes
+   ff02::2 ip6-allrouters
+   ff02::3 ip6-allhosts
+
+HINT STEP 3C - EDIT (OR POSSIBLE EVEN CREATE) /etc/sysctl.conf
+
+Add the following lines to /etc/sysctl.conf. Obviously, edit to match your
+setup.
+
+       net.ipv6.conf.eth0.disable_ipv6=0
+       net.ipv6.conf.eth0.autoconf=0
+
+What they do:
+
+       net.ipv6.conf.eth0.disable_ipv6=0
+        - 'disables the disabling' (net result, enables) IPv6 on this interface
+       net.ipv6.conf.eth0.autoconf=0
+        - Disables receiving an IPv6 address from IPv6-RD packets sent by your
+          gateway/router.
+
+NOTE: If you plan to disable IPv6, you should change the sysctl.conf entries to
+read as follows, as well as reverting your ifconfig.eth0 file.
+
+Example of sysctl.conf entries to help revert from using IPv6:
+
+       net.ipv6.conf.eth0.disable_ipv6=1
+       net.ipv6.conf.eth0.autoconf=1
+
+HINT STEP 3D (OPTIONAL) - create/edit /etc/sysconfig/network
+
+   Add in the line shown below. There may still be a very small number of
+   applications and/or packages that need to see this line in this file to
+   'believe' that IPv6 is enabled on your system, and it is painful to discover
+   and debug the ones that do. It's much easier to just add the following line
+   to this file, even though it's pretty frustrating and clumsy to have to do
+   this:
+
+     NETWORKING_IPV6=yes
+
+HINT STEP 4 - Reboot and check things out
+
+    Upon reboot, issue these commands and see if they give sensible results:
+
+      ip -4 address
+      ip -4 route
+      ip -6 address
+      ip -6 route
+
+    The 'address' variant should show you interface addresses. Ideally, you
+    have only ONE global IPv6 address on your interface: the one you
+    configured. But you should also have link-specific addresses as well.
+
+    The 'route' variant should show a default gateway. If you see it, try
+    testing by using 'ping6' on a few well known sites. While this hint cannot
+    'sponsor' any by listing it, just think of the major websites in the world.
+    Some won't support IPv6, but some will, and you should see that you get
+    successful 'ping6' packets sent to one or more of these. If none work, you
+    need to examine and debug things. You may need to manually set up your IPv6
+    gateway with the GATEWAY6=<ipv6-address-of-gateway> parameter in the
+    ifconfig.<interface-name> file.
+
+    NOTE: YOUR MACHINE IS NOW POTENTIALLY REACHABLE ON THE GLOBAL INTERNET WITH
+    IPv6!
+
+HINT STEP 5 - IF YOU HAVEN'T CONFIGURED PROPER SECURITY MEASURES FOR IPv6...
+
+    ...then good-golly, please do so NOW! Your system could be vulnerable!
+
+HINT STEP 6 - VERIFY YOU CAN BE REACHED VIA IPv6
+
+    If your LFS machine is a server, meant for the public to reach, you have
+    many additional steps to perform. Firewall setup, ensuring others can reach
+    your device at its IPv6 address. Ensuring that all the packages you depend
+    on are setup with either IPv6 in mind
+
+HINT STEP 7 - A FEW MINOR OTHER THINGS
+
+    There's always more to do. Here are a couple of things I happen to
+    remember:
+
+HINT STEP 7A - ADD IPv6 DNS SERVERS TO /etc/resolv.conf
+
+    These aren't absolutely necessary, as resolving an IPv6 address can be done
+    in a query to a DNS carried in IPv6, but these are nice to have. Your DNS
+    provider will know what, if any, IPv6 addresses they have for their DNS
+    resolvers.
+
+HINT STEP 7B - MONITOR YOUR IPv6 SETUP
+
+    Regular 'ipaddr' commands do not work. Use 'ip'. Examples:
+
+     ip -4 address:  returns list of IPv4 interface addresses
+     ip -4 route:    returns IPv4 routing table
+     ip -6 address:  returns list of IPv6 interface addresses
+     ip -6 route:    returns IPv6 routing table
+
+HINT STEP 7C - A COMMON PROBLEM
+
+    Sometimes firewalls from our ISP can be set to filter IPv6 altogether or be
+    set with 'state' - allowing traffic not to be initiated from the outside.
+    Either of these might be contrary to what you want to have happen
+    (especially if your newly IPv6-capable machine is meant to be reached by
+    other systems on the Internet as a web server or something else.) - so you
+    may need to edit your ISP Gateway/Firewall/etc. settings.
+
+HINT STEP 8 - MONITOR AND VERIFY, TRY USING EVERYTHING ON YOUR SYSTEM
+
+    You'll just need to, as soon as possible, try everything to make sure it
+    all works.
+
+ACKNOWLEDGEMENTS:
+
+   * The Internet at large for providing many examples of IPv6 security 
+     and usage.
+   * The app developers for adding IPv6 support to their applications The
+   * providers of LFS - such a great base for a system!
+
+CHANGELOG:
+
+[2019-12-08] First version.
+
+MODIFIED AND NEW SCRIPTS
+
+Modifed script /sbin/ifup
+
+#!/bin/sh
+########################################################################
+# Begin /sbin/ifup
+#
+# Description : Interface Up
+#
+# Authors     : Nathan Coulson - nathan at linuxfromscratch.org
+#               Kevin P. Fleming - kpfleming at linuxfromscratch.org
+# Update      : Bruce Dubbs - bdubbs at linuxfromscratch.org
+#               DJ Lucas - dj at linuxfromscratch.org
+#               Joel Bion - jpbipv6hint at gmail.com
+#
+# Version     : LFS 9.0
+#
+# Notes       : The IFCONFIG variable is passed to the SERVICE script
+#               in the /lib/services directory, to indicate what file the
+#               service should source to get interface specifications.
+#
+########################################################################
+
+up()
+{
+   log_info_msg "Bringing up the ${1} interface..."
+
+   if ip link show $1 > /dev/null 2>&1; then
+      link_status=`ip link show $1`
+
+      if [ -n "${link_status}" ]; then
+         if ! echo "${link_status}" | grep -q UP; then
+            ip link set $1 up
+         fi
+      fi
+
+   else
+      log_failure_msg "Interface ${IFACE} doesn't exist."
+      exit 1
+   fi
+
+   evaluate_retval
+}
+
+RELEASE="9.0"
+
+USAGE="Usage: $0 [ -hV ] [--help] [--version] interface"
+VERSTR="LFS ifup, version ${RELEASE}"
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+       --help | -h)     help="y"; break ;;
+
+       --version | -V)  echo "${VERSTR}"; exit 0 ;;
+
+       -*)              echo "ifup: ${1}: invalid option" >&2
+                        echo "${USAGE}" >& 2
+                        exit 2 ;;
+
+       *)               break ;;
+    esac
+done
+
+if [ -n "$help" ]; then
+    echo "${VERSTR}"
+    echo "${USAGE}"
+    echo
+    cat << HERE_EOF
+ifup is used to bring up a network interface.  The interface
+parameter, e.g. eth0 or eth0:2, must match the trailing part of the
+interface specifications file, e.g. /etc/sysconfig/ifconfig.eth0:2.
+
+HERE_EOF
+    exit 0
+fi
+
+file=/etc/sysconfig/ifconfig.${1}
+
+# Skip backup files
+[ "${file}" = "${file%""~""}" ] || exit 0
+
+. /lib/lsb/init-functions
+
+if [ ! -r "${file}" ]; then
+    log_failure_msg "Unable to bring up ${1} interface! ${file} is missing or cannot be accessed."
+    exit 1
+fi
+
+.  $file
+
+if [ "$IFACE" = "" ]; then
+    log_failure_msg "Unable to bring up ${1} interface! ${file} does not define an interface [IFACE]."
+    exit 1
+fi
+
+# Do not process this service if started by boot, and ONBOOT
+# is not set to yes
+if [ "${IN_BOOT}" = "1" -a "${ONBOOT}" != "yes" ]; then
+    exit 0
+fi
+
+# Bring up the interface
+if [ "$VIRTINT" != "yes" ]; then
+    up ${IFACE}
+fi
+
+for S in ${SERVICE}; do
+   if [ ! -x "/lib/services/${S}" ]; then
+     MSG="\nUnable to process ${file}.  Either "
+     MSG="${MSG}the SERVICE '${S} was not present "
+     MSG="${MSG}or cannot be executed."
+     log_failure_msg "$MSG"
+     exit 1
+   fi
+done
+
+if [ "${SERVICE}" = "wpa" ]; then log_success_msg; fi
+
+# Create/configure the interface
+for S in ${SERVICE}; do
+   IFCONFIG=${file} /lib/services/${S} ${IFACE} up
+done
+
+# Set link up virtual interfaces
+if [ "${VIRTINT}" == "yes" ]; then
+    up ${IFACE}
+fi
+
+# Bring up any additional interface components
+for I in $INTERFACE_COMPONENTS; do up $I; done
+
+# Set MTU if requested. Check if MTU has a "good" value.
+if test -n "${MTU}"; then
+    if [[ ${MTU} =~ ^[0-9]+$ ]] &amp;&amp; [[ $MTU -ge 68 ]] ; then
+       for I in $IFACE $INTERFACE_COMPONENTS; do
+          ip link set dev $I mtu $MTU;
+       done
+    else
+       log_info_msg2 "Invalid MTU $MTU"
+    fi
+fi
+
+# Set the IPv4 default gateway if requested
+if [ -n "${GATEWAY}" ]; then
+    if ip -4 route | grep -q default; then
+       log_warning_msg "IPv4 Gateway already set up; skipping."
+    else
+       log_info_msg "Adding default IPv4 gateway ${GATEWAY} to the ${IFACE} interface..."
+       ip route add default via ${GATEWAY} dev ${IFACE}
+       evaluate_retval
+    fi
+fi
+
+# Set the IPv6 default gateway if requested (but only if an IPv6 address was
+# given)
+if [ "${IP6}" ]; then
+    if [ -n "${GATEWAY6}" ]; then
+       if ip -6 route | grep -q default; then
+          log_warning_msg "IPv6 gateway already set up; skipping."
+       else
+          log_info_msg "Adding default IPv6 gateway ${GATEWAY} to the ${IFACE} interface..."
+          ip -6 route add default via ${GATEWAY6} dev ${IFACE}
+          evaluate_retval
+       fi
+    fi
+fi
+
+# End /sbin/ifup
+
+
++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Modified script /sbin/ifdown
+
+#!/bin/bash
+########################################################################
+# Begin /sbin/ifdown
+#
+# Description : Interface Down
+#
+# Authors     : Nathan Coulson - nathan at linuxfromscratch.org
+#               Kevin P. Fleming - kpfleming at linuxfromscratch.org
+# Update      : Bruce Dubbs - bdubbs at linuxfromscratch.org
+#               Joel Bion - jpbipv6hint at gmail.com
+#
+# Version     : LFS 9.0
+#
+# Notes       : the IFCONFIG variable is passed to the scripts found
+#               in the /lib/services directory, to indicate what file the
+#               service should source to get interface specifications.
+#
+########################################################################
+
+RELEASE="9.0"
+
+USAGE="Usage: $0 [ -hV ] [--help] [--version] interface"
+VERSTR="LFS ifdown, version ${RELEASE}"
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+       --help | -h)     help="y"; break ;;
+
+       --version | -V)  echo "${VERSTR}"; exit 0 ;;
+
+       -*)              echo "ifdown: ${1}: invalid option" >&2
+                        echo "${USAGE}" >& 2
+                        exit 2 ;;
+
+       *)               break ;;
+    esac
+done
+
+if [ -n "$help" ]; then
+    echo "${VERSTR}"
+    echo "${USAGE}"
+    echo
+    cat << HERE_EOF
+ifdown is used to bring down a network interface.  The interface
+parameter, e.g. eth0 or eth0:2, must match the trailing part of the
+interface specifications file, e.g. /etc/sysconfig/ifconfig.eth0:2.
+
+HERE_EOF
+    exit 0
+fi
+
+file=/etc/sysconfig/ifconfig.${1}
+
+# Skip backup files
+[ "${file}" = "${file%""~""}" ] || exit 0
+
+. /lib/lsb/init-functions
+
+if [ ! -r "${file}" ]; then
+    log_warning_msg "${file} is missing or cannot be accessed."
+    exit 1
+fi
+
+. ${file}
+
+if [ "$IFACE" = "" ]; then
+    log_failure_msg "${file} does not define an interface [IFACE]."
+    exit 1
+fi
+
+# We only need to first service to bring down the interface
+S=`echo ${SERVICE} | cut -f1 -d" "`
+
+if ip link show ${IFACE} > /dev/null 2<&1; then
+    if [ -n "${S}" -a -x "/lib/services/${S}" ]; then
+      IFCONFIG=${file} /lib/services/${S} ${IFACE} down
+    else
+      MSG="Unable to process ${file}.  Either "
+      MSG="${MSG}the SERVICE variable was not set "
+      MSG="${MSG}or the specified service cannot be executed."
+      log_failure_msg "$MSG"
+      exit 1
+   fi
+else
+    log_warning_msg "Interface ${1} doesn't exist."
+fi
+
+# Leave the interface up if there are additional interfaces in the device
+# However, for IPv6, we insist those adddresses must be global in scope,
+# and not just one of the very many link-scope addresses IPv6 provides us.
+
+link_status=`ip link show ${IFACE} 2>/dev/null`
+
+if [ -n "${link_status}" ]; then
+    if [ "$(echo "${link_status}" | grep UP)" != "" ]; then
+       if [ "$(ip addr show ${IFACE} | grep 'inet ')" == "" -a 
+            "$(ip addr show ${IFACE} | grep 'inet6 ' | 
+            grep 'scope global')" == "" ]; then
+          log_info_msg "Bringing down the ${IFACE} interface..."
+          ip link set ${IFACE} down
+          evaluate_retval
+       fi
+    fi
+fi
+
+# End /sbin/ifdown
+
+New script /lib/services/ipv46-static, based off of ipv4-static
+
+#!/bin/sh
+########################################################################
+# Begin /lib/services/ipv46-static
+#
+# Description : IPV4 Static Boot Script
+#
+# Authors     : Nathan Coulson - nathan at linuxfromscratch.org
+#               Kevin P. Fleming - kpfleming at linuxfromscratch.org
+# Update      : Bruce Dubbs - bdubbs at linuxfromscratch.org
+#             : Joel Bion - jpbipv6hint at gmail.com
+#
+# Version     : LFS 9.0
+#
+########################################################################
+
+. /lib/lsb/init-functions
+. ${IFCONFIG}
+
+args6=""
+
+if [ -z "${IP}" ]; then
+    log_failure_msg "\nIP variable missing from ${IFCONFIG}, cannot continue."
+    exit 1
+fi
+
+if [ -z "${PREFIX}" -a -z "${PEER}" ]; then
+    log_warning_msg "\nPREFIX variable missing from ${IFCONFIG}, assuming 24."
+    PREFIX=24
+    args="${args} ${IP}/${PREFIX}"
+
+elif [ -n "${PREFIX}" -a -n "${PEER}" ]; then
+    log_failure_msg "\nPREFIX and PEER both specified in ${IFCONFIG}, cannot continue."
+    exit 1
+
+elif [ -n "${PREFIX}" ]; then
+    args="${args} ${IP}/${PREFIX}"
+
+elif [ -n "${PEER}" ]; then
+    args="${args} ${IP} peer ${PEER}"
+fi
+
+if [ -n "${LABEL}" ]; then
+    args="${args} label ${LABEL}"
+fi
+
+if [ -n "${BROADCAST}" ]; then
+    args="${args} broadcast ${BROADCAST}"
+fi
+
+if [ -n "${IP6}" ]; then
+     if [ -z "${PREFIX6}" ]; then
+         log_warning_msg = "\nPREFIX6 variable missing from {$IFCONFIG}, assuming 64."
+         PREFIX6=64
+     fi
+     args6="${args6} ${IP6}/${PREFIX6}"
+fi
+
+case "${2}" in
+    up)
+       if [ "$(ip addr show ${1} 2>/dev/null | grep ${IP}/)" = "" ]; then
+
+          # Cosmetic output
+          if ! $(echo ${SERVICE} | grep -q " "); then
+            log_info_msg2 "\n" # Terminate the previous message
+          fi
+
+          log_info_msg "Adding IPv4 address ${IP} to the ${1} interface..."
+          ip addr add ${args} dev ${1}
+          evaluate_retval
+       else
+          log_warning_msg "Cannot add IPv4 address ${IP} to ${1}.  Already present."
+       fi
+
+       if [ -n "${IP6}" ]; then
+           if [ "$(ip -6 addr show ${1} 2>/dev/null | grep ${IP6}/)" = "" ]; then
+
+              # Cosmetic output
+              if ! $(echo ${SERVICE} | grep -q " "); then
+                  log_info_msg2 "\n" # Terminate the previous message
+              fi
+
+              log_info_msg "Adding IPv6 address ${IP6} to the ${1} interface..."
+              ip -6 addr add ${args6} dev ${1}
+              evaluate_retval
+           else
+              log_warning_msg "Cannot add IPv6 address ${IP6} to ${1}.  Already present."
+           fi
+        fi
+    ;;
+
+    down)
+       if [ -n "${IP6}" ]; then
+           if [ "$(ip -6 addr show ${1} 2>/dev/null | grep ${IP6}/)" != "" ]; then
+              log_info_msg "Removing IPv6 address ${IP6} from the ${1} interface..."
+              ip -6 addr del ${args6} dev ${1}
+              evaluate_retval
+           fi
+       fi
+       if [ "$(ip addr show ${1} 2>/dev/null | grep ${IP}/)" != "" ]; then
+          log_info_msg "Removing IPv4 address ${IP} from the ${1} interface..."
+          ip addr del ${args} dev ${1}
+          evaluate_retval
+       fi
+
+       # This code is removed because removing the last address REMOVES the
+       # default route from the routing table ALREADY
+       # if [ -n "${GATEWAY}" ]; then
+       #   # Only remove the gateway if there are no remaining ipv4 addresses
+       #   if [ "$(ip addr show ${1} 2>/dev/null | grep 'inet ')" == "" ]; then
+       #      log_info_msg "Removing IPv4 default gateway..."
+       #      ip route del default
+       #      evaluate_retval
+       #   fi
+       # fi
+    ;;
+
+    *)
+       echo "Usage: ${0} [interface] {up|down}"
+       exit 1
+    ;;
+esac
+
+# End /lib/services/ip46-static
+

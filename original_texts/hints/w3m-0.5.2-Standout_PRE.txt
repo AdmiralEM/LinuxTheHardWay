@@ -1,0 +1,91 @@
+AUTHOR: Alexander Haley <ahaley AT alum DOT wpi DOT edu>
+DATE: 2009-12-01
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS:
+Improve w3m's rendering of PRE text blocks so as to improve readability of the 
+LFS/BLFS/+ instruction book in w3m.
+
+DESCRIPTION:
+Using w3m to read the [B]LFS book is hindered by w3m's lack of sufficient
+"standout" for PRE text blocks. Since the [B]LFS books deliberately enclose 
+all build instructions inside of PRE tags, improving such content's readability 
+will improve the [B]LFS build process.
+
+ATTACHMENTS:
+* http://www.linuxfromscratch.org/hints/downloads/files/ATTACHMENTS/w3m-Standout-PRE/w3m-0.5.2-Standout_PRE-1.0.patch
+
+PREREQUISITES:
+This hint expects that you are familiar with the build process of LFS, since
+that effort requires similiar actions, mainly: acquiring source, unpacking and
+patching that source, configuring, building and installing that source.
+
+HINT:
+
+Background: When reading the instruction books for [B]LFS via w3m, one must pay 
+careful attention to distinguish the "DO THIS" command instructions from the 
+surrounding text. This extra effort is due to w3m's lack of suitable 'jumpout' 
+rendering for PRE text blocks. Here is an example: From LFS 6.5, Chapter 4.3
+
+* SAMPLE ********************************************************************** 
+	Grant lfs full access to $LFS/tools by making lfs the directory owner:
+
+	chown -v lfs $LFS/tools
+
+	If a separate working directory was created as suggested, give user lfs
+	ownership of this directory:
+
+	chown -v lfs $LFS/sources
+
+	Next, login as user lfs. This can be done via a virtual console, through
+	a display manager, or with the following substitute user command:
+*******************************************************************************
+
+Looking at this quickly, one can imagine situations where a builder might miss
+"seeing" these commands due to their relative similarity to the surrounding
+text and to each other.
+
+This hint will suggest an alteration to the w3m source such that the preceeding 
+example would then be rendered as follows: (Again from LFS 6.5, Chapter 4.3)
+
+* SAMPLE ********************************************************************** 
+	Grant lfs full access to $LFS/tools by making lfs the directory owner:
+
+	------------------------------------------------------------------------
+	chown -v lfs $LFS/tools
+	------------------------------------------------------------------------
+
+	If a separate working directory was created as suggested, give user lfs
+	ownership of this directory:
+
+	------------------------------------------------------------------------
+	chown -v lfs $LFS/sources
+	------------------------------------------------------------------------
+
+	Next, login as user lfs. This can be done via a virtual console, through
+	a display manager, or with the following substitute user command:
+*******************************************************************************
+
+Now, at least the commands to be executed are made more visually striking in
+the hope that a building will not skip any necessary steps.
+
+Method: 
+	Download the source (at of this writing, version 0.5.2) of w3m.
+		Currently this source can be found at: 
+			http://www.sourceforge.net/projects/w3m
+	Unpack this source: tar -zxf w3m-0.5.2.tar.gz
+	Enter the source directory: cd w3m-0.5.2
+	Apply the attached "PRE STANDOUT" patch: 
+		patch -Np1 -i ../w3m-0.5.2-Standout_PRE-1.0.patch
+
+	Configure, Build and Install: ./configure && make && make install
+
+Thats it. The newly installed w3m will alter the PRE text blocks as described 
+above.
+
+ACKNOWLEDGEMENTS:
+  * Bruce Dubs <bruce.dubbs AT gmail DOT com> for suggesting I write this hint.
+
+CHANGELOG:
+[2009-12-01]
+  * Initial Hint.

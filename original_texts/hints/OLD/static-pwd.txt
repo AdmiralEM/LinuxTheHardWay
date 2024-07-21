@@ -1,0 +1,174 @@
+TITLE:		LFS 4.1 using static-pwd hack
+LFS VERSION:	4.1
+AUTHOR:		Ronald Hummelink <ronald AT hummelink DOT xs4all DOT nl>
+
+SYNOPSIS:
+	How to install Linux From Scratch 4.1 from a pre glibc-2.3.x system
+	using the static password lib hack
+
+ACKNOWLEDGEMENS:
+	Grant Leslie for inventing the hack.
+
+CHANGELOG:
+	1.2	07-03-2002	Mention the glibc-2.3.1-libnss patch is not needed
+	1.1	05-03-2002	Initial release
+
+HINT:
+
+Use the hint at your own risk. Neither the author, nor the Linux From Scratch
+project accepts any reponsibility for anything that happens when using these
+documents or associated files.
+
+You may freely copy this document or create derivate works or distribute the
+document in any format. At your discretion, you may give credit to the original
+author:)
+
+Comments and improvements are welcome at the email address mentioned above in
+the author field.
+
+When installing Linux From Scratch with glibc 2.3.1 from a system with an
+older glibc version installed several binaries will crash with a segmentation
+fault when attempting to access the libnss libraries. This is due to an
+incompatibility between the static binaries (linked with old glibc) and the
+new nss libraries.
+
+This hint describes how to work around this problem by compiling a small
+library that will replace the passwd and group resolving functions avoiding
+the binaries to crash.
+
+
+The work-around only involves a number of changes to chapter 5 of the LFS book.
+The hint will only list instructions for the packages that have changed
+instructions.
+
+Before building bash you need to compile the static-pwd libary
+
+Download the static-pwd package from:
+http://www.linuxfromscratch.org/~scot/static-pwd.tar.bz2
+Extract the tarball normally and cd into the created directory
+
+Build libpwd.a:
+
+	make &&
+	export LFS_LIBS=$(pwd)
+
+export LFS_LIBS=$(pwd): This command sets an environment variable to aid in
+linking this library with some of the later installed programs.
+
+
+Bash-2.05a
+
+Install Bash by running the following commands:
+
+	CFLAGS="-I$LFS_LIBS" ./configure --enable-static-link \
+	    --prefix=$LFS/static --with-curses &&
+	make LOCAL_LIBS="$LFS_LIBS/libpwd.a" &&
+	make install
+
+CFLAGS="-I$LFS_LIBS": This adds the static-pwd directory to the library search
+path.
+LOCAL_LIBS="$LFS_LIBS/libpwd.a": This adds the static-pwd stub library to the
+library list.
+
+
+Fileutils-4.1
+
+If you need the fileutils patch, apply it:
+
+	patch -Np1 -i ../fileutils-4.1.patch
+
+Install Fileutils by running the following commands:
+
+	LDFLAGS=-static CFLAGS="-I$LFS_LIBS" \
+	    ./configure --disable-nls --prefix=$LFS/static &&
+	make LIBS="$LFS_LIBS/libpwd.a" &&
+	make install
+
+LIBS="$LFS_LIBS/libpwd.a": This adds the static_pwd stub library to the
+library list.
+
+
+Findutils-4.1
+
+Install Findutils by running the following commands:
+
+	patch -Np1 -i ../findutils-4.1.patch &&
+	CPPFLAGS=-Dre_max_failures=re_max_failures2 \
+	    CFLAGS="-I$LFS_LIBS" ./configure --prefix=$LFS/static &&
+	make LDFLAGS=-static LIBS="$LFS_LIBS/libpwd.a" &&
+	make install
+
+
+Make-3.80
+
+Install Make by running the following commands:
+
+	CFLAGS="-I$LFS_LIBS" ./configure \
+	    --prefix=$LFS/static --disable-nls &&
+	make LDFLAGS=-static LIBS="$LFS_LIBS/libpwd.a" &&
+	make install
+
+
+Sh-utils-2.0
+
+If you need the sh-utils patch, apply it:
+
+patch -Np1 -i ../sh-utils-2.0.patch
+
+Install Sh-utils by running the following commands:
+
+	CFLAGS="-I$LFS_LIBS" ./configure --prefix=$LFS/static \
+	    --disable-nls &&
+	make LDFLAGS=-static LIBS="$LFS_LIBS/libpwd.a" &&
+	make install
+
+
+Tar-1.13
+
+If you want the tar patch, apply it:
+
+	patch -Np1 -i ../tar-1.13.patch
+
+Install Tar by running the following commands:
+
+	CFLAGS="-I$LFS_LIBS" ./configure \
+	     --prefix=$LFS/static --disable-nls &&
+	make LDFLAGS=-static LIBS="$LFS_LIBS/libpwd.a" &&
+	make install
+
+
+All the other packages build in chapter 5 are build with the normal
+instructions as given in the book.
+
+Optionally you can create the passwd and group files before chrooting into the
+chapter 5 system. This is purely cosmetic however, you won't get the
+"I have no name" prompt from bash.
+
+mkdir $LFS/etc &&
+echo "root:x:0:0:root:/root:/bin/bash" > $LFS/etc/passwd
+
+cat > $LFS/etc/group << "EOF"
+root:x:0:
+bin:x:1:
+sys:x:2:
+kmem:x:3:
+tty:x:4:
+tape:x:5:
+daemon:x:6:
+floppy:x:7:
+disk:x:8:
+lp:x:9:
+dialout:x:10:
+audio:x:11:
+EOF
+
+If you do this you can also change the command to change the ownership from
+the lfs user to:
+
+chown -R root:root /static /etc/passwd /etc/group
+
+You should from now on be able to complete chapter 6 without encountering
+segmentation faults. When installing glibc, the glibc-2.3.1-libnss patch
+is not needed anymore. It is cleaner to omit the patch but it won't hurt
+to apply it if you do decide to rebuild glibc at the end of chapter 6.
+

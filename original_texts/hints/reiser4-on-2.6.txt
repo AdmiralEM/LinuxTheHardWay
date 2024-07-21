@@ -1,0 +1,96 @@
+AUTHOR: Wee Teck <weeteck at en.com.sg>
+
+DATE: 2005-10-25
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: Reiser4 FS support for 2.6 Kernel
+
+DESCRIPTION:
+How to include the new reiser4 on LFS system.
+
+ATTACHMENTS:
+ftp://ftp.namesys.com/pub/reiser4-for-2.6/
+ftp://ftp.namesys.com/pub/reiser4progs/
+
+
+PREREQUISITES:
+Uuid must be installed (Included in e2fsprogs or e2fsprogs-libs)
+libaal
+
+HINT:
+-> Refer to LFS if you haven't had e2fsprogs/e2fsprogs-libs installed
+    (You need Uuid that comes with it)
+    
+-> Installing Libaal
+        Get the latest libaal from reiser4progs folder (libaal-1.0.5.tar.gz)
+        Build process:
+        
+        tar zxf libaal-1.0.5.tar.gz
+        cd libaal-1.0.5
+        ./configure --prefix=/usr && make && make install
+        
+-> Installing Reiser4progs
+        Get the latest reiser4progs (reiser4progs-1.0.5.tar.gz)
+        Bulid process:
+        
+        tar zxf reiser4progs-1.0.5.tar.gz
+        cd reiser4progs-1.0.5
+        ./configure --prefix=/usr --sbindir=/sbin  &&
+        make &&
+        make install
+        
+-> Patching 2.6 Kernel
+        **Assuming you are running the stable 2.6.16 tree**
+        
+        Latest patch as of writing is reiser4-for-2.6.16-5.patch.gz
+        
+        cd /usr/src/linux-2.6.16.x
+        gunzip -c reiser4-for-2.6.16-5.patch.gz | patch -p1
+        
+        Configure the kernel config with the following addtional features:
+            [Enable] Prompt for development and/or incomplete code/drivers
+            [Enable] Deflate compression algorithm
+            [Enable] Reiser4
+            
+        Build the kernel
+        
+-> Formating a Reiser4 partition
+
+        mkfs.reiser4 /dev/<device> (Replace with proper device/partition)
+        
+        
+-> Mounting a Reiser4 partition
+        mount -t reiser4 /dev/<device> <mounting point>
+        
+        
+That's all! You have the fastest filesystem on your LFS
+        
+        
+FAQ:
+Q: Where to find "Deflate compression algorithm"
+A:     [Cryptographic options]
+            [Cryptographic API]
+                -[Deflate compression algorithm]
+
+Q: I cannot find Reiser4 option
+A: Ensure the 3 options are correctly set.
+
+Q: Can I boot from a Reiser4 partition?
+A: Sure! Lilo will boot perfectly. For GRUB fans, there is a seperate patch for 
+   GRUB which is required.
+
+ACKNOWLEDGEMENTS:
+    * This is my first hint ^^v
+
+
+CHANGELOG:
+[2006-10-25]
+  * Last update as Reiser4 seems no longer maintained and is never considered
+    inclusion into Kernel.
+  * More FAQs
+  * Reiser4 now able to build on 4Kb Stack, thus remove the need for a
+    8Kb kernel stack.
+  * Updated Contact Info
+[2005-08-06]
+  * Initial hint.

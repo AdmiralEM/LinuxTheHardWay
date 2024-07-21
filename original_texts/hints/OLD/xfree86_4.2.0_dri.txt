@@ -1,0 +1,114 @@
+TITLE:		Installing XFree86-4.2.0 with DRI and Glide
+LFS VERSION:	All
+AUTHOR:		Luke A. Guest <laguest@nebulas.demon.co.uk>
+
+SYNOPSIS:
+	This hint basically shows how to install XFree86-4.2.0 with DRI
+	and Glide support without the hassle the other hints go to.
+
+HINT:
+
+1) Firstly, you'll need to download the correct packages.
+
+	 * Get the X420src-1.tgz, X420src-2.tgz & X420src-1.tgz from
+	   ftp.xfree86.org, also get the 4.2.0-libGLU-bad-extern.patch from
+	   the fixes directory.
+
+	 * From http://dri.sourceforge.net/res.phtml, download:
+	   1) An X config file.
+	   2) The glide3headers.tgz archive.
+	   3) A libglide3.so for your platform.
+
+2) Then you'll need to get the current Glide source out of CVS.
+
+ cvs -d:pserver:anonymous@cvs.glide.sourceforge.net:/cvsroot/glide login
+ cvs -z3 -d:pserver:anonymous@cvs.glide.sourceforge.net:/cvsroot/glide \
+     co glide3x
+ cvs -z3 -d:pserver:anonymous@cvs.glide.sourceforge.net:/cvsroot/glide \
+     co swlibs
+ mv swlibs glide3x/
+ tar -cvzpf glide3x-cvs.tgz glide3x
+
+3) Install the Glide headers and library:
+
+ cd /usr/include &&
+ tar -xzpf glide3headers.tar.gz &&
+ cp libglide3.so /usr/lib/
+
+4) Extract the X sources and apply the patch:
+
+ cd /usr/src &&
+ tar -xvpf X420src-1.tgz &&
+ tar -xvpf X420src-2.tgz &&
+ tar -xvpf X420src-3.tgz &&
+ patch -p2 < 4.2.0-libGLU-bad-extern.patch
+
+5) Create a host.def file:
+
+ cp xc/config/cf/xf86site.def xc/config/cf/host/def
+
+Now edit this file setting up preferences, I used the standard stuff and added
+some extra defines from the other hints.
+
+6) Compile:
+
+ make World 2>&1 | tee compile.log
+
+Check for errors and compile again if there are any.
+
+N.B: The makefile will clean the directory of any compiled binaries every time,
+     so you may need to edit the makefile to fix this.
+
+7) Install X:
+
+ pushd config && make install &&
+ cd ../include && make install &&
+ cd ../programs && make install &&
+ cd ../fonts && make install &&
+ cd ../lib && make install &&
+ cd ../doc && make install &&
+ popd
+
+8) Compile NLS support:
+
+ export PATH=$PATH:/usr/X11R6/bin
+ cd nls &&
+ xmkmf &&
+ make && make install
+
+9) Set up the symbolic links:
+
+ ln -s /usr/X11R6/include/X11 /usr/include/X11
+ ln -s /usr/X11R6/lib/X11 /usr/lib/X11
+
+I'm really not sure if you actually nedd the lib one.
+
+10) Recompile Glide:
+
+Follow the dri hint at this point and you should have a nice new version of
+Glide installed.
+
+11) Configure X:
+
+You really should use the sample config to get this working, or you could
+use one of the tools. I used my existing X config and changed the mouse as I
+don't have USB working yet.
+
+12) Test your X installation:
+
+ startx
+
+Inside one of the xterm's type:
+
+ glxinfo
+
+This should tell you whether you have a successfully installed DRI enabled X
+server; also:
+
+ glxgears
+
+Should give you an indication of the speed of OpenGL.
+
+That's it.
+
+

@@ -1,0 +1,304 @@
+TITLE:		Installing Gnome + Sawfish on LFS
+LFS VERSION:	2.4
+AUTHOR:		Mike Hildebrandt <mikehild@insight.org>
+
+SYNOPSIS:
+	Getting from a plain LFS + X installation to a working Gnome/Sawfish environment.
+
+HINT:
+v1.1 - 11/06/00
+================================================================================
+I. Introduction
+
+  1) What this is
+
+    As you likely already know, this document should hopefully make it less
+  painless to get Gnome running on an LFS-based system.  I don't see why these
+  instructions shouldn't work on other Linux distributions though - just that
+  several of these packages may already be installed, or older versions may be
+  installed which would need to be uninstalled first.
+    I don't claim to have created a "Definitive Guide to Gnome Installations",
+  nor do I claim to be an expert at Linux and/or Gnome (far from it, actually).
+  Rather, this is a list of what I did to get Gnome to work on my LFS install.
+  My hope is that these instructions work as smoothly for others as it did
+  for me.  For the most part, the configuring and compiling itself isn't all
+  that complicated, but it's the order you install them in that makes a big
+  difference.  In the event you encounter problems feel free to post it to the
+  lfs-apps@linuxfromscratch.com mailing list and there should be someone there
+  that knows of a solution.
+    Also, the window manager I decided to go with is Sawfish, mainly due to
+  it's inclusion in Helixcode's distribution of Gnome.  I've made it clear
+  which packages are only required by Sawfish and not Gnome so you're not
+  installing unnecessary packages should you decide to install a different
+  window manager instead.
+
+  2) What this isn't
+
+    At this point, I have chosen not to install any packages found only in
+  the "Unstable" directory on the Gnome ftp site (such as bonobo, nautilus,
+  etc), even though some of them could be quite useful or others can be used
+  by the base packages.  My reasoning for this is that first of all, these
+  packages are still in development and have not yet been deemed to be stable
+  by the Gnome team and/or their developers.  Secondly, none of the base
+  packages described below require them to function properly, that I've seen.
+  When I have time, I am planning on looking into many of these new packages,
+  and when I do I'll try to update this document accordingly.
+  
+  3) Prerequesites
+
+    This file assumes that you have gone through the LFS Hint "X11Guide.txt"
+  by Sergey Ostrovsky, located at archive.linuxfromscratch.org/lfs-hints.
+  Although the purpose of that document is to get KDE2 up and running, it also
+  describes in detail how to install XFree86 4.01 as well as several libs that
+  are also needed by Gnome, so I decided not to duplicate their installation
+  instructions here.
+    In particular, you will need to install everything from X11Guide.txt,
+  except for lcms, libmng, qt, and kde*, unless, of course, you are planning
+  on installing KDE2 as well (lcms and libmng aren't KDE-specific, but none of
+  the Gnome packages seemed to need them).
+
+================================================================================
+II. Packages to download
+
+  Following is a list of all the packages you need to download, as well as the
+address you should be able to download it from.  The values in brackets are
+the version numbers of the most current packages at the time of writing.  If
+you find a higher version available, it should be safe to download it instead,
+especially with the packages from the Gnome website.  The Gnome guys are nice
+enough to have the links on their website point to the most recent stable
+versions of the packages.
+
+Gnome:
+     ftp://prtr-13.ucsc.edu/pub/libgif		-  libungif (4.1.0b1)
+     www.sleepycat.com				-  db (3.1.14)
+     ftp.gnu.org/pub/gnu/bc			-  bc (1.05a)
+     www.gnome.org/start/installing		-  audiofile (0.1.9)
+     					   esound (0.2.20)
+						   glib (1.2.8)
+						   gtk+ (1.2.8)
+						   imlib (1.9.8.1)
+						   gtk-engines (0.10)
+						   ORBit (0.5.4)
+						   gnome-libs (1.2.3)
+						   libgtop (1.0.9)
+						   libxml (1.8.10)
+						   libghttp (1.0.7)
+						   libglade (0.14)
+						   gdk-pixbuf (0.8.0)
+						   control-center (1.2.2)
+						   gnome-core (1.2.2.1)
+						   gnome-applets (1.2.2)
+Sawfish:						   
+     ftp.gnu.org/pub/gnu/gmp				-  gmp (3.1)
+     ftp.gnu.org/pub/gnu/gdbm				-  gdbm (1.8.0)
+     sourceforge.net/project/filelist.php?group id=580	-  librep (0.13)
+     sourceforge.net/project/filelist.php?group id=581	-  rep-gtk (0.14)
+     sourceforge.net/project/filelist.php?group id=32	-  sawfish (0.31.1)
+
+================================================================================
+III. Installing Gnome Packages
+
+  1) Setting up for install
+	
+	export CONF="--prefix=/usr --enable-shared"
+	useradd bin
+	echo "games:x:9:" >> /etc/group				/* Or if you've added groups
+												   yourself, change 9 to the
+												   next free number */
+    
+  2) libungif - library for handling gif images
+
+    ./configure $CONF
+    make
+    make install
+
+  3) db - Berkeley DB database software
+
+    cd build_unix
+    ../dist/configure $CONF --enable-compat185
+    make
+    make install
+
+  4) glib - Additional GTK C libraries
+
+    ./configure $CONF
+    make
+    make install
+    ldconfig
+
+  5) gtk+ - Gimp Toolkit, library for creating GUIs
+  
+    ./configure $CONF
+    make
+    make install
+    ldconfig
+
+  6) imlib - Image loading & rendering library
+
+    ./configure $CONF
+    make
+    make install
+
+  7) ORBit - Not quite sure what this is, but everything else needs it...
+
+    ./configure $CONF
+    make
+    make install
+
+  8) audiofile - Processes audio from various file formats
+
+    ./configure $CONF
+    make
+    make install
+
+  9) esound - Enlightened Sound Daemon, allows simultaneous playback of
+              multiple audio streams (ie. mixes two files in real time)
+
+    ./configure $CONF
+    make
+    make install
+
+  10) gnome-libs - Main libraries used by Gnome applications
+
+    ./configure $CONF --enable-prefer-db1
+    make
+    make install
+
+  11) gdk-pixbuf - Image loading & rendering library (similar to Imlib)
+
+    ./configure $CONF
+    make
+    make install
+
+  12) libxml - XML parser for Gnome
+
+    ./configure $CONF
+    make
+    make install
+
+  13) libghttp - Gnome http client library
+
+    ./configure $CONF
+    make
+    make install
+
+  14) bc - precision numeric processing language
+    ./configure
+    make
+    make install
+
+  15) libtop - Provides info on running processes
+
+    ./configure $CONF
+    make
+    make install
+
+  16) libglade - Allows apps to load glade interface files
+
+    ./configure $CONF
+    make
+    make install
+
+  17) control-center - The primary means of configuring Gnome
+
+    ./configure $CONF
+    make
+    make install
+
+  18) gnome-core - The Gnome Panel plus other main parts of Gnome
+
+    ./configure $CONF
+    make
+    make install
+
+  19) gnome-applets - All the cool little programs that can run in the panel
+
+    ./configure $CONF
+    make
+    make install
+
+  20) gtk-engines - Basically just four extra GTK themes
+
+    ./configure $CONF
+    make
+    make install
+
+  21) mc - GNU Midnight Commander, file manager & desktop
+ 
+    ./configure $CONF
+    make
+    make install
+
+================================================================================
+IV. Installing Sawfish Packages
+
+  1) gmp - GNU MP, precision arithmetic library
+
+    ./configure $CONF
+    make
+    make install
+
+  2) gdbm - GNU dbm database routines
+
+    ./configure $CONF
+    make
+    make install
+    ldconfig
+
+  3) librep - Lisp interpreter
+
+    ./configure $CONF
+    make
+    make install
+
+  4) rep-gtk - GTK+/Gnome/libglade bindings for Lisp
+
+    ./configure $CONF
+    make
+    make install
+
+  5) sawfish - The Sawfish window manager
+
+    ./configure $CONF
+    make
+    make install
+
+================================================================================
+V. Finishing Off
+
+  This part's quite simple, unless you or other applications have changed
+things around.  Edit the file /etc/X11/xinit/xinitrc, and go to the bottom
+of the file.  If Gnome was installed onto a fresh X installation, there
+should be lines that run xclock and three xterms.  Replace those lines with:
+
+	exec gnome-session
+
+and save the file.  If all went correctly, running startx should bring you to
+the default Gnome desktop.
+  Installing the packages listed under "Gnome Additional source downloads" on
+page where you downloaded the base and core packages should be as easy as a
+/configure && make && make install.  I haven't tried all of them yet, so I
+can't be too sure.  At the very least you'll probably want to install the
+users-guide, gnome-utils, gnome-games, gnome-audio, and gnome-media packages
+(or maybe not the last two if you don't have a sound card =).  I haven't tried
+the rest of the additional packages yet due to time constraints, but I'll be
+sure to update this document once I do.  I figured it wasn't worth holding on
+to this for another few weeks while I figured out the non-mandatory packages.
+  If you're bored of the default appearance and want to change the look of
+Gnome/Sawfish, you can download additional themes from gtk.themes.org and
+sawfish.themes.org.  To install gtk themes, unpack the downloaded archive into
+/usr/share/themes.  To install sawfish themes, copy the downloaded archive into
+/usr/share/sawfish/themes (do not unpack!).
+
+===============================================================================
+VI. To Do
+
+  * Install rest of additional Gnome packages
+  * Try out some of the stuff from the "Unstable" source tree and see if
+    any of it's worth adding to this document yet (being careful not to follow
+    Redhat's recent example... ;)
+  * Finish reading "Lord of the Rings" (part of the reason this project has
+    been delayed longer than I would have liked... =)
+
+===============================================================================
+

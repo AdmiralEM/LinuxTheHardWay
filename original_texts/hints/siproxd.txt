@@ -1,0 +1,168 @@
+AUTHOR:         Jim Gifford <lfs-hints@jg555.com>
+
+DATE: 		2004-05-18
+
+LICENSE: 	GNU Free Documentation License Version 1.2
+
+SYNOPSIS: 	How to setup siproxd to use a SIP Phone under LFS
+
+DESCRIPTION:	This hint will show you how to use a SIP phone
+		with LFS.
+
+PREREQUISITES:	Files listed in hint must be downloaded
+
+HINT:
+
+Introduction:
+
+This hint will help you configure a SIP proxy server for use with LFS.
+The one problem with using a SIP phone is generally most of use are not
+connected directly to the internet with out phones. The phones are part
+of are LAN and have IP addresses that are internal to our network. The
+SIP proxy server allows the phone to communicate to the outside and 
+makes sure the proper phone gets the calls routed to them.
+
+Programs Used
+
+Program Name		libosip2
+Download location		http://osip.atosc.org/download/osip
+Version used		2.0.7
+
+Program Name		siproxd
+Download location		http://siproxd.sourceforge.net
+Version used		0.5.5
+
+-----
+What is siproxd:
+
+Siproxd is an proxy/masquerading daemon for the SIP protocol.
+It handles registrations of SIP clients on a private IP network
+and performs rewriting of the SIP message bodies to make SIP
+connections possible via an masquerading firewall.
+It allows SIP clients (like kphone, linphone) to work behind
+an IP masquerading firewall or router.
+
+-----
+libosip2
+
+	Before you can setup siproxd you will need to setup lisosip2.
+
+	./configure --prefix=/usr &&
+	make &&
+	make install
+
+----
+sirpoxd
+
+Before Compiling
+
+	Before compiling siproxd you will need to create a user and a group.
+
+	In /etc/passwd add : siproxd:x:117:117::/dev/null:/bin/false
+
+	In /etc/group add : siproxd:x:117:
+
+Compiling
+
+	
+        ./configure --prefix=/usr --sysconfdir=/etc/siproxd &&
+	make &&
+	make install
+
+Configuring
+
+	To configure siproxd use the following commands to make a siproxd.conf file
+
+	cd /etc/siproxd
+	cp siproxd.conf.example siproxd.conf
+
+	Now you will need to change the following entries in the file
+
+	if_inbound  = eth0	to	if_inbound = {Your LAN Interface}
+	if_outbound = ppp0	to	if_outbound = {Your Internet Interface}
+
+	#hosts_allow_reg = 192.168.1.8/24 to hosts_allow_reg = {Your LAN Network)
+
+Bootup Script
+
+	#!/bin/bash
+	# Begin $rc_base/init.d/siproxd
+
+	# Based on sysklogd script from LFS-3.1 and earlier.
+	# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+
+	source /etc/sysconfig/rc
+	source $rc_functions
+
+	case "$1" in
+		start)
+			echo "Creating IPTables Rules for Siproxd..."
+			iptables -A INPUT -i {if_inbound from siproxd} -p udp --dport 5006 -j ACCEPT
+			iptables -A INPUT -i {if_inbound from siproxd} -p udp --dport 7070:7080 -j ACCEPT
+			echo "Starting Siproxd..."
+			loadproc /usr/sbin/siproxd
+			;;
+
+		stop)
+			iptables -D INPUT -i {if_inbound from siproxd} -p udp --dport 5006 -j ACCEPT
+			iptables -D INPUT -i {if_inbound from siproxd} -p udp --dport 7070:7080 -j ACCEPT
+			killproc /usr/sbin/siproxd
+			echo "Stopping Siproxd..."
+			;;
+
+		restart)
+			$0 stop
+			sleep 1
+			$0 start
+			;;
+		*)
+			echo "Usage: $0 {start|stop|restart}"
+			exit 1
+			;;
+	esac
+
+	# End $rc_base/init.d/siproxd
+-----
+
+Phone/Software Configuration
+
+	You will need to specify the IP address of the server that you loaded
+	the software on as the outgoing proxy.
+
+-----
+Testing
+	
+	I am a member of freeworlddialup.com, they provide some test #'s you can
+	use. For example 958 would give you your phone #. 612 would give you the
+	time.
+
+	Check the providor your using, they may have the same features with different
+	#'s.
+
+	You can also call me at 275410, if I'm around I will answer.
+
+-----
+Linux SIP Software
+
+	Here are some links for software phones, utilizing your sound card and a microphone.
+
+	Cornfed SIP User Agent		http://www.cornfed.com/products
+	linphone			http://www.linphone.org
+	Kphone				http://www.wirlab.net/kphone/index.html
+
+-----
+
+Questions or Comments
+
+	If you have any question's or comments you can either email me at lfs-hints@jg555.com
+	or call me via FDW at 275410.
+
+-----
+
+VERSION:        1.2
+
+CHANGELOG:     	1.2 Updated Verion
+		1.1 Forgot Phone Configuration. Update Script to delete iptables rules
+		1.0 Initial Version
+
+ New Version of this document can be viewed from http://cvs.jg555.com/viewcvs.cgi/lfs-hints

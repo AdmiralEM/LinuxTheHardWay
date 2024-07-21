@@ -1,0 +1,67 @@
+TITLE:          Compiler-optimization
+LFS VERSION:    any
+AUTHOR:         Gerard Beekmans <gerard@linuxfromscratch.org>,
+
+SYNOPSIS:
+	How to use compiler-optimization
+
+HINT:
+Thomas -Balu- Walter <tw@itreff.de> is equally the author of this hint, but due to format restrictions I had to remove one of the two email addresses from the AUTHOR field.  -SP
+
+The origin of this text is the 2.4.3-version of the book - Chapter 6. I
+modified it a little to create this hint.
+
+Most programs and libraries by default are compiled with optimizing level 2
+(gcc options -g and -O2) and are compiled for a specific CPU. On Intel
+platforms software is compiled for i386 processors by default. If you don't
+wish to run software on other machines other than your own, you might want to
+change the default compiler options so that they will be compiled with a higher
+optimization level, and generate code for your specific architecture.
+
+There are a few ways to change the default compiler options. One way is to edit
+every Makefile file you can find in a package, look for the CFLAGS and CXXFLAGS
+variables (a well designed package uses the CFLAGS variable to define gcc
+compiler options and CXXFLAGS to define g++ compiler options) and change their
+values. Packages like binutils, gcc, glibc and others have a lot of Makefile
+files in a lot of subdirectories so this would take a lot of time to do.
+Instead there's an easier way to do things: create the CFLAGS and CXXFLAGS
+environment variables. Most configure scripts read the CFLAGS and CXXFLAGS
+variables and use them in the Makefile files. A few packages don't follow this
+convention and those package require manual editing.
+
+To set those variables you can do the following commands in bash (or in your
+.bashrc if you want them to be there all the time):
+
+    export CFLAGS="-O3 -march=<architecture>" &&
+    CXXFLAGS=$CFLAGS
+
+This is a minimal set of optimizations that ensures it works on almost all
+platforms. The option march will compile the binaries with specific
+instructions for that CPU you have specified. This means you can't copy this
+binary to a lower class CPU and execute it. It will either work very unreliable
+or not at all (it will give errors like "Illegal Instruction, core dumped").
+You'll have to read the GCC Info page to find more possible optimization flags.
+In the above environment variable you have to replace <architecture> with the
+appropriate CPU identifiers such as i586, i686, powerpc and others. I suggest
+to have a look at the gcc-manual at http://gcc.gnu.org/onlinedocs/gcc-3.3.1/gcc/Submodel-Options.html
+
+/*
+ * Ed. note
+ * "Reboant" dropped a note about how using -Os (optimize for size) showed
+ * incredibly good results. So if you want is small binary size rather than fast
+ * execution time, you might want to take a look at this.
+ */
+
+Please keep in mind that if you find that a package doesn't compile and gives
+errors like "segmentation fault, core dumped" it's most likely got to do with
+these compiler optimizations. Try lowering the optimizing level by changing -O3
+to -O2. If that doesn't work try -O or leave it out all together.  Also try
+changing the -march variable. Compilers are very sensitive to certain hardware
+too. Bad memory can cause compilation problems when a high level of
+optimization is used, like the -O3 setting. The fact that I don't have any
+problems compiling everything with -O3 doesn't mean you won't have any problems
+either. Another problem can be the Binutils version that's installed on your
+system which often causes compilation problems in Glibc (most noticable in
+RedHat because RedHat often uses beta software which aren't always very stable.
+"RedHat likes living on the bleeding edge, but leaves the bleeding up to you"
+(quoted from somebody on the lfs-discuss mailinglist).

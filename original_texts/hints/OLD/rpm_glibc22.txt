@@ -1,0 +1,269 @@
+TITLE:		RPM-4.0 for glibc-2.2 installation howto
+LFS VERSION:	2.4.3
+AUTHOR:		Sergey Ostrovsky <sergey@linuxfromscratch.org>
+
+SYNOPSIS:
+	How to install RPM 4.0 on a glibc-2.2-based LFS system.
+
+HINT:
+ver 1.6
+02/03/2001
+
+Contents
+--------
+
+1. How things will be done and why
+2. Packages to download
+3. Install all the auxiliary packages as Jason Gurtz hint says
+4. Installation db-1.85
+5. Installation db-3.1.17
+6. Installation rpm-4.0
+7. Possible ( not mandatory ) re-install of db-1.85
+
+
+1. How things will be done and why
+   -------------------------------
+
+There is already rpm-hint by  Jason Gurtz which documents the
+installation not only db-3.x.x, RPM-4.0, but also other useful
+corresponding packages, like gnupg.
+These things won't be covered here to save space and eliminate duplication.
+Where appropriate the token ^OPT^ used to designate the possible
+place for custom compiler's optimization and architecture flags.
+
+For the proper installation of RPM-4.0 two versions of
+Berkeley DB shall be installed first :
+db-1.85 and db-3.x.x. This means that the latest available
+release can be used just for the later package.
+This need for two versions of Berkeley DB to be present in the
+system introduces some mild complications which must be understood.
+These complications make impact not only on the installation of RPM-4.0
+but also on many other packages which depend on Berkeley DB
+functionality.
+
+First, the both db-1.85 and db-3.x.x install the file db.h
+as the main header file. Contents of these db.h are not equal.
+Additionally it is usually assumed that the header files
+that belong to a particular package are installed in the one
+separate directory but not spread among several directories.
+This means each full set of headers for db-1.85 and db-3.x.x
+should occupy a separate directory. Also, it would be inconvenient
+to have one of the sets installed in a default directory
+( say, /usr/local/include ), because it is really tricky
+to filter these files out while allowing others being included
+for a particular build. So, in this case headers will be installed
+in directories
+/usr/local/include/db1    for db-1.85   and
+/usr/local/include/db3    for-db-3.x.x
+
+Second, the choice shall be made about names of libraries installed.
+Obviously, it is necessary to assign different names to each
+library file. This is because it is unusual and possibly
+violates FHS to create directory structures like /usr/local/lib/db1
+to keep library files there.
+Author has seen existing configurations with directories under
+..../lib, but these directories have been populated architecture -
+depended data files, never libraries. When assigning names
+to libraries it makes sense to think also about ease of
+future installations. So less hacking required, so better.
+These future packages will check for and try to use libdb.{a,so}.
+db-3.x.x is much more powerful and has much less bugs and constraints.
+Thus, it makes sense to install the library files from
+db-3.x.x as libdb.{a,so} and to name these belong to db-1.85
+somehow differently.
+
+Third, needless to say that the header files and the corresponding
+library files shall be used in pair. The following general notes aimed
+to ease installations of packages using Berkeley DB functionality.
+
+A) At configure phase the construction
+
+   CPPFLAGS=-I/usr/local/include/db3 \
+   CFLAGS=-I/usr/local/include/db3 \
+   ./configure
+
+   shall be used, because /usr/local/include/db3
+   is not amongst default directories for CPP.
+   This allows for locating of the proper db.h and other
+   headers on ./configure phase as well
+   as make phase.
+B) There are several autoconf macros that perform checking for
+   the presence of the particular name in a library.
+   No much problem expected because of library name -
+   it was decided to set it libdb.{a,so}, which is exactly what
+   autoconf macros will use.
+   However, the exported names being checked usually are
+   dbopen(), dbclose(), and such.
+   These are the names exported from db-1.85 libraries.
+   The corresponding names in db-3.x.x libraries
+   are __db_dbopen(), __db_dbclose(), etc.
+   Thus, when configuring a package, ./configure output should
+   be examined for lines like "checking for dbopen in libdb ... no"
+   or similar. If this is the case, configure.in shall be edited,
+   and parameters in macros that check for presence of say,
+   dbopen in libdb shall be changed to __db_dbopen.
+   As the last step before ./configure, autoconf must be run.
+
+The notes above is an author's attempt to explain decisions made by
+RPM-4.0 creators.
+He doesn't take any credits for configuration decisions made,
+because they originate directly from db-1.85, db-3.xx, RPM-4.0 SRPMs
+( to the best of his knowledge ).
+However, he does take blames for any errors, omissions, etc.
+
+2. Packages to download
+   -------------------
+
+db-1.85.tar.gz
+db-3.1.17.tar.gz
+        www.sleepycat.com
+
+rpm-4.0.tar.gz
+        www.rpm.org
+
+3. Install all the auxiliary packages as Jason Gurtz hint says,
+   -----------------------------------------------------------
+
+   except db-1.85, db-3.1.17, rpm-4.0
+   At least, make sure you have zlib installed.
+
+
+4. Installation db-1.85
+   --------------------
+
+   You might want to download and apply the corresponding patches also.
+
+4.1 Before the build, the necessary fix should be made :
+
+   In the file ./hash/hash.h change
+        errno
+   on the line 106 to
+        m_errno
+
+   After that, replace occurrences
+        ->errno
+   with
+        ->m_errno
+   for following lines of files :
+
+   ./hash/hash.c
+   lines 508 539 556 560 577 581 732
+
+   ./hash/ndbm.c
+   lines 183 193
+
+4.2 Build and install the package
+
+        cd PORT/linux
+
+        make
+or, if custom optimization desired,
+        OORG="^OPT^" make -e
+
+        install -m644 libdb.a /usr/local/lib/libdb1.a
+
+        mkdir /usr/local/include/db1
+
+        install -m644 ../include/ndbm.h /usr/local/include/db1
+
+        install -m644 ../../include/db.h /usr/local/include/db1
+
+        install -m644 ../../include/mpool.h /usr/local/include/db1
+
+5. Installation db-3.1.17
+   ----------------------
+
+5.1 Run
+
+        cd build_unix
+
+        CFLAGS="^OPT^" \
+        CXXFLAGS="^OPT^" \
+        ../dist/configure \
+        --disable-nls \
+        --enable-rpc \
+        --enable-diagnostic \
+        --enable-compat185 \
+        --enable-cxx \
+        --prefix=/usr/local \
+        --includedir=/usr/local/include/db3
+
+        make
+
+        docdir=/usr/local/share/doc/BerkeleyDB.3.1.17 make -e install
+
+5.2 Run
+        cd /usr/local/lib
+
+        mv -v libdb.a libdb-3.1.a
+
+        ln -sv libdb-3.1.a libdb.a
+
+        mv -v libdb_cxx.a libdb_cxx-3.1.a
+
+        ln -sv libdb_cxx-3.1.a libdb_cxx.a
+
+5.3 Repeat step 5.1 from scratch, this time configure
+   additionally
+
+        --enable-shared
+
+5.4 Run
+
+        chown root.root /usr/local/include/db3/db_cxx.h
+
+6. Installation rpm-4.0
+   --------------------
+
+6.1 Run
+
+        CPPFLAGS=-I/usr/local/include/db3 \
+        CFLAGS="^OPT^" \
+        ./configure \
+        --disable-nls \
+        --with-gnu-ld \
+        --prefix=/usr/local \
+        --mandir=/usr/local/share/man
+
+        make
+
+        make install
+
+        cd /usr/local/lib
+
+# This is the broken link fix
+
+        rm -v rpmpopt
+
+        ln -sv rpm/rpmpopt-4.0 rpmpopt
+
+# Do not run these commands if you're fluent in Polish, Russian, etc.
+
+        cd /usr/local/share/man
+
+        rm -r ja pl ru sk
+
+7. Possible ( not mandatory ) re-install of db-1.85
+   -----------------------------------------------
+  At this point you should be able to open RPMs.
+  The patch which comes with db-1.85.srpm from Red Hat
+  is much better and fixes more problems with db-1.85
+  than these from sleepycat.com.
+
+7.1 Apply the patch found in Red Hat SRPM to the source tree
+    of the original db-1.85.
+
+7.2 Repeat step 4.2
+
+7.3 Run
+
+        install -m755 libdb.so.2 /usr/local/lib/libdb1.so.2
+
+        ln -sf libdb1.so.2 /usr/local/lib/libdb1.so
+
+        ln -sf libdb1.so.2 /usr/local/lib/libdb.so.2
+
+        install -s -m755 db_dump185 /usr/local/bin/db1_dump185
+
+7.4 Re-install RPM4.0 ( step 6 ).
+

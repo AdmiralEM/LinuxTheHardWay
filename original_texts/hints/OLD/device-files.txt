@@ -1,0 +1,71 @@
+TITLE:		Creating the device files with MAKEDEV
+LFS VERSION:	obsolete
+AUTHOR:		Morgan Hall <morganh@aracnet.com>
+
+SYNOPSIS:
+	An alternative way of creating devices (this way is now used in LFS, as of version 2.3.7)
+
+HINT:
+For what it's worth, if you don't want to fill your /dev directory by
+copying off whatever distribution, Here's how to go about filling /dev
+from scratch.
+
+Background:
+The /dev directory contains file-like objects that are actually links
+to drivers in the kernel.  These are, at bottom, created by the command
+'mknode' (read the fine man page).  Since there are so many of them,
+the lazy way to do it is with the 'MAKEDEV' script.
+
+Source:
+
+You can get the MAKEDEV script from tsx11.mit.edu.  It doesn't look to
+have changed much since 1997 (date on the latest version).
+
+To get it, grab:
+ftp://tsx-11.mit.edu/pub/linux/sources/sbin/MAKEDEV-2.3.1.tar.gz   
+
+Unwrap it with 'tar xzvf MAKEDEV-2.3.1.tar.gz' and it unwrapps into
+a directory named MAKEDEV-2.3.1.  Inside is the actual MAKEDEV script, 
+some documentation, and a Makefile for installing in a running system.
+
+For our purposes, you've already created the $LFS/dev directory.  Copy
+or move the MAKEDEV script to that directory.  That's where it should
+stay, as there are some update functions the script can do.  ('fraid
+you'll have to read through the script to figure 'em out, but it looks
+like you can use the script to run through and delete devices your kernel
+doesn't support!)
+
+After MAKEDEV is in its new home, 'cd' to $LFS/dev and make it executable
+with chmod.
+  chmod 755 MAKEDEV
+
+You'll have to be root to actually do anything with MAKEDEV.  So, 'su'
+to root and get ready to roll.
+
+For the insatiably curious among us (like me) fire it off with the verbose
+option turned on with:
+
+# MAKEDEV -v generic
+
+Take a break and watch 'em scroll.  You'll see things you never wanted to
+know about.  There's lots there for us to ferret out information on!
+
+Of course, if you don't want that much stuff, you can make, for example,
+ony the hard disk devices.  To do so, you'd enter:  MAKEDEV hda
+and automagically you'll get hda, hda1 ... hda8.
+
+For now, and for just getting going, it looks like 'generic' is the way
+to go.  optimization can come later.
+
+'Nuff for now.  Let's get rid of copying the /dev/directory?  This is
+really a bit easier anyway, and if you accidentaly mangle some devices, it
+gives you a way to recover.
+
+Hope this helps,
+
+Morgan
+
+
+Morgan Hall
+Wilsonville, Oregon
+(morganh@aracnet.com)

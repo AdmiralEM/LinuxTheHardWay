@@ -1,0 +1,58 @@
+The attached patch:
+
+  xml.sax.expatreader.patch
+
+... adds functionality to the xml.sax package.
+
+Normally, an application program, which imports xml.sax, subclasses
+xml.sax.handler.EntityResolver to define the resolveEntity method.  It
+passes an instance of the class to the parser.  Then the parser
+invokes the user-defined method when it needs it.
+
+This patch alters the parser to invoke, instead, a new method called
+resolveEntity2.  The parser passes a new parameter (called basePath)
+to resolveEntity2.  This is in addition to the publicId and systemId
+parameters traditionally passed to resolveEntity.
+
+... and it is handy because relative xml system IDs (i.e., local
+directory paths) are relative to the file that defines them, not the
+file that references them.  Unless you have an idea where the systemId
+was defined (i.e., basePath), you may not be able to resolve it.
+
+Here is an example:
+
+  class cEnts(xml.sax.handler.EntityResolver):
+    def resolveEntity2(self,aPublicId,aSystemId,aBasePath=None):
+	global DOCUMENT_HOME
+        if aSystemId.lower().startswith("file://"):
+            aSystemId=aSystemId[7:]
+        if aBase==None:
+            aBase=DOCUMENT_HOME
+        __Path=os.path.dirname(aBasePath)
+        aSystemId=os.path.join(__Path,aSystemId)
+        return xml.sax.handler.EntityResolver.resolveEntity(self,
+            aPublicId,aSystemId)
+
+[Please forgive obvious misinterpretations of what xml System IDs are
+all about.  I am new to this.]
+
+If basePath is None, then the systemId is defined at the top level of
+the xml document, and you should know how to resolve it.
+
+The parser invokes either the new method, resolveEntity2, or the old
+method, resolveEntity, so you should define one or the other.  If you
+define the new method, resolveEntity2, the parser will invoke it
+preferentially, but, if you don't define it, the parser will try to
+invoke resolveEntity as documented by xml.sax.
+
+The patch is against PyXML 0.8.3.  To apply the patch:
+
+  cd /usr/lib/python2.3/site-packages/_xmlplus/sax
+  patch -Nb -i ~/xml.sax.expatreader.patch
+
+The patch also works against Python 2.3.3 and Python 2.3.2:
+
+  cd /usr/lib/python2.3/xml/sax
+  patch -Nb -i ~/xml.sax.expatreader.patch
+
+[I think it's just that simple.  -ccr-]

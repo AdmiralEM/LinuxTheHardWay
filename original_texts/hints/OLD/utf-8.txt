@@ -1,0 +1,638 @@
+AUTHOR: Alexander E. Patrakov
+DATE: 2003-11-06
+LICENSE: Public Domain
+SYNOPSIS: Using UTF-8 locales in [B]LFS
+DESCRIPTION:
+This hint explains what should be changed in the LFS and BLFS instructions
+curent at the time of this writing in order to use locales such as ru_RU.UTF-8.
+
+PREREQUISITES: LFS 5.1-pre1 or later, good knowledge of C
+CONFLICTS: compressed manual pages
+
+*** NOTE ***
+This hint is not maintained by the author.
+***
+
+CHANGELOG:
+2003-11-06: Initial submission
+2004-02-25: Added some BLFS packages
+
+HINT:
+
+IMPORTANT INFORMATION
+
+Don't follow this hint unless you are prepared to fix broken things! I never
+had a full BLFS install, and of course because of that some packages that
+are broken in UTF-8 locales may well be missing from this hint.
+
+Also, please don't ask support questions related to this hint on mailing lists
+hosted on linuxfromscratch.org (and of course don't provide support yourself)
+if you can't answer the questions at the end of the hint.
+
+Also note that while our goal is to move to the international UTF-8 encoding,
+we have to disable internationalization completely in some older applications.
+So this hint really becomes an antihint: we gain nothing except compatibility
+with bleeding-edge RedHat-like distros in their default configuration, and
+lost... lost what we were aiming to get --- internationalization.
+
+Once again, don't follow this hint blindly.
+
+BIG WARNING: you will probably have to convert ALL your documents.
+
+Part 1. INTRODUCTION
+
+1. Single-byte and double-byte encodings and UTF-8: what's wrong
+
+Most Eropean languages have a relatively short alphabet (less than 40
+characters). This makes it possible to create a represent the
+characters of that alphabet (both upper-case and lower-case), English alphabet,
+digits and punctuation with a single byte. The result is known as a single-byte
+encoding. An example of such encoding is KOI8-R, commonly used in Russia. All
+single-byte encodings are ASCII-compatible in the sense that characters
+representable in ASCII are also representable in these encodings and have the
+same code. They are also reverse-ASCII-compatible in the sense that every byte
+with the value less than 0x7f represents the same character as it does in
+ASCII. Current LFS and BLFS work well with such encodings.
+
+This approach doesn't work with Asian languages such as Chinese, Japanese and
+Korean (denoted together as CJK further in this hint). They have more than 256
+different characters, because single characters represent syllables and even
+words. So called double-byte encodings are used with these languages. They
+represent English letters, digits and punctuation with single bytes equal to
+ASCII representation of those characters. To represent native CJK characters,
+two-byte sequences are used. Such encodings are called double-byte. An
+example is GB2312, used in China. Since CJK characters are twice as wide as
+English ones in monospaced font, the "on-screen" width of a string encoded with
+such methods is directly proportional to the number of bytes in it (there is
+one exception: any two-byte sequence starting with 0x8e byte in EUC-JP takes as
+much space as an English letter). LFS and BLFS don't work well with Asian
+languages and double-byte encodings because of two reasons:
+
+1) It is impossible to display double-width characters on a Linux console (even
+on a framebuffer console) without additional programs that are not in the book.
+Installation of e.g. zhcon corrects this.
+
+2) Some assumptions that work with single-byte encodings fail with double-byte
+ones. First, some double-byte encodings are not reverse-ASCII-compatible: a
+byte with value less than 0x7f can be either an ASCII-representable character
+or a second byte of a two-byte sequence. Second, correctly finding the n-th
+character in a string is a complex task because some characters occupy one
+byte, and some characters are represented by two-byte sequences. Software that
+makes bad assumptions needs to be either patched or not installed at all.
+
+Today there is a need to encode multilingual texts. E.g., foreign clients of
+companies don't want their names to be distorted up to unreconinzable state by
+a chain of multiple transliterations. Since all single-byte and double-byte
+encodings are capable of representing characters of at most two alphabets
+(english + national), there is a need for a new character set to encode
+multilingual texts. Such character set exists and it is named Unicode.
+
+UTF-8 is a method of representing Unicode text with a stream of
+8-bit bytes. The resulting stream is both ASCII-compatible and
+reverse-ASCII-compatible. A single character can occypy from 1 to 4 bytes. Many
+current distributions of Linux configure locales using the UTF-8 character
+encoding by default. This doesn't work with (B)LFS for the same reasons as with
+double-byte encodings. However,
+
+1) There is no framebuffer-based terminal that is capable of displaying the
+full range of Unicode characters (if one doesn't count Debian-specific bterm
+from the "bogl" package, bogl = Ben's Own Graphics Library).
+Fortunately, it is not needed in most cases. Linux console is capable of
+displaying Latin (including accented), Greek, Arabian and Cyrillic
+characters together even without framebuffer. Also, xterm works just fine.
+
+2) There is one more assumption that breaks with UTF-8. The relation of
+on-screen width of a string to the number of bytes in it is very complex.
+That's why e.g. Midnight Commander works with double-byte encodings, but
+doesn't work with UTF-8.
+
+3) Many packages in UTF-8 locale fail to provide compatibility with older
+doculents saved in traditional single-byte or double-byte encoding.
+
+Part 1. LFS PACKAGES
+
+1. Suggested changes to the installation instructions
+
+The following packages should be configured differently in Chapter 6:
+- ncurses
+- vim
+- man
+
+1a. Modified Ncurses installation instructions
+
+First of all, you need NCurses 5.4. Get it from
+
+http://ftp.gnu.org/gnu/ncurses/ncurses-5.4.tar.gz
+
+The new Ncurses version has experimental support for wide characters.
+According to the output of ./configure --help, it is activated by passing
+the --enable-widec argument to ./configure. The resulting libraries are
+binary-incompatible with "normal" ncurses and therefore a letter "w" is
+appended automatically to their names: libncursesw.so.5.4. For compatibility
+with precompiled commercial applications, we will install two versions of
+ncurses.
+
+Now we are ready to install the non-wide-character version of ncurses, almost
+by the book:
+
+./configure --prefix=/usr --with-shared --without-debug
+make
+make install
+
+This installs /usr/lib/libncurses.so.5.4. We will move it to /lib later.
+Then install a wide-character-enabled version:
+
+make distclean
+./configure --prefix=/usr --with-shared --without-debug --enable-widec
+make
+make install
+
+This installs /usr/lib/libncursesw.so.5.4 and related libraries.
+
+Move important libraries to /lib and correct permissions:
+
+chmod 755 /usr/lib/*.5.4
+chmod 644 /usr/lib/libncurses++*.a
+mv /usr/lib/libncurses.so.5* /lib
+mv /usr/lib/libncursesw.so.5* /lib
+
+Make the symbolic links:
+
+ln -sf ../../lib/libncursesw.so.5 /usr/lib/libncurses.so
+ln -sf libncurses.so /usr/lib/libcurses.so
+ln -sf ../../lib/libncursesw.so.5 /usr/lib/libncursesw.so
+ln -sf libncursesw.so /usr/lib/libcursesw.so
+
+Note the first command. Now all applications trying to link at compile time 
+against -lncurses will actually link to the wide-character version,
+/lib/libncursesw.so.5. This works, because the two libraries are
+source-compatible. At runtime, the linker will happily resolve the dependency
+upon libncursesw.so.5. And for precompiled commercial applications that
+depend on the ordinary version of ncurses there is /lib/libncurses.so.5.
+
+1b. Modified Vim instructions
+
+For Vim to work correctly in double-byte encodings and in UTF-8, the
+--enable-multibye switch has to be added to the ./configure command line. Note
+that it is not necessary in BLFS since --with-features= (more than normal)
+implies this.
+
+echo '#define SYS_VIMRC_FILE "/etc/vimrc"' >> src/feature.h
+echo '#define SYS_GVIMRC_FILE "/etc/gvimrc"' >> src/feature.h
+./configure --prefix=/usr --enable-multibyte
+make
+make install
+ln -s vim /usr/bin/vi
+
+Vim is able to edit files in arbitrary encodings if you use UTF-8-based locale.
+E.g. to read the file price.txt that is known to be in CP1251 encoding, type:
+
+:e ++enc=cp1251 price.txt
+
+It will be automatically converted. To save the file in KOI8-R encoding under
+the name price.koi, type:
+
+:w ++enc=koi8-r price.koi
+
+Vim is even able to automatically detect the character set of the file
+being read under some conditions. This works because real texts in most
+single-byte and double-byte encodings contain sequences of bytes that are not
+valid in UTF-8.
+
+This capability needs to be configured. To do so, create the file /etc/vimrc
+with the following contents (replace koi8-r with the name of a single-byte or
+double-byte encoding that is mostly often used in your country):
+
+" Begin /etc/vimrc
+
+set nocompatible
+set bs=2
+set fileencodings=ucs-bom,utf-8,koi8-r
+
+" End /etc/vimrc
+
+For more information, read /usr/share/vim/vim62/doc/mbyte.txt
+
+1c. Modified Man instructions
+
+Since Man internationalization does not work at all in UTF-8 locales (the
+messages are still output in single-byte or double-byte encodings, appearing
+as lines of unreadable squares on the screen) and because Russian messages are
+improperly translated (and offensive!) we will disable NLS. This will not
+prevent you from viewing manual pages in your native language. It just means
+that messages like "What manual page do you want?" will remain untranslated.
+
+Install the "man" package with the followiing commands:
+
+patch -Np1 -i ../man-<version>-manpath.patch
+patch -Np1 -i ../man-<version>-80cols.patch
+patch -Np1 -i ../man-<version>-pager.patch
+
+DEFS="-DNONLS" ./configure -default -confdir=/etc +lang all
+make
+make install
+
+Now we have to decide what to do with manual pages in your native language.
+They are provided with the corresponding packages in the single-byte or
+double-byte encoding, but not in UTF-8. Therefore, they won't display properly.
+There are two solutions to this problem.
+
+The first solution is to store them in the single-byte or double-byte encoding,
+i.e. as they come with the corresponding packages, and convert them into UTF-8
+on the fly. To do this, search for the line in /etc/man.conf that starts with
+"PAGER". Replace it with something like the following:
+
+PAGER           /usr/bin/iconv -c -f koi8-r | /usr/bin/less -isR
+
+(replace koi8-r with your 8-bit or double-byte encoding). Note that this change
+does not hurt you if you later switch back to the usual encoding: iconv will
+be a no-op. Unfortunately, this doesn't work well with graphical man page
+viewers like Yelp (from GNOME-2.4) or Konqueror, since they just ignore the
+"PAGER" variable in /etc/man.conf (if they read /etc/man.conf at all) and
+assume that manual pages are stored in the character set of the current locale.
+
+The second solution would be to convert manual pages to UTF-8. Unfortunately,
+I had no success with this. RedHat provides some patches for groff-1.18.1.
+I tried to convert all manual pages into UTF-8 and changed man.conf to have
+the line
+
+# WRONG!
+NROFF /usr/bin/iconv -c -t koi8-r | /usr/bin/nroff -Tlatin1 -mandoc | /usr/bin/iconv -c -f koi8-r
+
+This didn't work well because some manual pages contain just
+
+.so filename
+
+and don't display properly.
+
+In fact, the *roff specification says that the input must be in iso8859-1
+encoding, there is no way to typeset anything except Latin and Greek according
+to the specification, and all localized manual pages (even in the single-byte
+Cyrillic KOI8-R encoding!) are really a hack and violate the specification.
+
+2. Setting up UTF-8 based locale and environment variables
+
+Some UTF-8 locales (e.g. se_NO.UTF-8) are installed during the
+
+make localedata/install-locales
+
+step while installing glibc. But most of UTF-8 locales must be created
+manually, e.g.:
+
+localedef -c -i ru_RU -f UTF-8 ru_RU.UTF-8
+
+The role of the -c switch is to continue the creation of the locale even though
+warnings are issued. After the creation of the locale, it is needed to tell
+applications to use it. All that is required is to set some environment
+variables. An easy "solution" is to add this to your /etc/profile:
+
+# WRONG!!!
+export LC_ALL=ru_RU.UTF-8
+export LANG=ru_RU.UTF-8
+
+This "solution" is wrong because these variables will be available to processes
+started from your login shell, but will not be available to the readline
+library that the shell uses. The readline library uses this information e.g. to
+determine how many bytes to remove from the input buffer (must be one UTF-8
+character) and how many character cells to erase on the screen (again, one
+full character) if you press Backspace or Delete key.
+
+Yes, if you _type_ export LC_ALL=ru_RU.UTF-8 in the login shell, then it will
+pass this setting to the readline library. But this doesn't work in the shell
+startup files. This is a bug in bash. So the correct LC_ALL variable must be
+already in the environment when the login shell starts.
+
+If one adds the above LC_ALL and LANG variables into /etc/environment, it will
+work for login shells started by the "login" program, but will not work for
+shells started by "su" or "sshd" programs. This approach also requires you to
+place these variables into /etc/profile so that they will be available from
+KDE (the "startkde" script from KDE 3.2.0 sources /etc/profile).
+
+Another approach is to make the login shell set the correct locale variables
+and reexecute itself. To accompilsh this, add the following snippet at the
+very beginning of your /etc/profile:
+
+if [ "x$LC_ALL" = "x" ]
+then
+    export LC_ALL=ru_RU.UTF-8
+    export LANG=ru_RU.UTF-8
+    if ( echo $- | grep -q i )
+    then
+        exec -a "$0" /bin/bash "$@"
+    fi
+fi
+
+The $- check is there because /etc/profile is sometimes sourced by other
+scripts that run in noninteractive shells. Such shells don't need to be
+reexecuted, since you don't want to replace a script that sourced /etc/profile
+with an instance of /bin/bash called with the same parameters as the script.
+
+Of course, you will have to replace ru_RU above with something more
+appropriate.
+
+If you are using xdm, you also want to include the following lines into the
+beginning of /etc/X11/xdm/Xsession:
+
+[ -r /etc/profile ] && . /etc/profile
+[ -r $HOME/.bash_profile ] && . $HOME/.bash_profile
+
+Consult the documentation of other display managers for the means to set the
+environment in the started session.
+
+3. Setting up Linux console
+
+We will modify the /etc/rc.d/init.d/loadkeys script.
+
+#!/bin/bash
+# Begin $rc_base/init.d/loadkeys - Loadkeys Script
+
+# Based on loadkeys script from LFS-3.1 and earlier.
+# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+# Modified for UTF-8 locales by Alexander E. Patrakov - semzx@newmail.ru
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+echo -n "Setting screen font..."
+for console in /dev/tty[1-6]
+do
+    (
+	setfont
+	setfont LatArCyrHeb-16
+    )<$console >$console 2>&1
+done
+evaluate_retval
+
+echo -n "Loading keymap..."
+kbd_mode -u
+loadkeys ru1 2>/dev/null &&
+dumpkeys -c koi8-r | loadkeys --unicode
+evaluate_retval
+
+# End $rc_base/init.d/loadkeys
+
+Some comments concerning this script.
+
+1) The empty "setfont" command works around a bug in 2.6 kernels.
+
+2) We don't switch the console output to UTF-8 here. We will do that in
+/etc/issue (the idea is stolen from "redhat-style-logon" hint). This is
+necessary because otherwise this switching will affect only the first console.
+As an alternative, you can write a "for" loop here sending <ESC>%G to all
+virtual consoles.
+
+3) The kbd package does not provide ready-to-use keymaps for UTF-8 locales,
+except for Ukrainian one. First, we load the now-wrong ru1 keymap (the numeric
+character codes there are valid only for koi8-r character set), then we dump
+it replacing numeric codes with human-readable descriptions of characters (e.g.
+"cyrillic_small_letter_e"). The resulting keymap is usable in UTF-8 mode, so
+we load it with loadkeys --unicode.
+
+Let's create /etc/issue:
+
+echo -e '\033[2J\033[f\033%GWelcome to Linux From Scratch\n' >/etc/issue
+
+The meaning of the escape sequences:
+<ESC>[2J = clear entire screen
+<ESC>[f = move the cursor to the corner of the screen
+<ESC>%G = put the console into UTF-8 mode
+
+Set up screen font and keyboard now, if you don't want to reboot:
+
+/etc/rc.d/init.d/loadkeys
+
+Then kill all agetty processes for them to reread /etc/issue:
+
+killall agetty
+
+4. Conclusion
+
+From your next login, you will use UTF-8 based locale, with all its benefits
+and drawbacks.
+
+Known bugs:
+
+- The Caps Lock key does not work on Linux console for national characters.
+  The guilty package is kbd.
+  
+- Some packages don't display line drawing characters in UTF-8 mode on Linux
+  console. This is a bug in the packages themselves. See ALSA section below
+  for more detailed discussion.
+
+Part 2. BLFS PACKAGES
+
+1. GnuPG
+
+The package itself is internationalized well and supports UTF-8 out of the box.
+Unfortunately, some applications (e.g. Enigmail) assume that the output of gpg
+is in iso8859-1. For applications that cannot be fixed easily, create the
+following script:
+
+#!/bin/sh
+export LC_ALL=C
+export LANG=C
+exec /usr/bin/gpg "$@"
+
+Save it as /usr/bin/gpg-nolocale, give it the "executable" bit and configure
+the offending application to use this script instead of the real gpg binary.
+
+2. Emacs
+
+I don't use Emacs at all, but your comments are welcome. Don't expect
+any console-based editor except Vim, Emacs and Yudit to work in UTF-8 locale.
+
+3. Slang
+
+Get the patch
+
+http://www.linuxfromscratch.org/patches/downloads/slang/slang-1.4.9-utf8.patch
+
+Install Slang using the following instructions:
+
+patch -Np1 -i ../lang-1.4.9-utf8.patch
+./configure --prefix=/usr
+make CFLAGS="-O2 -pipe -DUTF8"
+make install
+make CFLAGS="-O2 -pipe -DUTF8" ELF_CFLAGS="-O2 -pipe -DUTF8" elf
+make install-elf
+make install-links
+chmod 755 /usr/lib/libslang.so.1.4.9
+
+WARNING: you should pass -DUTF-8 in CFLAGS to all applications that depend
+on Slang.
+
+4. Aspell
+
+To be done.
+
+5. GPM
+
+GPM cannot cut/paste non-ASCII characters. It is really a limitation of Linux
+console. You can google for a kernel patch named
+
+unicode_copypaste_2.4.19.patch.gz
+
+but I would recommend against it. I had crashes and repeatable kernel panics
+with it.
+
+6. Zip/Unzip
+
+If you put a file with non-ASCII characters in its name into the archive, you
+will be unable to get that name correctly under Windows.
+
+7. Midnight Commander
+
+First, install Slang. Then, get the patch
+
+http://www.linuxfromscratch.org/patches/downloads/mc/mc-4.6.0-utf8.patch
+
+Install Midnight Commander with the following instructions:
+
+patch -Np1 -i ../mc-4.6.0-utf8.patch
+CFLAGS="-O2 -pipe -DUTF8" ./configure \
+    --prefix=/usr --with-screen=slang \
+    
+    --what-else-you want, e.g.
+    
+    --with-vfs --with-samba --enable-charset --without-ext2undel \
+    --with-configdir=/etc/samba --with-codepagedir=/usr/share/samba/codepages
+make
+make install
+
+Unfortunately, this patch is not sufficient. In particular, it is impossible
+to view and edit files containing non-ASCII characters using the internal
+viewer and editor. Configure Midnight Commander to use an external editor,
+e.g. Vim.
+
+8. w3m
+
+You need w3m-m17n, not just a bare w3m. Unfortunately, w3m-m17n-0.4.2 does not
+exist yet.
+
+9. Mutt, Pine
+
+I don't use them at all, but Debian has a patch for Mutt.
+Your comments are welcome.
+
+10. GTK+-1.2.10
+
+This package's default style files in /etc/gtk don't work in UTF-8 locales.
+Changing "koi8-r" to "iso10646-1" fonts in /etc/gtk/gtkrc.ru fixes the problem
+with improper fonts for Russians. Beware that KDE also sets GTK styles (in
+~/.kde/share/config/gtkrc and ~/.gtkrc), so these files also may need some
+manual editing.
+
+11. LessTif
+
+This package does not support UNICODE well.
+
+12. KDEMultimedia
+
+The players show ID3 tags with national characters improperly.
+
+13. Yelp
+
+The problems with manual pages have already been mentioned in Man section.
+
+14. ALSA
+
+Alsamixer 1.0.2 won't show the line drawing characters on Linux console in
+UTF-8 mode. This is a bug in alsamixer. The problem is that NCurses must
+know whether the Linux console is in UTF-8 mode or not. To do that, NCurses
+checks the current locale setting (in the order: LC_ALL, LC_CTYPE, LANG).
+Also, it has to compute how many cells a given character occupies. This
+requires a valid LC_CTYPE setting.
+
+But this means that a program that links to ncurses must call
+
+setlocale(LC_CTYPE, "")
+
+before initscr(). This patch fixes the issue in alsamixer
+
+http://www.linuxfromscratch.org/patches/downloads/alsa-utils/alsa-utils-1.0.2-locale.patch
+
+After reading the text above and looking at the alsamixer patch, you should
+be able to fix this kind of a problem with other packages. Please send
+patches to patches@linuxfromscratch.org.
+
+Don't send a patch for the "lxdialog" program that comes with the kernel
+sources and is used during "make menuconfig", since that will break Question
+2 in the quiz below and I will no longer be able to check whether others are
+ready to follow this hint.
+
+15. XMMS
+
+This package will not show ID3 tags properly out of the box, because they are
+usually in the windowsish single-byte or double-byte encoding and not in UTF-8.
+The patch from http://rusxmms.sourceforge.net/ helps.
+
+16. Dillo
+
+This package does not support UNICODE.
+
+17. XSane
+
+The gtk+-1.2.10 version is affected by a bug in gtk+ style support
+and does not work properly even in ru_RU.koi8r locale. To work around
+the problem, don't build the GIMP plugin --- then XSane will link against GTK2.
+
+18. Xpdf
+
+Since this package depends on LessTif, the support of UTF-8 in the GUI is
+rather poor. E.g., the filenames in the fileselector show improperly. But
+the non-GUI tool, pstotext, works flawlessly and can extract text in the UTF-8
+encoding from PDF files.
+
+19. A2ps
+
+This package does not support UNICODE.
+
+20. TeX
+
+To use UTF-8 as an input encoding with TeX, you should download the following
+package:
+
+http://www.unruh.de/DniQ/latex/unicode/unicode.tgz
+
+Just unpack it into /usr/share/texmf/tex, remove all files except
+
+ucs/*.sty, ucs/*.def, ucs/data/*
+
+and then run mktexlsr. Then you will be able to write
+
+\usepackage[utf-8]{inputenc}
+
+in the document preamble, but I doubt that anyone else will be able to TeX
+your documents.
+
+If you want someone else to be able to extract text in UTF-8 encoding from
+your PDF files generated by PDFTeX or dvipdfm, you should also install
+the "cm-super" font package from CTAN.
+
+Part 3. CONCLUSIONS
+
+Probably you understand from reading the above that UTF-8 causes more trouble
+than merit. If you followed this hint, I hope that I didn't damage your system
+irreversibly.
+
+Please post your deviations and report other broken packages to
+
+patrakov@ums.usu.ru
+
+APPENDIX A. QUIZ
+
+You should follow the hint only if you know all the answers.
+
+1) The non-wide character version of ncurses 5.4 uses poor-man line-drawing
+   characters on Linux console in UTF-8 mode.
+
+   What other terminal type is affected by this? Where (which file and line)
+   is the check? Where is the piece of code that substitutes these poor-man
+   line-drawng characters instead of those which came from the terminfo
+   database? Where does ncurses 5.4 check the current locale?
+
+2) Linux kernel build process uses the "lxdialog" program during the
+   "make menuconfig" step. Unfortunately, lxdialog has the same bug as
+   alsamixer (see the hint).
+   
+   Can you make a patch for lxdialog yourself?

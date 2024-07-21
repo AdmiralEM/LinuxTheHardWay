@@ -1,0 +1,83 @@
+AUTHOR: Robert Connolly <robert@linuxfromscratch.org>
+
+DATE: 2005-06-10
+
+LICENSE: Public Domain
+
+SYNOPSIS: LZMA / 7-zip file compression
+
+DESCRIPTION:
+LZMA, or 7-zip, is a new file compression tool which compresses files 10-30% better
+than bzip2 or gzip. LZMA has been ported to Linux, BSD, and Windows. 7-zip also uses
+more CPU power than bzip2, but its pretty quick to decompress.
+
+PREREQUISITES: None
+
+HINT:
+The homepage for the main software is:
+	http://www.7-zip.com/sdk.html
+
+Compatable software projects:
+	http://p7zip.sourceforge.net/
+	http://martinus.geekisp.com/rublog.cgi/Projects/LZMA/
+	http://www.zelow.no/floppyfw/download/Development/lzma/lzmatool-0.11.tgz
+
+First download this (or the newest version):
+http://www.7-zip.org/dl/lzma417.tar.bz2
+
+# Unpack the software:
+
+mkdir lzma417/ &&
+tar jxf lzma417.tar.bz2 -C lzma417/
+
+# Compile and install the software:
+
+cd lzma417/SRC/7zip/Compress/LZMA_Alone/ &&
+make &&
+install lzma /bin/
+
+# There is no man page. Enter 'lzma' to see the help menu. lzma doesn't act like gzip
+# or bzip2 by default. A couple small scripts can help:
+
+cat > /tmp/7zip.sh << "EOF"
+#!/bin/sh
+/bin/lzma e ${1} ${1}.7z &&
+rm -f ${1}
+EOF
+install /tmp/7zip.sh /bin/7zip
+
+cat > /tmp/7unzip.sh << "EOF"
+#!/bin/sh
+/bin/lzma d ${1} $(echo ${1} | sed -e 's/.7z$//') &&
+rm -f ${1}
+EOF
+install /tmp/7unzip.sh /bin/7unzip
+
+rm /tmp/{7zip,7unzip}.sh
+
+# These two scripts will behave like gzip and gunzip by compressing the file and
+# removing the original when successfully completed.
+
+# To compress your kernel with LZMA use one of these patches:
+
+http://www.linuxfromscratch.org/patches/downloads/linux/
+	linux-2.4-lzma-1.patch
+	linux-2.6-lzma-1.patch
+
+# Patch it on the kernel and it will work all by itself. The Zlib routines are replaced
+# with LZMA. My kernel was 1.3MB before LZMA, and 1.1MB after.
+
+TODO:
+  * It would be nice to get LZMA support for kernel modules in modutils.
+
+ACKNOWLEDGMENTS:
+  * Thanks to Google for helping me search for information about LZMA.
+  * Thanks to the LZMA team at:
+	http://www.7-zip.com/sdk.html
+  * Thanks to Ming-Ching Tiew for the LZMA kernel patches. 
+
+CHANGELOG:
+[2005-06-09]
+  * Initial hint.
+[2005-06-10]
+  * Added urls for compatable software projects.

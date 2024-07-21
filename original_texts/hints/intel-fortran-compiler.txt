@@ -1,0 +1,292 @@
+AUTHOR: Daniel Baumann <daniel.baumann@panthera-systems.net>
+
+DATE: 2004-12-03
+
+LICENSE: GNU General Public License
+
+SYNOPSIS: How to install the Intel Fortran Compiler on LFS.
+
+PRIMARY URI: http://archive.daniel-baumann.ch/linux-from-scratch/hints/intel-fortran-compiler/
+
+DESCRIPTION:
+How to install the Intel Fortran Compiler on your LFS-system.
+
+PREREQUISITES:
+A complete LFS-system with cpio and rpm2cpio (instructions included in the hint).
+
+HINT:
+--------------------------------------------------------------------------------
+
+Intel Fortran Compiler 8.1.021
+==============================
+
+
+1. Introduction to Intel Fortran Compiler
+=========================================
+
+This is Intel's fully optimized Fortran compiler for Intel-based CPUs. It
+complies with the Fortran 95 specifications.
+
+
+1.1. Package information
+========================
+
+  * Download (FTP): ftp://download.intel.com/software/products/compilers/downloads/l_fc_pu_8.1.021.tar.gz
+
+  * MD5 Sum: 005e245fbb8b342d07f122a5301939fa
+
+  * Download size: 88 MB
+
+  * Estimated build time: none
+
+
+1.2. Additional downloads
+=========================
+
+Required:
+
+  * License file
+
+    The Intel Fortran Compiler needs a key to unlock. It is free for research or
+    educational and private non-commercial purposes. If you like to get a
+    commercial license, see
+    http://www.intel.com/software/products/compilers/flin/pricelist.htm.
+
+    Download: http://www.intel.com/software/products/compilers/flin/noncom.htm
+
+
+1.3. Intel Fortran Compiler dependencies
+========================================
+
+Required:
+
+  * cpio (see BLFS for instructions)
+
+  * rpm2cpio
+
+    Download (HTTP): http://www.rpm.org/tools/scripts/rpm2cpio.sh
+
+    Install rpm2cpio by running the following commands:
+
+   __________________________________________________________________________
+  |                                                                          |
+  |  cp rpm2cpio.sh /usr/bin/rpm2cpio                                        |
+  |  chmod 0755 /usr/bin/rpm2cpio                                            |
+  |__________________________________________________________________________|
+
+
+2. Installation of Intel Fortran Compiler
+=========================================
+
+
+2.1. Compiler installation
+==========================
+
+Install the compiler by running the following commands:
+
+   __________________________________________________________________________
+  |                                                                          |
+  |  rpm2cpio intel-ifort8-8.1-020.i386.rpm | cpio -id                       |
+  |  rm -f opt/intel_fc_80/bin/uninstall.sh                                  |
+  |  mv opt/intel_fc_80/bin/* /opt/bin                                       |
+  |  mv opt/intel_fc_80/doc /opt/doc/ifc                                     |
+  |  mv opt/intel_fc_80/include/* /opt/include                               |
+  |  mv opt/intel_fc_80/lib/* /opt/lib                                       |
+  |  mv opt/intel_fc_80/licenses /opt/doc/ifc                                |
+  |  mv opt/intel_fc_80/man/man1/* /opt/man/man1                             |
+  |  rm -rf opt                                                              |
+  |__________________________________________________________________________|
+
+
+2.2. Debugger installation
+==========================
+
+Install the debugger by running the following commands:
+
+   __________________________________________________________________________
+  |                                                                          |
+  |  rpm2cpio intel-iidb8-8.1-036.i386.rpm | cpio -id                        |
+  |  rm -f opt/intel_idb_80/bin/uninstall.sh                                 |
+  |  mv opt/intel_idb_80/bin/* /opt/bin                                      |
+  |  mv opt/intel_idb_80/doc /opt/doc/idb                                    |
+  |  mv opt/intel_idb_80/man/man1/* /opt/man/man1                            |
+  |  rm -rf opt                                                              |
+  |__________________________________________________________________________|
+
+
+2.3. Uninstall script
+=====================
+
+   __________________________________________________________________________
+  |                                                                          |
+  |  cat > /opt/bin/uninstall_intel-fortran-compiler.sh << "EOF"             |
+  |  #!/bin/sh                                                               |
+  |                                                                          |
+  |  echo -n "Uninstalling Intel Fortran Compiler: "                         |
+  |  rm -f /opt/bin/{codecov,fortcom,fpp,ifc,ifc.cfg,ifcbin,ifort,\          |
+  |	ifort.cfg,ifortbin,ifortvars.csh,ifortvars.sh,profmerge,proforder,\  |
+  |	profrun,pronto_tool, tselect,xiar,xild}                              |
+  |  rm -rf /opt/doc/ifc                                                     |
+  |  rm -f /opt/include/{for_fpclass.for,for_fpclass.h,for_fpeflags.for,\    |
+  |	for_fpeflags.h,for_iosdef.for,for_iosdef.h,fordef.for,fordef.h,\     |
+  |	forreent.for,forreent.h,ifcore.f90,ifcore.mod,iflport.f90,\          |
+  |	iflport.mod,iflposix.f90,iflposix.mod,ifport.f90,ifport.mod,\        |
+  |	ifport_types.mod,ifposix.f90,ifposix.mod,omp_lib.f,omp_lib.h,\       |
+  |	omp_lib.mod,omp_lib_kinds.mod,tbk_traceback.h}                       |
+  |  rm -f /opt/lib/{crtxi.o,crtxn.o,for_main.o,icrt.internal.map,\          |
+  |	icrt.link,ifcore_msg.cat,libcprts.a,libcprts.so,libcprts.so.5,\      |
+  |	libcxa.a,libcxa.so,libcxa.so.5,libcxaguard.a,libcxaguard.so,\        |
+  |	libcxaguard.so.5,libguide.a,libguide.so,libguide_stats.a,\           |
+  |	libguide_stats.so,libifcore.a,libifcore.so,libifcore.so.5,\          |
+  |	libifcore_pic.a,libifcoremt.a,libifcoremt.so,libifcoremt.so.5,\      |
+  |	libifcoremt_pic.a,libifport.a,libifport.so,libifport.so.5,libimf.a,\ |
+  |	libimf.so,libirc.a,libirc_s.a,libompstub.a,libsvml.a,libsvml.so,\    |
+  |	libunwind.a,libunwind.so,libunwind.so.5}                             |
+  |  rm -f /opt/man/man1{ifc.1,ifort.1}                                      |
+  |  sed -i -e 's/source \/opt\/bin\/ifortvars.sh//' /etc/profile            |
+  |  echo "done."                                                            |
+  |  echo -n "Uninstalling Intel Application Debugger: "                     |
+  |  rm -f /opt/bin/{idb,idb.el,idbvars.csh,idbvars.sh,iidb,mpirun_dbg.idb}  |
+  |  rm -rf /opt/doc/idb                                                     |
+  |  rm -f /opt/man/man1/idb.1                                               |
+  |  sed -i -e 's/source \/opt\/bin\/idbvars.sh//' /etc/profile              |
+  |  echo "done."                                                            |
+  |                                                                          |
+  |  rm -f /opt/bin/uninstall_intel-fortran-compiler.sh                      |
+  |  EOF                                                                     |
+  |                                                                          |
+  |  chmod 755 /opt/bin/uninstall_intel-fortran-compiler.sh                  |
+  |__________________________________________________________________________|
+
+
+3. Command explanations
+=======================
+
+The Intel Fortran Compiler is non-free software. To separate it from the main
+system, installing in /opt is choosen.
+
+
+4. Configuring Intel Fortran Compiler
+=====================================
+
+
+4.1. License file
+=================
+
+Install your license file with the following command:
+
+   __________________________________________________________________________
+  |                                                                          |
+  |  cp *_for_l_*.lic /opt/doc/icc/licenses                                  |
+  |__________________________________________________________________________|
+
+
+4.2. Environment variables
+==========================
+
+Configure the compiler by running the following commands:
+
+   __________________________________________________________________________
+  |                                                                          |
+  |  sed -i -e 's/<INSTALLDIR>\/licenses/\/opt\/doc\/ifc\/licenses/g' \      |
+  |	-i -e 's/<INSTALLDIR>\/bin/\/opt\/bin/g' \                           |
+  |     -i -e 's/<INSTALLDIR>\/lib/\/opt\/lib/g' /opt/bin/ifc                |
+  |                                                                          |
+  |  sed -i -e 's/<INSTALLDIR>\/include/\/opt\/include/g' /opt/bin/ifc.cfg   |
+  |                                                                          |
+  |  sed -i -e 's/<INSTALLDIR>\/licenses/\/opt\/doc\/ifc\/licenses/g' \      |
+  |	-i -e 's/<INSTALLDIR>\/bin/\/opt\/bin/g' \                           |
+  |	-i -e 's/<INSTALLDIR>\/lib/\/opt\/lib/g' /opt/bin/ifort              |
+  |                                                                          |
+  |  sed -i -e 's/<INSTALLDIR>\/include/\/opt\/include/g' /opt/bin/ifort.cfg |
+  |                                                                          |
+  |  sed -i -e 's/<INSTALLDIR>\/licenses/\/opt\/doc\/ifc\/licenses/g' \      |
+  |	-i -e 's/<INSTALLDIR>\/bin/\/opt\/bin/g' \                           |
+  |	-i -e 's/<INSTALLDIR>\/lib/\/opt\/lib/g' \                           |
+  |	-i -e 's/<INSTALLDIR>\/man/\/opt\/man/g' /opt/bin/ifortvars.csh      |
+  |                                                                          |
+  |  sed -i -e 's/<INSTALLDIR>\/licenses/\/opt\/doc\/ifc\/licenses/g' \      |
+  |	-i -e 's/<INSTALLDIR>\/bin/\/opt\/bin/g' \                           |
+  |	-i -e 's/<INSTALLDIR>\/lib/\/opt\/lib/g' \                           |
+  |	-i -e 's/<INSTALLDIR>\/man/\/opt\/man/g' /opt/bin/ifortvars.sh       |
+  |                                                                          |
+  |  sed -i -e 's/<installpackageid>/l_fc_p_8\.1\.021/' \                    |
+  |	/opt/doc/ifc/fsupport                                                |
+  |                                                                          |
+  |  echo "source /opt/bin/ifortvars.sh" >> /etc/profile                     |
+  |__________________________________________________________________________|
+
+
+Configure the debugger by running the following commands:
+
+   __________________________________________________________________________
+  |                                                                          |
+  |  sed -i -e 's/<INSTALLDIR>\/licenses/\/opt\/doc\/icc\/licenses/g' \      |
+  |	-e 's/<INSTALLDIR>\/bin/\/opt\/bin/g' \                              |
+  |	-e 's/<INSTALLDIR>\/man/\/opt\/man/g' /opt/bin/idbvars.csh           |
+  |                                                                          |
+  |  sed -i -e 's/<INSTALLDIR>\/licenses/\/opt\/doc\/icc\/licenses/g' \      |
+  |	-e 's/<INSTALLDIR>\/bin/\/opt\/bin/g' \                              |
+  |	-e 's/<INSTALLDIR>\/man/\/opt\/man/g' /opt/bin/idbvars.sh            |
+  |                                                                          |
+  |  sed -i -e 's/<INSTALLTIMECOMBOPACKAGEID>/l_fc_p_8\.1\.021/' \           |
+  |	/opt/doc/idb/idbsupport                                              |
+  |                                                                          |
+  |  echo "source /opt/bin/idbvars.sh" >> /etc/profile                       |
+  |__________________________________________________________________________|
+
+
+5. Contents
+===========
+
+The compiler package contains codecov, fortcom, fpp, ifcbin, ifortbin,
+profmerge, proforder, profrun, pronto_tool, tselect, xiar, xild and crtxi.o,
+crtxn.o, for_main.o, icrt.internal.map, icrt.link, ifcore_msg.cat, libcprts.a,
+libcprts.so, libcprts.so.5, libcxa.a, libcxa.so, libcxa.so.5, libcxaguard.a,
+libcxaguard.so, libcxaguard.so.5, libguide.a, libguide.so, libguide_stats.a,
+libguide_stats.so, libifcore.a, libifcore.so, libifcore.so.5, libifcore_pic.a,
+libifcoremt.a, libifcoremt.so, libifcoremt.so.5, libifcoremt_pic.a, libifport.a,
+libifport.so, libifport.so.5, libimf.a, libimf.so, libirc.a, libirc_s.a,
+libompstub.a, libsvml.a, libsvml.so, libunwind.a, libunwind.so, libunwind.so.5
+libraries.
+
+The debugger package contains iidb.
+
+
+6. Description
+==============
+
+  * codecov
+
+    Intel Fortran Compiler code-coverage tool
+
+
+  * idb
+
+    Intel Application Debugger
+
+
+  * ifcbin
+
+    Intel Fortran Compiler
+
+
+  * tselect
+
+    Intel Fortran Compiler test prioritizer
+
+--------------------------------------------------------------------------------
+
+CHANGELOG:
+[2004-12-03]
+  * Updated to ifc 8.1.021.
+[2004-09-19]
+  * Updated to ifc 8.1.018.
+[2004-09-09]
+  * Formal changes.
+  * Minor text changes.
+  * Added Command explanations.
+[2004-07-17]
+  * Typographic mistakes corrected.
+[2004-07-10]
+  * Initial revision.

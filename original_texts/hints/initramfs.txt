@@ -1,0 +1,270 @@
+AUTHOR:   Bryan Kadzban <bryan_at_kadzban.is-a-geek.net)
+
+DATE:     2005-11-25
+
+LICENSE:  Creative Commons Attribution-ShareAlike License, version 2.5
+          (http://creativecommons.org/licenses/by-sa/2.5/)
+
+SYNOPSIS: Build a very basic initramfs that creates, then mounts, then
+          runs /sbin/init on, the real root FS device.
+
+DESCRIPTION:
+
+This hint will guide you through the process used to build an initramfs.
+The resulting initramfs will be fairly simple, only able to create the
+device node for the root FS, figure out its filesystem (within limits),
+mount it, then boot to it.
+
+ATTACHMENTS:
+
+http://www.linuxfromscratch.org/hints/downloads/attachments/initramfs/initramfs-scripts.tar.gz
+
+PREREQUISITES:
+
+An LFS system, using kernel 2.6 (preferably the latest stable version) and
+any version of lfs-bootscripts whose mountkernfs script can handle /proc
+being mounted when it runs.  (If your mountkernfs script runs "mountpoint
+/proc", then it's probably OK.)
+
+Also make sure you read Appendix B (possible gotchas)!  You may have to
+modify the /init script on your own.
+
+HINT:
+
+=============================
+Contents:
+=============================
+
+1-8.  Initramfs build instructions
+
+Appendices:
+
+A.    Possible enhancements
+B.    Possible gotchas
+
+=============================
+Initramfs build instructions
+=============================
+
+
+1.  Install LFS, by the book all the way through.  Make sure you have a
+working kernel configuration (i.e., make sure you can boot to it), so that
+if the initramfs fails, you'll still have a fallback.
+
+
+2.  Export some variables to be used later (you may change the first path
+at will):
+
+export INITRAMFS=~/initramfs
+export SCRIPTS=$INITRAMFS/scripts
+
+If you ever exit the shell that you're using to do these instructions, you
+MUST reset these variables before resuming the instructions.
+
+Now create the directories required (there's no need to make $SCRIPTS,
+because the initramfs-scripts tarball will create it):
+
+mkdir -p $INITRAMFS
+
+
+3.  Download klibc from http://www.kernel.org/pub/linux/libs/klibc/, and
+extract it into $INITRAMFS.  (The latest version at the time of this
+writing is v1.1.1.)  Then:
+
+cd $INITRAMFS/klibc-1.1.1
+ln -s /usr/src/linux-2.6.14 linux
+# (substitute the correct path to your LFS kernel's source tree)
+make SUBDIRS=utils
+
+This will build several tools in $INITRAMFS/klibc-1.1.1/utils/static/,
+which will be used by the /init script below to mount filesystems, find
+the filesystem type of the root FS, and nuke-initramfs-then-run-the-
+final-init.  (The last task is carried out by one utility, run-init.)
+
+These tools can be run on any kernel whose version is greater than or
+equal to the version of the kernel that you build them against.  (In this
+example, they may not work under kernels earlier than 2.6.14, since the
+symlink pointed at 2.6.14 when they were built.  Later kernels will
+include backward-compatibility code to keep them working, but earlier
+kernels will not necessarily be forward-compatible.)
+
+
+4.  Extract the initramfs-scripts.tar.gz tarball from inside the $INITRAMFS
+directory.  This will create the scripts (NOTE: not initramfs-scripts!)
+subdirectory, and extract this hint's init and initramfs-list files into
+it.
+
+We must modify the initramfs-list, so that it has the correct directories
+in it.  The kernel's build process (which interprets this file) does not
+substitute shell variables, so we must do this manually:
+
+sed -e "s@\$SCRIPTS@$SCRIPTS@g" -e "s@\$INITRAMFS@$INITRAMFS@g" \
+    <$SCRIPTS/initramfs-list-with-vars >$SCRIPTS/initramfs-list
+
+This will replace all occurrences of $SCRIPTS and $INITRAMFS in the file
+with the current values of the corresponding shell variables.  Make SURE
+you don't miss the backslash escape character before the first $ in each
+sed script!
+
+
+If you feel the need to modify the init script, you should know a few
+things about it.  First, it gets run under bash, so you can use *almost*
+any construct that bash provides.  Second, we will not be copying glibc's
+NSS libraries, so anything that requires NSS will fail.  (Name lookups
+are one thing that require NSS; this is why not everything bash is capable
+of will work.  For instance, the fake /dev/tcp/www.kernel.org/80 "file"
+that bash provides won't actually work, because bash can't look up
+www.kernel.org.)  Third, the last line of the script must *exec* run-init.
+You can't just run run-init without the exec statement, because if you do,
+your final system's /sbin/init won't work properly.  (/sbin/init from the
+sysvinit package needs to have PID 1, otherwise it acts like /sbin/telinit,
+and tries to signal PID 1 to change runlevels.  This obviously won't work
+unless PID 1 is also /sbin/init.  If you don't exec the run-init utility,
+it won't have PID 1, so when it exec's /sbin/init, it won't work right.)
+
+Other than that, this script can do anything you want.  For this hint, it
+just does what I consider the bare minimum (create the root block device,
+mount it, then change over to it and run the final system's /sbin/init).
+
+
+If you need to modify the initramfs-list file, the syntax should be fairly
+obvious.  But run "usr/gen_init_cpio --help" from the base of your kernel
+tree to see the full syntax.  Note that if you create any other directories
+to put files into, you have to list the directory before you list the
+file(s) that go into it.
+
+
+This will create about a 1-2 megabyte initramfs; this is definitely small
+enough to fit in even the most RAM-strapped machine's memory at startup.
+And it deletes everything from the initramfs just before running the final
+system's /sbin/init, so it won't take any more memory while your system
+is running, either.
+
+
+5.  Change the kernel's version string, so you won't overwrite your old
+kernel's modules (if you configured a modular kernel).  The easiest way
+to do this is to edit the kernel's top-level Makefile, and change the
+EXTRAVERSION variable at the top.  Adding "-initramfs" to the end would
+be sufficient, but you can make any change you wish.
+
+
+6.  Build and install the "new" kernel version.  Make sure you set
+CONFIG_INITRAMFS_SOURCE (in menuconfig, it's under "General setup") to
+$SCRIPTS/initramfs-list during the kernel configuration.  (You will need
+to manually expand the $SCRIPTS variable -- the kernel will not do it for
+you.)  DO NOT move the initramfs-list file without updating the kernel
+configuration, and DO NOT move any files referred to by the initramfs-list
+file without updating it!  Files referred to by initramfs-list can be
+upgraded at will (and the next time initramfs-list is touched, the kernel
+will rebuild the whole initramfs, including the new versions), but not
+moved.
+
+The kernel's build process will inspect the file that INITRAMFS_SOURCE
+points to, and build an initramfs using the files, directories, and
+devices described in the file.  (You could also use a directory, and the
+build will create an initramfs from all the files in that directory.
+But I think using a file is simpler, and as above, just touching that
+file and rebuilding the kernel is enough to get upgrades to take effect.
+Also, I'm not sure whether using a directory requires the "cpio" tool to
+be installed; this method definitely does not.)
+
+
+7.  Create a grub menu.lst entry for your initramfs kernel.  *DO NOT*
+overwrite a kernel you already have installed, just in case the initramfs
+doesn't work -- then you'll have a backup way to get a usable system, and
+you will be able to fix the initramfs from there.  It's probably a good
+idea to always keep a kernel around that's not based on an initramfs, just
+in case.
+
+You don't have to pass any special parameters to the kernel to tell it to
+use the initramfs you just built (this is different from an initrd) -- the
+kernel will extract the initramfs image automatically, then check whether
+there's an /init file.  If so, it will try to run it; if not, it will boot
+like normal.  (This also means there's no way to disable the initramfs.)
+
+
+8.  Boot to the new kernel.  If you see the LFS bootscripts running, then
+the initramfs worked.  If you get an error before the bootscripts start,
+then you will have to investigate what's wrong in the initramfs -- probably
+the easiest way is to change the init script and add a "/bin/bash" line
+just before the point where the error happens.  (Some echos won't hurt,
+either.)  Then, you can look around the environment a bit.  But note: you
+don't have very many commands.  Just the shell builtins ("echo *" makes a
+halfway-decent replacement for ls, although it doesn't have an "ls -l"
+mode), cat, mount, mknod, and fstype.
+
+=============================
+Appendices:
+=============================
+
+A.  Possible enhancements:
+
+This initramfs structure can do just about anything.  Here are the first
+few things that I can think of that might be useful:
+
+  (1) LVM, etc. for a root FS -- anything that requires special setup.
+      (In fact, I got the basis for this /init script from an LVM howto.)
+
+  (2) A "make allmodules" kernel -- an initramfs, like an initrd, gives
+      you the ability to build *everything* as a module, including the
+      driver for your root filesystem, the driver for your root disk, etc.
+
+  (3) A LiveCD -- when making a LiveCD, you don't know which device file
+      will be holding the LiveCD image.  So you have to run a script that
+      checks all possible devices to see whether each is actually holding
+      the LiveCD.   The current LiveCD hints use an initrd for this script,
+      but it would not be difficult to adapt them to an initramfs.
+
+  (4) Others -- anything that requires code to run before the kernel init=
+      or root= arguments are interpreted is a prime candidate for an initrd
+      or initramfs.
+
+
+B.  Possible gotchas:
+
+  (1) The /init script creates the correct root device based on the "root="
+      argument given to the kernel.  But it can only handle IDE disks, and
+      then only /dev/hda through /dev/hdd.  Anything not meeting these
+      criteria will give an error when /init gets run.  It is certainly
+      possible to modify /init to handle more devices, and I would suggest
+      you do so if you use a SCSI hard drive or a secondary IDE card.
+
+  (2) The "fstype" program can only handle certain filesystem types.  If
+      the filesystem on your root device is not among the supported list,
+      fstype will output "unknown", and you will get an error from /init.
+      You can test before you create the initramfs, if you have permission
+      to read your raw root device, by running:
+
+      $INITRAMFS/klibc-1.1.1/utils/static/fstype </dev/hdXY
+
+      (where hdXY is your root FS device).  klibc must be built first, of
+      course.  If you get output like this:
+
+      FSTYPE=ext3
+      FSSIZE=whatever
+
+      then fstype is able to recognize your root filesystem type.  But if
+      you get this output:
+
+      FSTYPE=unknown
+      FSSIZE=0
+
+      then fstype will not work for you.  The solution would be to either
+      try a newer version of fstype, or enhance it yourself to recognize
+      your filesystem, or forget about it altogether and just hard-code
+      your root FS type into /init.  (There are some comments in the script
+      showing where to do that if you need to.  It's near the:
+
+      mount -t $FSTYPE $root /new-root
+
+      command.)
+
+
+ACKNOWLEDGEMENTS:
+
+Benjamin Smee (strerror_at_disciplina.net): Writing the LVM-DMcrypt-HOWTO,
+  which this hint's /init script is based on
+
+CHANGELOG:
+
+2005-11-25:  Initial release

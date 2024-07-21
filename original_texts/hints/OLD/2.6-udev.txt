@@ -1,0 +1,489 @@
+AUTHOR: Ryan Reich
+DATE:2004-03-08
+VERSION: 2.0
+LICENSE: GPL
+PRIMARY URI: http://aptchi.homelinux.org/2.6-udev/
+SYNOPSIS: Linux-2.6 and udev for a dynamic /dev
+DESCRIPTION: This will describe how to install Linux-2.6 on your LFS system
+		 and set up dynamic device management with udev.
+
+	Introduction
+
+In this hint, I will explain how to turn your plain ol' LFS system into a
+shiny new Linux-2.6 LFS system, without doing a whole lot of recompiling.
+There may be downsides to this, but I haven't noticed any with ordinary
+desktop use. The main reason I wrote this, though, was to describe how to use
+udev/sysfs as a replacement for devfsd/devfs, since I find the documentation
+available to be a little lacking.
+
+PREREQUISITES:
+
+You need to get the following:
+
+		Linux 2.6.*:
+(http://www.kernel.org/pub/linux/kernel/v2.6/)
+
+	Grab the newest one.
+
+		Module-init-tools
+(http://www.kernel.org/pub/linux/utils/kernel/module-init-tools/)
+
+	This package replaces modutils since the module format changed in 2.6.
+	Grab the latest stable version. You're living enough on the edge using
+	2.6 without getting beta software as well.
+
+		Sysfs init script
+(http://www.linuxfromscratch.org/hints/downloads/attachments/2.6-udev/mountsys)
+
+	Just a little script to mount sysfs at boot. It's sensitive to the
+	2.4 vs. 2.6 issue, so it doesn't generate irritating messages if you
+	boot into 2.4 with it.
+
+		Udev
+(http://www.kernel.org/pub/linux/utils/kernel/hotplug/)
+
+	The userspace daemon which handles /dev dynamically, which devfs also
+	did once upon a time, before it was deprecated. This thing is still
+	under development, but the recent versions work fine and if something
+	doesn't work, it's probably a sysfs problem. Just get the latest
+	release.
+
+		Hotplug scripts
+(http://www.kernel.org/pub/linux/utils/kernel/hotplug/)
+
+	Udev relies upon hotplug to do its work, so you need these.
+
+		Busybox (Optional)
+(http://www.busybox.net/)
+
+	An all-in-one utility which incorporates miniscule versions of standard
+	Unix tools. In a major breakthrough, they have almost released version
+	1; get that. You only need this if you want to take the initrd approach
+	to udev. These days memory isn't much of an issue, so it's not strictly
+	necessary to shrink-wrap the initrd...but large kernels and initrds
+	have a way of crashing on boot, and you would be surprised how large
+	this can get if you have to include the shared libraries and everything.
+
+		linuxrc (Optional)
+(http://www.linuxfromsratch.org/hints/downloads/attachments/2.6-udev/linuxrc)
+   
+	A very basic initrd init script, which you only need if you are doing
+	the initrd approach.
+
+		udev init script (Optional)
+(http://www.linuxfromscratch.org/hints/downloads/attachments/2.6-udev/udev)
+
+	A pared-down version of the init script provided with udev, which also
+	does the tmpfs filesystem which I describe.  Only necessary if you are
+	NOT doing the initrd approach.
+
+	Module-init-tools
+
+HINT:
+The first thing you need to do is upgrade your module utilities.  In
+particular, you want to be really careful that you don't overwrite your old
+ones so that, in the very likely event you need to boot back into 2.4 because
+something in 2.6 doesn't work right the first time, you actually can do this
+still. Hence the somewhat extended build process:
+
+	tar xjvf module-init-tools-*.tar.bz2
+	cd module-init-tools-*/
+	./configure --prefix=/
+	make moveold
+	make
+	make install
+	./generate-modprobe.conf /etc/modprobe.conf
+
+		Command explanations:
+
+./configure --prefix=/
+
+Unlike almost everything else in LFS, this is a system utility probably
+required at boot and must reside in /sbin.
+
+make moveold
+
+This copies modprobe, insmod, rmmod, and depmod to *.old (it also does this
+for the man pages). This way, the new modprobe will check first to see your
+kernel version; if you are using 2.4, it calls the .old modprobe instead of
+proceeding itself. Hence no hassle.
+
+./generate-modprobe.conf /etc/modprobe.conf
+
+module-init-tools has a much different system for the modules configuration
+file than did modutils, and correspondingly it is kind enough to give you a
+new file. It will even incorporate definitions you made in your old
+modules.conf, which it will of course leave where it was so that modprobe.old
+can find it if necessary.
+
+		Configuration:
+
+Reading the man page for modprobe and modprobe.conf is recommended, but the
+gist of the changes is that all those confusing and complicated aboves and
+belows and whatnot that went in modules.conf have been replaced with but two
+commands: install and remove. alias still exists, of course. The following
+are thus equivalent (for example):
+
+	below snd-intel8x0 snd-pcm-oss (modules.conf)
+	install snd-intel8x0 /sbin/modprobe snd-pcm-oss; /sbin/modprobe \
+		--ignore-install snd-intel8x0 (modprobe.conf)
+
+This means that if you execute `modprobe snd-intel8x0` in 2.6, modprobe will
+literally run the sequence `modprobe snd-pcm-oss; modprobe snd-intel8x0`. The
+--ignore-install means to ignore the line in the config file when running the
+second modprobe, for of course to do otherwise would result in an endless
+loop. remove works similarly; in general, this syntax is infinitely
+extensible.
+
+	Linux-2.6.*
+
+Now to compile a new kernel. The developers really spent a lot of time
+improving even the build procedure in 2.6, so that numerous conveniences have
+been introduced. For one, it will try to interpret the .config of your
+current kernel, if it's located in /boot/config-`uname -r` (i.e.
+/boot/config-2.4.22 if you are running linux-2.4.22). For two, there are now
+two GUI config interfaces, xconfig and gconfig, using qt and gtk,
+respectively, both better than the original xconfig. You should do:
+
+	tar xjvf linux-2.6.*.tar.bz2
+	cd linux-2.6.*/
+	make mrproper
+	make *config
+	make
+	make modules_install
+	cp arch/$(ARCH)/boot/bzImage /boot/image
+	cp System.map /boot/mapfile
+
+		Command Explanations:
+
+make mrproper
+
+Always make mrproper the first time you use a tree. You never know what might
+have snuck in.
+
+make *config
+
+I like xconfig, personally, but then, I use KDE also. Draw your own
+conclusions. When configuring, do a very careful run-through because the
+options have changed dramatically from 2.4. The CPU selection is different,
+for example, and you really don't want the kernel compiled for the wrong CPU.
+
+Another thing to watch out for is CONFIG_HOTPLUG. In kernels up through
+2.6.3, it's in Bus options -> Hot-pluggable devices near the top of the base
+config menu. In 2.6.4, it's under "General Setup". If you don't have this,
+the hotplug scripts are useless and you can't use udev.
+
+Also, if you plan to use the initrd approach to udev, make sure you enable
+support for an initial ramdisk in the configuration. It's under Device
+Drivers -> Block devices and you need to enable RAM disk support. Since you
+will have an initrd, you might also want to look into the bootsplash patch
+and utilities located at http://www.bootsplash.org. Their 2.6 patch is
+outdated, almost as though they didn't look at their own link; a much newer
+(and for the newest kernels, functional) patch is at ftp.suse.com, which is
+right on the same page.
+
+Finally, read the post-halloween docs at
+http://www.codemonkey.org.uk/docs/post-halloween-2.6.txt to get incredibly
+detailed information on what changed from 2.4. Really.  Do this.
+
+make
+
+What? Did you say I forgot make dep? No, I didn't; it got cut. You don't have
+to specify bzImage either, since Image and zImage have gone the way of the
+dodo. Just make will do. Oh, and they recommend you use gcc-2.95.3 to
+compile; the instructions for this are in the BLFS book, so if you want to
+use this compiler, just specify make CC=/opt/gcc-2.95.3/bin/gcc (path is as
+given in BLFS-5.0).
+
+cp stuff places
+
+Here $(ARCH) is your machine's architecture, likely i386. If it's not, you
+don't need this explanation.
+
+Call the image and System.map whatever you like, so long as System.map is
+called System.map-2.6.*. Yes, now the kernel supports VERSIONED map files, so
+that you don't have to switch stuff around every time you boot into a
+different kernel. Just append the version to the System.map and the kernel
+will find it at boot.
+
+	Sysfs Init Script
+
+You could do the rest in 2.4, but since udev won't work without sysfs, you
+may as well reboot. You may also wish to update your init scripts to mount
+sysfs. I have written a simple init script that should do this; place it in
+/etc/rc.d/init.d, give it 754 permissions, and link it:
+
+	ln -nsf ../mountsys /etc/rc.d/rcsysinit.d/S30mountsys
+
+The number, of course, depends on your setup; it should go after mountproc,
+however, since I put in a line that checks /proc/filesystems to detect
+kernels (like pre-2.5) that do not support sysfs.
+
+Sysfs exports various device-related data; in fact, it exports so much it's
+impossible to figure out what to do with it all. Some of it is useful for
+configuring udev to correctly identify unusual or transientdevices, like USB
+thingies. It's new, though, so I am not sure if anything else uses it aside
+from udev.
+
+	Hotplug scripts
+
+Anyway, now you're running 2.6. The hotplug scripts are easy to install:
+
+	tar xjvf hotplug-*.tar.bz2
+	cd hotplug-*/
+	make install
+
+They're just shell scripts, after all. The README has other suggestions that
+are not strictly necessary. One of the scripts installed is a boot script,
+placed in /etc/rc.d/init.d/hotplug, which you may wish to run at boot. Sadly,
+their script is not LFS-style and is quite hard to make LFS-style, so you
+won't get any nice colored notifications when it runs. Put it somewhere at
+the beginning of the runlevel queue so that it loads your USB, etc. drivers
+before you need them.
+
+	Udev
+
+And finally, we have udev.
+
+	tar xjvf udev-*.tar.bz2
+	cd udev-*/
+	make USE_LOG=false DEBUG=false USE_KLIBC=true INSTALL_DIR=/usr/bin udevdir=/dev
+	make install
+
+		Command Explanations:
+
+make ...
+
+I used to have a patch for this, but it wasn't worth its weight in typos. The
+options are self-explanatory, except USE_KLIBC, which refers to a special
+linux-kernel version of the C library. Greg K-H recommends you use it.
+
+		Configuration:
+
+This is the fun part. Configuring udev itself is an exercise best left to the
+reader; the man page is actually pretty helpful.  Configuration in this case
+means telling udev what to name which devices and what permissions to give
+them; the work is figuring out which device you are trying to name. The
+information you use is drawn from sysfs; in addition, pciutils and usbutils
+are quite helpful (they aren't given in the BLFS book, however).
+
+In order to make /dev truly dynamic, you want to have as little in it as
+possible which is permanent. There are two possibilities for this: to
+maintain a minimal static /dev from which the kernel can boot and then fill
+it up later, or to create the initial /dev from an initrd (of course, you'll
+need a small, static /dev there, but conceptually it is more elegant. Make
+sure you compiled your kernel with initrd support (as suggested above).
+
+	The Non-Initrd Method
+
+First, though, the non-initrd way. This is easy: download my udev boot
+script, put it some place in your boot process after the mountsys script, and
+watch it work. It creates a tmpfs filesystem on /dev of maximum size 100k
+(this is a dramatic overestimate; since device files take up no space, /dev
+will always be 40k. However, each file needs a whole block, and you want
+enough blocks to cover most eventualities.  You also don't want the tmpfs to
+be too large, or else it will hog your memory) and runs udevstart, a
+wonderful program which completely obviates the udev init script distributed
+with the source code. If you want /dev/pts and /dev/shm mounted (and you do)
+make sure that mountfs, or whatever script you have them mounted in, runs
+after the udev script.
+
+	The Initrd Method
+
+Note in the following that we construct the initrd in a real directory and
+only at the end "burn" it into a separate filesystem. This is for two
+reasons: one, so that you can make mistakes. If you did it all on the
+separate filesystem, every wrong turn would unzero part of the filesystem and
+it wouldn't compress as well. Of course, this isn't a boot disk and it sort
+of doesn't mater how big the compressed image is...but it's aesthetic. And
+second, you have more room if you do it on disk.
+
+	Busybox
+
+Busybox has a menuconfig like the linux kernel, which makes it easy to choose
+the utilities you want. Those are, for us,
+
+     * "Build as a static binary" in "Build Options"
+     * chroot, ln, and mkdir in "Coreutils"
+     * ash with "Optimize for size" and "Hide message" in "Another
+       Bourne-like Shell"
+     * freeramdisk, pivot_root, mount, and umount in "Linux system utilities"
+
+Nothing else is necessary. If you plan to use the initrd to load modules as
+well, throw in insmod, rmmod, and modprobe too. Finally, specify an
+installation directory in "Installation options", which will be where we
+construct the initrd. I use /tmp/tmp-initrd. Then make dep && make &&
+make_install.
+
+	Udev for Initrd
+
+Since we'll be using udev to do the work, you need to get it onto the ramdisk
+also. However, I have had issues with it looking for the config file in the
+wrong place, even though (allegedly) you can specify UDEV_CONFIG_FILE as an
+environment variable. I suggest recompiling:
+
+	make clean
+	make USE_LOG=false DEBUG=false USE_KLIBC=true udevdir=/new-root/dev
+	mkdir -p /tmp/tmp-initrd/{etc/udev,new-root}
+	cp etc/udev/udev.{conf,rules,permissions} /tmp/tmp-initrd/etc/udev
+	cp udev udevstart /tmp/tmp-initrd/sbin
+
+We don't need any other files and they hog space, so we just copy these five.
+Make sure they say what you want them to. In particular, make sure udev.conf
+has the devices directory correct, and remember it's relative to
+/tmp/tmp-initrd
+
+	Building the Initial Ramdisk
+
+Now create your linuxrc. As explained (confusingly, if you ask me) by the
+initrd manpage, it's what the kernel runs as init when the initrd is loaded.
+I have provided one which does the same thing as the init script, except also
+does the maintenance operations that an initrd needs to do. Finally, I have
+left a marker @root-dev@ which denotes your root device, and another @fstype@
+on the same line which denotes its filesystem. Kindly replace them with a
+real device and filesystem.
+
+Finally, create /tmp/tmp-initrd/dev and put a few files in it. You need
+console, hd?/hs?, null, ram0, tty[1-9], which you can either create by hand
+or, as a test of your udev installation, using udevstart. The disk is, of
+course, the device on which your root filesystem is located. Just chroot .
+/bin/sh and run udevstart. Exit the chroot environment (which was necessary
+because of the paths we hardwired into udev) and delete the devices you don't
+want.
+
+If you want to use the initrd for module loading, put them in now and modify
+the linuxrc to suit them. Make sure you have no spare files lying around in
+the initrd tree and figure out using du -sh how big it is. Mine is on the
+order of 600k. Create a zeroed-out filesystem as follows:
+
+	dd if=/dev/zero of=initrd-udev bs=640k count=1
+	mke2fs -F -m0 initrd-udev
+	mkdir /initrd
+	mount -o loop initrd-udev /initrd
+
+		Command Explanations
+
+dd if=/dev/zero of=initrd-udev bs=640k count=1
+
+The blocksize of course depends on how big your tree is. What matters here is
+the number of inodes, since it limits how many files you can include, so I
+used more space than necessary.
+
+mke2fs -F -m0 initrd-udev
+
+The -F disables an annoying question, and the -m0 says not to reserve space
+for the superuser, who won't need it.
+
+mount -o loop initrd-udev /mnt
+
+If you are a current udev user following this section to get the initrd up,
+beware that you may not have loop device support if you compiled it as a
+module. Since udev doesn't do automatic module loading like devfs did and
+since loop devices aren't hardware and hence not detected by hotplug, the
+module probably isn't in. Load it first. The /initrd directory is necessary
+for the boot process.
+
+Now cp -a tmp-initrd/* /initrd, make sure your filesystem really was large
+enough by observing any error messsages, unmount /initrd, and gzip -9
+initrd-udev. Put the zipped initrd in /boot
+
+When you boot, make sure the options include "root=/boot/initrd-udev.gz
+init=/linuxrc". linuxrc calls the real init when it's done.
+
+	Closing Remarks
+
+Be careful with your udev.conf in all the sections in which you install one
+(depending on whether you use the initrd, there may be two).  If you used my
+make command you should have the right entries for the path and all; however,
+the default permissions are unnecessarily restrictive: 0600.  You probably
+want to change those to 0666, or else (for example) your sound will probably
+not work.
+
+And speaking of sound: it has been observed that udev doesn't play well with
+the alsa boot script.  In my case, it appeared that the problem was udev
+being slow, or rather, being a process.  The alsa script will load your sound
+card module if necessary, which will create the appropriate data in /sys and
+signal /sbin/hotplug, which will call udev to make the nodes.  However, this
+is all happening in sync with the rest of the bootscript; alsactl doesn't
+know that the devices are being created so it will check as soon as modprobe
+exits, and of course probably not find any devices since there's a rather
+lengthy chain of events occuring in their creation.  The gist of this is that
+I solved the problem by manually running modprobe, then `sleep 1`, and then
+alsactl.  Similar issues may occur with other bootscripts in similar
+situations: the point is that udev is not a kernel filesystem like devfs was,
+and therefore actual time elapses between the end of the modprobe and the
+creation of device nodes.
+
+Also, be aware that sysfs is not yet completely implemented for all drivers,
+and the most glaring exception is the parallel-port driver. If you have a
+parallel-port printer and you want to use it, you must (for now) manually
+create /dev/lp0:
+
+	mknod -m 666 /dev/lp0 c 6 0
+
+If you have other printers you would change the 0 to the appropriate number.
+This necessity is obviously a wart on sysfs at the moment, but remember that
+linux-2.6 is still in its infancy.
+
+In addition, those devices for which sysfs IS implemented often appear in
+places you may not be used to.  To wit: the mouse device appears in
+/dev/input, not /dev or /dev/misc.  This is actually a default rule and not
+kernel policy, but the effect is the same.  So either change your
+XF86Config-4 file or change the rule.  Also, I believe there may be issues
+regarding "legacy" BSD tty's.  I don't use them, so I don't know if they
+should appear; however, my brother reports that they do not, so if you rely
+on them, you might want to consider moving over to Unix98 tty's.
+
+Finally, in the continuing spirit of backwards-compatibility, if you
+currently use devfs you have more work. Obviously you can't mount both devfs
+and ramfs on /dev and expect both to work, and anyway, udev replaces devfs. I
+suggest, therefore, that in configuring the kernel way back above, you make
+sure to disable devfs entirely. Then, modify your devfs boot script:
+
+	mount -t devfs devfs /dev || exit 0
+
+Thus, if devfs is not supported by the kernel (like it is not in your 2.6
+kernel), the script will quit without mounting it and without giving an
+error.
+
+That's it! Hopefully your system boots without too much complaining.
+
+	Errors
+
+None, I hope. However, inevitably I make a typo in a script or forget some
+technicality, so please tell me if I've done this somewhere.
+
+CHANGELOG:
+
+[2004-04-10]
+* Changed version to 2.1
+* Corrected numerous not-really-fatal errors
+
+[2004-03-12]
+* Changed version to 2.0
+* Updated location of CONFIG_HOTPLUG for kernel 2.6.4
+* Added warning about /dev/lp0
+* Removed the udev-lfs patch
+* Created the (optional) udev bootscript
+* Implemented the (optional) initrd procedure
+
+[2004-03-04]
+* Changed filename to 2.6-udev.txt (from 2.6-udev.hint, to be in
+  compliance with the Guidelines).
+* Shortened the synopsis
+* Stylistic changes
+* Removed references to .tar.gz -- who uses these anyway?
+* Added version number 1.1
+* Improved some command explanations
+* Removed reference to `make install`; I do not understand it, I do not use
+  it, and it appears to make assumptions about your system's layout that may
+  not correspond to the LFS layout.
+* Removed the depmod command; silly me, make modules_install does it.
+* Created the mountsys init script
+* Created the udev-lfs patch and simplified the build commands
+* Added the ERRORS section
+* Added a paragraph about the minimal /dev
+* Added a suggestion regarding the use of an initrd
+
+[2004-02-21]
+* Created the hint.

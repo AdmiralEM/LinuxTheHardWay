@@ -1,0 +1,327 @@
+TITLE:		How to build and install XFree86 from sources.
+LFS VERSION:	any
+AUTHOR:		Sergey Ostrovsky <sostrovsky@snip.net>
+
+SYNOPSIS:
+	see TITLE.
+
+HINT:
+
+ver 1.5
+02 FEB 2002
+Seth W. Klein <sk@sethwklein.net>
+- Removed "^OPT^" place holders since people were forgetting to replace them
+  and posting the resulting errors to the mailing lists.
+- Added notes describing the places where optimization flags may be added.
+- Changed this ChangeLog to use non-ambiguous date format.
+
+ver 1.4
+25 JAN 2001
+
+		TABLE OF CONTENTS
+
+1. Preface
+2. Packages to download
+3. Packages installation
+  3.1 Zlib
+  3.2 XFree86 main
+  3.3 XFree86 documentation
+  3.4 Enabling TTF support.
+    3.4.1 FreeType library
+    3.4.2 Ttmkfdir utility
+    3.4.3 TTF coonfiguration
+
+
+1. Preface
+   -------
+      This is a brief guide for XFree86-4.02 installation.
+   It doesn't cover X11 configuration, because the documentation
+   wich comes with X11 is complete and sufficient.
+      For those who are interested in installation just X11,
+   section 3.2 - "XFree86 main" should suffice. You'd need to
+   download X401src-[1-3].tgz only.
+      Starting from v4.0, XFree86 allowes for support TrueType fonts
+   without using a separate font server and here you will find how to
+   enable this support. This part is based on the excellent
+   "XFree86 Font Deuglification HOWTO", found on www.linuxdoc.org,
+   which is advisable to read.
+      For each package I assume you have it unpacked somewhere
+   ( if not explicitely told where to unpack ) and your current
+   directory is the top level directory of unpacked source tree.
+   Also, it is worth nothing that instead of a command like
+   tar -xzpvf blah.tar.gz
+   tar -xzpvf <The Path Where Your Blah Is>/blah.tar.gz should be used.
+      Various instructions reference optimization flags. While they
+   may yield only small performance gains, many people use them. For
+   more information, see the Optimization HINT at
+   http://hints.linuxfromscratch.org/hints/optimization.txt
+
+   Sergey Ostrovsky
+   sostrovsky@snip.net
+
+   (updated, FEB 2002, Seth W. Klein <sk@sethwklein.net>)
+
+2. Packages to download
+   --------------------
+
+   zlib-1.1.3.tar.gz
+	ftp://ftp.uu.net/graphics/png/src
+
+   X402src-1.tgz
+   X402src-2.tgz
+   X402src-3.tgz
+	ftp://ftp.xfree86.org/pub/XFree86/4.0.2/source/
+
+   Xdoc.tgz
+   Xhtml.tgz
+   Xps.tgz
+   Xman.tgz
+	ftp://ftp.xfree86.org/pub/XFree86/4.0.2/binaries/Linux-ix86-glibc22/
+
+   freetype-1.3.1.tar.gz
+	http://freetype.sourceforge.net/download.html#freetype1
+
+   ttmkfdir.tar.gz
+	http://www.joerg-pommnitz.de/TrueType/xfsft.html
+
+3. Packages installation
+   ---------------------
+
+3.1 Zlib
+    ----
+   Although XFree86 bundle has zlib, we are going to configure X11
+   in such a way that XFree86's zlib won't be built. 
+   This is because there is more resent version of zlib.
+   Therefore if your system has already zlib libraries installed,
+   skip this section. If not, install it now.
+
+3.1.1
+   In Makefile.in find target rule
+	$(SHAREDLIB).$(VER):
+   In this and the next lines you'll see
+   $(OBJS). In these two lines insert $(OBJA) after each occurence
+   of $(OBJS), so it'll look like
+	$(OBJS) $(OBJA)
+
+3.1.2
+   Subdirectory ./contrib has in turn several subdirectories,
+   each for particular processor architecture, i.e.asm586, and so on.
+   There are Assembler source files for time-critical functions.
+   Run
+
+	cp -v contrib/< dir for your processor architecture >/match.S ./
+
+3.1.3
+   The "-O2" below may be replaced with your preferred optimization flags.
+
+   Run
+
+	CFLAGS="-DASMV -O2"	\
+	./configure		\
+	--prefix=/usr		\
+	--shared
+
+	OBJA=match.o make -e
+
+	make install
+
+3.1.4
+   We just built and installed shared libraries. Some packages
+   require static libraries also, so it would make sense to build
+   these now.
+
+   Repeate steps 3.1.1 - 3.1.3, this time omit "--shared" in 3.1.3.
+
+3.1.5
+   Run
+	cp -va zlib.3 /usr/share/man/man3
+
+3.2 XFree86 main
+    ------------
+
+3.2.1
+   Run
+
+   cp config/cf/xf86site.def config/cf/host.def
+
+
+3.2.2
+   This config/cf/host.def file has set of definitions which
+   commented out. Uncomment and set to appropriate value
+   ( or just type in everything ) following definitions.
+   Drivers for some specific videocards, or these supporting
+   specific technology might require linkage with libdl.so.
+   If that's your case, append '-ldl' to DefaultGcc2i386Opt
+   ( below ).
+   
+---
+Ed. note: Remember that you are editing a C header file here, and that comments
+are of this kind:
+/* comment */
+and not of this kind:
+# comment
+So do not remove the '#' at the beginning of the line, just remove the line
+containing "*/" after the #define statement and add a '/' after the '*' just
+before the #define statement.
+
+Also, the "-O2" below may be replaced with your preferred optimization flags.
+---
+
+#define DefaultGcc2i386Opt      -O2 -fno-strength-reduce -pipe -ldl
+
+#define	DefaultCCOptions        -Wall
+
+#define TermcapLibrary          -lncurses
+
+#define XF86CardDrivers		/* Here list your driver(s) */
+
+#define XInputDrivers           mouse void
+
+#define InstallXinitConfig      YES
+
+#define InstallXdmConfig        YES
+
+#define InstallFSConfig         YES
+
+#define BuildSpecsDocs		YES
+
+#define SpecsDocDirs		CTEXT GL ICCCM X11 Xext Xmu Xv i18n xterm
+
+#define BuildAllSpecsDocs	YES
+
+3.2.3
+   in the file config/cf/site.def
+   find
+
+#ifndef SiteIConfigFiles
+#define SiteIConfigFiles $(IRULESRC)/xf86site.def $(IRULESRC)/host.def
+#endif
+
+   and insert after it
+
+#ifndef	HasZlib
+#define	HasZlib		YES
+#endif
+
+#ifndef	HasNCurses
+#define	HasNCurses	YES
+#endif
+
+3.2.4 Run
+
+   make World
+
+   make install
+
+   make install.man
+
+   Insert in /etc/ld.so.conf
+
+        /usr/X11R6/lib
+
+   and run ldconfig
+
+3.2.5 Now configure X11. Consult the documentation how to run
+      xf86config.
+
+3.3 XFree86 documentation
+    ---------------------
+   The quality of documentation - related part of installation
+   leaves large place for improvements.
+   Quite a few files do not get installed, or are not properly
+   converted from source format to target - .html, .ps, etc.
+   This is why those who are interested in documentation might
+   want to re-install docs as follows :
+
+3.3.1
+   Run
+
+	cd /usr/X11R6
+
+	rm lib/X11/doc/*
+
+	tar -xzpvf Xdoc.tgz
+
+	rm  lib/X11/doc/html/*
+
+	tar -xzpvf Xhtml.tgz
+
+	rm  lib/X11/doc/PostScript/*
+
+	tar -xzpvf Xps.tgz
+
+	rm  -r man/*
+
+	tar -xzpvf Xman.tgz
+
+3.4 Enabling TTF support
+    --------------------
+   To use TrueType fonts we need to have not just fonts but also
+   auxilary files which X server uses like "directory listing" for ttf files
+   installed. One of these files, fonts.scale, colud be created
+   using utility ttmkfdir, which is not included in XFree86-4.02 package.
+   In turn, ttmkfdir requires package freetype-1.x.x installed.
+   However, because ttmkfdir tarball includes the prebuilt executable,
+   one might try to use this executable. In this case, one might decide
+   to skip both installation of freetype-1.3.1 library and building ttmkfdir.
+
+3.4.1 FreeType library
+      ----------------
+
+   Run
+
+	./configure --prefix=/usr/local
+
+	make
+
+	make install
+
+3.4.2 Ttmkfdir utility
+      ----------------
+
+3.4.2.1 Make the following changes in Makefile
+
+	FREETYPE_INCL = $(FREETYPE_BASE)/include/freetype
+
+	FREETYPE_LIB = -L$(FREETYPE_BASE)/lib -lttf
+
+3.4.2.2 Run
+
+	make FREETYPE_BASE=/usr/local
+
+	install -m755 ttmkfdir /usr/local/bin
+
+3.4.3 TTF coonfiguration
+      ------------------
+
+3.4.3.1 Create the /usr/X11R6/lib/X11/fonts/ttf directory.
+   Copy to this directory .ttf fonts you desire.
+
+3.4.3.2 Run
+
+	cd /usr/X11R6/lib/X11/fonts/ttf
+
+	ttmkfdir -o fonts.scale
+
+	mkfontdir
+
+3.4.3.3 Specify which font module the X server should be using
+   in the "Module" section of your XF86Config file :
+
+	Section "Module"
+	Load  "freetype"
+	Load  "speedo"
+	EndSection
+
+   and path to your font directory :
+
+	Section "Files"
+	FontPath "/usr/X11R6/lib/X11/fonts/ttf"
+	EndSection
+
+   Note that only things to add shown.
+
+Now your X server will be capable to render TrueType fonts.
+
+<--- End-of-file
+

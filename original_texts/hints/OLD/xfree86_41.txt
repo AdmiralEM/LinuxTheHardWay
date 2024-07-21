@@ -1,0 +1,153 @@
+TITLE:		Installing XFree86 4.1
+LFS VERSION:	3.x
+AUTHOR:		Matthias S. Benkmann <m.s.b@gmx.net>
+
+SYNOPSIS:
+	This hint describes how to install XFree86 4.1 without any special
+	optimizations. If you want to use optimizations look at the x11 hint.
+	Note however that at the time of this writing it is outdated and has
+	caused problems for some people. As it does contain some information that
+	is not in this hint (and this hint contains some information not in the
+	x11 hint) you should probably read both.
+
+HINT:
+
+Download the newest zlib from
+
+http://www.gzip.org/zlib/
+
+(unless you have zlib already installed).
+
+Install with
+
+./configure --shared &&
+make test &&
+make prefix=/usr install &&
+cp zlib.3 /usr/share/man/man3 &&
+/sbin/ldconfig
+
+
+Download 
+
+X410src-1.tgz
+X410src-2.tgz
+X410src-3.tgz
+
+from the xfree site (I guess that's ftp://ftp.xfree86.org)
+
+Install with (from inside the xc/ directory that the archives extract to):
+
+echo $'#define HasZlib YES\n'  >config/cf/host.def  &&
+echo $'#define HasNCurses YES\n' >>config/cf/host.def  &&
+make World &&
+echo /usr/X11R6/lib >>/etc/ld.so.conf &&
+make install &&
+make install.man &&
+/sbin/ldconfig
+
+
+Configure XFree86 by doing
+
+export PATH=$PATH:/usr/X11R6/bin
+#you will want to put this in .bashrc/.bash_profile
+
+cd /dev
+
+ln -s <you should know>  mouse
+
+#<you should know> is the device for your mouse,
+#/dev/psaux for PS/2, /dev/ttyS0 for COM1
+
+cd /etc/X11
+
+XFree86 -configure
+
+#This will auto-detect your graphics hardware (black screen for several
+# seconds, don't panic. 
+#It creates a file XF86Config.new. Make sure that
+#the information in it is correct (I had a crash that required reset
+# because I had /dev/mouse set up wrong so that it thought I had a
+#PS/2 mouse while I have a normal serial mouse. 
+
+XFree86 -xf86config /etc/X11/XF86Config.new
+
+# This will test the server. You won't get anything but a flimmering
+# 640x480 screen with an annoying pattern and an X shaped moused cursor
+# that you can move (if the mouse works). 
+# Press Ctrl-Alt-Backspace to exit
+
+mv XF86Config.new XF86Config
+
+
+Congratulations. You have installed X. 
+
+But you'll probably want to do some more configuring in XF86Config. Read 
+the XF86Config(5x) manpage. It won't tell you much, though. Maybe you 
+should skip it and read
+/usr/X11R6/lib/X11/XF86Config.eg
+which is a well-commented example.
+
+Some things you will surely want to set are 
+
+Section "InputDevice"
+ Identifier  "Keyboard0"
+ Driver      "keyboard"
+ Option "XkbModel" "pc102"
+ Option "XkbLayout" "<your layout>"
+ Option "AutoRepeat"  "250 30"
+EndSection
+
+and
+
+Section "Monitor"
+ Identifier   "Monitor0"
+ VendorName   "Iiyama"
+ ModelName    "VisionMaster 450"
+ HorizSync    27-102
+ VertRefresh  50-160
+EndSection
+
+Of course you will need to enter the correct values for your monitor. If 
+you set the right values you don't need to fiddle with modelines anymore 
+(what a relief!) because XFree86 will choose an appropriate VESA mode with 
+a high refresh rate. Just specify what mode you want like this:
+
+Section "Screen"
+ Identifier "Screen0"
+ Device     "Card0"
+ Monitor    "Monitor0"
+
+ DefaultDepth 16
+ SubSection "Display"
+  Depth     16
+  Modes   "1024x768"
+  Virtual 1280 960
+ EndSubSection
+EndSection
+
+
+This is all it takes to get a nice virtual screen of 1280x960 with a real 
+resolution of 1024x768 with eye-friendly 85Hz (on my system, it depends on 
+your monitor's capabilities of course).
+
+Now read the XFree86-HOWTO you get from linuxdoc.org. It will give
+you an overview of how X is started. Read the scripts
+/usr/X11R6/bin/startx  and /usr/X11R6/lib/X11/xinit/xinitrc
+These scripts determine what happens when you type "startx".
+
+You can use the command
+
+startx 
+
+now, to get X started with the default setup (twm and some xterms as you 
+can see in .../xinitrc)
+
+Now you may want to do
+
+man /usr/X11R6/man/man*/*
+
+which will let you read all manpages in a row (just press q to go to the 
+next manpage). Once you're through you know more about X than 99% of the 
+people out there ;-)
+
+

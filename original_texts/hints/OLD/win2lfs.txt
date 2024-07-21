@@ -1,0 +1,179 @@
+TITLE:		From Windows to LFS
+LFS VERSION:	any
+AUTHOR:		Paul Campbell paul@cmm.uklinux.net
+
+SYNOPSIS:
+	A hint to guide the newcomer to Linux directly from windows to 
+Linux LFS, via a short lived temporary distro.
+
+HINT:
+
+
+                   From Windows to LFS-book Version 3.0-pre4
+                                       
+     Paul Campbell 2001
+     
+   Should also work with new LFS 3.0 rc-1
+   This document was created Using VIM on BSRG linux i686 (LFS)
+   Available also as HTML @ http://bsrg.dnsalias.org/wintolfs.html
+     _________________________________________________________________
+   
+     This document aims to guide the average windows user along the path
+     to building an LFS system from nothing but source code, as is the
+     LFS way. The credit for most of the document goes to the entire LFS
+     community and the help that I myself revieved from them, when
+     building my own LFS system. This document does not override or
+     contradict any of the essential information found at [1]The Linux
+     From Scratch Website In fact I prefer to draw your attention to
+     this source rather than repeat it here. Good Luck. 
+     _________________________________________________________________
+   
+What you'll need
+
+     * Any modern PC purchased in the last 3 years or so.
+     * A copy of a recent distro (Red Hat, Mandrake, Suse etc.)
+     * About 4Gb HD space, 3Gb Minimum
+     * Time, lots of it
+     * A cdrom (obviously)
+     * Emails to me, or the lfs mailing lists(preferably)
+       for support
+     _________________________________________________________________
+   
+First things first, clear some space.
+
+   For this to work you will require at least 1Gb to install the distro
+   plus at least 2Gb for the LFS system. The actual system is not this
+   size, but the "build" directories during and after compile can be
+   huge! X11 takes a resonable 350Mb to compile from source and mozilla
+   600Mb. If you keep all you source code after you have installed the
+   packages this will amount to around 3Gb or more. There are messures to
+   prevent this, like deleting the source code after you install each
+   app.
+   
+   Clear out a few of your windows drives so that you have empty
+   partitions amounting to about 3Gb.
+   
+   If you only have one partition eg. C:\ you'll have to seek ways to
+   resize that partition to leave 3Gbs free, to repartition. This is very
+   easy in Linux, but not so in Windows. As a last resort you can
+   reinstall windows. If you have used windows for long you will be used
+   to this process by now. You may want to seek advice on using a Linux
+   boot disk and a copy of "part.exe" or linux "fdisk" as M$ fdisk has
+   some serious known bugs.
+   
+   If you are fresh partitioning the drive from empty, I suggest
+   something like:
+     * 1 or 2Gb - For windows C:\ partition
+     * 1 or 2Gb - For windows D:\ partition but it up to you and the
+       space available to you
+     * 1 or 2Gb - For the Linux Distro partition
+     * 2 or 3Gb - For the LFS system
+     * The rest can be used as you please
+       
+   There are many other partitoning issues that are beyond the scope of
+   the document but you can further partition your drive with ease during
+   and after install of the linux.
+   
+   DONT TRUST Microsoft FDISK with you drive It has known bugs and I
+   personally have lost 10Gb of data whilst using M$ fdisk to partition
+   my drive.
+     _________________________________________________________________
+   
+Installing the Linux Distrabution as the host to build on
+
+   You can install most linux distros by booting the CD as normal.
+   
+   The first thing you really need to know is Linux calls it's drives
+   hd<x><n>. Basically your drives are as follows:
+     * hda<n> = Primary Master (first HD)
+     * hdb<n> = Primary Slave (usualy your CDrom)
+     * hdc<n> = Secondary Master
+     * hdd<n> = Secondary Slave
+       
+   Where <n> is a partition number 1234 are primarys partitions and
+   567... are logical parts More than likely you will have your windows
+   partition as hda1 and an extedned as hda2 with logical parts hda5 hda6
+   hda7 etc. This is the way windows does it. Windows can only handle 1
+   primary partition. Linux and most other OSes can use 4.
+   
+   Choose what you are sure of to be your empty partitions made above and
+   format them as ext2 file system. Most Linux distros provides a
+   uitility to do this easily during install at the apropriate time.
+   
+   You will also require a SWAP partition, which should be twice your
+   normal memory unless you have 256Mb or more of ram, in which case
+   256Mb max should be fine. Again there are issues beyond the scope of
+   the document.
+   
+   Install the Linux distrabution, but avoid installing too much stuff if
+   you only have 1 Gb. You will require the devel libraries so install
+   the developement category. You don't need any X11 stuff or KDE/Gnome
+   on this box, it's only to build your own LFS system. If you have only
+   every used windows in your computing history, I would say install KDE
+   if you are frightened by the command line interface as this will at
+   least give you a more familiar enviroment to work in. Again, if you
+   have the space, install them if you want to experiement.
+   
+     Read any documentation you are given with the distro, before during
+     and after the install. A quick beginners guide to Linux should be
+     provided, or you can by a book in most good stores, a investment
+     you will not regret.
+     
+   Don't worry if the system you get doesn't look exactly what you want,
+   it is ONLY to build your LFS system from. You can experiment while you
+   are waiting on the compiling of "gcc" 8-)
+     _________________________________________________________________
+   
+After you can boot your Linux system
+
+   You should now be able to boot into Linux and be presented with the
+   login prompt.
+   
+     This is only an over view of what you will need to build your LFS
+     system, it does not tell you how to find, install or use the
+     software, this documentation is available with your distro, or with
+     the individual packages, get into a habbit of read manuals, 90% of
+     the time the answer is on your own hard-disk already lurking in
+     some documentation directory (/usr/share/doc/) or type "man
+     program_name" for the programs manual.
+     
+   What will I need to have funtioning?
+     * A functioning keyboad and display, duh :)
+     * A working internet connection
+     * An email client
+     * An ftp program (optional)
+     * A web-browser (that can do ftp)
+       
+   What software will you need to find or install?
+     * You will net to at least install "gcc - the compiler"
+     * You will also need the ncurses libraries, which should be
+       available with your distro.
+       
+   Now is the time I suggest you do the following.
+     * Subscribe to lfs-discuss@linuxfromscratch.org mailing list - see
+       [3]Linux From Scratch Website for subscribe info.
+     * Find a working IRC client either on windows or (preffereable) the
+       Linux system (Xchat is good to get started in, this a very
+       opinioned subject but, as with text/code editors), find your way
+       to irc.linuxfromscratch.org #lfs
+       
+   That done your first port of call is the Linux From Scratch book (
+   3.0pre-4 is the current at this time, but version 3,0-rc1 is coming
+   soon. You may like to try the CVS version, ask on the mailing list for
+   advice/info.
+     _________________________________________________________________
+   
+From here I leave you in the capable hands of the LFS community.
+
+   The rest of what you need to know is in the book. If you have trouble
+   you can ask on the mailing lists or irc.linuxfromscratch.org #lfs
+     _________________________________________________________________
+   
+GOOD LUCK!
+
+References
+
+   1. http://www.linuxfromscratch.org/
+   2. paul@cmm.uklinux.net
+   3. http://www.linuxfromstratch.org/
+   4. mailto:paul@cmm.uklinux.net

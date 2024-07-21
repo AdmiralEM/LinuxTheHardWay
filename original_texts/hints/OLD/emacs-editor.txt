@@ -1,0 +1,18 @@
+TITLE:		Emacs hint
+VERSION:	any
+AUTHOR:		Joe Weidenbach <weidenbach@web-weaver.net>
+
+SYNOPSIS:
+	Installing Emacs.
+
+HINT:
+
+Download: ftp://ftp.gnu.org/gnu/emacs/
+
+Download both the emacs and leim tarballs.
+
+Install Emacs by running:
+./configure --with-gcc &&
+make &&
+make install
+

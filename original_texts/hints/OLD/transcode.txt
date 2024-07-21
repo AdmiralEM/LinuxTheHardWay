@@ -1,0 +1,400 @@
+TITLE:		Converting Audio/Video-files using transcode
+LFS VERSION:	any
+AUTHOR:		Alex Kloss <l.x.@gmx.de>
+
+SYNOPSIS:
+	Short Guide how to set up the program transcode, not to forget
+	necessary or simply "must-have"-usable libraries.
+
+HINT:	
+	This short hint to install transcode (after some libs). Thanks
+	to the help of the irc channel #lfs. You'll get a program you
+	can use to rip DVDs, convert, mpeg2 or avi (from your digital
+	camera using libdv) to avi/divx.
+	Since I have neither a digital videocamera nor a firewire card,
+	somebody else will have to write the dv(avi)->avi(divx)
+	section...
+
+DOWNLOADS:
+	transcode (you may want to try the pre-version;
+	http://www.theorie.physik.uni-goettingen.de/~ostreich/transcode/)
+
+ADDITIONAL PREREQUISITES:
+	ogg/vorbis: http://www.xiph.org
+	curl: http://curl.sourceforge.net
+	lame: http://www.mp3dev.org/lame/
+	ffmpeg: http://ffmpeg.souceforge.net
+	libfame: http://fame.sourceforge.net
+	xvid: http://www.xvid.org
+	MPlayer: http://www.mplayerhq.hu/download
+	avifile: http://avifile.sourceforge.net
+	libdv: http://libdv.sourceforge.net
+	Image Magick: http://www.imagemagick.org
+	LZO: http://www.oberhumer.com/opensource/lzo/
+	openquicktime: http://openquicktime.sourceforge.net
+	(currently not supported)
+
+INSTALL:
+	libao, libogg, libvorbis, curl, vorbis-tools
+	============================================
+
+	./configure --prefix=/usr &&
+	make &&
+	make install
+
+	for each will do the job.
+
+
+	openquicktime, libfame
+	======================
+	
+	./configure --prefix=/usr/X11R6 &&
+	make &&
+	make install &&
+	ldconfig
+
+	for each of them should be enough. OpenQuicktime is currently
+	not supported, we're awaiting it at Version 0.7.x.
+	
+
+	ffmpeg, Xvid, MPlayer
+	=====================
+
+	Please check out the Mplayer hint of the same author. Check out
+	ffmpeg's libavcodec from CVS and compile MPlayer with the 
+	"--enable-shared-pp" switch. Compile Xvid as stated in the 
+        hint. If you've used another prefix to MPlayer than the 
+	preselected (/usr/local), transcode will not find either the
+	ffmpeg libavcodecs as the postprocessing lib from MPlayer.
+	You need to
+
+	export CFLAGS+=-I<prefix>/include &&
+	export LDFLAGS+=-L<prefix>/lib
+
+	before you start compiling transcode.	
+
+
+	avifile
+	=======
+
+	./configure --prefix=/usr/X11R6/ \
+	--enable-vorbis --with-sdl-prefix=/usr/X11R6/ \
+	--enable-ffmpeg --enable-vorbis --enable-x86opt \ 
+	--enable-release &&
+	make &&
+	make install
+
+	You can of course choose another prefix. If you don't have SDL
+	installed, let the --with-sdl-prefix-Switch out.
+	
+
+	libdv
+	=====
+
+	This section is not available. If one of you has got the
+	hardware, we could test it. Otherwise there'd be no need for
+	this section anyway, so I can leave it alone :).
+
+	
+	libdvdcss, libdvdread
+	=====================
+
+	./configure --prefix=<wanted prefix> &&
+	make &&
+	make install	
+
+	for each of them will do.
+
+
+	transcode
+	=========
+
+	./configure --prefix=<wanted prefix> &&
+	make &&
+	make install
+
+	For special options, read "./configure --help", but the
+	configure script usually finds anything.
+
+
+APPENDIX I - UTILITY USAGE:
+	transcode contains the following utilties:
+
+	transcode: encoding user interface. Handles the plugins and
+	other programs.
+
+	tccat: concatenate input files (see input plugin section).
+
+	tcdecode: decode input files (to raw video or pcm audio).
+
+	tcdemux: demultiplex A/V stream files (files bearing multiple
+	audio or video streams, eg. VOB-files).
+
+	tcextract: extract single streams eg. from VOB-files.
+
+	tcframe: processes single video frames for different color
+	encodings (RGB <-> YUV; see section Computer Video).
+
+	tcprobe (newest version): indicates input data format.
+
+	tcscan: measures input data.
+
+	avicodec: indicates or changes Codec flag in avifile.
+
+	avidump: dumpt audio or video stream of an given avifile to
+	stdout (for avi conversion or extraction of audio streams).
+
+	avimerge: merges avifiles of the same format.
+
+	avisplit: splits avifiles.
+
+	avisync: shift audio in avifiles for better syncronising.
+
+
+APPENDIX II - USAGE EXAMPLES
+	1. Ripping a DVD
+
+	At first we need to find out how much louder the sound should
+	be, therefore we scan the ac3 stream of our dvd to adept the
+	suggested volume rescale factor for later usage:
+
+	tccat -T 1,1,1 -i /dev/dvd -t dvd -d 0 -L | \
+	tcextract -t vob -x ac3 | tcdecode -x ac3 | tcscan -x pcm -d 1
+	________________________________________________________________
+
+	Command Explanation
+
+	tccat...: giving the dvd vob stream to stdout.
+
+	tcextract...: extract the ac3 audio datas from the vob stream.
+
+	tcdecode...: convert the ac3 stream to PCM audio data.
+	
+	tcscan...: find out about the PCM data.
+	________________________________________________________________
+
+	After 10-30 minutes (depends on the lenght of the DVD), you 
+	should get something like:
+
+(dvd_reader.c) DVD playback time: 01:49:47.19 @ 25.00 fps
+5.1 Mode 48.0 KHz 384 kbps Complete Main Audio Service
+[tcscan] audio frames=164438.40, estimated clip length=7024.39 seconds
+[tcscan] (min/max) amplitude=(-0.360/0.354), suggested volume rescale=2.884
+	
+	If you want to calculate the bitrate for encoding yourself,
+	depending on how big you want the movie to be afterwards,
+	it can be dead helpful to have an idea of what "bitrate" is:
+
+	bitrate is the amount of data per seconds. The amount of data
+	depends on the resolution of video and audio (Video=Graphic
+	resolution [640x480], framerate [25 fps]; Audio=Scan frequency
+	[48000Hz], bits per scan [16bit] and both of course the
+	compression rate and therefor, because of lossy compression, the
+	quality).
+	If you want to compress a dvd to fit on a 700MB CD/R, you need
+	the following calculation:
+
+	Let's assume a movie file size of 680MB, to have the file
+	certainly fit on the CD/R (and leave space for movix2).
+
+	1 MB = 1024 kB, 1 kB= 8 kBit, so 1MB = 1024*8 kbit = 8192 kBit.
+	680MB=696320kbyte=5570560kbit (the bitrate is usually measured
+	in kbps, which means kilobit per second, not kilobyte!)
+	
+	In this example, we take a DVD that is about 1h 50min (most
+	DVDs are), which adds up to 110 min or 6600 sec.
+
+	5570560 kbit / 6600 sec = 844 kbps.
+
+	Now we have the bitrate for both audio and video. If we want a
+	reasonable audio quality, we should use 128 kbps MP3. So we
+	get:
+
+	844 kbps - 128 kbps = 716 kbps.
+
+	This is the video bitrate we're about to use.
+
+	Some films got black borders at the top and bottom. Use your
+	favourite DVD player and a program like kruler to find them out.
+	City of Angels, for example, has at the top 80 and at the bottom
+	64 black pixels
+
+	Now we invoke transcode with the following parametres:
+
+	transcode -i /dev/dvd -x dvd -a 1 -T 1,-1,1 -Y 80,0,64,0 \
+	-s 2.884 -b 128 -w 716 -E 44100 -y divx4 -o test.avi
+	________________________________________________________________
+
+	Command Explanation
+
+	transcode: 
+	is used to invoke the other utilities at once.
+
+	-i /dev/dvd:
+	input file/device is /dev/dvd (could be /dev/cdrom, /dev/hdc, 
+	depending on your system).
+
+	-x dvd:
+	using the dvd input plugin (see Plugin section)
+
+	-a 1:
+	extract the audio channel 1 (0=english, 1 could be german or else,
+	depending on your dvd)
+
+	-T 1,-1,1:
+	extract the DVD title 1, all subtitles, angle 1.
+
+	-Y 80,0,64,0:
+	cutting borders top (80), left (0), bottom (64), right (0).
+
+	-s 2.884:
+	rescale audio data by the factor 2.884 (so it wouldn't be so 
+	silent as on the dvd).
+
+	-b 128:
+	MP3 audio bitrate (kilobits per second) set to 128.
+
+	-w 716:
+	DivX video bitrate (dito) set to 716.
+
+	-E 44100:
+	Audio frequency converted to 44100KHz (which is standard on most
+	systems and therefore much faster to play), conforms CD Quality.
+
+	-y divx4:
+	Using the latest divx4 encoder (see plugin section)
+
+	-o test.avi:
+	Outputs to test.avi.
+	________________________________________________________________
+
+	2. Cutting AVI files.
+
+	You can use transcode as well to cut avi files. Use your
+	favourite avi player (I like mplayer best) to find out, at
+	which frames you want to cut and which pieces you want to merge.
+
+	You could only use I-Frames here, every other frames only
+	contains informations about how the picure differs, not the
+	picture itself.
+
+	Use avisplit and avimerge to cut and merge the film. Invoke both
+	commands to get help.
+
+
+	Other useful examples can be found on the author's page.
+
+
+APPENDIX III - PLUGIN SECTION:
+	transcode uses raw video data and PCM audio data internally, but
+	it features multiple plugins for input/filtering/output:
+
+	import_ac3: importing ac3 (normally used in VOB files on DVDs for
+	multichannel audio like 5.1 dts).
+
+	import_af6: importing avifiles using the avifile library 
+	(version 6.0 required; as long as there are only CVS-versions, 
+	you should try to get the most recent one).
+
+	import_avi: importing avifiles using the old avifile library.
+
+	import_dv: importing from .dv files (like from dvgrab).
+
+	import_dvd: importing directly from DVD.
+
+	import_mp3: Guess. Right! MP3 audio data.
+
+	import_mpeg2: MPEG2 both audio/video data.
+
+	import_null: just reads data from the null device, to import
+	black screen and silence.
+
+	import_nuv: Imports Nuppelvideo, a crippled mjpeg format for
+	fast TV recording.
+
+	import_raw: raw data, like from xawtv.
+
+	import_vob: VOBs are multiplexed mpeg audio/video stream.
+
+	import_yuv4mpeg: haven't found out what this one does...
+
+	filter_32detect: 3:2 pulldown detection filter.
+
+	filter_dilyuvmmx: yuy2 deinterlace filter.
+
+	filter_null: just a template for you writing your own filters.
+
+	filter_yuy2toyv12: YUY2 to YV12 conversion (mostly for dv 
+	video).
+
+
+APPENDIX IV - COMPUTER VIDEO
+	Computer video has become more and more popular, since normal
+	PCs can cope with the necessary bandwidth. To see the problems
+	of Computer video, one has to work into the video basics.
+
+	For further understanding, you need to know that computer video
+	depends on the normal video techniques. The first video device
+	to be popular was simple b/w TV. So you had a stream of
+	brightness data, interrupted by the light ray in the cathode
+	tube to return to 1. the beginning of the next line and 2. to
+	the beginning of the next frame.
+
+	Not that long afterwards, color television was available. Now
+	you had after the brightness peak some data about the color of
+	the dot. The most reminiscent color coding scheme is YUV, where
+	Y is luminescence (color brightness), U and V are for
+	chrominescence (how much the color differs from blue (U) or red
+	(V)). As the human eye has a higher resolution on the
+	luminescence than on the chrominescence, for lossy packing the
+	resolution of the chrominescence is only stored in half the
+	resolution, so you'll get 4 bit Y, and each 2 bit U/V. (YUV2).
+
+	A modern computer monitor works after another color scheme,
+	called RGB scheme, in which each of the colors Red, Green and
+	Blue are stored in their own luminescence. To show normal Video
+	data on your PC screen, you'll have to convert it somehow. This
+	could happen 1. during Capturing (most TV capture cards convert
+	YUV to RGB automatically), 2. during Encoding (If you encode to
+	normal MPEG2, you'll get YUV2 data) or 3. during decoding (If
+	you watch MPEG2 videos, your player does this conversion). For
+	the best result, the conversion should be done when you've got
+	loads of CPU time available anyway, during Encoding.
+
+	The second problem of normal video because of the resolution to
+	be too high, the picture is sent interlaced, meaning you only
+	send every second line in every frame, so that you'll always get
+	a frame with line 1,3,5,... and the next one with 2,4,6,...
+	Since a computer cannot easily distinguish, you could get
+	pictures with comb-like artefacts, not really looking nice.
+	The MPEG2 format also allows interlaced data. You could use
+	filters to de-interlace or simply decrease the resolution.
+
+	The third and worst problem is the amount of data. 1 second of
+	raw audio/video data should be about 20MB. Due to a slow bus
+	system (yes, the PCI bus isn't state of the art anymore), no
+	normal PC can cope with that. The first solution is to compress
+	the data before capturing it. The second is to reduce the
+	resolution.
+
+	Another problem resulting from that big bunch of data is how to
+	store that stuff. In the last years, hard disks were getting
+	cheaper and bigger every month, but it's still not sensible to
+	store the whole stuff uncompressed. The first reasonable format
+	for compressed movie was MPEG1 (MPEG=Motion Picture Encoding
+	Group), which allowed to compress almost by the factor 4. The
+	same developers made the MPEG2 format, which also featured the
+	popular	MPEG2 layer 3 sound format, known today as MP3,
+	and allowed a compression rate up to the factor 20.
+	The next step, MPEG4, was interrupted by the hacking of
+	Microsofts Reference Algorythm by the coder Gej, formerly called
+	DivX ;-). Allowing compression rates up to the factor 100 and
+	more, it's very popular for swapping movies over the Internet.
+	Due to legality reasons of DivX ;-), other programmers started
+	working on equal or better codecs, like OpenDivX, DivX4 and
+	Xvid.
+	
+
+Hope this was helpful.
+Thanks to the help of the #lfs channel.
+Alex Kloss (LX on #lfs on irc.linuxfromscratch.org)

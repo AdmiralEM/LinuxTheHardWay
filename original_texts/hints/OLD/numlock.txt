@@ -1,0 +1,125 @@
+TITLE:          Automatically Enabling NumLock When Booting And Starting X
+LFS VERSION:    All
+AUTHOR:         Tim van der Molen <tbm at home dot nl>
+
+SYNOPSIS:
+        See TITLE.
+
+HINT:
+
+Version 1.7 (January 8, 2003)
+
+This hint describes how you can have NumLock automatically enabled when you
+boot LFS and, as X disables it again, enabled once again when you start X.
+
+1. ENABLING NUMLOCK WHEN BOOTING LFS
+
+To enable NumLock when we boot LFS we will create a boot script. This boot
+script will use setleds to do the actual enabling. setleds is part of the kbd
+package which is part of a standard LFS system. It can also set CapsLock and
+ScrollLock. For more information about setleds, see its man page.
+
+The boot script will enable NumLock on the tty's 1 to 12. It does not take
+start/restart/reload/stop arguments because setleds isn't a daemon; it just
+enables or disables a LED and then exits again.
+
+Type the following to create the boot script:
+
+cat > /etc/rc.d/init.d/numlock << "EOF"
+#!/bin/bash
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+echo "Enabling NumLock..."
+for tty in /dev/tty{1,2,3,4,5,6,7,8,9,10,11,12}; do
+    setleds -D +num < $tty
+done
+
+evaluate_retval
+EOF
+
+And make it executable:
+
+chmod a+x /etc/rc.d/init.d/numlock
+
+Next to do, is creating a symlink from the /etc/rc.d/rcsysinit.d directory to
+the boot script so it is actually invoked when LFS is booted. Type the
+following:
+
+ln -s /etc/rc.d/init.d/numlock /etc/rc.d/rcsysinit.d/S90numlock
+
+2. ENABLING NUMLOCK WHEN STARTING X
+
+For some reason, X thinks it is appropriate to disable NumLock when it is
+started which can be found very annoying. Luckily, there are different ways to
+have it enabled again automatically.
+
+If you use KDE, you can have it enabled in Control Center > Peripherals >
+Keyboard > Advanced.
+
+Also you can use NumlockX which can be found at
+http://freshmeat.net/projects/numlockx/.
+
+Or you can compile a simple C program yourself as described in the SuSE Support
+Database (http://sdb.suse.de/en/sdb/html/cg_x11numlock.html), which is to be
+discussed here.
+
+Type the following to create the C source file:
+
+cat > xsetnumlock.c << "EOF"
+#include <X11/extensions/XTest.h>
+#include <X11/keysym.h>
+
+int main(void)
+{
+    Display* disp = XOpenDisplay(NULL);
+
+    if (disp == NULL) return 1;
+
+    XTestFakeKeyEvent(disp, XKeysymToKeycode(disp, XK_Num_Lock), True,
+        CurrentTime);
+    XTestFakeKeyEvent(disp, XKeysymToKeycode(disp, XK_Num_Lock), False,
+        CurrentTime );
+    XCloseDisplay(disp);
+
+    return 0;
+}
+EOF
+
+Now, compile it by typing:
+
+gcc -I/usr/X11R6/include -L/usr/X11R6/lib -o xsetnumlock xsetnumlock.c \
+-lX11 -lXtst
+
+This will create a binary xsetnumlock which should be moved to /usr/bin or
+/usr/X11R6/bin, whatever you want.
+
+If gcc complains that it can't find XTest.h and/or keysym.h, do the following:
+1. Unpack the X420src-1.tgz file (if you don't have it already, download it at
+   ftp://ftp.xfree86.org/pub/XFree86/4.2.0/source/). After unpacking, you'll
+   have a directory called xc.
+2. Copy the file xc/include/extensions/XTest.h to
+   /usr/X11R6/include/X11/extensions and/or the file xc/include/keysym.h to
+   /usr/X11R6/include/X11.
+
+And finally, add xsetnumlock to your .xinitrc (which can be found in your home
+directory).
+
+For example, my .xinitrc file looks something like this:
+
+/usr/X11R6/bin/xsetnumlock
+exec wmaker
+
+Congratulations, you're done! From now on, you will always be accompanied by
+your loyal NumLock friend. Enjoy your NumPad.
+
+3. ACKNOWLEDGEMENTS
+
+I am thankful to Manfred Winter and Tushar Teredesai for their comments on this
+hint.
+
+4. CONTACT
+
+Comments, improvements whatsoever on this hint will be received with
+a warm welcome at the e-mail address mentioned in the AUTHOR field above.

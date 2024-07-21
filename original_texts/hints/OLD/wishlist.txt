@@ -1,0 +1,46 @@
+This is a list of hints that have been requested by many people. If you have 
+time to spare and wish to contribute to LFS in some way, you could write one 
+of those:
+
+*  Finish writing the newbie hint.
+   The book is now so good that a lot of newbies succeed at building 
+   an LFS system, and don't realize all the knowledge they have missed 
+   just copying-pasting commands.
+
+*  Write package manager hint that uses a simple script to do the work 
+   (ie: find before installation, find after installation, 
+   diff the two output files and that diff contains the files 
+   installed by that package. Using constructions with cat
+   rm and xargs that file can be parsed and a package can be uninstalled.)
+
+*  Guidelines on how to setup a router/firewall.
+
+*  A DSL-Router hint.
+
+*  mca: An all-in-one MTA hint?
+
+*  Feztaa: get some games running.
+
+*  Declan: An /etc/modules.conf hint.
+
+*  Declan: X Configuration and video modes.
+
+*  Declan: A lazy mail set up for standalone
+   pc with dial up access.
+
+*  Declan: A kernel options hint.
+
+*  Raphael: Xmms
+
+*  Raphael: Galeon
+
+*  Raphael: Syphleed
+
+*  Raphael: Xchat
+
+*  Raphael: GIMP
+
+*  Raphael: GQView
+
+*  Cowart: "Can someone write a hint on how to set up a time
+   sever?"

@@ -1,0 +1,373 @@
+AUTHOR: Eloi Primaux eloi AT bliscat dot org
+
+DATE: 2007-09-30
+
+LICENSE: GNU Free Documentation License Version 2
+
+SYNOPSIS: Setting up a wifi interface using wpa_supplicant and LFS IP
+services
+
+PRIMARY URL:
+http://www.bliscat.org/bliscat/hints/wpa-service/wpa-service-0.24.1.tar.bz2
+
+DESCRIPTION:
+	This hint explains how to set a network service using wpa_supplicant
+ATTACHMENTS:
+
+http://www.linuxfromscratch.org/hints/downloads/files/ATTACHMENTS/wpa-service/wpa-service-0.24.1.tar.bz2
+
+PREREQUISITES:
+
+- A working LFS-6.2 system or newer with wireless capabilities  
+- Almost two networks services like ipv4-static/dhcpcd installed
+- wpa_supplicant (>=0.5.7) and wireless drivers
+ 
+HINT:
+
+0) Requirement and Optional tools
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+0.a) wpa_supplicant 'The core'
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+This is NOT an usual step if you omit something here you won't be able to attach
+your device to any access point
+
+Please use the 0.5.7 version or newer, available at:
+link: http://hostap.epitest.fi/wpa_supplicant
+
+Again, i strongly recommend you to read its README before doing anything.
+wpa_supplicant may need the source of your drivers then edit the .config file
+as described in the README and set all constants according to your system.
+Also when ready install it by executing :
+
+        make prefix=/usr &&
+        make install
+
+1) This Hints
+~~~~~~~~~~~~~
+Well ...
+"wpa-service is a back-end lfs-like service using the front-end wpa_cli of
+(breath here) the back-end componment wpa_supplicant on lfs based systems"
+but this, nobody cares...
+
+
+
+1.1) Install Files and Directories (this is only a proposal)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Extract wpa-service-0.24.tar.bz2 and in the extracted directory and run the
+following commands:
+
+OPION 1 : 
+
+  install -dv -m 700 /etc/sysconfig/network.d
+  install -dv /etc/sysconfig/wpa-service
+  install -dv /etc/sysconfig/network-devices/services
+  install -dv /usr/share/doc/wpa-service
+
+  touch /etc/sysconfig/network.d/netkey
+  chmod -v 600 /etc/sysconfig/wpa-service/netkey
+  install -v -m644 wpa-service-conf /etc/sysconfig/wpa-service/wpa-service.conf
+  install -v -m754 wpa-action-script /etc/sysconfig/wpa-service/wpa-actions
+  install -v -m644 wpa-service.txt /usr/share/doc/wpa-service
+  install -v -m644 wpa-service-iface /usr/share/doc/wpa-service
+  install -v -m755 wpa-service /etc/sysconfig/network-devices/services
+
+  install -m755 wpa-service-rcscript /etc/rc.d/init.d/wpa-service
+  ln -nsf /etc/rc.d/init.d/wpa-service /etc/rc.d/rc3.d/S15wpa-service
+  ln -nsf /etc/rc.d/init.d/wpa-service /etc/rc.d/rc5.d/S15wpa-service
+  ln -nsf /etc/rc.d/init.d/wpa-service /etc/rc.d/rc6.d/K85wpa-service
+  ln -nsf /etc/rc.d/init.d/wpa-service /etc/rc.d/rc0.d/K85wpa-service
+
+  install -d /etc/sysconfig/network-devices/ifconfig.<IFACE>
+  install -v -m644 wpa-service-iface \
+        /etc/sysconfig/network-devices/ifconfig.<IFACE>/wpa-service
+
+  where <IFACE> is your interface
+
+OPTION 2: same as above but in a script
+        ./install.sh <IFACE>
+
+2) Configuration
+~~~~~~~~~~~~~~~~
+
+Network configuration go in the wpa-service-iface
+which is located at /etc/sysconfig/network-device/ifconfig.<IFACE>/wpa-service
+
+WPA/WEP keys go in netkey
+which is located at /etc/sysconfig/network.d/netkey
+
+ 
+2.1) Network configurations (IP):
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+wpa-service can set up your network according to it's SSID, this means
+that if the SSID "DHCP network" manage ip via a dhcp server, wpa-service will
+use the SSID file descriptor to set up you network when connecting to the SSID
+network.
+
+Those ssid descriptors are named with the name of the SSID they describe,
+and took place in the /etc/sysconfig/network.d directory.
+
+The "AzErTy" SSID descriptor will be /etc/sysconfig/network.d/AzeRtY
+
+2.1.1) SSID descriptor syntax:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An SSID descriptor is a regular network configuration file as used in LFS BOOK.
+it means that if SSID "IPV4" use ipv4-static, the the descriptor "IPV4" will be
+
+        cat > /etc/sysconfig/network.d/IPV4 << "EOF"
+        ONBOOT=yes
+        SERVICE=ipv4-static
+        IP=192.168.1.1
+        GATEWAY=192.168.1.2
+        PREFIX=24
+        BROADCAST=192.168.1.255
+        EOF
+
+and if the "DHCP" SSID use dhcp :
+
+        cat > /etc/sysconfig/network.d/DHCP << "EOF"
+        ONBOOT="yes"
+        SERVICE="dhcpcd"
+        DHCP_START="-o"
+        DHCP_STOP="-k -o"
+	# the '-o' prevent your interface being destroyed by dhcpcd 
+
+        # Set PRINTIP="yes" to have the script print
+        # the DHCP assigned IP address
+        PRINTIP="no"
+
+        # Set PRINTALL="yes" to print the DHCP assigned values for
+        # IP, SM, DG, and 1st NS. This requires PRINTIP="yes".
+        PRINTALL="no"
+        EOF
+
+for convenience, wpa_actions fall back to /etc/sysconfig/network.d/AUTO when
+no SSID descriptor is available.
+
+Then install a common/automatic network configuration:
+I use dhcpcd:   
+
+        cat > /etc/sysconfig/network.d/AUTO << "EOF"
+        ONBOOT="yes"
+        SERVICE="dhcpcd"
+        DHCP_START="-o"
+        DHCP_STOP="-k -o"
+	# the '-o' prevent your interface being destroyed by dhcpcd
+
+        # Set PRINTIP="yes" to have the script print
+        # the DHCP assigned IP address
+        PRINTIP="no"
+
+        # Set PRINTALL="yes" to print the DHCP assigned values for
+        # IP, SM, DG, and 1st NS. This requires PRINTIP="yes".
+        PRINTALL="no"
+        EOF
+
+3) The netkey file (The network keys description) 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This file was previously named wpa_supplicant.conf
+but because i will only use it to store WPA/WEP key, i renamed it netkey and
+moved it to /etc/sysconfig/network.d/netkey
+
+The wpa_supplicant README and wiki explain the composition of this file.
+
+The file syntax is the wpa_supplicant.conf file syntax, it is specific
+to the wpa_supplicant program and only depends of the programmer choice, thus
+instead of explaining you of how this file is read, i will show you a set of
+command to create a config file with wpa_supplicant.
+
+in a bash shell execute:
+
+wpa_passphrase <ssid> [passphrase] >> /etc/sysconfig/network.d/netkey
+
+Where <ssid> is the name of the access point and where [pasphrase] is
+your ...
+pass-phrase.
+
+Now edit the newly created netkey file:
+Which should contains something similar to:
+
+network={
+        ssid="ssid"
+        #psk="passphrase"
+        psk=2b1d17284c5410ee5eaae7151290e9744af2182b0eb8af20dd4ebb415928f726
+}
+
+You will directly see that you can define more than one network in this
+file, that's why wpa_supplicant is very nice: it chooses automatically in its
+configuration file the best (aka secure and available) network to connect.
+
+4) Geting over troubles (and tunning your network)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+open a new console and launch in the foreground wpa_supplicant in debug
+mode:
+
+wpa_supplicant -g/var/run/wpa_supplicant-global \
+               -P/var/run/wpa_supplicant.pid -ddd
+
+this will make wpa_supplicant to output anything to us.
+
+Now start the wpa_cli in another console:
+
+wpa_cli -g/var/run/wpa_supplicant-global interface_add wlan[X]
+"" [driver] \
+        /var/run/wpa_supplicant
+
+Where wlan[X] is the device name of your network interface and where
+[driver] is
+the name of your driver
+
+examples:
+wpa_cli -g/var/run/wpa_supplicant-global interface_add ath0 "" madwifi \
+        /var/run/wpa_supplicant
+wpa_cli -g/var/run/wpa_supplicant-global interface_add eth1 "" wext \
+        /var/run/wpa_supplicant
+
+if it fail, please have a look to the output of the wpa_supplicant
+daemon
+
+wpa_cli -iwlan[X] -p/var/run/wpa_supplicant
+
+Then in wpa_cli type :
+
+scan
+
+and after some seconds type
+
+scan_result
+
+This will output a list of available networks.
+
+As an example:
+
+root at bliscat:/home/eloi# wpa_cli -iath0 -p/var/run/wpa_supplicant
+wpa_cli v0.4.8
+Copyright (c) 2004-2005, Jouni Malinen <jkmaline at cc.hut.fi> and
+contributors
+
+This program is free software. You can distribute it and/or modify it
+under the terms of the GNU General Public License version 2.
+
+Alternatively, this software may be distributed under the terms of the
+BSD license. See README and COPYING for more details.
+
+
+Selected interface 'ath0'
+
+Interactive mode
+
+> scan
+OK
+> scan_result
+bssid / frequency / signal level / flags / ssid
+00:0f:b5:ee:af:8f       2437    212     [WPA2-PSK-CCMP-preauth] MY_net
+00:10:c6:eb:95:11       2457    205     [WEP]   Wanadoo_5441
+
+
+you can see that my network 'My_net' use WPA2-PSK-CCMP which is WPA-PSK
+with CCMP as group and pairwise
+
+type exit to quit wpa_cli
+
+
+With this output we can now feed the netkey file:
+
+network={
+        ssid="ssid"
+        key_mgmt=WPA-PSK
+        proto=WPA2
+        pairwise=CCMP
+        group=CCMP
+        #psk="passphrase"
+        psk=2b1d17284c54aeaeeaae7151290e9744af2182b0eb8af20dd4ebb415928f726
+}
+
+
+Note if you wish you can only use the human readable pass-phrase,
+then comment it out and comment the hexadecimal pass-phrase
+
+Now kill the last instance of the wpa_supplicant daemon :
+
+killall wpa_supplicant
+
+And test your new configuration file:
+
+wpa_supplicant -d[driver] -iwlan[X] -c[configfile] -dd
+
+example:
+wpa_supplicant -dmadwifi -iath0 -c./netkey -dd
+
+If you see something like SUCCESS it's done, kill it again and copy the
+config
+file to a secure directory:
+
+install -d /etc/sysconfig/network.d
+chmod 700 -v /etc/sysconfig/network.d
+cp netkey /etc/sysconfig/network.d
+chmod 600 -v /etc/sysconfig/network.d/netkey
+
+
+5) The End
+~~~~~~~~~~
+execute:
+
+/etc/rc.d/init.d/network stop
+/etc/rc.d./init.d/wpa-service restart
+/etc/rc.d/init.d/network start
+
+if there is no errors, and your system is connected, then you can safely
+restart
+your computer to see it setting up your wireless card during boot time.
+
+ACKNOWLEDGMENTS:
+ The wireless hint
+ The Wireless HOWTO
+ wpa_supplicant README
+ The madwifi wiki
+ The LFS/BLFS Books
+
+
+CHANGELOG:
+2006 03 10 Second release, first send to lfshint
+2006 03 16 added some words to help wpa_supplicant.conf writing
+2006 03 18 fix wrong paths
+2006 03 31 Rewritten and try to match the LFS-standard thank's to
+archaic's help
+2006 04 01 fix incomplete find commands
+2006 10 15 wpa-service 0.2
+2006 02 14 some typo fix in scripts, removed ifplugd support, and
+wait_for_up function
+2007 03 27 Typo fix, ssid descriptors moved to /etc/sysconfig/network.d
+	this modifiy wpa_actions and wpa_service.conf
+	NETWORKDIR and SERVICESDIR moved to wpa_service.conf
+	version increment to 0.22
+2007 03 27 added missing installation of wpa-service.conf file
+	rename wpa_service.conf to wpa-service.conf
+	this modify all scripts and the core service script
+	remove line dealing with the install of an ifplugd script
+	version increment to 0.23
+2007 06 14 wpa_supplicant.conf renamed to netkey and moved to network.d
+	netkey chmoded to 600
+	wpa-service and network.d to 700
+	wpa-rcscript: renamed to wpa-service-rcscript
+        wpa-service-rcscript: updated
+        wpa-service: removed unused wait_for_up function
+                     '&> /dev/null' replaced by '2>&1 /dev/null'
+                    WPA_CONFIG_FILE is now WPA_KEY_FILE
+                    WPA_CONFIG_DIR is now WPA_KEY_DIR
+        wpa-service-conf: updated (to follow wpa-* change)
+        wpa_action-script: renamed to wpa-action-script
+        hint updated and files are now shipped in a tarball
+        with a very basic install.sh script
+	typo fix in hint        
+        version increment to 0.24
+2007 09 30 bump to version 0.24.1 this is a release fix
+	install script improved
+	fixed typo in wpa-service.conf (wrong wpa-action name)
+	fixed ifdown process bug, ssid connection are stored in file
+		to correctly set down the previously started service
+	Changelog file added.

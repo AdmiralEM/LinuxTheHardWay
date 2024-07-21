@@ -1,0 +1,231 @@
+TITLE:		CD-RW UDF (Packet-CD) filesystem
+LFS VERSION:	3.3 and beyond
+AUTHOR:		Richard Downing <richard.downing@bcs.org.uk>
+
+SYNOPSIS:
+	How to set up LFS to be able to Mount CD-RW drives READ-WRITE.
+
+HINT:
+
+**** WARNING ****
+This hint is obsolete and stored here only for archival purposes.
+Following this hint may damage your hardware in some cases.
+This hint is superseded by the instructions in the BLFS book.
+
+Background.
+-----------
+Recent 2.4.x kernels, as used in LFS from Version 3.3, support the UDF
+filesystem for read only access.  The UDF filesystem is a standard used for
+CD-RW drives (and CD-R and DVD-RAM etc.)  To find out more about the UDF
+filesystem you should check out the Standards Body's websites at
+http://www.osta.org and http://www.ecma.org - I shan't elaborate further here.
+
+The problem is that WRITE access isn't supported, so if you have a CD-RW drive
+you can't use Linux to write to it with a UDF filesystem, all you can do is
+write Disk-at-a-time or Track-at-a-time with CDrecord and friends (see the BLFS
+book for how-to on that).
+
+If, on the other hand, you were using, God forbid, Microsoft Windows (TM), then
+you could 'buy' Adaptec CDDirect, or HP DLA to give you Drive-Letter-Access
+to the drive, just as if it were a (rather slow) fixed disk.  These utilities 
+are often bundled with the drives, which doesn't help if you want to use Linux!
+
+But, fear not, for the courageous help is at hand in the form of a Kernel Patch
+to provide Packet-CD access.  This, combined with some simple tools, allows you
+to provide a full read-write capability as a mounted UDF filestore.  Hopefully, 
+this facility will be incorporated in 2.6 kernels when they arrive.
+
+This hint is how I did it, and only applies to CD-RW drives, I understand that 
+the same approach can be used by those lucky enough to be able to afford DVD-RAM
+drives!  The following websites were my primary sources of information, so start
+there:
+
+for the kernel patches:   http://w1.894.telia.com/~u89404340/patches/packet/
+for the usenet archive:   http://lists.suse.com/archive/packet-writing/
+for the UDF tools:        http://sourceforge.net/projects/linux-udf
+
+Obtain the right patch and apply it to your Kernel.
+---------------------------------------------------
+
+>From the kernel patch site above download the patch for the version of the
+kernel you are using. If you are using  2.4.20, get the packet-2.4.20.patch.  If 
+you are using linux 2.4.19, then get patch-2.4.19-2.patch.Check that the patch 
+you get is the latest dated for your kernel, they seem tobe updated quite often 
+(see the Usenet Archives for why, when etc..)
+
+If you are using a '-pre' or '-ac' kernel you may have to try the nearest patch 
+and then apply any missed chunks manually.  This has been known to work, but you 
+are on your own.  You will know if this applies to you.
+
+Become superuser and move to your linux source directory, then 
+apply the patch with:
+
+    patch -Np1 -i packet-2.4.20.patch
+
+Now run 'make xconfig', or whatever version of kernel config you use (the LFS 
+book uses  'make menuconfig', which is fine)
+
+Go to the section on 'Block Devices' and select:
+    Packet writing on CD/DVD media
+
+If you are into modules you can do it that way as I now do.
+
+Now go to the section on 'File systems' and select the following:
+    UDF files systems support (read only)
+    UDF write support (DANGEROUS)
+
+Despite the note on this latter option saying it only applies to fixed disks and
+DVD-RAM, the patch will make it work with CD-RW too!
+
+Select 'Save and Exit', then build your new kernel exactly as in the LFS book
+with:
+
+    make bzImage
+
+then copy the resulting kernel to /boot as, say, vmlinuz-2.4.19-UDF.
+
+If you are using modules, you now need to
+
+   make modules
+   make modules_install
+   
+The packet writing module is called pktcdvd.o.
+
+I use GRUB as a bootloader, so you will need to read the book and hints on lilo
+if you use that, but set up your boot loader to be able to boot either your old
+kernel or this new one. (Always keep the old kernel bootable, just in case...)
+
+Now reboot with the new kernel, it should be almost identical to your old one.
+
+Note: I think that if you built the packet driver as a module, you need to add:
+    alias block-major-97 pktcdvd
+to your /etc/modules.conf file.
+
+Make the Packet Driver device file.
+-----------------------------------
+
+As superuser, make the file(s) in /dev with:
+
+  mknod /dev/pktcdvd0 b 97 0
+  mknod /dev/pktcdvd1 b 97 1
+  etc...
+
+If you want ordinary users to be able to use CD-RW too, then:
+  chmod 666 /dev/pktcdvd*
+  
+Obtain and Unpack the UDFtools package.
+---------------------------------------
+
+Download the latest package from: http://sourceforge.net/projects/linux-udf,
+the version I used was 1.0.0b2.
+
+Unpack this is the usual way and build it with:
+
+./configure --prefix=/usr &&
+make &&
+make install
+
+You now have three new programs in /usr/bin, complete with man pages which I 
+suggest you read about now.:
+
+   cdrwtool - a tool to do various jobs on your CD-RW drive and disks.
+   mkudffs  - to create an UDF filesystem (on your hard disk if you want)
+   pktsetup - a tool to setup and tear down packet drive associations.
+   
+Using the tools.
+----------------
+
+Lets suppose you have a CD-RW disk straight out of the box, and want to prepare
+it for use.  Like me, your CD-RW drive is on /dev/scd0.
+
+    cdrwtool -d /dev/scd0 -q
+
+will format the new disk.  (By the way, unlike CDRecord, UDFtools don't need
+ide-atapi devices to be made fake scsi devices)
+
+    pktsetup /dev/pktcdvd0 /dev/scd0
+
+associates a packet-driver with your CD-RW drive (this doesn't survive a 
+reboot).
+    mount /dev/pktcdvd0 /mnt/cdrom -t udf -o rw,noatime
+
+will mount your new disk as a read-write filesystem, all ready to use, just like
+any other hard disk.  ('noatime' just speeds things up by not updating the 
+access times, CD-RW can be a little slow)
+
+Then you can 'umount /dev/pktcdvd0' in the usual way, when you're done.
+
+Tighter Integration.
+----------------------
+
+I have gone a little further and added the following bootscripts to my 
+system, so that the packet writing elements are set up every time I boot :
+
+cat /etc/rc.d/init.d/packetwrite << "EOF"
+#!/bin/bash
+# Begin $rc_base/init.d/packetwrite
+
+# Based on sysklogd script from LFS-3.1 and earlier.
+# Rewritten by the blessed Gerard Beekmans
+# gerard@linuxfromscratch.org
+#
+# Trivial usage for packet writing added by
+# Richard Downing - richard.downing@bcs.org.uk
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+case "$1" in
+	start)
+		echo "Prepare CDRW drive for Packet Writing..."
+		pktsetup /dev/pktcdvd0 /dev/scd0
+		evaluate_retval
+		;;
+
+	stop)
+		echo "Tearing down CDRW for Packet Writing..."
+		pktsetup -d /dev/pktcdvd0
+		evaluate_retval
+		;;
+
+	*)
+		echo "Usage: $0 {start|stop}"
+		exit 1
+		;;
+esac
+
+# End $rc_base/init.d/packetwrite
+EOF
+
+chmod +x /etc/rc.d/init.d/packetwrite
+cd /etc/rc.d/rc3.d
+ln -s ../init.d/packetwrite S85packetwrite
+cd ../rc0.d
+ln -s ../init.d/packetwrite K10packetwrite
+
+I then create a mount point:
+
+mkdir /mnt/cdrw
+
+and add the following line to /etc/fstab:
+
+/dev/pktcdvd0 /mnt/cdrw udf rw,noauto,noatime,user 0 0
+
+which allows any user to mount the CDRW with:
+
+mount /mnt/cdrw
+
+NOTE the noauto switch is needed as the packerwriter may not be initialised
+when mountfs runs during boot.
+
+End of Hint.
+---------------
+
+That's all I did, and it works for me.  I'd appreciate any feedback you have 
+about this hint.  Good luck.
+Richard.Downing@bcs.org.uk
+
+
+
+
+

@@ -1,0 +1,373 @@
+TITLE:		Kerberos V
+LFS VERSION:	any
+AUTHOR:		Succendo Fornacalis <succendo@atlaswebmail.com>
+
+SYNOPSIS:
+	Installing Kerberos V on clients and the KDC
+
+HINT:
+So, you want to run Kerberos eh? Or just curious what Kerberos is? Well in such
+a case I will give you my explanation of Kerberos. Kerberos is an authentication
+method developed by MIT that is based on tickets. Tickets, as you may know, are
+used in place of the users password, as well as very strong encryption to
+services like telnet. The Tickets are given out by a Key Distribution Center
+(KDC) and then used for authenticating to any other server within it's realm.
+So, in short, users send their password to the KDC, The KDC then gives them a
+Ticket granting Ticket or TGT encrypted using their password as the key. If
+their password is bad, then the TGT will be bogus.  The TGT which expires at a
+given time, permits the client to obtain additional tickets. This gives
+permission to a specific service.  If this hint is acward or just plain bad, let
+me know, or if I just suck at explaining something let me know that too, and
+I’ll make revision. I am, by no means, a writer so I’m sure this could be
+better. And with that, good luck.
+
+
+CONTENTS
+========
+
+  1. Introduction
+  2. Installing Kerberos
+  3. Creating Configs
+  4. Adding Support
+  5. Creating Bootscripts
+
+
+Software used/mentioned/etc in this hint
+========================================
+Kerberos V: http://web.MIT.edu/network/Kerberos-form.html
+Samba 2.2.2: ftp://ftp.samba.org/pub/samba/samba-2.2.2.tar.gz
+OpenSSL: http://www.openssl.org/source/openssl-0.9.6b.tar.gz
+SSH: ftp://ftp.ssh.com/pub/ssh/ssh-3.0.1.tar.gz 
+
+Installing Kerberos V
+=====================
+cd src &&
+/configure --prefix=/usr &&
+make distclean &&
+make &&
+make check &&
+make install
+
+If you want to keep everything after the LFS install seperatate, you can give it
+the prefix /usr/local. Just make sure you change the ./configure lines to
+/usr/local.
+
+This will compile the Kerberos tools, and a telnetd with kerberos support.
+
+Setting up KDC
+==============
+see man krb5.conf and man kdc.conf
+the config files are built much like a windows .ini file.  The realm is usually
+the domain in caps.  Below are commands that I used for my configs, only a few
+changes are needed.
+
+KDC Configuration:
+
+cat > /etc/krb5.conf << "EOF"
+[libdefaults]
+    ticket_lifetime = 600
+    default_realm = NOVASTAR.WOX.ORG
+    default_tkt_enctypes = des3-hmac-sha1 des-cbc-crc
+    default_tgs_enctypes = des3-hmac-sha1 des-cbc-crc
+
+[realms]
+    NOVASTAR.WOX.ORG = {
+        kdc = SockPuppet.novastar.wox.org:88
+        admin_server = SockPuppet.novastar.wox.org:749
+        default_domain = novastar.wox.org
+    }
+
+[domain_realm]
+    .novastar.wox.org = NOVASTAR.WOX.ORG
+    novastar.wox.org = NOVASTAR.WOX.ORG
+
+[logging]
+    kdc = FILE:/var/log/krb5kdc.log
+    admin_server = FILE:/var/log/kadmin.log
+    default = FILE:/var/log/krb5lib.log
+EOF
+
+cat > /etc/kdc.conf << "EOF"
+[kdcdefaults]
+    kdc_ports = 88,750
+
+[realms]
+    NOVASTAR.WOX.ORG = {
+        database_name = /usr/var/krb5kdc/principal
+        admin_keytab = /usr/var/krb5kdc/kadm5.keytab
+        acl_file = /usr/var/krb5kdc/kadm5.acl
+        dict_file = /usr/var/krb5kdc/kadm5.dict
+        key_stash_file = /usr/var/krb5kdc/.k5.NOVASTAR.WOX.ORG
+        kadmind_port = 749
+        max_life = 10h 0m 0s
+        max_renewable_life = 7d 0h 0m 0s
+        master_key_type = des3-hmac-sha1
+        supported_enctypes = des3-hmac-sha1:normal des-cbc-crc:normal
+    }
+EOF
+
+To add Kerberos V4 support, add des-cbc-crc:v4 to the supported_enctypes line.
+
+add Kerberos to /etc/services with these commandi (note that there daemons can
+be run an any server within the relm):
+
+echo "kerberos      88/udp    kdc    # Kerberos V5 KDC" >>/etc/services
+echo "kerberos      88/tcp    kdc    # Kerberos V5 KDC" >>/etc/services
+echo "klogin        543/tcp          # Kerberos authenticated rlogin"
+>>/etc/services
+echo "kshell        544/tcp   cmd    # and remote shell" >>/etc/services
+echo "kerberos-adm  749/tcp          # Kerberos 5 admin/changepw"
+>>/etc/services
+echo "kerberos-adm  749/udp          # Kerberos 5 admin/changepw"
+>>/etc/services
+echo "krb5_prop     754/tcp          # Kerberos slave propagation"
+>>/etc/services
+echo "eklogin       2105/tcp         # Kerberos auth. & encrypted rlogin"
+>>/etc/services
+echo "krb524        4444/tcp         # Kerberos 5 to 4 ticket translator"
+>>/etc/services
+
+add Kerberos servers to inetd.conf with these commands. This only allows
+authentification through kerberos if you want to allow nono kerberos access to
+telnet (why?) ftp sh etc. have a look at the man pages (make sure you find and
+remove ftp, telnet, shell, login, and exec from you're config)
+
+echo "klogin  stream  tcp  nowait  root  /usr/sbin/klogind klogind -k -c" >>
+/etc/inetd.conf
+echo "eklogin stream  tcp  nowait  root  /usr/sbin/klogind klogind -k -c -e" >>
+/etc/inetd.conf
+echo "kshell  stream  tcp  nowait  root  /usr/sbin/kshd kshd -k -c -A" >>
+/etc/inetd.conf
+echo "ftp     stream  tcp  nowait  root  /usr/sbin/ftpd ftpd -a" >>
+/etc/inetd.conf
+echo "telnet  stream  tcp  nowait  root  /usr/sbin/telnetd telnetd -a valid" >>
+/etc/inetd.conf
+
+
+Creating the database:
+the creation of the password database is more complex than I would like to cover
+in this hint, MIT has a great howto on the entire prosses at
+http://web.mit.edu/kerberos/www/krb5-1.2/krb5-1.2.2/doc/install.html#SEC42 
+
+
+Setting Up Clients
+==================
+cat > /etc/krb5.conf << "EOF"
+[libdefaults]
+    ticket_lifetime = 600
+    default_realm = NOVASTAR.WOX.ORG
+    default_tkt_enctypes = des3-hmac-sha1 des-cbc-crc
+    default_tgs_enctypes = des3-hmac-sha1 des-cbc-crc
+
+[realms]
+    NOVASTAR.WOX.ORG = {
+        kdc = SockPuppet.novastar.wox.org:88
+        admin_server = SockPuppet.novastar.wox.org:749
+        default_domain = novastar.wox.org
+    }
+
+[domain_realm]
+    .novastar.wox.org = NOVASTAR.WOX.ORG
+    novastar.wox.org = NOVASTAR.WOX.ORG
+EOF
+
+add Kerberos to /etc/services with these command:
+
+echo "kerberos      88/udp    kdc    # Kerberos V5 KDC" >>/etc/services
+echo "kerberos      88/tcp    kdc    # Kerberos V5 KDC" >>/etc/services
+echo "klogin        543/tcp          # Kerberos authenticated rlogin"
+>>/etc/services
+echo "kshell        544/tcp   cmd    # and remote shell" >>/etc/services
+echo "kerberos-adm  749/tcp          # Kerberos 5 admin/changepw"
+>>/etc/services
+echo "kerberos-adm  749/udp          # Kerberos 5 admin/changepw"
+>>/etc/services
+echo "krb5_prop     754/tcp          # Kerberos slave propagation"
+>>/etc/services
+echo "eklogin       2105/tcp         # Kerberos auth. & encrypted rlogin"
+>>/etc/services
+echo "krb524        4444/tcp         # Kerberos 5 to 4 ticket translator"
+>>/etc/services
+
+Adding Support
+==============
+in this section I assume you have openssl installed, if not, go for it. Samba is
+the only daemon that I have come accross in my search that has kerberos V
+suport, if you know of any others, let me know.
+
+Samba: 
+/configure --with-krb5=/usr --with-ssl &&
+make &&
+make install
+
+SSH: Unfortanatly OpenSSH (as of now) does not support Kerberos V. NOTE: SSH's
+support of Kerberos V is EXPERIMENTAL. I take no responsibility if it goes ape
+and eats you're dog. you have been warned.
+/configure --with-kerberos5=/usr --prefix=/usr &&
+make &&
+make install
+
+
+Creating Bootscripts
+====================
+this is the final step in our great adventure together. Creating the boot
+scripts for all of the daemons.
+
+cat > /etc/init.d/kdc << "EOF"
+#!/bin/sh
+# Begin /etc/init.d/kdc
+
+#
+# Include the functions declared in the /etc/init.d/functions file
+#
+
+source /etc/init.d/functions
+
+case "$1" in
+        start)
+                echo -n "Starting Kerberos KDC ..."
+                loadproc krb5kdc
+                ;;
+
+        stop)
+                echo -n "Stopping Kerberos KDC ..."
+                killproc krb5kdc
+                ;;
+
+        restart)
+                $0 stop
+                /usr/bin/sleep 1
+                $0 start
+                ;;
+
+        status)
+                statusproc krb5kdc
+                ;;
+
+        *)
+                echo "Usage: $0 {start|stop|restart|status}"
+                exit 1
+                ;;
+
+esac
+
+# End /etc/init.d/kdc
+EOF
+
+cat > /etc/init.d/samba << "EOF"
+#!/bin/sh
+# Begin /etc/init.d/samba
+
+#
+# Include the functions declared in the /etc/init.d/functions file
+#
+
+source /etc/init.d/functions
+
+case "$1" in
+        start)
+                echo -n "Starting Samba ..."
+                loadproc /usr/local/samba/bin/smbd
+                ;;
+
+        stop)
+                echo -n "Stopping Samba ..."
+                killproc smbd
+                ;;
+
+        restart)
+                $0 stop
+                /usr/bin/sleep 1
+                $0 start
+                ;;
+
+        status)
+                statusproc smbd
+                ;;
+
+        *)
+                echo "Usage: $0 {start|stop|restart|status}"
+                exit 1
+                ;;
+
+esac
+
+# End /etc/init.d/samba
+EOF
+
+cat > /etc/init.d/sshd << "EOF"
+#!/bin/sh
+# Begin /etc/init.d/ssh
+
+#
+# Include the functions declared in the /etc/init.d/functions file
+#
+
+source /etc/init.d/functions
+
+case "$1" in
+        start)
+                echo -n "Starting SSH ..."
+                loadproc sshd
+                ;;
+
+        stop)
+                echo -n "Stopping SSH ..."
+                killproc sshd
+                ;;
+
+        restart)
+                $0 stop
+                /usr/bin/sleep 1
+                $0 start
+                ;;
+
+        status)
+                statusproc sshd 
+                ;;
+
+        *)
+                echo "Usage: $0 {start|stop|restart|status}"
+                exit 1
+                ;;
+
+esac
+
+# End /etc/init.d/ssh
+EOF
+
+chmod 754 /etc/init.d/kdc &&
+chmod 754 /etc/init.d/samba &&
+chmod 754 /etc/init.d/ssh &&
+ln -sf ../init.d/kdc /etc/rc0.d/K400kdc &&
+ln -sf ../init.d/kdc /etc/rc1.d/K400kdc &&
+ln -sf ../init.d/kdc /etc/rc2.d/K400kdc &&
+ln -sf ../init.d/kdc /etc/rc3.d/S600kdc &&
+ln -sf ../init.d/kdc /etc/rc4.d/S600kdc &&
+ln -sf ../init.d/kdc /etc/rc5.d/S600kdc &&
+ln -sf ../init.d/kdc /etc/rc6.d/K400kdc &&
+ln -sf ../init.d/samba /etc/rc0.d/K401samba &&
+ln -sf ../init.d/samba /etc/rc1.d/K401samba &&
+ln -sf ../init.d/samba /etc/rc2.d/K401samba &&
+ln -sf ../init.d/samba /etc/rc3.d/S601samba &&
+ln -sf ../init.d/samba /etc/rc4.d/S601samba &&
+ln -sf ../init.d/samba /etc/rc5.d/S601samba &&
+ln -sf ../init.d/samba /etc/rc6.d/K400samba &&
+ln -sf ../init.d/ssh /etc/rc0.d/K402ssh &&
+ln -sf ../init.d/ssh /etc/rc1.d/K402ssh &&
+ln -sf ../init.d/ssh /etc/rc2.d/K402ssh &&
+ln -sf ../init.d/ssh /etc/rc3.d/S602ssh &&
+ln -sf ../init.d/ssh /etc/rc4.d/S602ssh &&
+ln -sf ../init.d/ssh /etc/rc5.d/S602ssh &&
+ln -sf ../init.d/ssh /etc/rc6.d/K402ssh 
+
+
+Further Reading
+===========
+
+Apache hint: http://hints.linuxfromscratch.org/hints/apache+php4+sql.hint.txt
+Samba hint: http://hints.linuxfromscratch.org/hints/samba.txt
+MIT's Docs on Kerberos:
+http://web.mit.edu/kerberos/www/krb5-1.2/index.html#documentation
+
+

@@ -1,0 +1,325 @@
+TITLE:		Installing Docbook DTDs and Tools
+
+LFS VERSION:	Any.
+
+AUTHOR:		Tushar Teredesai <Tush@Yahoo.Com>
+
+SYNOPSIS:
+	How to install docbook DTDs, tools and utilities.
+
+HINT:
+
+The primary location for this site is <http://tushar.lfsforum.org>, thanks to
+Deutsche LFS Foren. The latest version of the hint and any relevant patches are
+available at that site. Please refer to the primary location before submitting
+bug-reports/enhancements to this hint.
+
+You may freely copy this document or create derivate works or distribute the
+document in any format. At your discretion, you may give credit to the original
+author:)
+
+Use the hint at your own risk. Neither the author, nor the Linux From Scratch
+project accepts any reponsibility for anything that happens when using these
+documents or associated files.
+
+An appropriate place to discuss this hint is blfs-support MailingList/NewsGroup
+at LinuxFromScratch.Org.
+
+
+Change Log:
+[2002-12-04]
+	* Added URIs of interest.
+	* Added OpenSP package.
+	* Added descriptions for packages.
+	* Modified some installation instructions.
+[2002-08-16]
+	* Added files to be downloaded.
+[2002-08-07]
+	* Made some changes so that it is easier to upgrade.
+	* Added some more catalogs.
+[2002-07-08]
+	* First public version.
+
+Pre-requisites (post LFS):
+	* InfoZip Unzip <http://freshmeat.net/projects/unzip/>
+	* LibXML <http://freshmeat.net/projects/libxml/>
+
+
+WARNING:
+This hint does not stick to the 80 column limit for the commands since the
+commands are very long and difficult to break strings without applying
+unneccessary variable manipulation.
+
+We will install scripts so that will allow centralized SGML and XML catalogs and
+hence there won't be any need for setting the SGML_CATALOG_FILES variable. Most
+of the installation scripts are straight forward (install package & then install
+catalog). Hence I won't bore you with lot of details.
+
+In each of the following installs the VERSION variable refers to the version you
+are installing and the PREVIOUS variable refers to the previous version of the
+package installed. So set the variables accordingly. If you are installing the
+package for the first time, do not set the PREVIOUS variable. Set the VERSION
+variable to the version you are installing.
+
+The easiest way to use the instructions are to save the instructions into
+individual files and then source the file.
+
+For each of the packages given below, I will mention the URLs of the files to be
+downloaded followed by the instructions. Before downloading the files below,
+download the files from the site mentioned above.
+
+This hint is primarily written for a user wanting to install the prereqs for
+GNOME. Hence note that scrollkeeper has some dependencies that may not have been
+installed. So don't install scrollkeeper right now but come back to check on the
+instructions when scrollkeeper is installed as per the GNOME instructions.
+
+Also, you don't need to install all packages to satisfy GNOME. You may skip
+docbook-utils and docbook-xml-simple-dtd.
+
+
+sgml-common (0.6.3):
+The sgml-common package gathers very basic stuff necessary to work with SGML and
+XML, such as xml.dcl, a SGML declaration of XML; iso-entities, a list of the
+basic SGML ISO entities; and install-catalog, a script used to add entries to
+(or remove entries from) centralized catalogs whose entries are pointers to SGML
+open catalogs, as defined by OASIS. It also includes sgmlwhich, a small script
+which prints where the SGML main configuration file is located (provided for
+compatibility with non-FHS systems).
+
+* http://freshmeat.net/projects/sgml-common/
+
+* ftp://sources.redhat.com/pub/docbook-tools/new-trials/SOURCES/sgml-common-0.6.3.tgz
+
+	./configure --prefix=/usr --sysconfdir=/etc --mandir=/usr/share/man
+	make
+	make install
+	ROOTCATALOG=/etc/xml/catalog
+	DOCBOOKCATALOG=/etc/xml/docbook
+	if [ ! -e ${ROOTCATALOG} ]; then xmlcatalog --noout --create ${ROOTCATALOG}; fi
+	if [ ! -e ${DOCBOOKCATALOG} ]; then xmlcatalog --noout --create ${DOCBOOKCATALOG}; fi
+	xmlcatalog --sgml --noout --add /etc/sgml/sgml-ent.cat /usr/share/sgml/sgml-iso-entities-8879.1986/catalog
+	xmlcatalog --sgml --noout --add /etc/sgml/sgml-docbook.cat /etc/sgml/sgml-ent.cat
+	xmlcatalog --noout --add "delegatePublic" "-//OASIS//ENTITIES DocBook XML" "file://$DOCBOOKCATALOG" $ROOTCATALOG
+	xmlcatalog --noout --add "delegatePublic" "-//OASIS//DTD DocBook XML" "file://$ROOTCATALOG" $ROOTCATALOG
+	xmlcatalog --noout --add "delegatePublic" "ISO 8879:1986" "file://$ROOTCATALOG" $ROOTCATALOG
+	xmlcatalog --noout --add "delegateSystem" "http://www.oasis-open.org/docbook/" "file://$ROOTCATALOG" $ROOTCATALOG
+	xmlcatalog --noout --add "delegateURI" "http://www.oasis-open.org/docbook/" "file://$ROOTCATALOG" $ROOTCATALOG
+
+
+OpenSP (1.5):
+OpenSP is a library and a set of tools for validating, parsing and manipulating
+SGML and XML documents. The library is written in C++ and can be used to add
+SGML/XML parsing facilities to projects.
+
+* http://freshmeat.net/projects/opensp/
+
+* http://download.sourceforge.net/openjade/OpenSP-1.5.tar.gz
+
+	./configure --prefix=/usr --disable-static --enable-http --enable-default-catalog=/etc/sgml/catalog --enable-default-search-path=/usr/share/sgml --enable-xml-messages
+	make pkgdatadir=/usr/share/sgml/OpenSP-${VERSION}
+	if [ ! -z ${PREVIOUS} ]
+	then
+		install-catalog --remove /etc/sgml/OpenSP-${PREVIOUS}.cat /usr/share/sgml/OpenSP-${PREVIOUS}/catalog
+		install-catalog --remove /etc/sgml/sgml-docbook.cat /etc/sgml/OpenSP-${PREVIOUS}.cat
+	fi
+	make pkgdatadir=/usr/share/sgml/OpenSP-${VERSION} install
+	ln -sf onsgmls /usr/bin/nsgmls
+	ln -sf osgmlnorm /usr/bin/sgmlnorm
+	ln -sf ospam /usr/bin/spam
+	ln -sf ospcat /usr/bin/spcat
+	ln -sf ospent /usr/bin/spent
+	ln -sf osx /usr/bin/sx
+	ln -sf osx /usr/bin/sgml2xml
+	ln -sf libosp.so /usr/lib/libsp.so
+	install-catalog --add /etc/sgml/OpenSP-${VERSION}.cat /usr/share/sgml/OpenSP-${VERSION}/catalog
+	install-catalog --add /etc/sgml/sgml-docbook.cat
+
+
+openjade (1.3.2):
+
+* http://freshmeat.net/projects/openjade/
+
+* http://download.sourceforge.net/openjade/openjade-1.3.2.tar.gz
+
+	./configure --prefix=/usr --enable-http --disable-static --enable-default-catalog=/etc/sgml/catalog --enable-default-search-path=/usr/share/sgml --datadir=/usr/share/sgml/openjade-${VERSION}
+	make
+	if [ ! -z ${PREVIOUS} ]
+	then
+		install-catalog --remove /etc/sgml/openjade-${PREVIOUS}.cat /usr/share/sgml/openjade-${PREVIOUS}/catalog
+		install-catalog --remove /etc/sgml/sgml-docbook.cat /etc/sgml/openjade-${PREVIOUS}.cat
+	fi
+	make install
+	ln -sf openjade /usr/bin/jade
+	ln -sf libogrove.so /usr/lib/libgrove.so
+	ln -sf libospgrove.so /usr/lib/libspgrove.so
+	ln -sf libostyle.so /usr/lib/libstyle.so
+	install -m644 dsssl/catalog /usr/share/sgml/openjade-${VERSION}/
+	install -m644 dsssl/*.dtd dsssl/*.dsl dsssl/*.sgm /usr/share/sgml/openjade-${VERSION}
+	install-catalog --add /etc/sgml/openjade-${VERSION}.cat /usr/share/sgml/openjade-${VERSION}/catalog
+	install-catalog --add /etc/sgml/sgml-docbook.cat /etc/sgml/openjade-${VERSION}.cat
+
+
+docbook-sgml-dtd (3.1, 4.1, 4.2):
+Docbook SGML DTDs. All versions need to be installed simaltaneously. There are
+additional version (3.0 and 4.0) which are not covered in this hint.
+
+* http://freshmeat.net/projects/docbook/
+
+* http://www.oasis-open.org/docbook/sgml/3.1/docbk31.zip
+* http://www.oasis-open.org/docbook/sgml/4.1/docbk41.zip
+* http://www.oasis-open.org/docbook/sgml/4.2/docbook-4.2.zip
+* ftp://sources.redhat.com/pub/docbook-tools/new-trials/SOURCES/docbook-dtd31-sgml-1.0.catalog.patch
+* ftp://sources.redhat.com/pub/docbook-tools/new-trials/SOURCES/docbook-dtd41-sgml-1.0.catalog.patch
+* ftp://sources.redhat.com/pub/docbook-tools/new-trials/SOURCES/docbook-dtd31-sgml-1.0.Makefile
+* ftp://sources.redhat.com/pub/docbook-tools/new-trials/SOURCES/docbook-dtd41-sgml-1.0.Makefile
+
+	V=${VERSION/.}
+	cat docbook-dtd${V}-sgml-1.0.catalog.patch | patch -Np0
+	cat docbook-dtd${V}-sgml-1.0.Makefile > Makefile
+	make install
+	install-catalog --add /etc/sgml/sgml-docbook-dtd${V}.cat /usr/share/sgml/docbook/sgml-dtd-${VERSION}/catalog
+	install-catalog --add /etc/sgml/sgml-docbook-dtd${V}.cat /etc/sgml/sgml-docbook.cat
+
+
+docbook-dsssl (1.77)
+Docbook DSSSL stylesheets.
+
+* http://freshmeat.net/projects/docbook/
+
+* http://download.sourceforge.net/docbook/docbook-dsssl-1.77.tar.gz
+
+	cat docbook-dsssl.Makefile > Makefile
+	if [ ! -z ${PREVIOUS} ]
+	then
+		install-catalog --remove /etc/sgml/dsssl-docbook-stylesheets.cat /usr/share/sgml/docbook/dsssl-stylesheets-${PREVIOUS}/catalog
+		install-catalog --remove /etc/sgml/sgml-docbook.cat /etc/sgml/dsssl-docbook-stylesheets.cat
+	fi
+	make VERSION=${VERSION} install
+	install-catalog --add /etc/sgml/dsssl-docbook-stylesheets.cat /usr/share/sgml/docbook/dsssl-stylesheets-${VERSION}/catalog
+	install-catalog --add /etc/sgml/sgml-docbook.cat /etc/sgml/dsssl-docbook-stylesheets.cat
+
+
+docbook-xsl (1.54.1)
+Docbook XSL stylesheets.
+
+* http://freshmeat.net/projects/docbook/
+
+* http://download.sourceforge.net/docbook/docbook-xsl-1.54.1.tar.gz
+
+	install -d /usr/share/sgml/docbook/xsl-stylesheets-${VERSION}
+	cp -af common extensions fo html htmlhelp images javahelp lib template xhtml /usr/share/sgml/docbook/xsl-stylesheets-${VERSION}
+	if [ ! -f /etc/xml/catalog ]; then mkdir /etc/xml; xmlcatalog --noout --create /etc/xml/catalog; fi
+	if [ ! -e /etc/xml/docbook ]; then xmlcatalog --noout --create /etc/xml/docbook; fi
+	xmlcatalog --noout --add "rewriteSystem" "http://docbook.sourceforge.net/release/xsl/1.45" "/usr/share/sgml/docbook/xsl-stylesheets-${VERSION}" /etc/xml/catalog
+	xmlcatalog --noout --add "rewriteURI" "http://docbook.sourceforge.net/release/xsl/1.45" "/usr/share/sgml/docbook/xsl-stylesheets-${VERSION}" /etc/xml/catalog
+	xmlcatalog --noout --add "rewriteSystem" "http://docbook.sourceforge.net/release/xsl/current" "/usr/share/sgml/docbook/xsl-stylesheets-${VERSION}" /etc/xml/catalog
+	xmlcatalog --noout --add "rewriteURI" "http://docbook.sourceforge.net/release/xsl/current" "/usr/share/sgml/docbook/xsl-stylesheets-${VERSION}" /etc/xml/catalog
+	xmlcatalog --noout --add "delegateSystem" "http://docbook.sourceforge.net/release/xsl/" "file:///etc/xml/docbook" /etc/xml/catalog
+	xmlcatalog --noout --add "delegateURI" "http://docbook.sourceforge.net/release/xsl/" "file:///etc/xml/docbook" /etc/xml/catalog
+
+
+docbook-xml-dtd (4.1.2, 4.2)
+Docbook XML DTD.
+
+* http://freshmeat.net/projects/docbook/
+
+* http://www.oasis-open.org/docbook/xml/4.1.2/docbkx412.zip
+* http://www.oasis-open.org/docbook/xml/4.2/docbook-xml-4.2.zip
+
+	V=${VERSION/.}
+	XML_DTD_DIR=/usr/share/xml/docbook/xml-dtd-${VERSION}
+	ROOTCATALOG=/etc/xml/catalog
+	CATALOG=/etc/xml/docbook
+	install -d ${XML_DTD_DIR}
+	cp -af docbook.cat *.dtd ent/ *.mod ${XML_DTD_DIR}
+	if [ ! -e ${ROOTCATALOG} ]; then xmlcatalog --noout --create ${ROOTCATALOG}; fi
+	if [ ! -e ${CATALOG} ]; then xmlcatalog --noout --create ${CATALOG}; fi
+	xmlcatalog --noout --add "public" "-//OASIS//ELEMENTS DocBook XML Information Pool V${VERSION}//EN" "file://${XML_DTD_DIR}/dbpoolx.mod" $CATALOG
+	xmlcatalog --noout --add "public" "-//OASIS//DTD DocBook XML V${VERSION}//EN" "file://${XML_DTD_DIR}/docbookx.dtd" $CATALOG
+	xmlcatalog --noout --add "public" "-//OASIS//ENTITIES DocBook XML Character Entities V${VERSION}//EN" "file://${XML_DTD_DIR}/dbcentx.mod" $CATALOG
+	xmlcatalog --noout --add "public" "-//OASIS//ENTITIES DocBook XML Notations V${VERSION}//EN" "file://${XML_DTD_DIR}/dbnotnx.mod" $CATALOG
+	xmlcatalog --noout --add "public" "-//OASIS//ENTITIES DocBook XML Additional General Entities V${VERSION}//EN" "file://${XML_DTD_DIR}/dbgenent.mod" $CATALOG
+	xmlcatalog --noout --add "public" "-//OASIS//ELEMENTS DocBook XML Document Hierarchy V${VERSION}//EN" "file://${XML_DTD_DIR}/dbhierx.mod" $CATALOG
+	xmlcatalog --noout --add "public" "-//OASIS//DTD XML Exchange Table Model 19990315//EN" "file://${XML_DTD_DIR}/soextblx.dtd" $CATALOG
+	xmlcatalog --noout --add "public" "-//OASIS//DTD DocBook XML CALS Table Model V${VERSION}//EN" "file://${XML_DTD_DIR}/calstblx.dtd" $CATALOG
+	xmlcatalog --noout --add "rewriteSystem" "http://www.oasis-open.org/docbook/xml/${VERSION}" "file://${XML_DTD_DIR}" $CATALOG
+	xmlcatalog --noout --add "rewriteURI" "http://www.oasis-open.org/docbook/xml/${VERSION}" "file://${XML_DTD_DIR}" $CATALOG
+	xmlcatalog --noout --add "delegatePublic" "-//OASIS//ENTITIES DocBook XML" "file://$CATALOG" $ROOTCATALOG
+	xmlcatalog --noout --add "delegatePublic" "-//OASIS//DTD DocBook XML" "file://$CATALOG" $ROOTCATALOG
+	xmlcatalog --noout --add "delegateSystem" "http://www.oasis-open.org/docbook/" "file://$CATALOG" $ROOTCATALOG
+	xmlcatalog --noout --add "delegateURI" "http://www.oasis-open.org/docbook/" "file://$CATALOG" $ROOTCATALOG
+	xmlcatalog --noout --add "public" "ISO 8879:1986//ENTITIES Publishing//EN" "file://${XML_DTD_DIR}/ent/iso-pub.ent" $CATALOG
+	xmlcatalog --noout --add "public" "ISO 8879:1986//ENTITIES Greek Letters//EN" "file://${XML_DTD_DIR}/ent/iso-grk1.ent" $CATALOG
+	xmlcatalog --noout --add "public" "ISO 8879:1986//ENTITIES Box and Line Drawing//EN" "file://${XML_DTD_DIR}/ent/iso-box.ent" $CATALOG
+	xmlcatalog --noout --add "public" "ISO 8879:1986//ENTITIES Greek Symbols//EN" "file://${XML_DTD_DIR}/ent/iso-grk3.ent" $CATALOG
+	xmlcatalog --noout --add "public" "ISO 8879:1986//ENTITIES Added Math Symbols: Negated Relations//EN" "file://${XML_DTD_DIR}/ent/iso-amsn.ent" $CATALOG
+	xmlcatalog --noout --add "public" "ISO 8879:1986//ENTITIES Numeric and Special Graphic//EN" "file://${XML_DTD_DIR}/ent/iso-num.ent" $CATALOG
+	xmlcatalog --noout --add "public" "ISO 8879:1986//ENTITIES Alternative Greek Symbols//EN" "file://${XML_DTD_DIR}/ent/iso-grk4.ent" $CATALOG
+	xmlcatalog --noout --add "public" "ISO 8879:1986//ENTITIES Diacritical Marks//EN" "file://${XML_DTD_DIR}/ent/iso-dia.ent" $CATALOG
+	xmlcatalog --noout --add "public" "ISO 8879:1986//ENTITIES Monotoniko Greek//EN" "file://${XML_DTD_DIR}/ent/iso-grk2.ent" $CATALOG
+	xmlcatalog --noout --add "public" "ISO 8879:1986//ENTITIES Added Math Symbols: Arrow Relations//EN" "file://${XML_DTD_DIR}/ent/iso-amsa.ent" $CATALOG
+	xmlcatalog --noout --add "public" "ISO 8879:1986//ENTITIES Added Math Symbols: Ordinary//EN" "file://${XML_DTD_DIR}/ent/iso-amso.ent" $CATALOG
+	xmlcatalog --noout --add "public" "ISO 8879:1986//ENTITIES Russian Cyrillic//EN" "file://${XML_DTD_DIR}/ent/iso-cyr1.ent" $CATALOG
+	xmlcatalog --noout --add "public" "ISO 8879:1986//ENTITIES General Technical//EN" "file://${XML_DTD_DIR}/ent/iso-tech.ent" $CATALOG
+	xmlcatalog --noout --add "public" "ISO 8879:1986//ENTITIES Added Math Symbols: Delimiters//EN" "file://${XML_DTD_DIR}/ent/iso-amsc.ent" $CATALOG
+	xmlcatalog --noout --add "public" "ISO 8879:1986//ENTITIES Added Latin 1//EN" "file://${XML_DTD_DIR}/ent/iso-lat1.ent" $CATALOG
+	xmlcatalog --noout --add "public" "ISO 8879:1986//ENTITIES Added Math Symbols: Binary Operators//EN" "file://${XML_DTD_DIR}/ent/iso-amsb.ent" $CATALOG
+	xmlcatalog --noout --add "public" "ISO 8879:1986//ENTITIES Added Latin 2//EN" "file://${XML_DTD_DIR}/ent/iso-lat2.ent" $CATALOG
+	xmlcatalog --noout --add "public" "ISO 8879:1986//ENTITIES Added Math Symbols: Relations//EN" "file://${XML_DTD_DIR}/ent/iso-amsr.ent" $CATALOG
+	xmlcatalog --noout --add "public" "ISO 8879:1986//ENTITIES Non-Russian Cyrillic//EN" "file://${XML_DTD_DIR}/ent/iso-cyr2.ent" $CATALOG
+	xmlcatalog --noout --add "delegatePublic" "ISO 8879:1986" "file://$CATALOG" $ROOTCATALOG
+
+
+docbook-xml-simple-dtd (4.1.2.5)
+Docbook XML DTD Simplified (with fewer elements).
+
+* http://freshmeat.net/projects/docbook/
+
+* http://www.oasis-open.org/docbook/xml/simple/4.1.2.5/simple4125.zip
+
+	V=${VERSION/.}
+	V=${V/.}
+	V=${V/.}
+	XML_DTD_DIR=/usr/share/xml/docbook/xml-simple-dtd-${VERSION}
+	install -d ${XML_DTD_DIR}
+	cp -af *.css *.dtd *.mod ${XML_DTD_DIR}
+
+
+scrollkeeper (0.3.11)
+ScrollKeeper is a cataloging system for documentation on open systems. It
+manages documentation metadata (as specified by the Open Source Metadata
+Framework(OMF)) and provides a simple API to allow help browsers to find, sort,
+and search the document catalog. It will also be able to communicate with
+catalog servers on the Net to search for documents which are not on the local
+system.
+
+* http://freshmeat.net/projects/scrollkeeper/
+
+* http://download.sourceforge.net/scrollkeeper/scrollkeeper-0.3.11.tar.gz
+
+	./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var --disable-static --with-omfdirs=/usr/share/omf:/opt/gnome/share/omf:/opt/kde/share/omf
+	make
+	make install
+	xmlcatalog --noout --add "public" "-//OMF//DTD Scrollkeeper OMF Variant V1.0//EN" "/usr/share/xml/scrollkeeper/dtds/scrollkeeper-omf.dtd" /etc/xml/catalog
+
+
+Following the approach mentioned in this hint, you can download and install more
+catalogs as and when you find them appropriate for your needs. Additionally,
+search for docbook at freshmeat.net for docbook realted tools and utilities.
+
+Also check out the man pages for xmlcatalog and install-catalog. They specify
+how to remove catalogs that are no longer needed (e.g. if you install a new
+version and you need to remove the old one).
+
+I am not an expert on SGML and this document is based on my findings trying to
+install the prerequsites for GNOME-2. Hence there may be errors; if so please
+let me know.
+
+Some sites that may be of interest:
+* http://www.docbook.org/
+* http://www.tldp.org/HOWTO/DocBook-Demystification-HOWTO/index.html
+* http://www.tldp.org/HOWTO/DocBook-OpenJade-SGML-XML-HOWTO/index.html
+* http://www-106.ibm.com/developerworks/library/l-docbk.html
+
+Don't forget to send me bug reports and enhancements so that I can keep the hint
+updated.

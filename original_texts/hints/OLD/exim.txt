@@ -1,0 +1,298 @@
+
+===============================================
+
+Exim Quick Installation HOWTO v1
+
+Patrick Kirk                Chris Seberino 
+<patrick@enterprise-hr.com >        < seberino@spawar.navy.mil >
+
+September 6, 2001
+
+
+===============================================
+
+Overview
+----------
+Why use Exim?  Exim is a powerful mail server available under the GPL.
+Exim is a very widely used mail server on the Internet so its
+functionality and track record are very well known.  Installed properly,
+Exim is very secure.  It is easy to manage which is why it is the
+default mail server in the Debian GNU/Linux distribution.  
+
+Purpose of this document
+--------------------------
+This is intended as a quick start that enables you to install Exim and
+make it available to other PCs on a LAN.  If you are planning to have in
+excess of a million messages a day, please read the documentation on 
+scalability on www.exim.org.  But if you are installing for a company up 
+to 500 or so mail users, or as a mail server on  a home LAN, then this 
+setup is fine.
+
+===============================================
+
+Installation and Configuration
+
+1. Users, Directories and Security Settings
+--------------------------------------------
+
+Exim is run as a local user whenever it does not need the privileges of root. 
+This reduces the chances of problems caused by errors in the code..  First 
+we must add a user and group as well as prepare mail and log directories.
+
+Choose a user ID and group ID that suits you...having them both the same
+just makes creating security permissions a little simpler for me, hence
+choosing 111 for both.  In this example, the username is exim.
+
+First in /etc/passwd, add :
+
+exim:x:111:111::/var/spool/mail:/bin/false
+
+Then in /etc/group, add :
+exim:x:111:
+
+For security reasons, we don't not have exim send messages to root but
+to the systems administrator.  Edit, or create if it isn't there,
+/etc/aliases:
+
+postmaster: root
+root: your login name
+abuse: your login name
+
+
+Then execute the following commands:
+
+mkdir -p /var/spool/mail &&
+mkdir -p /var/log/exim &&
+chown exim:exim /var/spool/mail &&
+chown exim:adm /var/log/exim &&
+chmod 1777 /var/spool/mail &&
+chmod 2750 /var/log/exim
+
+The && after commands means you can copy all these commands as a unit
+and paste them into a command box, and have it execute as one neat
+series.  Don't say we don't look after you ;-)
+
+
+2. Dependencies
+-----------------
+
+Exim requires a database.  Most Unix/Linux/BSD sytems comes with
+Berkeley DB installed.  Its a free highly functional database.  If you
+are unable to compile Exim because it can't find a database, download
+Berkeley DB from www.sleepycat.com,  and run the following command:
+
+cd /usr/src/ &&
+tar xzvf /pathtoBerkeley.tar.gz &&
+./configure prefix=/usr && 
+make && 
+make install
+
+This installs Berkeley database libraries in /usr/lib which is where
+applications, that depend on it look first.
+
+3. Getting the source code
+----------------------------
+The latest version of Exim is always available on http://www.exim.org/mirrors.html
+
+Uncompress and untar the Exim sources as follows.
+
+    cd /usr/src &&
+    mkdir /etc/exim		
+    tar xvfz /path-to/exim-<version>.tar.gz.
+
+4. The Makefile 
+-----------------
+
+Change to the Exim source directory. Please do take a look at README. In
+the Exim source directory, make a directory called Local.  In Local,
+create a file, Makefile, with the following text (you ought to be able to just paste this
+in):
+
+# Where the executable will reside
+BIN_DIRECTORY=/usr/local/bin
+
+# The run time control file.  Best keep all run-time control #files in
+# /etc as you can then backup all your system 
+#configuration by copying /etc/
+
+CONFIGURE_FILE=/etc/exim/exim.conf
+
+# If you have not followed step 1 in making this user id 111, #set this
+# equal to output of "id -u exim".
+EXIM_UID=111
+
+# If you have not followed step 1 in making this group id #111, set this
+# equal to output of "id -g exim".
+EXIM_GID=111
+
+# Its best just assume that these are needed even if you don't # know
+# how you will use them.
+DIRECTOR_LOCALUSER=yes
+DIRECTOR_FORWARDFILE=yes
+DIRECTOR_ALIASFILE=yes
+DIRECTOR_SMARTUSER=yes
+TRANSPORT_APPENDFILE=yes
+TRANSPORT_AUTOREPLY=yes
+TRANSPORT_PIPE=yes
+TRANSPORT_SMTP=yes
+
+# Uncomment these only if using previously installed #OpenSSL when
+# sending email.
+#SUPPORT_TLS=yes
+#TLS_LIBS=-lssl -lcrypto
+
+MSGLOG_DIRECTORY_MODE=0700
+SPOOL_DIRECTORY=/var/spool/mail
+SPOOL_DIRECTORY_MODE=07
+SPOOL_MODE=0600
+LOG_FILE_PATH=/var/log/exim/exim_%slog
+LOG_DIRECTORY_MODE=0750
+LOG_MODE=0644
+LOOKUP_DBM=yes
+LOOKUP_LSEARCH=yes
+ROUTER_DOMAINLIST=yes
+ROUTER_LOOKUPHOST=yes
+ROUTER_IPLITERAL=yes
+ROUTER_QUERYPROGRAM=yes
+
+5. Compiling and installing
+-----------------------------
+
+Execute "make" and "make install" as root.
+
+6. Enabling Exim
+--------------------
+
+For historical reasons, many programs look for /usr/lib/sendmail to send
+mail so lets make this service available.  
+    
+    ln -s /usr/local/bin/exim /usr/lib/sendmail &&
+
+    ln -s /usr/local/bin/exim /usr/sbin/sendmail
+
+7. Creating a secure runtime configuration
+--------------------------------------------
+
+All the functionality of Exim is controlled from /etc/exim/exim.conf
+
+Edit the new /etc/exim/exim.conf and find the following entries:
+
+qualify_domain =  
+# Set this the the name that appears after the @ in your email address 
+
+local_domains =
+# Set this to locahost and the name that appears after the @ 
+# in your email address seperated by a colon.
+# for example localhost:enterprise-hr.com for Patrick.
+
+host_accept_relay = 127.0.0.1: 
+
+# Add in the range used by machines on your LAN.  If you #do not have a
+# LAN or are unsure, don't edit this.  Example: #for a LAN with IP
+# Address range 192.168.0.0/24, you put #that in here:  
+# host_accept_relay = 127.0.0.1:192.168.0.0/24
+
+Everything else in /etc/exim/exim.conf should just work nicely out of the
+box.
+
+Tip:
+-----
+Debian developers have a neat interactive script that allows you to
+customise Exim for all kinds of environments.  If you want to use this,
+it is available here -
+http://hints.linuxfromscratch.org/~ian/hints/exim/eximconfig
+
+Just copy the text into a file called eximconfig.  Then 
+chmod +x eximconfig &&
+/path_to_/eximconfig
+
+It requires that you be root to run it.
+
+8. Activating Exim
+--------------------
+
+To receive email anytime execute the following:
+
+    killall sendmail &&
+    /usr/sbin/sendmail -bd -q15m
+
+Exim is now listening on port 25 for mail from the machine itself or
+from the address range you specified in /etc/exim/exim.conf
+
+9. Housekeeping
+-----------------
+
+Add this file to /etc/init.d to enable the SysV type start|stop|restart commands.
+
+#!/bin/sh
+# Begin /etc/init.d/exim
+
+#
+# Include the functions declared in the /etc/init.d/functions file
+#
+
+source /etc/init.d/functions
+
+case "$1" in
+        start)
+                echo -n "Starting SMTP daemon: Exim"
+                loadproc /usr/local/bin/exim -bd
+                ;;
+
+        stop)
+                echo -n "Stopping SMTP daemon: Exim"
+                killproc /usr/local/bin/exim
+                ;;
+
+        reload)
+                echo -n "Reloading SMTP daemon: Exim"
+                reloadproc /usr/local/bin/exim -HUD
+               ;;
+
+        restart)
+                $0 stop
+                /usr/bin/sleep 1
+                $0 start
+                ;;
+
+        status)
+                statusproc /usr/local/bin/exim
+                ;;
+
+        *)
+                echo "Usage: $0 {start|stop|reload|restart|status}"
+                exit 1
+        ;;
+
+esac
+
+# End /etc/init.d/exim
+
+Execute this comand to have Exim start on boot.
+
+chmod 754 /etc/init.d/exim &&
+
+ln -s  ../init.d/exim /etc/rc0.d/K400exim &&
+
+ln -s  ../init.d/exim /etc/rc1.d/K400exim &&
+
+ln -s  ../init.d/exim /etc/rc2.d/K400exim &&
+
+ln -s  ../init.d/exim /etc/rc3.d/S600exim &&
+
+ln -s  ../init.d/exim /etc/rc4.d/S600exim &&
+
+ln -s  ../init.d/exim /etc/rc5.d/S600exim &&
+
+ln -s  ../init.d/exim /etc/rc6.d/K400exim
+
+10. Congratulations!  
+----------------------
+
+You now have a secure mail server at your disposal.  For more help or
+details, please refer to: www.exim.org, the Exim mailing list
+(accessible from www.exim.org) or "Exim, The Mail Transfer Agent" by
+Philip Hazel and published by O'Reilly.
+
+
+

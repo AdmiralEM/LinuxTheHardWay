@@ -1,0 +1,64 @@
+TITLE:		Ghostscript
+LFS VERSION:	any
+AUTHOR:		Wolfgang Arendt <Wolfgang.Arendt@gmx.de>
+
+SYNOPSIS:
+	How to install Ghostscript
+
+HINT:
+Here are some instructions, that will help you at least to
+compile ghostscript v 5.10
+
+1.) Packages, you will need:
+
+- ghostscript-5.10, of course.
+(try: ftp://ftp.gnu.org/pub/gnu/ghostscript/ghostscript-5.10.tar.gz)
+
+- one of the latest jpeg-library-distributions (I used jpeg.src.v6b)
+(try: ftp://ftp.uu.net/graphics/jpeg/)
+
+- one of the latest zlib-distribution (I used zlib-1.3.3)
+(try: http://freshmeat.net/redir/zlib/12352/url_tgz/zlib.tar.gz)
+
+- one of the latest libpng-distributions (I used libpng-1.0.8)
+(try: http://www.libpng.org)
+
+2.) Extract ghostscript and change to the top-level-directory of the
+distribution.
+
+3.) create the file 'changes.sed', containing the following lines:
+
+----------------------------------------
+s|XINCLUDE=-I/usr/local/X/include|XINCLUDE=-I/usr/X11R6/include|
+s|XLIBDIRS=-L/usr/X11/lib|XLIBDIRS=-L/usr/X11R6/lib|
+s|jpeg-6a|jpeg|
+w Makefile
+----------------------------------------
+
+4.) Create the Makefile, by running the following command:
+
+----------------------------------------
+sed -f changes.sed unix-gcc.mak
+----------------------------------------
+
+5.) Stay in the top-level-dir of the gs-Distribution and extract the
+zlib-package. This creates a directory named 'zlib-1.1.3'. Rename this
+directory to 'zlib' (or make a symlink).
+
+6.) Extract jpegsrc.v6b.tar.gz and rename the jpeg-6b-directory to
+'jpeg'
+(or make a symlink).
+
+7.) Extract libpng-1.0.8.tar.gz and move the libpng-1.0.8-directory to
+libpng
+(or - guess, what - make a symlink).
+
+Now, you should be ready to compile the whole thing. Just run:
+
+make -f Makefile &&
+make -f Makefile install
+
+You are done.
+
+Or at least, you should be done. If not - I do apologise...
+

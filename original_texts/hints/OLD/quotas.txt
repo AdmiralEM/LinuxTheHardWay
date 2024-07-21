@@ -1,0 +1,123 @@
+TITLE:		Quota Support
+LFS VERSION:	3.3 + (maybe all)
+AUTHOR:		Remco Jansen <remcorkz@xs4all.nl>
+
+SYNOPSIS:
+	This hint describes how to setup quota support on your LFS system.
+
+HINT:
+
+Wrote this hint because there's one little thing that you may come across trying
+ to setup quota-tools. Normally on an LFS system the mtab file is created as a
+symlink to /proc/mounts. The quota-tools programs won't work with this
+configuration.
+
+First make sure quota support is built into your kernel. If not, recompile your 
+kernel.
+
+Also you need to get the quota-tools package from
+http://prdownloads.sourceforge.net/linuxquota/quota-3.08.tar.gz?download
+(at the time of this writing version is 3.08).
+Their homepage is can be found at http://sourceforge.net/projects/linuxquota/.
+
+
+Install the quota-tools package as normally.
+
+./configure
+
+
+Edit the Makefile by hand to setup the directories so that they obey the LFS
+standard. (prefix=/bin, sysconfdir=/etc)
+
+make && make install
+
+
+Now the tools are installed properly, you have to change the /etc/mtab symlink
+to the more-used /etc/mtab file.
+(see http://archive.linuxfromscratch.org/mail-archives/lfs-dev/2002/08/0387.html
+for more information on this issue)
+
+rm -f /etc/mtab &&
+touch /etc/mtab &&
+chmod 644 /etc/mtab
+
+
+In order to let the mtab file be accurate (also when the system has crashed for 
+some reason) we add an mtab initialization part to the mountfs initscript.
+
+Add the following lines to the start)-section of the mountfs initscript, right 
+after the remounting of the root file system in read-write mode lines.
+
+                # Because we have replaced the /etc/mtab-symlink by a file
+                # we have to update the status of /etc/mtab.
+                # First remove it. Then add an entry for the already
+                # mounted root file system to it.
+
+                echo "Clearing /etc/mtab..."
+                : > /etc/mtab
+                evaluate_retval
+                echo "Update mtab file with root file system..."
+                mount -f -o remount /
+                evaluate_retval
+                echo "Update mtab file with proc file system..."
+                mount -f /proc
+                evaluate_retval
+
+
+Create the quota initscript as follows:
+
+#!/bin/bash
+# Begin $rc_base/init.d/quotas
+
+# Based on sysklogd script from LFS-3.1 and earlier.
+# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+case "$1" in
+        start)
+                echo "Checking quotas on all filesystems..."
+                /usr/sbin/quotacheck -augM
+                evaluate_retval
+                echo "Turning quota administration on..."
+                /usr/sbin/quotaon -aug
+                evaluate_retval
+                ;;
+
+        stop)
+                echo "Turning off quota administration..."
+                /usr/sbin/quotaoff -aug
+                evaluate_retval
+                ;;
+
+        restart)
+                echo "Restarting quota administration not allowed."
+                ;;
+
+        *)
+                echo "Usage: $0 {start|stop|reload|restart|status}"
+                exit 1
+                ;;
+esac
+
+# End $rc_base/init.d/quotas
+
+
+The last step is editing your /etc/fstab.
+
+For each filesystem on which you want to enable quota support add either
+usrquota or grpquota or the two of them to the options section of that file-
+system. (for this information you can also have a look at one of the thousands
+of quota how-to's)
+
+Reboot your system. (You may also update the mtab file by issueing the
+mount -f filesystem command for each already mounted filesystem, remount the 
+filesystems on which you're installing quota support and then start quota 
+administration by running quotaon -aug. However it is better to run the 
+quotacheck tool as well... So if possible: reboot.)
+
+The quotaon program will create the quota.user and/or quota.group files for each
+desired filesystem automatically.
+
+You're finished. Good luck.

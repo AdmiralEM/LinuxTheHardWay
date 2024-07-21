@@ -1,0 +1,204 @@
+TITLE:		Running an NFS Server on LFS
+LFS VERSION:	any
+AUTHOR:		Ian Chilton <ian@ichilton.co.uk>
+
+SYNOPSIS:
+	A while ago, I wrote an LFS-Hint on setting up an NFS server on an LFS system. There is now a much better way to do it, using the NFS code in the later kernels.
+
+HINT:
+KERNEL VERSION:	2.2.18+ or 2.4.0+
+
+NOTE:
+This is not a complete guide to using NFS...it is only ment as a quick
+introduction to compiling the packages.
+
+** There are some important security issues when using NFS **
+Please read: http://nfs.sourceforge.net/nfs-howto  for more info before
+you start using NFS.
+
+The author holds no responsibility for any loss or damage etc etc..
+
+
+First, we need TCP Wrappers:
+
+Download the following:
+http://files.ichilton.co.uk/nfs/tcp_wrappers_7.6.diff.gz
+http://files.ichilton.co.uk/nfs/tcp_wrappers_7.6.tar.gz
+
+Then do:
+tar xzvf tcp_wrappers_7.6.tar.gz
+cd tcp_wrappers_7.6
+zcat ../tcp_wrappers_7.6.diff.gz | patch -p1
+make REAL_DAEMON_DIR=/usr/sbin linux
+cp libwrap.a /usr/lib
+cp tcpd.h /usr/include
+cp safe_finger /usr/sbin
+cp tcpd /usr/sbin
+cp tcpdchk /usr/sbin
+cp tcpdmatch /usr/sbin
+cp try-from /usr/sbin
+
+
+Next we need the Portmapper:
+
+Download the following:
+http://files.ichilton.co.uk/nfs/portmap_5-1.diff.gz
+http://files.ichilton.co.uk/nfs/portmap_5.orig.tar.gz
+
+tar xzvf portmap_5.orig.tar.gz
+cd portmap_5beta
+zcat ../portmap_5-1.diff.gz | patch -p1
+make
+make install
+
+
+Now we do NFS Utils:
+
+Download:
+http://download.sourceforge.net/nfs/nfs-utils-0.2.1.tar.gz
+
+tar zxvf nfs-utils-0.2.1.tar.gz
+cd nfs-utils-0.2.1
+./configure --prefix=/usr
+make
+make install
+
+
+That's all the software we need. You should do the above on all clients
+and the server. You should also update to the latest util-linux package
+on the clients. This is available from:
+ftp://ftp.win.tue.nl/pub/linux/utils/util-linux/
+
+
+Now, we need to recompile the kernel.
+
+In the Filesystems -> Network Filesystems section on the kernel config,
+you should have the following:
+
+* NFS filesystem support
+   - NFS Version 3 filesystem support
+
+* NFS server support
+   - NFS Version 3 server support
+   - NFS server TCP support
+
+
+For the server, you should enable these:
+
+* NFS filesystem support
+   - NFS Version 3 filesystem support
+
+
+For the clients, you should enable these:
+* NFS server support
+   - NFS Version 3 server support
+
+
+Recompile and boot the new kernel.
+
+
+Then, we need an /etc/exports file.
+
+An example 'share' is:
+
+/home/ian 192.168.0.1(rw)
+
+
+The format is obvious:  /home/ian is the directory to share,
+192.168.0.1 is the client to share to, and rw is read-write mode.
+
+
+Then, on the server, start NFS...this is my startup script:
+
+#!/bin/sh
+# Begin /etc/init.d/nfs
+
+source /etc/init.d/functions
+
+case "$1" in
+        start)
+                echo -n "Starting RPC Portmapper"
+                loadproc /sbin/portmap
+                echo -n "Starting NFS"
+                loadproc /usr/sbin/rpc.mountd
+                loadproc /usr/sbin/rpc.nfsd 8
+                loadproc /usr/sbin/rpc.statd
+                ;;
+
+        stop)
+                echo -n "Stopping NFS"
+                killproc /usr/sbin/rpc.nfsd
+                killproc /usr/sbin/rpc.mountd
+
+                echo -n "Stopping Portmapper"
+                killproc /sbin/portmap
+                ;;
+
+        reload)
+                echo "Reloading NFS"
+                /usr/sbin/exportfs -ra
+                ;;
+
+        restart)
+                $0 stop
+                /usr/bin/sleep 1
+                $0 start
+                ;;
+
+        *)
+                echo "Usage: $0 {start|stop|reload|restart}"
+                exit 1
+        ;;
+
+esac
+
+# End /etc/init.d/nfs
+
+
+
+On the workstations, you just need this:
+
+#!/bin/sh
+# Begin /etc/init.d/nfsclient
+
+source /etc/init.d/functions
+
+case "$1" in
+        start)
+                echo -n "Starting RPC Portmapper"
+                loadproc /sbin/portmap
+                echo -n "Starting statd for NFS" 
+                loadproc /usr/sbin/rpc.statd
+                ;;
+
+        stop)
+                echo -n "Stopping Portmapper"
+                killproc /sbin/portmap
+                ;;
+
+
+        restart)
+                $0 stop
+                /usr/bin/sleep 1
+                $0 start
+                ;;
+
+        *)
+                echo "Usage: $0 {start|stop}"
+                exit 1
+        ;;
+
+esac
+
+# End /etc/init.d/nfsclient
+
+
+Now all that remains is to mount the remote directory on the client:
+
+mount server:/home/ian /mntdir
+(or, I use mount -o rsize=8192,wsize=8192,hard,intr server:/home/ian
+/mntdir)
+
+See the new version of the NFS-HOWTO
+(http://nfs.sourceforge.net/nfs-howto) for more information.
+

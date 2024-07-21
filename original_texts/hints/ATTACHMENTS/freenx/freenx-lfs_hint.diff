@@ -1,0 +1,49 @@
+Submitted By: Jaap Struyk <japie at deserver dot nl>
+Date: 2006-01-04
+Initial Package Version: 1.5
+Upstream Status: Not submitted - LFS Specific
+Origin: http://patches.linuxfromscratch.org
+Description: This patch is for the LFS freenx hint,
+	     and will modify the server scripts.
+
+--- nxloadconfig.old	2005-02-14 01:08:56.482546352 +0100
++++ nxloadconfig	2005-02-14 01:09:40.109913984 +0100
+@@ -53,12 +53,12 @@
+ NX_LICENSE="OS (GPL)"
+ 
+ # Where can different nx components be found
+-NX_DIR=/usr
++NX_DIR=/srv/NX
+ PATH_BIN=$NX_DIR/bin # if you change that, be sure to also change the public keys
+ PATH_LIB=$NX_DIR/lib
+-NX_ETC_DIR=/etc/nxserver
+-NX_SESS_DIR=/var/lib/nxserver/db
+-NX_HOME_DIR=/var/lib/nxserver/home
++NX_ETC_DIR=$NX_DIR/etc
++NX_SESS_DIR=$NX_DIR/var/db
++NX_HOME_DIR=$NX_DIR/home/nx
+ 
+ # Advanced users ONLY
+ AGENT_LIBRARY_PATH="" #Calculated
+--- nxloadconfig.orig	2005-05-05 01:34:20.000000000 -0700
++++ nxloadconfig	2005-06-28 20:53:11.000000000 -0700
+@@ -153,7 +153,7 @@
+ COMMAND_XAUTH=/usr/X11R6/bin/xauth
+ COMMAND_SMBMOUNT=smbmount
+ COMMAND_SMBUMOUNT=smbumount
+-COMMAND_NETCAT=netcat
++COMMAND_NETCAT=nc
+ COMMAND_SSH=ssh
+ COMMAND_SSH_KEYGEN=ssh-keygen
+ COMMAND_CUPSD=/usr/sbin/cupsd
+--- nxloadconfig.orig	2005-08-02 10:32:11.000000000 -0700
++++ nxloadconfig	2005-08-03 14:01:08.000000000 -0700
+@@ -168,7 +168,7 @@
+ EXPORT_SESSIONID="0"
+ NODE_AUTOSTART=""
+ ENABLE_ROOTLESS_MODE="0"
+-ENABLE_1_5_0_BACKEND="0"
++ENABLE_1_5_0_BACKEND="1"
+ ENABLE_USESSION="0"
+ COMMAND_SESSREG="sessreg"
+ AGENT_EXTRA_OPTIONS_RFB=""

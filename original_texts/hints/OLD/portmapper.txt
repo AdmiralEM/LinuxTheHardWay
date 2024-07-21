@@ -1,0 +1,158 @@
+TITLE:		Portmapper Installation
+LFS VERSION:	All
+AUTHOR:		Wolfgang Arendt <wolare@gmx.de>
+
+SYNOPSIS:
+	How to install the portmapper
+
+HINT:
+ver 1.0
+07/03/2001
+
+
+Contents
+--------
+
+   1. Introduction
+   2. Where to get the necessary files
+   3. Compiling tcp-wrappers
+   4. Installing tcp-wrappers
+   5. Compiling the portmapper.
+   6. Installing the portmapper
+   7. Creating a start/stop script 
+       
+
+
+1. Introduction
+---------------
+
+You need the portmapper, if you intend to build a system, that offers NFS or
+NIS services.
+ 
+
+
+2. Where to get the necessary files
+-----------------------------------
+
+You can find the tcp_wrappers package and the portmapper at
+ftp.porcupine.org/pub/security
+   
+The latest packages are named tcp_wrappers_7.6-ipv6.1.tar.gz and
+portmap_5beta.tar.gz.
+
+
+
+3. Compiling tcp-wrappers
+-------------------------
+
+First, unpack the source package. This creates a directory named
+tcp_wrappers_7.6-ipv6.1. Make a symbolic link from this directory to
+tcp_wrappers. This is needed during the compilation of the portmapper. Then
+enter the top level directory of the tcp wrappers package.
+
+First, alter the file percent_m.c by running:
+
+cp percent_m.c percent_m.c.backup &&
+chmod u+w percent_m.c &&
+cat percent_m.c.backup |\
+sed -e '/extern char \*sys_errlist\[\];/d' > percent_m.c
+
+Then issue:
+
+make REAL_DAEMON_DIR=/usr/sbin linux
+
+
+
+4. Installing tcp-wrappers
+--------------------------
+
+In order to install the tcp wrappers create this file and run it:
+
+#!/bin/bash
+
+# compress and copy man pages
+for THIS_FILE in *.[0123456789]; do
+  THIS_SECTION=$(echo $THIS_FILE |\
+    cut -d "." -f 2)
+  cat $THIS_FILE |\
+    gzip > /usr/share/man/man${THIS_SECTION}/${THIS_FILE}.gz
+  echo $THIS_FILE -\> /usr/share/man/man${THIS_SECTION}/${THIS_FILE}.gz
+done
+
+# copy headers
+cp -v *.h /usr/include
+
+# copy libraries
+cp -v *.a /usr/lib
+
+# copy executables
+for THIS_EXECUTABLE in *; do
+  if [ -x $THIS_EXECUTABLE ]; then
+    # the next 'if' avoids copying this script itself
+    if [ ! $THIS_EXECUTABLE = $(basename $0) ]; then
+      cp -v $THIS_EXECUTABLE /usr/sbin
+    fi
+  fi
+done
+
+
+This script copies all the manual pages to the /usr/share/man directory. Then it
+copies the header files to the /usr/include directory and the file libwrap.a to
+the /usr/lib directory. After that, it copies all the executables to the
+/usr/sbin directory.
+   
+That is all, that is to be done for tcp_wrappers. Do not delete the source tree
+yet, as it is needed during compilation of the portmapper.
+   
+
+
+5. Compiling the portmapper
+---------------------------
+
+Unpack the source package and change to the top level directory of the unpacked
+files. First, you need to modify the Makefile. The critical line reads:
+
+  CONST   = -Dconst=
+
+Comment out this line, so that it reads:
+
+  # CONST   = -Dconst=
+
+Now you can build the portmapper by issuing:
+
+make
+
+
+
+6.Installing the portmapper
+---------------------------
+
+Copy the executable to /usr/sbin:
+
+cp portmap /usr/sbin
+
+
+
+7. Creating a start/stop script
+-------------------------------
+
+All, that is left to be done is, to write a start/stop-script (use
+/etc/init.d/template) and link it to the runlevel directories 3, 4 and 5 for
+starting and to 0, 1, 2 and 6 for stopping. Make sure, that the portmapper is
+being started before starting NFS or NIS services and make sure that these
+services are being stopped before the portmapper gets killed.
+   
+
+I guess, that is it. You just installed the portmapper from scratch.
+
+8. Contributions
+-------------------------------
+brendan@cs.uchicago.edu wrote on 20021206 (YYYYMMDD):
+
+> You can simplify the instructions for portmap and tcp_wrappers by
+> building portmap with the following command:
+> 
+> make WRAP_LIB=/path/to/libwrap.a CONST=
+> 
+> Doing it this way means you don't need the tcp_wrappers source dir
+> symlink, and you don't need to edit the portmap Makefile by hand

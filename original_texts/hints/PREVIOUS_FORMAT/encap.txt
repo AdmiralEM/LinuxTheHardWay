@@ -1,0 +1,268 @@
+TITLE:		Encap/ePkg Package Management
+LFS VERSION:	20020912
+AUTHOR:		Andre Masella - andre at masella.dynodns.net
+
+SYNOPSIS:
+	Encap package management involves putting programs in an encap directory
+and then the epkg program symlinks each package into say, /usr. This is very 
+convenient for LFS users since it involves building no actual packages
+(.rpm/.deb) but provides version management.
+
+HINT:
+
+LFS is great for completely customising a system, but once it's been compiled, 
+that's it. Uninstalling programs by doing "make uninstall" and the like is not 
+practical -- sometimes not even possible. Doing something like this with RPM or 
+dpkg would be possible but probably very difficult and using install-log lets 
+you keep track of files, but not really manage them. That's were encap comes in.
+
+Encap is a package management system based on symlinks. Packages exist in an 
+encap source directory (usually /usr/encap) and then the epkg program symlinks 
+/usr/encap/package-version/* to /usr/*. Since packages are packagename-version, 
+multiple versions can be installed and switched without a problems -- great for 
+testing new versions.
+
+How to Insane are You?
+----------------------
+
+Here's the problem, how fanatical are you? I admit to being very fanatical. epkg 
+manages *all* of the packages on my system except glibc and epkg. Everything 
+else, even gcc and all of the basic LFS packages are controlled by epkg. That 
+may be more than you want controlled. epkg can control just your /usr/local
+programs. I think your decision for deciding whether or not to install a package 
+as an encap package should be based on "am I ever going to upgrade this?" Glibc 
+is never going to be upgraded without a complete system recompile, so that 
+should not be epkged. Also there is a certain impracticality in installing epkg 
+as an epkg. I'm going to assume you are completely insane and want to install 
+everything as an encap package. Start when ever you want.
+
+Starting
+--------
+
+To start, where do you want to install the packages?
+I personally, have one big partition, so I installed my packages for / in 
+/Software/Root, my packages for /usr in /Software/User, my packages for 
+/usr/local in /Software/Local and for /opt/kde in /Software/KDE. If you want to 
+keep things (eg /usr) on a separate partition, you could mount /usr and have the 
+packages in /usr/Software or /usr/encap or your could keep /usr/* on your root 
+partition since it's almost all symlinks and mount /Software/User. Point is, 
+make package directories now. Depending on what you have installed, I recommend 
+making a directory for /, /usr, /usr/local, /usr/X11R6, /opt/kde or /usr/kde and
+/opt/gnome or /usr/gnome.
+
+Encap trees *can* overlap, but epkg will issue meaningless warnings. Overlapping 
+is not a problem. This is useful later.
+
+Get epkg from http://www.encap.org/epkg/ Right after compiling glibc, compile
+epkg like so:
+
+./configure --disable-encap --with-encap-source=/Software/User \
+--with-encap-target=/usr
+make
+
+Note the lack of trailing slashes. If you want the user packages from elsewhere
+use /usr/encap or whatever.
+Now *don't make install*. Copy epkg/epkg to /usr/bin/epkg-usr and
+mkencap/mkencap to /usr/bin/mkencap-usr
+
+Now repeat this for each tree you want like:
+--with-encap-source=/Software/local --with-encap-target=/usr/local
+--with-encap-source=/Software/KDE --with-encap-target=/opt/kde
+
+but copy epkg/epkg to epkg-local or epkg-kde and mkencap/mkencap to 
+mkencap-local or mkencap-kde.
+Also,
+cp doc/*.1 /usr/share/man/man1
+cp doc/*.3 /usr/share/man/man3
+cp doc/*.7 /usr/share/man/man7
+
+If you are managing root (/) then
+./configure --disable-encap --with-encap-source=/Software/Root \
+--with-encap-target="" \
+--with-excludes=src:lost+found:opt:dev:proc:tmp:home:Software
+make
+cp epkg/epkg /usr/bin/epkg-root
+cp mkencap/mkencap /usr/bin/mkencap-root
+
+The excludes are important. We don't want epkg wandering into dev, proc, tmp, 
+home or Software. If your package directory is elsewhere, then change the name
+appropriately. You may want it to wander into opt. None of my root packages 
+touch things in opt and this speeds things up since it won't take so long.
+Now you have everthing need to make packages!
+
+Building programs
+-----------------
+
+Programs are stupid. Some more than others. For most standard, pleasant
+programs, do something like:
+./configure --prefix=/usr --localstatedir=/var --sysconfdir=/etc
+make
+make install prefix=/Software/User/package-1.0
+epkg-usr package
+
+But not all programs are like that. *Most* FSF, KDE and GNOME programs are like 
+that. Many others are not. Some user "make install
+PREFIX=/Software/User/package-1.0" or possibly "make install
+DESTDIR=/Software/User/package-1.0". But some use just DEST, or INSTDIR, or
+BASEDIR and some have each path hardcoded like BINDIR=/usr/bin, MANDIR=/usr/man. 
+The best way is to run the configure process, then look at the Makefile and hope 
+you can figure out what to change.
+
+If also, "make" the package before specifying any kind of /Software/User prefix.
+
+One very pleasantly notable exception is perl. Rather than 
+running./configure.gnu,
+run ./Configure. It will ask you where perl will be, say /usr, and where the
+perl files will reside, say /Software/User/perl-5.xx. The just "make && make 
+make check && make install".
+
+Not the sysconfdir and localstatedir. These are optional, but if they are not
+there, then the package will put its config files in /usr/etc, /usr/lib or other
+strange places. Some, like samba, you may even want to say,
+--sysconfdir=/etc/samba.
+
+Some progams will not create subdirectories if they don't exists, meaning you 
+have to manually use mkdir to create the directories and it may do lovely things 
+like cp libxyz.so /Software/xyz-1.0/lib . If lib doesn't exist, you now have a 
+file called lib, rather than lib/libxyz.so.
+
+Also, before running epkg to install the package, check out the package
+directory. Many programs will put man pages in /usr/man rather than
+/usr/share/man. Same with info files. You can adjust all of that before you
+install the package. Also, delete any info/dir or share/info/dir files if they
+exist.
+
+*DO NOT INSTALL XFREE86 AS A PACKAGE*
+It's too messy, just put it in /usr/X11R6 and any additional X programs can be
+installed as packages and integrated into the /usr/X11R6 tree. Then, if you
+upgrade, blast away /usr/X11R6, reinstall X11 and then epkg-x11 -b and all of
+your X11 packages will be restored.
+
+Root Programs
+-------------
+
+Some programs like: bash, bzip2, e2fsprogs, fileutils, grep, gzip, kbd, less,
+man, modutils, net-tools, pam, pcmcia-cs, ppp, procps, psmisc, sed, sh-utils,
+shadow, sysvinit, tar, textutils and util-linux
+need to be on the root directory, but have man pages or other programs that
+should be in /usr. Encap trees can overlap!
+So install bash like this:
+./configure --prefix=/usr --bindir=/bin &&
+make &&
+make install prefix=/Software/Root/bash-2.05a/usr \
+bindir=/Software/Root/bash-2.05a/bin
+
+There are other programs that have a prefix=/usr and something else, usually
+execprefix=/
+When you epkg-root bash, it will install bash in /bin and the manpages in /usr.
+
+Keeping Things Clean
+--------------------
+
+I suggest making a cleansystem script that does something like this:
+
+#!/bin/sh -
+
+cd /
+epkg-root $@ -s /Software/Root/ -t .. -c | grep -v "not an Encap link"
+epkg-root $@ -b | grep -v "not an Encap link"
+
+for EPKG in /usr/bin/epkg-*
+do
+	if [ $EPKG != /usr/bin/epkg-root ]
+	then
+		$EPKG $@ -c | grep -v "not an Encap link"
+		$EPKG $@ -b | grep -v "not an Encap link"
+	fi
+done
+
+echo "Regenerating Info Cache..."
+rm /usr/share/info/dir
+for INFO in /usr/share/info/*.info
+do
+        install-info $INFO /usr/share/info/dir
+done
+
+cd $PWD
+#EOF
+
+Running the cleansystem -n will pretend to clean the system and -v will provide 
+verbose output. It will regenerate the info directory regardless.
+
+Note that epkg-XXX will complaing about every symlink that it finds that does
+not point to /Software/XXX. That's annoying, especially for the files that
+overlap from the root directory. The grep prevents us from hearing its whining.
+
+If you epkg-root -c, it will not find any encap related files, even though they 
+exist. This is because it tries to open directory "" which fails. The directory
+for -s *should* have a trailing /.
+
+Epkg will also alert your to any conflicting files. On the freshest LFS install
+you will find that /usr/lib/libiberty.a and /usr/bin/c++filt conflict between
+gcc and binutils. Which one do you keep? I dunno. If this were a normal LFS
+system, binutils is made after gcc, so it should be there. Other things tend to
+get installed multiple times. Many packages seem to install the pidof.1 manpage.
+Pick the one you like best and remove the rest.
+
+
+The Pain that is KDE
+--------------------
+
+I link KDE, but it is a pain. Some things will not work properly if you use the 
+encap symlinking. Anything in $KDE/share/templates that is a symlink won't 
+work properly. For instance if you have a kword symlink in there and go 
+New | Text Document, it will copy the symlink to the root-owned file rather than 
+copy a blank kword document. Just "mv /Software/KDE/*/share/templates/*
+/opt/kde/share/templates". Also the Konqueror side bar can break, due again to
+symlink copying. Either "mv /Software/KDE/*/share/apps/konqsidebartng/* 
+/opt/kde/share/apps/konqsidebartng" or you can mess around in
+~/.kde/share/apps/konqsidebar. I have no doubt that there are other broken KDE
+parts I have forgotten or not discovered. The advantage is that this provides a
+*really* easy way to switch KDE versions.
+
+I also recommend you create a /Software/KDE/hostname directory. This allows you
+to put things that are not going to change from KDE version to version that are
+specific to your system -- global wallpapers, applnks for programs and other
+stuff like that. Just "epkg-kde hostname" and all that stuff is accessible.
+
+FAQ
+---
+
+Why ./configure --prefix=/usr, why not ./configure
+--prefix=/Software/User/package-1.0 like the encap documentation says?
+
+That may work for some programs, but gcc and many libraries will not. You see,
+some libraries make a lib-config file (gtk, pcre, cups, glib, libpng) to tell
+programs building against it where its prefix is. If you do it the 
+/Software/User way, then anything built against that library will point to
+/Software/User rather than /usr making it more difficult to upgrade the library.
+And we did this for upgradeability, right?
+
+Some programs need special attention, right?
+Yes: tcl/tk/tclx, iptables, QT <3 (3+ is fine), ppp and f#!/ing man
+Be highly suspicious of anything that does not come with a configure script.
+Also don't bother installing anything living in /lib/modules (ie
+alsa-drivers) as a package (alsa-lib and alsa-utils can be nicely packaged)
+
+I accidentally installed xyz into /usr. Can I fix it easily?
+Yes, install it to /Software/User/xyz-1.0 and attempt to epkg xyz. That will
+complain that it cannot replace the non-encap symlinks. Delete the files from
+the /usr tree and then epkg xyz.
+
+Program abc installed its man pages directly in /usr/man or /usr/share man. Is
+there any easy way to fix that?
+Not really, you can pick them out by hand, or pull them out of the program's
+build directory. If this is an LFS, or BLFS package, maybe it should be added to
+the list of stupid programs.
+
+Are all of your packages really installed as encap packages?
+No, glibc, XFree86, epkg, j2sdk and teTeX are not. Glibc isn't going to be
+upgraded, epkg is impractical to have as an encap package. X11 is a mess that
+best to just leave alone. Java and teTeX live in /opt/j2sdk and /opt/teTeX so
+there's no point in having packages.
+
+sh should be symlinked to bash, should that go in /Software/Root/bash-2.05a/bin
+or /bin?
+Depends. I say, if sh is always -> and it's in the same package, do it in the
+/Software tree. Same with cc -> gcc. If sh might point to bash or csh or ksh
+then do it in /bin. Whatever makes you happier.

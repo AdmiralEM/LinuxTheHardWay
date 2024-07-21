@@ -1,0 +1,464 @@
+TITLE:		Setting up a local HP Deskjet Printer
+LFS VERSION:	4.1+
+AUTHOR:		Frank Gore <gore@projectpontiac.com> (LFS ID 3888)
+SYNOPSIS:
+	Step-by-step instructions to get your HP Deskjet printer up and running
+	and generating great printing results with text, graphics and photos.
+
+CHANGELOG:
+	August 11th, 2003
+	 - upgraded to cups 1.1.19
+	 - upgraded to ESP Ghostscript 7.05.6
+	 - upgraded to HPIJS 1.4.1
+	 - updated package download urls
+	 - fixed the mknod command for USB printers (oops!)
+	 - updated my email address
+	 - added a "THANKS TO:" section
+	February 19th, 2003
+	 - fixed a couple of typos
+	February 11th, 2003
+	 - added optional a2ps-4.13b package
+	 - added base online location of this hint
+	   (http://www.projectpontiac.com/hints/hpdeskjet.txt)
+	February 10th, 2003
+	 - added more dependencies
+	 - changed build order of cups/ghostscript
+	 - added printer configuration (resolutions, paper size, etc)
+	 - added lots of miscellaneous info
+	February 9th, 2003
+	 - first edition
+
+HINT:
+	After spending endless days wading through the reams of printing
+	documentation available on the web, I was finally able to get my HP
+	Deskjet 932c printer working. While information regarding printing on a
+	Linux-based system is abundant, most of it is completely useless to the
+	average user. Hopefully this hint will allow others to use their HP
+	Deskjet printer to its full potential without having to spend days
+	figuring out what they need.
+
+	This hint is NOT intended to describe how to setup a network print
+	server. Its sole intention is to help users setup a single, local HP
+	Deskjet printer (any model) that they can send print jobs to and get
+	good results from. This hint covers both parallel and usb printers.
+
+	This hint *might* apply to other printer models as well, but you'll have
+	to find an appropriate driver. You can find a comprehensive list of
+	drivers at http://www.linuxprinting.org
+
+	The latest version of this hint can be found at:
+	http://www.projectpontiac.com/hints/hpdeskjet.txt
+
+THANKS TO:
+	Thanks to members of the BLFS mailing lists for their help and
+	encouragement. This hint wouldn't exist without them :)
+	Most of the changes dated August 11th are present due to an email I
+	received from someone who used this hint, but I've misplaced the email
+	and cannot thank him by name here :( Sorry! If you read this, make
+	sure and email me so I can give credit where credit is due!
+
+REQUIREMENTS:
+	Perl - this is part of a base LFS system
+
+RECOMENDED:
+	libjpeg-6b & libpng-1.2.5 - most people have installed these by now :)
+	If you want Ghostscript to be able to handle images, you need these
+	intalled before	you even begin this hint. Instructions for installing
+	these libraries can be found at http://beyond.linuxfromscratch.org
+
+	zlib-1.1.4 - this is installed as part of LFS 4.0, so you most
+	definitely should have it already. If not, have a look at the latest
+	LFS book at http://www.linuxfromscratch.org
+
+DOWNLOADS:
+	CUPS-1.1.19 source
+- ftp://ftp.easysw.com/pub/cups/1.1.19/cups-1.1.19-source.tar.bz2
+
+	ESP Ghostscript-7.05.6 source
+- http://umn.dl.sourceforge.net/sourceforge/espgs/espgs-7.05.6-source.tar.bz2
+
+	GNU Ghostscript Fonts
+- ftp://ftp.gnu.org/gnu/ghostscript/gnu-gs-fonts-std-6.0.tar.gz
+- ftp://ftp.gnu.org/gnu/ghostscript/gnu-gs-fonts-other-6.0.tar.gz
+
+	HPIJS Driver source
+- http://umn.dl.sourceforge.net/sourceforge/hpinkjet/hpijs-1.4.1.tar.gz
+
+	a2ps-4.13b source (this is optional)
+- ftp://ftp.gnu.org/gnu/a2ps/a2ps-4.13b.tar.gz
+
+	cups-1.1.19 is the latest stable version of cups at the time of writing
+	this hint. If you have an older version of cups, you're strongly
+	encouraged to upgrade. Recent prior versions of cups had some major
+	bugs that could make printer management a nightmare.
+
+	ESP Ghostscript-7.05.6 is REQUIRED for the HPIJS driver to work. GNU
+	Ghostscript-7.05 and AFPL Ghostscript-8.00 did not work for me at all.
+	If you've already installed Ghostscript-8.00 and don't know how to
+	remove it, installing ESP Ghostscript-7.05.6 to the same directory
+	should overwrite it (it did for me).
+
+	The HPIJS driver is a free driver made available by HP. It's nice to see
+	commercial hardware manufacturers showing support for their products
+	under Linux :) Because of this, if I buy another printer in the near
+	future, it'll likely be an HP model. The latest version of this driver
+	supports most (if not all) of the features of almost every HP Deskjet
+	printer made over the last few years, including 300 to 1200 dpi output,
+	paper size, paper type, duplexing, and many others. This driver also
+	supports many other HP printers, including Photo printers and many
+	Laserjet printers. For a full list of supported printers, have a look at
+	http://hpinkjet.sourceforge.net/productssupported.php
+
+	a2ps-4.13b is a "anything to postscript" convertor. It's necessary for
+	printing out a sheet that lists all your printer's supported features,
+	which is incredibly handy for printer configuration after everything is
+	installed. I highly recomend it.
+
+INSTALL:
+	First and foremost, we need to install cups-1.1.19. For this, I
+	followed the BLFS book precisely. Install CUPS by running the following
+	commands:
+
+./configure &&
+make &&
+make install
+
+	Specifying a --prefix is not necessary, the binaries will be installed
+	in /usr/bin by default. Create the CUPS startup file like this:
+
+cat > /etc/rc.d/init.d/cups << "EOF"
+
+#!/bin/sh
+# Begin $rc_base/init.d/cups
+
+# Start or stop the CUPS server based upon the first argument to the script.
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+case $1 in
+	start)
+	        echo "Starting CUPS Printserver..."
+		loadproc /usr/sbin/cupsd
+	;;
+	stop)
+		echo "Stopping CUPS Printserver..."
+		killproc cupsd
+	;;
+
+	reload)
+		echo "Reloading CUPS Printserver..."
+		reloadproc /usr/sbin/cupsd
+	;;
+
+	restart)
+		$0 stop
+		sleep 1
+		$0 start
+	;;
+
+	status)
+		statusproc cupsd
+	;;
+
+	*)
+		echo "Usage: $0 {start|stop|reload|restart|status}"
+		exit 1
+	;;
+esac
+
+# End $rc_base/init.d/cups startup script.
+EOF
+
+	Then make the startup script executable:
+
+chmod 0755 /etc/rc.d/init.d/cups
+
+	cups installs its own set of startup scripts in your /etc/rc.d
+	directories, so we need to remove them:
+
+rm /etc/rc.d/rc0.d/K00cups &&
+rm /etc/rc.d/rc2.d/S99cups &&
+rm /etc/rc.d/rc3.d/S99cups &&
+rm /etc/rc.d/rc5.d/S99cups
+
+	And now we create our own symlinks to the startup script we generated
+	above:
+
+cd /etc/rc.d/init.d &&
+ln -sf ../init.d/cups ../rc0.d/K09cups &&
+ln -sf ../init.d/cups ../rc2.d/S91cups &&
+ln -sf ../init.d/cups ../rc3.d/S91cups &&
+ln -sf ../init.d/cups ../rc4.d/S91cups &&
+ln -sf ../init.d/cups ../rc5.d/S91cups &&
+ln -sf ../init.d/cups ../rc6.d/K09cups
+
+	Now we can start cupsd by running:
+
+/etc/rc.d/init.d/cups start
+
+	If everything is well at this point, we can proceed to install ESP
+	Ghostscript. For the most part, I followed the same installation
+	instructions outlined for Ghostscript 8.00 in the BLFS book, with a
+	couple minor changes:
+
+./configure --prefix=/usr --libexecdir=/usr/lib/gs \
+	--sysconfdir=/etc/gs --enable-shared \
+	--with-omni=no --enable-static &&
+make &&
+make install
+
+	I used this command to ensure that ESP Ghostscript-7.05.6 would
+	overwrite my previous installation of AFPL Ghostscript-8.00 (which
+	wasn't doing anything right). Incidentally, using --enable-shared
+	finally allowed my KDE ghostscript viewer (KGhostScript) to work
+	properly. It never did before with AFPL Ghostscript-8.00.
+
+	Following this, we need to install the GNU Ghostscript fonts. To do
+	this, issue the following commands:
+
+cd /usr/share/ghostscript
+tar xvfz /path/to/gnu-gs-fonts-std-6.0.tar.gz
+tar xvfz /path/to/gnu-gs-fonts-other-6.0.tar.gz
+
+	Replace /path/to/ with the appropriate path where you downloaded the
+	font files to (ie. /usr/src/. This will create a "fonts" directory where
+	all the new fonts are stored for use by Ghostscript.
+
+	=======Optional=======
+	At this point, you may also install the optional a2ps package, which
+	helps tremendously when configuring your printer after it's been
+	installed. This is how you install a2ps-4.13b:
+
+./configure --prefix=/usr --libexecdir=/usr/lib/a2ps \
+    --sysconfdir=/etc/a2ps --localstatedir=/var \
+    --with-medium=letter &&
+make &&
+make install
+
+	If you live in an area where A4 is the standard paper format, replace
+	--with-medium=letter with --with-medium=a4 instead. You shouldn't need
+	to configure anything unless you want to get fancy, the default settings
+	worked fine for me.
+	=======End Optional=======
+
+	The next package we need to install is the HPIJS driver. Luckily, this
+	is quick and simple:
+
+./configure &&
+make &&
+make install
+	
+	This automatically installs to /usr/bin and you can confirm that the
+	driver was successfully installed by running
+
+hpijs -h
+
+	This should output the name and version of the driver. We're almost done
+	now :) The driver is in place, but cups has no clue how to use it.
+	We need to download a small perl script that gets used by cups as
+	a filter. You can get the script by entering this address into your
+	browser:
+
+	http://www.linuxprinting.org/download.cgi?filename=cupsomatic&show=0
+
+	Depending on the browser you use, you'll either be asked to download the
+	file, or it will get displayed on your browser screen as text. If it
+	asks you to download the file, save it with this name:
+
+	/usr/lib/cups/filter/cupsomatic
+
+	If the file comes up as text in your browser, simply use the "Save As"
+	feature of your browser to save the file to the same location noted
+	above.
+
+	*** Please note, this assumes you installed cups using either the
+	directions provided above or the BLFS book. If not, the location of your
+	"filter" directory may vary. Use   find / -name filter   to find it.
+
+	Then make the file executable with the following command:
+
+chmod 0755 /usr/lib/cups/filter/cupsomatic
+
+	This is very important, or nothing will work when you try to print.
+
+	Now you need to get a *.ppd file to tell cups how to use the HPIJS
+	driver. This is similar to obtaining the cupsomatic script. First,
+	you'll need to point your browser to this address:
+
+http://www.linuxprinting.org/show_driver.cgi?driver=hpijs
+
+	Scroll down the page until you get to the section entitled "Printing
+	system interfaces". At the very first drop-down box (Select printer),
+	select the exact name and model of your printer (in my case, it was the
+	HP DeskJet 932C). Then click the "Generate PPD file" button. Again, your
+	browser will either ask you to download a file, or display a bunch of
+	text on your screen. You want to save this file as
+
+	/usr/share/cups/model/HP-DeskJet_***-hpijs.ppd
+
+	where *** is the model number of your printer (mine was 932C, so my
+	filename was /usr/share/cups/model/HP-DeskJet_932C-hpijs.ppd). If the
+	script comes up as text in your browser, then simply use the "Save As"
+	feature of your browser to save the file to the appropriate location.
+
+	*** Please note, this assumes you installed cups using either the
+	directions provided above, or the BLFS book. If not, the location of
+	your "model" directory may vary. Use   find / -name model   to find it.
+
+	At this point, you should restart cupsd so it re-reads the contents of
+	the "model" directory. If you installed cups as directed above, you can
+	restart it like this:
+
+/etc/rc.d/init.d/cups restart
+
+	Now all we need to do is add the printer to the cups configuration. This
+	is perhaps the easiest part of all. If you have a parallel printer, run
+	this command:
+
+lpadmin -p HP_Deskjet -m HP-DeskJet_***-hpijs.ppd -v parallel:/dev/lp0 -E
+
+	where *** is the model number of your printer (in my case, 932C). This
+	creates a new printer named "HP_Deskjet" and enables it. If you have a
+	USB printer, then run this command instead:
+
+lpadmin -p HP_Deskjet -m HP-DeskJet_***-hpijs.ppd -v usb:/dev/usb/lp0 -E
+
+	without forgetting to change *** for the printer model number. Some
+	people might not have the /dev/usb/lp0 device since it doesn't come
+	standard in the LFS book. If that's the case for you, you can create it
+	like this:
+
+mknod /dev/usb/lp0 c 180 0
+
+	Also, if you intend to use a USB printer, you need to make sure that
+	"USB Printer Support" is enabled in your kernel.
+
+	That's about it! You should now have a fully working printer. To try it
+	out, just use the lp command to send a file to the printer. For example:
+
+lp /etc/motd
+
+	would print out the file /etc/motd (assuming your printer is turned on).
+	If you have more than one printer defined, you'll have to name the
+	printer you want to send the file to, like this:
+
+lp -d HP_Deskjet /etc/motd
+
+	If you use a desktop environment (ie. KDE, Gnome), they should list your
+	printer and allow any native applications to use it. The default printer
+	configuration for Mozilla should work fine, so you can print web pages
+	without any issues even if you don't use a desktop environment. Most
+	other applications can simply be configured to use "lp" as the print
+	command. If you need more information about the "lp" command, check out
+	its man page.
+
+CONFIGURATION:
+
+	The HPIJS driver allows you to change the quality of the print output,
+	all the way up to 1200 dpi in full colour (assuming your printer
+	supports that). Changing these options is as simple as passing them to
+	the lp command. However, you first need to know what features your
+	printer supports. If you want to find out what modes your printer
+	supports, issue the following command:
+
+lp -o docs /etc/motd
+
+	The file specified is irrelevant, as long as it exists (it cannot be
+	/dev/null). It won't actually get printed. Instead, your printer will
+	print out a complete list of all the features it supports, as well as
+	the current defaults. If you have more than one printer installed, then
+	you'll have to specify which printer's features you want to see, like
+	so:
+
+lp -d HP_Deskjet -o docs /etc/motd
+
+	Since my own printer is all I have to go on, I'll use that for the
+	following examples;
+
+	My printer supports the following print modes:
+
+	- 300BestColorCMYK
+	- 300ColorCMYK
+	- 300DraftColorCMYK
+	- 300DraftGrayscaleCMYK
+	- 300GrayscaleCMYK
+	- 300PhotoCMYK
+	- 600BestColorCMYK
+	- 600GrayscaleCMYK
+	- 600PhotoCMYK
+	- 1200PhotoCMYK
+
+	So when printing using the lp command, I simply pass an option to set
+	the printing mode. Using the example above, to print the /etc/motd file
+	in 300 dpi grayscale, I'd type the following command:
+
+lp -o Resolution=300GrayscaleCMYK /etc/motd
+
+	Or if I wanted to print an image in 600 dpi colour, I'd issue the
+	following command:
+
+lp -o Resolution=600BestColorCMYK /opt/kde-3.1/share/wallpapers/alien-night.jpg
+
+	The "Photo" modes are typically intended for glossy or photo paper and
+	don't provide very good results on plain paper. They also don't provide
+	good results with text.
+
+	Similarly, you can set the paper size and type using the same switch.
+	For example, my printer supports the following paper sizes:
+
+	- Letter
+	- A4
+	- A5
+	- A6
+	- B5JIS
+	- Executive
+	- FLSA
+	- Hagaki
+	- Legal
+	- Oufuku
+	- Photo
+
+	So to print onto Letter-sized paper, I'd run the following command:
+
+lp -o PageSize=Letter /etc/motd
+
+	Again, the different sizes of paper supported by your printer are listed
+	on the printout we generated earlier.
+
+	You can specify multiple -o switches in the same command. If I wanted to
+	print onto letter paper at 600 dpi in grayscale, I'd do it like this:
+
+lp -o Resolution=600GrayscaleCMYK -o PageSize=Letter /etc/motd
+
+	Of course, typing out all these options everytime you want to print a
+	file can be tiresome and error-prone. So your best bet is to set some
+	default values that will always be used unless you override them with
+	-o switches. If most of your printing involves colour graphics (with or
+	without text), then you'd most likely want to set 600 dpi colour as your
+	printing default. Setting defaults is a simple command:
+
+lpoptions -o Resolution=600BestColorCMYK
+
+	You can also set multiple -o switches with the lpoptions command:
+
+lpoptions -o Resolution=600BestColorCMYK -o PageSize=Letter
+
+	After issuing this command, lp will always print in 600 dpi with full
+	colour onto letter-sized paper, unless you override the defaults by
+	including different -o switches. Typing lpoptions by itself on the
+	command line will list your current defaults.
+
+	There are many other uses for the lpoptions command. If you need to know
+	more, I recomend reading the lpoptions man page.
+
+	Using different front ends (ie. the KDE Printing Manager) allows you to
+	change these defaults and settings interactively without having to deal
+	with command lines. These front ends also make it a lot easier to deal
+	with margins, orientation and printable areas. All of these settings can
+	be adjusted using the lpoptions command, but explaining them all would
+	require a complete How-To :) I highly recomend using one of the
+	more advanced graphical front ends if you need more functionality.
+
+	I hope this was helpful to someone out there! If there's anything else
+	you think should be included in this hint, let me know.

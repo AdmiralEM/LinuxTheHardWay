@@ -1,0 +1,34 @@
+TITLE:		Base distros that are known to work with LFS
+LFS VERSION:	irrelevent
+AUTHOR:		Paul Jensen <pj@pcrentals.com>
+
+SYNOPSIS:
+	This is a list of distros that have been known to build LFS properly.
+
+HINT:
+starting        kernel
+distribution    version   Lib version   LFS Version   Working    User
+------------    -------   -----------   -----------   -------    ----
+
+slackware       2.0.37    5.0.46        1.3            yes        pj
+slackware 7.0   2.2.14    glibc-212/3   1.3, 2.0       yes,so far ic
+Debian 2.1      2.0.36    glibc-207     all of them    yes        gb
+LFS 1.2         2.2.14    glibc-207     LFS 2.0-all    yes        gb
+LFS 2.0-pre2    2.2.14    glibc-213     LFS2.0-pre2    yes        gb
+Redhat 6.1      2.2.12    glibc-212     LFS2.0-pre1/2  yes        mm
+SuSE 6.2        2.2.10    2.1.1-7       LFS2.0-pre1    yes        sb, pj
+Redhat 6.1      2.2.12    glibc-212     LFS2.0-pre2    half*      rj
+Redhat 5.1      2.0.36    glibc-207     pre-LFS1.0     yes        gb
+slackware 7.0   2.2.14    glibc2.1.2    LFS2.0-pre2    yes        cs
+SuSE 6.2        2.2.10    2.1.1-7       LFS 2.2        yes        sb
+SuSE 6.2        2.2.10    2.1.1-7       LFS 2.3.2      yes        sb
+SuSE 6.2        2.2.14    2.1.1         LFS 2.0-pre1   yes        os
+LFS 2.0-pre1    2.2.14    glibc-213     LFS 2.3.1      yes        os
+Caldera 2.3     2.2.14    glibc-2.1.3   LFS 2.3.2      yes        gh
+LinuxPPC 2000   2.2.14    glibc-2.1.3   LFS 2.0-pre2   yes        mp
+Slackware7.0    2.2.15    glibc-2.1.2   LFS 2.3.2      yes        jt
+Mandrake 7.0    2.2.14    glibc-2.1.3   LFS 2.3.1      yes        jg
+Redhat 6.1      2.1.14    glibc-2.1.2   LFS 2.3.2      yes        rl
+Debian 2.1      2.0.36    glibc-207     2.2            yes        jbm
+HardHat/MIPS Tech. 2.2.12-mips.04 2.0.4 LFS 2.3.1      no         an
+LFS-Bootdisk    2.2.14    glibc-2.1.2   2.2            yup        mw 

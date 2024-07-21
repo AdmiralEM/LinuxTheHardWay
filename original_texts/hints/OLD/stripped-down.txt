@@ -1,0 +1,146 @@
+TITLE:		Stripping down an LFS
+LFS VERSION:	4.0
+AUTHOR:		James Smaby <jsmaby@virgo.umeche.maine.edu>
+
+SYNOPSIS:
+        A freshly built LFS is smaller than most distros, but still contains
+        much cruft that can be removed.  Knowing what to remove takes knowing
+        your system, but here are some pointers.
+
+HINT:
+    This hint can be followed right after building LFS, or perhaps best, after
+all additional software is installed as well.  Stripping a system mostly takes
+going through all the directories and removing stuff you don't need/use.
+    If you are looking for a small system, you should consider compiling stuff
+with -Os, which tells the compiler to optimize for size, usually a good thing.
+It is normally okay to compile with -fomit-frame-pointer, but do not use it on
+glibc or anything you plan on debugging.  If you don't use NLS, you can config
+packages with --disable-nls to conserve some room.  Adding -s to your LDFLAGS,
+or using "gcc -s" as your CC will save some work later, because most libraries
+and binaries will be already stripped before installing them.  Stripping glibc
+while the system is running, for instance, can be problematic.
+    Before getting started, maybe ask yourself if it might be best to build up
+the system in an additive manner, copying over the files you need (like for a
+floppy-based router) instead of removing stuff you don't need.  Perhaps using
+busybox will meet your needs better than LFS in this case.
+
+    The first thing I like to do is remove things from /usr/share, like docs
+and locales.  If you use info, you can compress the info pages.  Otherwise,
+remove them.  Then do the same with /usr/share/man and /usr/share/doc.  You
+could do what I do, and keep compressed man pages, and remove the docs dir
+and the info pages.  Note that in order to compress the man pages, you may
+have to fix some links between them.  Look for hard links by:
+  # ls -l /usr/share/man*/* | grep -v "1 root"
+and symbolic links by:
+  # find /usr/share/man -type l
+In the case of hard links, decide which one you want for the master copy
+and remove the others.  You can then recreate the others by:
+  # echo ".so gzip.1" > /usr/share/man/man1/zcat.1
+for instance.  Make sure you remove the link first otherwise the master
+copy will be clobbered.
+    You can remove any locales, timezones, and keymaps that you don't
+use.  If you don't use NLS, you can remove all the locale info (there
+is data in /usr/share/locale and /usr/lib/locale), although you might
+get warnings like
+  Gdk-WARNING **: locale not supported by Xlib, locale set to C
+from gtk-using apps, which can be ignored (or hacked from of the glib
+source code).
+    If you copy your timezone to /etc/localtime instead of making the
+normal symbolic link, all of /usr/share/zoneinfo can be removed.  You
+can remove /usr/share/kbd, and either create a keymap file somewhere:
+  # dumpkeys > /etc/dvorak.map
+or compile your keymap into the kernel:
+  # dumpkeys | loadkeys -m - >/usr/src/linux/drivers/char/defkeymap.c
+The keymap file will have to be loaded upon startup, while if it's put
+in the kernel, the system will start with that keymap loaded.  One can
+not simply copy the keymap file from /usr/share/kbd because those maps
+include files, and tracking down all the dependencies is a pain.  Using
+dumpkeys will insure that all the needed info is in one file.
+    You can remove terminfo files that you don't use.  For instance, you
+could remove all the terminfo files except for linux and xterm, but this
+takes knowing what terminal types you use; If you do not know, leave them
+alone for now, and you'll see what files aren't used later.
+
+    If you don't use the auto tools in any of your projects, and you don't
+download source from cvs which relies on autoconf to build (like if there's
+a autogen.sh but no configure script), it's safe to remove /usr/share/auto*
+and /usr/share/aclocal*.
+    Basically, most of the dirs in /usr/share can be removed even if you use
+the programs that go with them.  Take a look inside the dirs, and if none of
+the files look `important', remove it.  If you want to play it safe, move the
+files to a temporary place, and see if anything misses their absence.  My own
+system, with various extra programs installed, has a /usr/share that is like:
+  aspell dict        gnuplot.gih irssi   man  psutils  texmf
+  bison  ghostscript groff       libtool misc terminfo vim
+Again, if you're not sure if you need the files or not, leave them be, and you
+will see which files get used later.
+
+    Next up is the hard part; look at each binary installed in the PATH: /bin,
+/sbin, /usr/bin, and /usr/sbin.  If you don't know what it does, then read the
+man page, and decide if you need it or not.  If you know what it does, and you
+know that you don't need it (like bzdiff, dir, bashbug, etc.), then remove it.
+This is the point where you get to really learn your system.  There'll be some
+binaries that don't have man pages, don't offer any help, and who's purpose is
+not obvious.  Play it safe and leave it be in that case.  You'll get to see if
+it is not used later.
+    Chances are, your /usr/sbin will be pretty small after stripping it down.
+I like to just move whatever is left in there to /sbin, and have one less dir
+in my PATH.
+
+    It's not so easy removing stuff from /usr/lib, as it is not obvious what
+is needed.  Indeed, ldd doesn't even show all of the runtime dependencies as
+a binary could load shared libraries after running.  It is safest to remove
+only the debugging and profiling libraries, and leave it at that.  A couple
+packages might install these (glibc and and ncurses), and they end in _g.a
+or _p.a.  They can be removed if you do not plan on debugging or profiling
+code that uses them.
+    The .la files installed by libtool are unneeded by anything that I've
+found (except some for parts of kde), and can be removed (well, I always
+remove them and haven't run into trouble yet).  They're pretty small but
+they add clutter, and clutter is a bad thing.
+    The static libraries will not have been stripped by `-s' since they
+are not linked so strip out the debugging symbols now:
+  # strip -g /usr/lib/*.a
+
+Now is as good a time as any to look for any other binaries that need
+stripping.  Run the following command to see which programs/libraries
+still have debugging symbols in them:
+  # find / -exec file {} \; | grep "not stripped"
+This will print out the names of some binaries that didn't honor your
+CC or LDFLAGS, and a few other files, maybe in subdirs of /usr/lib or
+hiding in odd places.  If it ends in .o or .a, use strip -g on it, so
+that you don't clobber all the symbols.  Any other binary is probably
+linked, so can be run with just plain strip.  Do not strip any binary
+or library that's currently in use, as it's possible that the program
+using it will crash.  If the strip program, bash, or glibc need to be
+stripped, I recommend doing so from the host.
+
+    There's still a lot that can be removed, like subdirs of /usr/lib,
+files in /etc, and binaries you are not sure are needed or not.  Maybe
+the easiest way to find out what to keep is to do the following:
+  # touch /var/tmp/timestamp
+Now use the system like normal.  Reboot a couple times.  Build a kernel.
+Maybe build another LFS. Just use the system.  After a week or so of use
+you will have accessed any files that will ever need to be accessed.  Run
+the following command to see which files have not been accessed since you
+touched the timestamp.
+  # find / -not -anewer /var/tmp/timestamp
+Now go through this listing, and look for anything that looks important, or
+that you know you might someday want (like documentation).  Everything else
+can most likely be removed.  If you want to be safe, move all the files to a
+temporary location out of the way.  Maybe put them on a cdrom backup.
+    Note that for this trick to work, nothing should be mounted read-only or
+noatime during the usage time, otherwise the atime's of the files will not be
+updated, and everything will appear to be unused.
+
+    After you have your system stripped down, look through every directory for
+anything you don't want.  This may include some files that you accessed during
+the usage time, but didn't mean to (like looking inside configuration files in
+/etc to see what's in them).
+    Another good thing to do in the final pass-through is to use du -sh on the
+different directories to see how much space they are taking up.  If you find a
+particularly bloated one, concentrate efforts on slimming it down, like if you
+see that /usr/include is taking up more room than you want it to, you could do
+a very evil thing and strip out all the comments from the header files.
+
+Good luck, have fun, and I hope you made a backup first ;-)

@@ -1,0 +1,161 @@
+AUTHOR:		Sune Molgaard <sune at molgaard.org>
+
+DATE:		2004-13-12
+
+LICENSE:	Creative Commons Attribution-NonCommercial-ShareAlike License
+		http://creativecommons.org/licenses/by-nc-sa/1.0/
+
+SYNOPSIS:	Installing the at daemon.
+
+DESCRIPTION:
+
+This hint will guide you through installing the at daemon, that facilitates delayed command execution.
+
+Attachments:
+
+http://www.linuxfromscratch.org/patches/downloads/at/at-3.1.8-fixes-1.patch
+http://www.linuxfromscratch.org/patches/downloads/at/at-3.1.8-fcron.patch
+
+PREREQUISITES:
+
+An LFS system and sendmail and fcron from BLFS.
+
+HINT:
+
+=========
+CONTENTS:
+=========
+
+	1. Introduction
+	2. Package Dependencies
+	3. Package Installation
+	    Download the package
+	    Patch the package
+	    Configure the build
+	    Build the package
+	    Install the package
+	    Install the init script
+	4. Closing
+
+================
+1. INTRODUCTION:
+================
+
+The at package facilitates delayed program execution. The original location is no longer available, and the package seems to be maintained by debian now.
+
+========================
+2. PACKAGE DEPENDENCIES:
+========================
+
+At seems to depend on an MTA to report failures and such, so installing sendmail as per the BLFS book is recommended. Furthermore, it relies on a cron, and I have made the patch BLFS compliant, so that it relies on fcron.
+
+=====================
+PACKAGE INSTALLATION:
+=====================
+
+---------------------
+Download the package:
+---------------------
+
+At seems to be maintained by debian now, so download the package from:
+
+ftp://ftp.debian.org/debian/pool/main/a/at/at_3.1.8-11.tar.gz
+
+-----------------
+Patch the package
+-----------------
+
+patch -Np1 -i ../at-3.1.8-fixes-1.patch
+patch -Np1 -i ../at-3.1.8-fcron.patch
+
+--------------------
+Configure the build:
+--------------------
+
+The values presented here are based on a relatively clean LFS/BLFS build, and should thus be appropriate for most. However, you may want to consult ./configure --help.
+
+./configure --prefix=/usr --with-daemon_username=nobody --with-daemon_groupname=nogroup
+
+------------------
+Build the package:
+------------------
+
+make
+
+make install
+
+chmod 755 /var/spool/fcron
+
+------------------------
+Install the init script:
+------------------------
+
+cp debian/rc /etc/rc.d/init.d/atd
+
+cat > /etc/rc.d/init.d/atd << "EOF"
+#!/bin/sh
+# Begin $rc_base/init.d/atd
+
+# Based on various other init scripts.
+# Rewritten by Sune Molgaard - sune@molgaard.org
+
+. /etc/sysconfig/rc
+. $rc_functions
+
+case "$1" in
+
+	start)
+		echo "Starting atd..."
+		loadproc /usr/sbin/atd
+		;;
+        stop)
+                echo "Stopping atd..."
+                killproc atd
+                ;;
+
+        restart)
+                $0 stop
+                sleep 1
+                $0 start
+                ;;
+
+        status)
+                statusproc atd
+                ;;
+
+        *)
+                echo "Usage: $0 {start|stop|restart|status}"
+                exit 1
+                ;;
+esac
+
+# End $rc_base/init.d/atd
+EOF
+
+chmod 755 /var/spool/fcron
+
+ln -s /etc/rc.d/init.d/atd /etc/rc.d/rc0.d/K07atd
+ln -s /etc/rc.d/init.d/atd /etc/rc.d/rc2.d/S41atd
+ln -s /etc/rc.d/init.d/atd /etc/rc.d/rc3.d/S41atd
+ln -s /etc/rc.d/init.d/atd /etc/rc.d/rc4.d/S41atd
+ln -s /etc/rc.d/init.d/atd /etc/rc.d/rc5.d/S41atd
+ln -s /etc/rc.d/init.d/atd /etc/rc.d/rc6.d/K07atd
+
+--------
+CLOSING:
+--------
+
+I personally use the at package to schedule recordings of TV shows for when I am not at home. It can be used for a multitude of other scenarios where you have to schedule something to run at one specific time and date.
+
+CHANGELOG:
+[2004-12-05]
+* Initial Release
+[2004-12-09]
+* Fixed a few typos...
+[2004-12-09]
+Remembered to fill in the "Patch the package" section...
+[2004-12-13]
+Another typo fix, and remembered to fill in the date section...
+[2005-06-13]
+Became aware of the fixes patch by Jim Gifford. Included it in the
+hint. Changed link to fcron patch from personal site to lfs site.

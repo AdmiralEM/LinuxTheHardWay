@@ -1,0 +1,461 @@
+GENERAL OUTLINE
+===============
+
+TITLE:		Sendmail
+LFS VERSION:	3.1+
+AUTHOR:		Sam Halliday <fommil AT yahoo DOT ie>
+
+SYNOPSIS:
+	This hint covers the building and configuring of a Sendmail/Procmail
+mail handling system, with Sendmail not running as root. Some mail clients
+are recommended.
+
+ACKNOWLEDGEMENTS:
+Based on the sendmail hint by J. Jones
+
+CHANGELOG:
+0.1	first release with a changelog, added spam support and better 'cf'
+	support
+0.1.1	fixed typo in the 'mc' file
+0.1.2   added extra spam support
+0.1.3   fix a file locking security bug
+0.1.4   fix the fix i didnt really fix ;)
+0.1.5   fix permissions, restructure and upgrade to LFS-3.1 initscripts
+        (this was almost a total rewrite)
+0.1.6   a few more permission fixes, update sendmail version
+0.1.7   note about opts in procmail, changed parts of the pine install,
+        updated procmail version as the latest development is now 'stable',
+        fixed 80 character wrapping, and edited some version tags in mc files.
+0.1.8   fixed aliases.db problem, removed default antispam support, but added
+        more detail and a test to check that it works. Removed default DECNET
+        support, but mentioned how to add it again. Fixed a silly line in the
+        permissions section. Made a workaround to the .forward problem. Please
+        somebody help me with the real fix!
+0.1.9   fix a permission problem... sheesh! well, I can send mail now, hope
+        everyone else can (everything from 0.1.5 to here was done without a
+        network available to me, so please forgive all the silly errors)
+0.1.10  add a patch for a security vulnerability in sendmail 8.12.6, and change
+        the download location to reflect sendmail's new stance against the
+        recent trojan
+0.1.11  fix the formatting problem in the man pages
+0.1.12  fix the firewall command line, added note about signature checking
+        removed old maintainer email address as it doesn't exist anyway.
+0.1.13  edit the initscript to process the failed messages in the clientmqueue.
+0.1.14  thanks to Duncan Webb <duncan AT dwebb.ch> for a fix to the submit.mc
+0.1.15  notes on berkeleydb and added ssl support
+0.1.16  upgraded db, sendmail and removed group 'mail' setup
+0.1.17  upgrade sendmail. 8.12.7 has a serious security bug.
+0.1.18  upgrade sendmail. 8.12.8 has a serious security bug (its like deja vu,
+        all over again)
+
+HINT:
+
+Software you need
+=================
+
+Sendmail:  http://www.sendmail.org
+	Handles sending and receiving of mail by the SMTP protocol
+	Latest stable version at time of writing is 8.12.9.
+
+Procmail:  http://www.procmail.org
+	Our local delivery agent (makes sure mail goes to the correct boxes)
+	Latest stable version at time of writing is 3.22
+
+Berkeley DB:  http://www.sleepycat.com/download.html
+	Sendmail uses this library to store much of it's configuration.
+	Latest stable version at time of writing is 4.1.25 although
+	requires a patch found at the same location.
+
+Make sure you run md5sum and check the signatures of the packages!
+The recent sendmail trojan was a lesson to us all!
+
+Optional
+========
+
+Mail Clients
+
+Pine:  http://www.washington.edu/pine/
+	Console based mail client (for for ssh'ing in and reading mail)
+
+Sylpheed Claws:  http://sourceforge.net/projects/sylpheed-claws
+	GTK+ based email client (when you are at your machine with X running)
+
+
+Why you might need this hint
+============================
+
+Sendmail is a mail server for sending and receiving mail. If you do not have
+a static IP or domain name attached to your machine, you should think again
+before installing sendmail, read the BLFS book for alternatives. If however
+you do need a mail server for receiving mail, this is the LFS hint you need.
+However, if you just wish to send mail locally, don't let this put you off
+installing sendmail as it is an incredibly powerful package which you may
+one day wish to use! Sendmail is not a POP3 or IMAP server by itself.
+
+
+Building the required packages
+==============================
+
+Berkeley Database:
+You may want to build the database with back-wards compatibility, so that you
+can use this functionality with older and unmaintained packages
+(--enable-compat185). Try passing (--help) to see other API's you may build,
+such as java, c++ and tcl. Be warned that if you build Openoffice you may have
+conflicts as it requires an older version of Berkeley-DB. This package takes
+the standard GNUmake environment variables for optimisations and now is
+the best time to set them;
+
+export CFLAGS='-s -O2 -march=i386 -fomit-frame-pointer'
+
+unpack db tarball
+patch -p0 < ../patch.4.1.25.1 # Apply the patch
+cd build_unix
+../dist/configure --prefix=/usr --enable-compat185
+make
+make docdir=/usr/doc/berkeleydb install
+ldconfig
+
+Procmail:
+Procmail requires a Sendmail file to exist in order to compile, so we trick it
+into believing that we have Sendmail installed already by touching the future
+location. Again takes the standard GNUmake environment variables for
+optimisations. Be aware that the -O3 opt kills the procmail initial check, as
+the test program seems to take forever to compile with inlining of functions!
+
+unpack procmail tarball
+touch /usr/sbin/sendmail
+make CFLAGS="$CFLAGS" LOCKINGTEST='/tmp'
+make CFLAGS="$CFLAGS" LOCKINGTEST='/tmp' install
+make CFLAGS="$CFLAGS" LOCKINGTEST='/tmp' install-suid
+
+Unfortunately, I have never been able to get Procmail to work without setting
+run-as-root suid. It needs root privileges to read users config files from
+their home directory. With a different setting, this functionality would be
+lost.
+
+Sendmail:
+
+Sendmail runs on TCP port 25, and by default runs as root. Although Sendmail
+has now gained the respect of the community as being safe to run as root,
+I still do not like having daemons running on open ports as root. So we will
+create the group/user pair 'smmsp':
+
+groupadd -g 18 smmsp
+useradd -g smmsp -G mail -u 18 smmsp
+
+Unlike Procmail and most other programs, which use a text based rc file for
+configuration, sendmail uses preprocessed text files for its compile
+configuration. The same technique is used at run time for incoming
+(sendmail.cf) and outgoing mail (submit.cf). You create an 'mc' file which is
+then processed by the m4 macro processor to create the 'cf' config file.
+Editing a 'cf' file directly is NOT recommended.
+
+After unpacking sendmail, in order to avoid a user.group install which we
+may not be able to accomodate, create the config file with the following
+after setting your CFLAGS to what you desire (leaving them blank is also
+OK, but do not skip the 'sed' script even if they are empty)
+
+chmod a+w devtools/OS/Linux
+cat > devtools/OS/Linux << "EOF"
+define(`confDEPEND_TYPE', `CC-M')
+define(`confSM_OS_HEADER', `sm_os_linux')
+define(`confMANROOT', `/usr/man/man')
+define(`confLIBS', `-ldl')
+define(`confEBINDIR', `/usr/sbin')
+APPENDDEF(`confLIBSEARCH', `crypt nsl')
+define(`confLD', `ld')
+define(`confMTCCOPTS', `-D_REENTRANT') 
+define(`confMTLDOPTS', `-lpthread')
+define(`confLDOPTS_SO', `-shared')
+define(`confSONAME',`-soname')
+define(`confOPTIMIZE',`LFSOPTS')
+define(`confMANGRP',`root')
+define(`confMANOWN',`root')
+define(`confSBINGRP',`root')
+define(`confUBINGRP',`root')
+define(`confUBINOWN',`root')
+EOF
+cp devtools/OS/Linux devtools/OS/Linux.orig
+sed -e "s:LFSOPTS:${CFLAGS} \-s:g" devtools/OS/Linux.orig \
+ > devtools/OS/Linux
+
+If you wish to use OpenSSL support, then also type this (always use up to
+date releases of OpenSSL!)
+
+cat >> devtools/OS/Linux << "EOF"
+APPENDDEF(`conf_sendmail_ENVDEF', `-DSTARTTLS -DHASURANDOMDEV')
+APPENDDEF(`conf_sendmail_LIBS', `-lssl -lcrypto')
+EOF
+
+Now we build some preliminaries:
+
+cd sendmail
+sh Build
+cd ..
+
+Now create the config file 'sendmail.mc' and 'submit.mc'. Read cf/README
+for all the options you can use if you ever wish to modify your setup.
+We may need to update this configuration in the future, so it is a good 
+idea to copy over all necessary files into /etc/mail. The sendmail startup
+script will regenerate the config files on startup so unless you want to
+edit the script, place them as shown;
+
+mkdir -p /etc/mail
+cp cf/README /etc/mail
+cp -r cf/m4 /etc/mail
+cp -r cf/ostype /etc/mail
+cp -r cf/domain /etc/mail
+cp -r cf/feature /etc/mail
+cp -r cf/mailer /etc/mail
+cp -r cf/sh /etc/mail
+cat > cf/cf/sendmail.mc << "EOF"
+OSTYPE(linux)
+DOMAIN(generic)
+FEATURE(smrsh)
+FEATURE(`nouucp',`reject')
+FEATURE(`virtusertable', `hash -o /etc/mail/virtusertable')
+FEATURE(`access_db',`hash -T<TMPF> /etc/mail/access')
+FEATURE(`no_default_msa')
+MODIFY_MAILER_FLAGS(`LOCAL', `-S')
+define(`confTRUSTED_USER', `smmsp')
+define(`confRUN_AS_USER', `smmsp:smmsp')
+define(`confCW_FILE', `-o /etc/mail/local-domains')
+MAILER(local)
+MAILER(smtp)
+EOF
+cat > cf/cf/submit.mc << "EOF"
+FEATURE(`msp')
+define(`confCF_VERSION', `Submit')
+define(`__OSTYPE__',`linux')
+define(`confTIME_ZONE', `USE_TZ')
+define(`confTRUSTED_USER', `smmsp')
+define(`confRUN_AS_USER', `smmsp:smmsp')
+EOF
+
+A brief description is that we are fork()'ing the listening sendmail daemon
+to use user smmsp. Berkeley DB support has also been enabled here. For a fuller
+explanation, read your locally stored /etc/mail/README. Sendmail also fork's
+as user smmsp to send mails, this avoids any possible local exploits.
+
+To add a database lookup of known spammer IP addresses, simply add one of the
+following to you sendmail.cf file to the end of the FEATURE section.
+
+FEATURE(`dnsbl', `blackholes.mail-abuse.org', `"Listed on http://mail-abuse.org"')
+FEATURE(`dnsbl', `sbl.spamhaus.org', `"Listed on http://spamhaus.org/SBL"')
+FEATURE(`dnsbl', `relays.visi.com', `"Listed on http://relays.visi.com"')
+
+To test that your IP lookup for blackholes.mail-abuse.org is working, Russell
+Nelson has put together an auto-responder. His instructions are:
+Send mail to nelson-rbl-test@crynwr.com from the server whose block you are
+testing. Expect one reply from crynwr.com with the SMTP conversation. If
+you get another reply from crynwr.com, then your spam filter is broken.
+Please note that the RBL, RSS, and DUL zones are now closed to all but paying
+customers, so don't expect this to work unless you have organised with them
+previously, with $/£. Since I have no need of this service I have never checked
+that it is working correctly... I would appreciate mail with success stories!
+
+We will disable SSL connection support as default, as a lot of MTA's implement
+the protocol incorrectly, but if you are in a situation where SSL connections
+are an absolute necessity, then I refer you to your locally stored
+/etc/mail/README file where you may read the section on 'STARTTLS'. You may
+need to create a 'certs' folder to store certificates.
+
+Now compile the 'cf' files from our 'mc' files
+
+cd cf/cf
+sh Build sendmail.cf
+sh Build submit.cf
+
+Install the setup files and create some needed system directories
+
+mkdir -p /var/spool/mqueue /var/lib/smrsh
+cp sendmail.cf /etc/mail
+cp sendmail.mc /etc/mail
+cp submit.cf /etc/mail
+cp submit.mc /etc/mail
+
+Build it and install!
+
+cd ../../
+sh Build
+sh Build install
+
+The Sendmail restricted shell is what will be executed (in place of /bin/sh)
+in order to process any commands that may appear in a user's .forward file.
+It can only execute a program if it appears in it's command directory. This
+will allow smrsh to execute Procmail and vacation, and nothing else. You
+should never allow it to execute any shell, as it will defeat any security
+advantages gained by using it. Execute the following:
+
+cd /var/lib/smrsh
+ln -s /usr/bin/procmail
+ln -s /usr/bin/vacation
+
+Create the file /etc/mail/aliases as follows. See man 5 aliases for
+an explanation of this file
+
+cat > /etc/mail/aliases << "EOF"
+postmaster: root
+MAILER-DAEMON: root
+EOF
+
+And the file /etc/mail/access. This file is quite powerful.. you should
+read the /etc/mail/README section about it to fully understand it.
+
+cat > /etc/mail/access << "EOF"
+localhost.localdomain           RELAY
+localhost                       RELAY
+127.0.0.1                       RELAY
+#example line to block spammers:
+#spammer@aol.com ERROR:"550 spam sucks"
+EOF
+
+Do the next line and also after any change to /etc/mail/access
+
+makemap hash /etc/mail/access < /etc/mail/access
+
+add lines to /etc/mail/local-domains such as
+        @<your domain here>
+Or simply create an empty file by
+
+touch /etc/mail/local-domains
+
+At this stage it is important to set the permissions correctly in the /etc/mail
+directory or sendmail will not be able to upgrade or read it's own databases.
+Set the permissions by issuing
+
+touch /etc/mail/aliases.db
+chown -R smmsp.root /etc/mail/
+chmod -R o-wrx /etc/mail
+chmod o+x /etc/mail
+chown -R root.smmsp /var/spool/mqueue
+chmod 770 /var/spool/mqueue
+chown -R root.smmsp /var/spool/clientmqueue
+chmod 770 /var/spool/clientmqueue
+chmod 1777 /var/mail
+
+Now run `sendmail -v -bi` to upgrade the sendmail alias list.
+
+OK, sendmail is now installed and should be working once we run the startup
+script, speaking of which...
+
+cat > /etc/rc.d/init.d/sendmail << "EOF"
+#!/bin/bash
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+case "$1" in
+        start)
+                echo "Starting sendmail..."
+                /usr/bin/m4 /etc/mail/m4/cf.m4 /etc/mail/sendmail.mc \
+			> /etc/mail/sendmail.cf
+                chmod 444 /etc/mail/sendmail.cf
+                /usr/bin/m4 /etc/mail/m4/cf.m4 /etc/mail/submit.mc \
+			> /etc/mail/submit.cf
+                chmod 444 /etc/mail/submit.cf
+                /usr/sbin/makemap hash /etc/mail/access < /etc/mail/access
+                /usr/bin/newaliases > /dev/null 2>&1
+                /usr/sbin/sendmail -bs -bd -q1m
+		/usr/sbin/sendmail -Ac -qf
+                evaluate_retval
+                ;;
+
+        stop)
+                echo "Stopping sendmail..."
+                killproc sendmail
+                ;;
+
+        restart)
+                $0 stop
+                sleep 1
+                $0 start
+                ;;
+
+        status)
+                statusproc sendmail
+                ;;
+
+        *)
+                echo "Usage: $0 {start|stop|restart|status}"
+                exit 1
+                ;;
+esac
+EOF
+chmod 755 /etc/rc.d/init.d/sendmail
+
+When you send or receive an email you can check that sendmail is running as
+smmsp by issuing "ps -u smmsp v". If you intend on using a Firewall, you
+will have to open port 25 up to NEW connections. eg. for iptables
+
+/usr/sbin/iptables -A INPUT -i eth0 -p tcp --dport 25 -m state \
+	--state NEW -j ACCEPT
+
+BUGFIX:
+sendmail has some incorrectly formatted man pages, so if you experience
+trouble, run this
+
+for A in sendmail/mailq.1 sendmail/newaliases.1 vacation/vacation.1
+do
+/bin/cp -f $A /usr/share/man/man1/ ;
+done
+/bin/cp -f sendmail/aliases.5 /usr/share/man/man5/ ;
+for A in mailstats/mailstats.8 \
+  makemap/makemap.8 smrsh/smrsh.8 \
+  sendmail/sendmail.8 praliases/praliases.8 \
+  editmap/editmap.8
+do
+/bin/cp -f $A /usr/share/man/man8/ ;
+done
+
+ADDITIONAL
+==========
+
+Now we need a mail client program which users can send and read their email
+with. I recommend two; 'pine' for console and 'sylpheed-claws' for GTK+ in
+an X environment.
+
+Pine:
+This will install Pine the mail client for a console. It also has openssl
+support, see the BLFS book for that. Unfortunately the compile is totally
+non-standard and the authors should be ashamed of themselves! You must
+edit the file imap/src/osdep/unix/Makefile (in the slx section) in order
+to add optimisations to the imap build. We will install for shadow password
+support, but PAM support is also available if you replace the 'slx' with
+'lnp'.
+
+./build clean
+./build slx CC="$CC" MAILSPOOL='/var/mail' SSLINCLUDE='/usr/include/openssl' \
+	SSLCERTS='/etc/ssl/certs' SSLTYPE=unix DEBUG="$CFLAGS"
+strip pine/pine
+install pine/pine /usr/bin/
+
+Sylpheed Claws:
+You will need GTK+-1.2 for this one. 'GPG made easy' (www.gnupg.org/gpgme.html)
+and GPG are needed for GPG support. The new 'all in one' aspell for spelling
+and of course, OpenSSL for SSL.
+
+./configure --prefix=/usr/X11R6 --enable-aspell --enable-gpgme --enable-openssl
+make 
+make install    
+
+Happy emailing!
+
+BUGS:
+
+Procmail, despite being suid root, is running as smmsp and is therefore unable
+to read user's .forward files unless their home directories are world readable!
+As a workaround, set the permissions on everyone's home directories to
+`chown <user>.smmsp`. This does not need to be run recursively, but requires
+that the .forward and .procmailrc files be world readble, or also set
+`chown <user>.smmsp`. I would LOVE to hear the real fix for this.
+
+NOTES:
+
+Feedback and patches are most welcome! Consider the 'AUTHOR' field mearly a
+formality for saying 'contact'. This hint is community owned/written and wishes
+to stay that way.
+
+For further reading, I direct you to
+http://www.sendmail.org/faq
+and the numerous books available on sendmail.

@@ -1,0 +1,642 @@
+TITLE:		One Partition HINT
+LFS VERSION:	2.x-4.0*
+AUTHOR:		Alex Kloss (LX) <l.x.@gmx.de>
+
+SYNOPSIS:
+	Install LinuxFromScratch using only 1 bootable Linux-partition
+	on which is your actual distribution.
+
+HINT:
+________________________________________________________________________________
+
+The following text describes the changes you have to make to the normal LFS 
+installing procedere when using only 1 bootable partition. It's not complete
+without the LFS Book. It is just a description of the things you ought to do
+in a different way than declared in the LFS book. It splits up into 2 parts
+that differ from the Book: first, of course, the making of partition, which is
+replaced by the making and setup of a loop device file, and next, the deletion
+of the previous system due to the need of diskspace for the new one and the
+installation and boot setup, that differs a bit, too.
+________________________________________________________________________________
+
+*: A certain Version of LFS is not really necessary. You can perform the 
+   following tricks with any recent LFS Version known to me. The only thing 
+   that really depends on the LFS version are the Chapter Names and Numbers.
+________________________________________________________________________________
+
+HISTORY:
+
+Summer 2000: After doing this little trick on my own notebook, I urged
+myself to write a hint (after all, I had a lot fun with LFS and wanted to 
+help spread that fun).
+
+Somewhen later 2000: While using my own hint when I tried to make a LFS BootCD 
+without using the hint (I'll never do that again), I stumbled over a nice 
+information about losetup, which opens a better way to handle loop devices and
+added it to that hint.
+
+14. Dec. 2001: After a few month, I wanted 1. to do a new LFS using my hint 
+again (not only for the fun of it, I also wanted the System as new as possible),
+2. try to reorganise this hint and 3. make the scripts on the end a bit nicer.
+Note: I had to enlarge the lfs.disk file a bit, due to the fact that on some 
+systems, during glibc compilation in chapter 6 the disk usage conquers 800MB.
+
+19. Dec. 2001: Corrected a bad typo
+
+30. Mar. 2002: I'm trying to keep this hint up to date, so another 
+installation is about to take place. I want to go a bit beyond the current 
+version, so I'll try to use gcc-3.0.4 and another few versions not yet used by
+the book. Wish me luck!
+
+31. Oct. 2002: Currently testing LFS 4.0 on a One Partition Build. Since
+the chapters have a new structure and the static utils are stored in a
+separate directory, the advantages should be used in this hint, too.
+
+________________________________________________________________________________
+
+THANKS:
+Many thanks goes to Gerard, without his book, developing this hint had never 
+been possible.
+Thanks to the whole bunch of people that usually idles the whole day on 
+#lfs@irc.linuxfromscratch.org for helping me in so many ways.
+And thanks to all the people not mentioned here for not minding it...
+________________________________________________________________________________
+
+REISERFS WARNING:
+
+If you're using reiserfs, this hint is almost unusable for you due to
+deletion errors on a recursive mounted volume with reiserfs (the files
+will be deleted, but the space wouldn't be freed). You could still use
+the hint to make everything ready for a transfer using a bootdisk/CD,
+but don't try the "Delete the previous System" section or further.
+You've been warned!
+
+RECOMMENDATION:
+
+Make yourself a bootdisk or bootCD, whatever is sufficient on your
+system. You can prevent a lot of damage to your system. 
+
+If you don't know how to make a bootdisk or bootCD, look at the hints,
+the BLFS section about it or search for bootdisk on freshmeat. Be sure
+that the bootdisk/CD is able to read/write your root partition, e.g. a
+tomsrtbt is currently not able to mount reiserfs.
+
+INSTALLATION:
+
+When you come to the part of the LFS Book which is called:
+
+Part II, Paragraph 4
+====================
+
+Preparing a new partition
+
+You don't want to create a new partition! That's why you're trying to use this 
+hint. Therefore, this should be replaced with:
+
+Making a loop device file and setting it up
+
+Be sure to be superuser and that you have all variables ($LFS) set up like
+you're told in the book. Then make a file containing enough MB of
+nothing using:
+
+	dd if=/dev/zero of=/tmp/lfs.disk bs=1M count=XXX
+
+This file /tmp/lfs.disk will become our loop device file afterwards. The newer
+versions of software you use, the more space you need for compiling; you might
+want to replace XXX with 800 for LFS 2.x, 900-1000 for LFS 3.x and
+1100-1300 for LFS 4.x or even more to be on the safe site.
+
+LFS 4.0 allows to put all the static stuff to another directory, so it
+would be cool to part the loopback volumes, too:
+
+	dd if=/dev/zero of=/tmp/lfs.disk bs=1M count=450 &&
+	dd if=/dev/zero of=/tmp/static.disk bs=1M count=750
+
+This makes one volume for the finished LFS and one for the static stuff
+you'll delete afterwards.
+
+________________________________________________________________________________
+
+Command explanations
+
+dd: 
+
+data dump utility - a small utility to read from an input file/device and dump 
+the data into an output file.
+
+if=/dev/zero: 
+
+defining /dev/zero as Input file. We don't need nor want any input. The Zero 
+device contains as much "0" as we want to read from it.
+
+of=/tmp/lfs.disk: 
+
+we dump a choosed amount full of nothing into the Output File called
+"lfs.disk" in the directory /tmp. It's not necessary to call it like
+that. You can even put it into any directory you got read/write-rights
+for. But if you call it otherwise, you'll better remind to change this
+filename within the later instructions.
+
+bs=1M: 
+
+Blocksize is set to 1 MegaByte.
+
+count=XXX: 
+
+We want XXX blocks each containing 1MB, so our file will be XXX MB big.
+Version 2.x can be build with about 800MB, Version 3.x with about 1GB,
+Version 4.x with about 1.2GB. If you want to be on the safe site, you
+might want to take 100MB more. Even if it the size written in the
+book works, when installing glibc, you may reach the limits faster than
+you thought.
+________________________________________________________________________________
+
+Finding out wether the loop device is available and install it if not
+
+For this hint, you need the loop device to be installed in your kernel,
+either as module or included. To find out wether it is available, simply
+try
+
+	dmesg | grep loop
+
+if you get something like 
+
+	loop: loaded (max 8 devices)
+	Calibrating delay loop... XXXX.XX BogoMIPS
+
+The driver is already loaded. If you don't get it, try
+
+	modprobe loop
+
+If modprobe complains about the module not to be found, it's possible,
+that you haven't compiled it into your kernel. If not, you can skip the
+following section.
+________________________________________________________________________________
+
+Command Explanation
+
+dmesg:
+
+Giving the kernel messages (like these you see every bootup - if you
+ever see one, actually) to the standard output.
+
+|:
+
+A so-called "pipe". Gives the standard output from one command to the
+standard input of another one.
+
+grep loop:
+
+print only the lines with "loop" in it, e.g. the one about the loop
+device driver.
+________________________________________________________________________________
+
+Setting up the loop device in your kernel
+
+First, we check again, if there's really no loop device support in your kernel
+(there are few chances that depmod didn't run properly or that you're running
+the wrong kernel):
+
+	cat /usr/src/linux/.config | grep CONFIG_BLK_DEV_LOOP
+
+If you get something like
+
+CONFIG_BLK_DEV_LOOP=Y 
+
+meaning the support is compiled into the kernel, or
+
+CONFIG_BLK_DEV_LOOP=M
+
+stating that loop device support is compiled as module.
+If you get something like
+
+#CONFIG_BLK_DEV_LOOP is not set
+
+you could change the necessary option by typing (or copy and paste - X
+is great!)
+
+	sed s/\#\ CONFIG_BLK_DEV_LOOP\ is\ not\ set/CONFIG_BLK_DEV_LOOP=m/ \
+        /usr/src/linux/.config > conf && mv conf /usr/src/linux/.config &&
+        cd /usr/src/linux && make modules modules_install && insmod loop
+
+After some minutes (depending on the speed of your system) you should be
+able to use the loop device.
+________________________________________________________________________________
+
+Command Explanation:
+
+cat /usr/src/linux/.config: 
+
+writes the kernel configuration to the standard output.
+
+| grep CONFIG_BLK_DEV_LOOP: 
+
+searches the output for the loop-device-option.
+
+sed...: 
+
+replaces the "is not set" instruction with the instruction for making a module
+to use the loop device. For further explanation, please read the LFS book.
+
+insmod loop: 
+
+loading the module for mounting loop devices
+
+mount lfs.disk /mnt/lfs -o loop: 
+
+mounting the disk image file to the directory /mnt/lfs using the loop device 
+driver (-o loop).
+________________________________________________________________________________
+
+If your loop device was already available, you should get on with things
+right here:
+
+Setting up the loop device
+
+You load the file you made to the loop device with the command
+
+	losetup /dev/loop0 /tmp/lfs.disk
+
+And if you're using LFS 4.x with splitting of lfs and static, add
+
+	losetup /dev/loop1 /tmp/static.disk
+
+If you get an error: /dev/loop0 device file not found, it so seems that
+you're missing the device file (which is really unusual), but you could
+make it easily by typing
+
+	mknod b 7 0 /dev/loop0
+
+And for the splitting again
+
+	mknod b 7 1 /dev/loop1
+
+and perform the losetup again.
+________________________________________________________________________________
+
+Command Explanations
+
+losetup /dev/loop0 /tmp/lfs.disk:
+
+Attaching the file /tmp/lfs.disk to the loop device on /dev/loop0. This
+is somewhat like mounting, only there's no filesystem on a device to
+mount to a directory, but a file that gets "mounted" to a device for
+later mounting.
+
+mknod b 7 0 /dev/loop0:
+
+Making a block device with major/minor nr. 7/0 using the filename
+/dev/loop0. You could read the mknod manpage and the devices.txt of
+the kernel Documentation for further informations on the issue.
+________________________________________________________________________________
+
+Creating a ext2 file system on the new partition
+
+We don't have a new partition. But we have our file "lfs.disk" (or whatever you 
+called it). on the /dev/loop0 device So instead of creating the file system 
+on /dev/hda2 or any other partition, we're using the command on the
+loop device our file is attached to:
+ 
+	mke2fs /dev/loop0
+
+And if you made a static.disk you should also
+
+	mke2fs /dev/loop1
+
+You could also use mkreiserfs or any other filesystem that's capable of
+unix-style attributes, but I should warn you that e.g. reiserfs produces
+grossiping amounts of overhead, so prepare yourself in patience for a
+slow installation. I hear your questions why reiserfs should be slower
+than ext2fs at a loop device. This is because the reiserfs uses a
+journal which is accessed every time at write accesses, so you have to
+write almost any data twice vs. once using ext2fs.
+
+If you haven't got any idea about what I was writing about the last
+paragraph, just believe me using ext2fs is the best method.
+________________________________________________________________________________
+
+Command explanations
+
+mke2fs /dev/loop0: 
+
+creating an ext2 file system through /dev/loop0 into the file lfs.disk
+instead of an block device 
+(like e.g. /dev/hda1).
+________________________________________________________________________________
+
+Mounting the new partition
+
+	mount /dev/loop0 /mnt/lfs
+
+And again the static part:
+
+	mkdir /mnt/lfs/static
+	mount /dev/loop1 /mnt/lfs/static
+________________________________________________________________________________
+
+Command explanations
+
+You don't really expect me to explain commands like that, hm?
+________________________________________________________________________________
+
+Where to put the sources
+========================
+
+When using this hint, you're possibly about to have space problems. You
+can reduce such by putting the sources to your usual partitions, using
+an extra terminal to extract the source package you intend to compile
+and apply the patches by using the following commands
+
+	cd /mnt/lfs/<sourcedir>/<packagedir> &&
+	bzcat <patch> | patch -Np1
+
+Of course you can delete every packagedir after installation.
+
+
+Halting the Building of LFS
+===========================
+
+So you found that building LFS using this hint takes too long to do it
+in one pass? Never mind. All you have to do is save the system in a
+secure state so you can shut down safely. When in chroot'ed mode, first
+
+	umount /proc
+
+Then exit the chrooted mode. If you got a static volume, you sure want
+to
+
+	umount /mnt/lfs/static
+
+before you
+
+	umount /mnt/lfs
+
+Now you can set back the loop devices:
+
+	losetup -d /dev/loop0
+
+and for the static part
+
+	losetup -d /dev/loop1
+
+Now you can safely shut down your system. When you start again, you need
+to perform those steps "backwards", like you already did in the
+beginning:
+
+	losetup lfs.disk /dev/loop0
+	losetup static.disk /dev/loop1
+	mount /dev/loop0 /mnt/lfs
+	mount /dev/loop1 /mnt/lfs/static
+
+chroot and mount proc if necessary (use the commands you find in the LFS
+Book, they may differ from version to version). Omit the "/dev/loop1"
+stuff (every 2nd line) if you've not using a static volume.
+
+________________________________________________________________________________
+
+
+Go on with LFS
+============== 
+
+The following steps are quite the same. The only differences starts again when 
+you want to make this drive bootable:
+
+Part II, Chapter 8
+==================
+
+Making the LFS System bootable.
+
+A thought on making the kernel in LFS: why reconfigure everything? Even
+if you've got an old kernel, most of the things you've chosen (or not)
+during kernel configuration have not changed a bit. You could fasten up
+this if instead of
+
+	make menuconfig
+
+using out of the chroot'ed environment
+
+	cp /usr/src/linux/.config $LFS/usr/src/linux
+	<enter chroot>
+	make oldconfig
+
+Now you only get asked on the things that weren't configured with your
+new kernel (which should be somewhat less work than choosing every
+menu). If you're unsure, you could still check it with "make menuconfig".
+
+Make your kernel and /etc/lilo.conf in the chroot'ed environment as described 
+in the LFS book. Don't try to start lilo now! Stop here! I hope you're
+still in the chroot'ed environment, otherwise go back there.
+
+The only bootable partition you've got is the one your current distro is 
+running on. 
+
+If you want to use the /tmp/lfs.disk file for anything else than
+installing LFS over your distribution, you'll probably not need the
+following part.
+
+You're about to install LFS on the partition, deleting the distro. But
+before you get started, read the following warning carefully:
+
+--------------------------------------------------------------------------------
+                Do yourself a real big favour and get a bootdisk! 
+--------------------------------------------------------------------------------
+
+If you delete your distribution and have a power failure, you would lose
+your whole system (including the lfs.disk file that you can't access
+anymore without a bootable linux system).
+________________________________________________________________________________
+
+Mounting the main partition
+
+Mount the main partition to "/mnt" in the chroot'ed environment suggesting your 
+main partition is /dev/hda1, otherwise fill in what is necessary:
+
+	mount /dev/hda1 /mnt
+
+Explanations of the command shouldn't be necessary. Just to help your 
+imagination. The main partition is now mounted to a directory in a file 
+attached to a block device which is mounted on the main partition (that is 
+mounted to a directory...). This is a nice example for recursion. And this 
+could get another nice example of an almost infinite loop (depending on your 
+harddisk's size), if you try to copy everything to mount. Or an destructive 
+loop, if you try to delete everything in /mnt (because this also holds the 
+file currently working as your root environment). If you're asking what I'm
+talking about, never mind, just follow the next instructions very carefully.
+________________________________________________________________________________
+
+Making sure init finds his getty
+
+If you're not completely puzzled about that headline, you could go
+straight to the following paragraph. "init" is the process that is
+started by the kernel to start everything else during the bootup.
+Everything else, that is, all calls that are in /etc/inittab. In this
+inittab, you should find some version program getty, for example agetty
+or mgetty, but maybe only getty. This program is used to load the
+programs that allow you to login into your system. Now imagine you
+delete the whole old stuff including the old getty. Imagine further the
+LFS's agetty is different from the distro's version, or in a different
+directory (Debian, for example, uses getty). The inittab should remain
+in the memory. Init would try (on your next login) to use a getty that's
+not there, meaning you wouldn't be able anymore to login into your
+system.
+
+Before you logout of the chroot'ed system you should be sure that the
+init process will find the version of getty named in the inittab,
+otherwise you would be unable to access the system anymore and need the
+the bootdisk! A short
+
+	cat /mnt/etc/inittab | grep getty
+
+shows wether your previous system is using getty, agetty, mgetty or any
+other version possible. If it's using any other version than agetty
+(that's what Linux From Scratch is using), you should do a symlink like
+
+	ln -s /sbin/agetty /sbin/<the previous getty version>
+
+Now you can safely replace the old system.
+________________________________________________________________________________
+
+Command Explanations
+
+cat /mnt/etc/inittab | grep getty:
+
+Writes the content of /mnt/etc/inittab (your previous' systems inittab) to the
+standard output, piping it to grep, which filters out all lines not bearing 
+"getty" in it.
+
+ln -s /sbin/agetty /sbin/<the previous getty version>:
+
+Making a symbolic link that init will follow from the old getty version to the
+new one.
+________________________________________________________________________________
+
+Deleting the previous System
+
+You'll have to get the main partition entirely clean from everything that is not
+/tmp/lfs.disk (and proc, which holds another file system).
+
+	for dirname in `ls -1 /mnt | sed -e /tmp/d -e /proc/d -e /mnt/d`; 
+	do rm -r /mnt/$dirname; done &&
+	for filename in `ls /mnt/tmp | sed s/lfs.disk//`; do 
+	rm $filename; done
+
+Now it's clean enough for copying the LFS system. 
+________________________________________________________________________________
+
+Command explanations
+
+for dirname/filename in <list>; do <command>; done:
+
+performing <command> in a bash loop for every entry of <list>. The command in 
+this case is simply deleting the directory or file named in the entry.
+
+'ls -1 /mnt ...':
+
+These kind of apostrophs let bash execute the commands inside and giving the 
+result back as string, so we could use it as a <list> for our bash loop.
+ls -1 /mnt lists all files in /mnt using 1 line per entry for easier editing 
+with sed.
+
+'... | sed -e /tmp/d -e /proc/d -e /mnt/d':
+
+We are piping the result of "ls" to sed. -e states the following string to be
+a (regular) expression. /.../d deletes the first line to have the expression 
+... in it. So we're taking /mnt/tmp, /mnt/proc and /mnt/mnt out of the list.
+________________________________________________________________________________
+
+
+Now we may copy the new system. Everything but the /mnt directory, to which 
+the device that we are filling with LFS is mounted and the directory /proc, in 
+which are dynamic files written by the kernel.
+
+	for dirname in `ls -1 / | sed -e /mnt/d -e /proc/d -e /tmp/d`; do 
+	cp -a $dirname /mnt; done
+________________________________________________________________________________
+
+Command explanations
+
+cp -a ... /mnt:
+
+copies in "archive" mode, so the whole directories are copies with their 
+content and all subdirs and all filemodes are kept, if possible. For the 
+for ...; do; done constructions look at the previous command explanation.
+________________________________________________________________________________
+
+Now the LFS is on your primary partition logout of the chroot'ed environment 
+into the new system. Now you can perform lilo and this stuff.
+
+	logout (or exit)
+	cd /
+	umount /mnt/lfs/proc
+	umount /mnt/lfs
+	losetup -d /dev/loop0
+________________________________________________________________________________
+
+Command explanations
+
+logout/exit:
+
+Get out of 1. a bash, 2. a chroot'ed environment.
+
+cd /
+
+we change to the root dir not to have former access on the device we're
+about to unmount.
+
+umount...
+
+First we need to unmount the proc device from the loop device, so you
+can unmount this.
+
+losetup -d /dev/loop0
+
+delete the binding from /dev/loop0 to /tmp/lfs.disk.
+________________________________________________________________________________
+
+You may now delete lfs.disk, unless you don't want to use it otherwise.
+
+After doing LFS another few times I found out that booting on an loop
+device is quite unpractical due to the lack of speed and memory (I don't 
+think that everyone has 1GB+ of RAM). What you can do is use gparted or 
+any similar program to resize your actual partition, make another bootable 
+partition on the PC you want to install the LFS on, and then
+
+	dd if=/tmp/lfs.disk of=/dev/hda2
+
+Use the node of the new partition instead of /dev/hda2.
+
+You could also pipe the disk dump to install over network. If anybody is
+planning an LFS installation like that I beg you to contact me via
+irc.linuxfromscratch.org to 1. get further support and 2. let me share
+your experience.
+
+Then you can get back to the book (installing LILO and all that stuff).
+
+Good luck!
+
+
+The Future of this Hint
+=======================
+
+First of all, LFS, Linux and this hint are hobbies to me, so I can only
+hope for spare time to test, correct and complement this hint. Even
+then, a few additions would be of interest:
+
+- maybe you could make sort of a bootdisk image (rootfs only), copy it
+  to a ramdisk and use this to work on the main partition - which would
+  be especially useful for a reiserfs installation!
+
+- it could be helpful to be able to resize the lfs.disk file if
+  necessary. dd could be used to add size to the file, resize2fs will be
+  needed for the filesystem.
+
+- same goes for a decrease in size of those files.
+
+Since I use my systems for serious work, I'm not all eager to play
+around with them that much. If you got a system you want to use for such
+testing (to help me? How nice!), please contact me.
+
+________________________________________________________________________________
+
+Alex [LX]
+(alex@22-music.com) - hope to meet you at #lfs on irc.linuxfromscratch.org

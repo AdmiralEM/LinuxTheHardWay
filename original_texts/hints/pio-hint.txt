@@ -1,0 +1,55 @@
+AUTHOR: Paul Rogers <paulgrogers at lycos dot com>
+
+DATE: 2016-02-08
+
+LICENSE: GPL
+
+SYNOPSIS: Package manager "pio" (Package Installation Observer)
+
+DESCRIPTION:
+pio is a "timestamper" package manager found useful for (B)LFS 
+installations.  It is run once before installation to "take inventory" 
+of defined directories, then again after installation.  It observes 
+new/changed subdirectories and files, and builds a script which will 
+safely remove whatever was installed.  This "removal" script is the 
+basis for other tricks it will do.
+
+Above all, pio is a dis-integrated package manager.  It's simply a
+hands-on tool to be used.  It enforces nothing!
+
+ATTACHMENTS:
+* http://www.linuxfromscratch.org/hints/pio-files/pio
+* http://www.linuxfromscratch.org/hints/pio-files/pod
+* http://www.linuxfromscratch.org/hints/pio-files/pio-usage
+* http://www.linuxfromscratch.org/hints/pio-files/template
+
+PREREQUISITES:
+pio is entirely bash script, almost 1100 lines of it.  One must 
+understand bash to "extend" it or do "maintenance".  Have a care; pio 
+makes scripts that WILL remove files!  But being bash script, it can be 
+"easily" maintained or extended.
+
+It has no unusual dependencies.
+
+HINT:
+Once upon a time there was git, the Guarded Installation Tool, by Ingo 
+Brueckl (ib@wupperonline.de) 14.11.1996.  I found it useful for LFS 
+builds & added a few functions.  Then Linus made a kernel development 
+management tool he chose to call git.  So I changed this script to avoid 
+potential confusion.  pio is still almost entirely Ingo's git.  Some 
+functionality has been changed.  That's my responsibility.
+
+Refer to pio-usage for real hints on using pio effectively.
+
+pod is a mashup of several ad-hoc scripts I use when building and 
+maintaining my packages, mostly interacting with pio.
+
+template is my build script template demonstrating my usage of pio when 
+building (B)LFS systems.
+
+ACKNOWLEDGEMENTS:
+  * Ingo Bruekl for the original git-2.16
+  * Paul Rogers for resurrection, maintenance, and extensions.
+
+CHANGELOG:
+2016-02-08: PGR original hint/files.

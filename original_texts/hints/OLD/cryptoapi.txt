@@ -1,0 +1,307 @@
+TITLE:		Encrypted Filesystem Howto
+LFS VERSION:	All
+AUTHOR:		Christophe Devine <devine@cr0.net>
+
+SYNOPSIS:
+	Make your personal data secure by building your LFS system
+	inside a filesystem encrypted with strong cryptography.
+
+HINT:
+
+Contents
+--------
+
+    0. Changelog
+
+    1. Setting up the partition layout
+
+    2. Enabling strong cryto in your current system
+        2.1. Installing Linux-2.4.20
+        2.2. Installing util-linux-2.11y
+
+    3. Creating the encrypted partition
+
+    4. Building the LFS system
+
+    5. Setting up the boot partition
+
+    6. Setting up the bootscripts
+
+    7. Boot partition maintenance
+
+
+    0. Changelog
+    ------------
+
+        2003-04-19 - added section 7 (boot partition maintenance)
+
+        2003-02-19 - some changes, thanks to Jari Ruusu for his comments
+
+        2003-01-15 - switched to loop-aes, updated the packages version
+
+        2002-10-19 - first version of the cryptoapi hint released
+
+
+    1. Setting up the partition layout
+    ----------------------------------
+
+Your hard disk should have at least three partitions:
+
+  - one small (~ 8 Mb) unencrypted partition (let's say hda1),
+    which will ask the password to mount your encrypted partition.
+
+  - the encrypted partition holding the LFS system (hda2).
+
+  - other temporary partitions for the host distribution.
+
+
+    2. Enabling strong cryto in your current system
+    -----------------------------------------------
+
+The host distribution you're using needs to have strong cryptography
+support, which is probably not the case. Therefore, you must recompile
+your kernel and parts of util-linux.
+
+
+        2.1. Installing Linux-2.4.20
+        ----------------------------
+
+There are two main projects which add strong crypto support in the kernel:
+CryptoAPI and loop-aes. This hint uses loop-aes, since it has a *FAST* and
+highly optimized implementation of AES in assembly language, and therefore
+provides maximum performance if you have an x86 CPU.
+
+If necessary, download and unpack the kernel sources:
+
+ftp://ftp.kernel.org/pub/linux/kernel/v2.4/linux-2.4.20.tar.bz2
+
+You also have to download and unpack:
+
+http://loop-aes.sourceforge.net/loop-AES-v1.6i.tar.bz2
+
+Then you must patch the kernel:
+
+linux-2.4.20 $ patch -Np1 -i ../loop-AES-v1.6i/kernel-2.4.20.diff
+
+A small, but yet important bug has to be fixed (read Jari's comment
+at http://loop-aes.sourceforge.net/loop-AES-v1.6i.important-readme),
+by patching the loop driver; download and apply the required patch:
+
+http://linuxfromscratch.org/~devine/loop-AES-v1.6i-bugfix.patch
+
+linux-2.4.20 $ patch -Np1 -i ../loop-AES-v1.6i-bugfix.patch
+
+Next, configure your kernel; make sure the following options are set:
+
+    Block devices  --->
+
+        <*> Loopback device support
+        [*]   AES encrypted loop device support (NEW)
+
+Finally compile the kernel, install it and reboot.
+
+
+        2.2. Installing util-linux-2.11y
+        --------------------------------
+
+The losetup program, which is part of the util-linux package, must be
+patched and recompiled in order to add strong cryptography support:
+
+First of all, download and unpack:
+
+ftp://ftp.kernel.org/pub/linux/utils/util-linux/util-linux-2.11y.tar.bz2
+
+Apply the patch provided with loop-aes:
+
+util-linux-2.11y $ patch -Np1 -i ../loop-AES-v1.6i/util-linux-2.11y.diff
+
+If you wish to use passwords that are less than 20 characters, enter:
+
+util-linux-2.11y $ export CFLAGS="-O2 -DLOOP_PASSWORD_MIN_LENGTH=15"
+
+If security is important, please do not enable passwords shorter than 20
+characters. Security is not free, one has to 'pay' in form of long passwords.
+
+Compile losetup and install it as root:
+
+util-linux-2.11y $ ./configure && make lib mount
+util-linux-2.11y # cp mount/losetup /sbin
+util-linux-2.11y # cp mount/losetup.8 /usr/share/man/man8
+
+
+    3. Creating the encrypted partition
+    -----------------------------------
+
+Fill the target partition with random data:
+
+# shred -n 1 -v /dev/hda2
+
+Setup the encrypted loop device :
+
+# losetup -e aes128 -S xxxxxxxxxx /dev/loop0 /dev/hda2
+Password:
+
+For better security, it is recommended you use the -S xxxxxxxxxx option,
+where "xxxxxxxxxx" is your chosen seed. This makes optimized dictionary
+attacks much more difficult.
+
+Make sure you don't forget you password ! For minimum security, it should
+have at least 10 characters and contain letters (both uppercase and lower-
+case), special characters and numbers.  Also, note that using 256-bit AES
+would not be any more secure, since even 128-bit AES is almost impossible
+to crack using brute-force (even with millions of CPU-years).
+
+Now create the ext2 (or ext3 or reiserfs) filesystem and mount it:
+
+# mke2fs /dev/loop0
+# mount  /dev/loop0 /mnt/lfs
+
+You can compare the encrypted and unencrypted data:
+
+# xxd /dev/loop0 | less
+# xxd /dev/hda2  | less
+
+
+    4. Building the LFS system
+    --------------------------
+
+Two steps in the book must be adapted :
+
+    * Chapter 6, Installing util-linux :
+    
+        Use util-linux-2.11y, instead of the version used in the book,
+        and apply the patch as described in section 2.2. of this hint.
+
+    * Chapter 8, Making the LFS system bootable :
+
+        Refer to section 5. below :
+
+
+    5. Setting up the boot partition
+    --------------------------------
+
+The following instructions assume that you're still chrooted inside $LFS.
+
+Create and mount the boot partition :
+
+# mke2fs /dev/hda1
+# mkdir /loader
+# mount -t ext2 /dev/hda1 /loader
+
+Create the filesystem hierarchy :
+
+# mkdir /loader/{bin,boot,dev,etc,lib,mnt,sbin}
+
+Copy the required files in it :
+
+# cp /bin/{sh,mount,umount} /loader/bin/
+# cp /boot/boot-text.b /loader/boot/boot.b
+# cp -a /dev/{console,hda,hda1,hda2,loop0} /loader/dev/
+# cp /lib/{ld-linux.so.2,libc.so.6,libdl.so.2,libncurses.so.5} /loader/lib/
+# cp /sbin/{losetup,pivot_root} /loader/sbin
+# cat > /loader/sbin/init << "EOF"
+#!/bin/sh
+
+/sbin/losetup -e aes128 -S xxxxxxxxxx /dev/loop0 /dev/hda2
+/bin/mount -n -t ext2 /dev/loop0 /mnt
+
+while [ $? -ne 0 ]
+do
+    /sbin/losetup -d /dev/loop0
+    /sbin/losetup -e aes128 -S xxxxxxxxxx /dev/loop0 /dev/hda2
+    /bin/mount -n -t ext2 /dev/loop0 /mnt
+done
+
+cd /mnt
+/sbin/pivot_root . loader
+exec /usr/sbin/chroot . /sbin/init
+EOF
+# chmod 755 /loader/sbin/init
+# cat > /loader/etc/lilo.conf << EOF
+boot=/dev/hda
+lba32
+vga=4
+default=Linux
+image=/vmlinuz
+    label=Linux
+    root=/dev/hda1
+    read-only
+EOF
+
+Copy the kernel you've compiled in section 2.1. to /loader/vmlinuz and run:
+
+# lilo -r /loader
+
+You may also choose not to use /dev/hda1  as a bootloader at all,
+but instead burn the kernel and the ramdisk on a bootable cd-rom.
+
+
+    6. Setting up the bootscripts
+    -----------------------------
+
+Make sure your /etc/fstab contains:
+
+/dev/loop0      /      ext2    defaults             0 1
+
+Also, it is a good idea to check the boot partition integrity inside the
+encrypted partition, in order to spot if someone, say a government agency
+like the FBI or the NSA, has modified your boot partition so as to grab
+your password. Add the following lines at the beginning of the system
+initialisation script:
+
+
+echo -n "Checking master boot record integrity: "
+if [ "`dd if=/dev/hda count=1 2>/dev/null | md5sum`" = "e051a4532356709c73b86789acfbdbbd  -" ]
+then
+    echo "OK."
+else
+    echo -n "FAILED! press Enter to continue."
+    read
+fi
+
+echo -n "Checking bootloader integrity: "
+if [ "`dd if=/dev/hda1 2>/dev/null | md5sum`" = "f3686a17fac8a1090d962bef59c86d3b  -" ]
+then
+    echo "OK."
+else
+    echo -n "FAILED! press Enter to continue."
+    read
+fi
+
+
+(you should replace the two md5sums above with the correct ones).
+
+
+Now, if you're low on RAM you'll need some swap space. For example,
+let's say hda3 will hold your encrypted swap partition; you need to
+create the swap device first:
+
+# losetup -e aes128 /dev/loop1 /dev/hda3
+# mkswap /dev/loop1
+
+Then add the following lines at the beginning of the system startup script:
+
+echo "password chosen above" | losetup -p 0 -e aes128 /dev/loop1 /dev/hda3
+swapon /dev/loop1
+
+
+    7. Boot partition maintenance
+    -----------------------------
+
+In the future, you might want to update your kernel. To do so, /loader
+must be remounted in read-write mode. If you use a "real" /etc/mtab file
+(not a symlink to /proc/mounts), run:
+
+# echo "/dev/hda1 /loader ext2 ro 0 0" >> /etc/mtab
+
+Then:
+
+# mount -o remount,rw /loader
+
+You can now update the kernel and run lilo. /loader must be remounted
+in read-only mode:
+
+# mount -o remount,ro /loader
+
+Finally, don't forget to update the md5sum of the boot partition.
+

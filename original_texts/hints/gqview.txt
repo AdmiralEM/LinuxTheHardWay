@@ -1,0 +1,122 @@
+AUTHOR: Daniel Baumann <daniel.baumann@panthera-systems.net>
+
+DATE: 2004-12-03
+
+LICENSE: GNU General Public License
+
+SYNOPSIS: How to install GQview on LFS.
+
+PRIMARY URI: http://archive.daniel-baumann.ch/linux-from-scratch/hints/gqview/
+
+DESCRIPTION:
+How to install GQview on your LFS-system.
+
+PREREQUISITES:
+A complete LFS-system with an X Window System, GTK and libpng (see BLFS for instructions).
+
+HINT:
+--------------------------------------------------------------------------------
+
+GQview 1.4.5
+============
+
+
+1. Introduction to GQview
+=========================
+
+GQview is an image viewer for X windows. Features include single click file
+viewing, external editor support, thumbnail previews, thumbnail caching, and
+adjustable zoom. GQview has the ability to compare files and list similar or
+duplicate images based on content. Full screen view and slideshows allow for
+basic presentation of images. The program offers simple image file management
+with the ability to copy, move, rename, and delete files. Image collections,
+similar to a song playlist, are also supported.
+
+
+1.1. Package information
+========================
+
+  * Download (HTTP): http://prdownloads.sourceforge.net/gqview/gqview-1.4.5.tar.gz
+
+  * MD5 Sum: b196935767c2d3dc61243d9ed0801c2e
+
+  * Download size: 1.2 MB
+
+  * Estimated Disk space required: 28 MB
+
+  * Estimated build time: 0.31 SBU
+
+
+1.2. GQview dependencies
+========================
+
+Required:
+
+  * X Window System (see BLFS for instructions)
+
+  * GTK (see BLFS for instructions)
+
+  * libpng (see BLFS for instructions)
+
+
+2. Installation of GQview
+=========================
+
+Install GQview by running the following commands:
+
+   __________________________________________________________________________
+  |                                                                          |
+  |  ./configure --prefix=/usr --sysconfdir=/etc/gnome &&                    |
+  |  make &&                                                                 |
+  |  make install                                                            |
+  |__________________________________________________________________________|
+
+To test the result, issue: make check.
+
+
+3. Command explanations
+=======================
+
+--sysconfdir=/etc/gnome: This switch puts configuration files in /etc/gnome
+			 instead of /usr/etc. If you don't use Gnome, use
+			 --sysconfdir=/etc.
+
+
+4. Configuring GQview
+=====================
+
+
+4.1. Config files
+=================
+
+/etc/gnome/gqview, ~/.gqview
+
+
+5. Contents
+===========
+
+The GQview package contains gqview.
+
+
+6. Description
+==============
+
+  * GQview
+
+    GQview is an image viewer for X windows.
+
+--------------------------------------------------------------------------------
+
+CHANGELOG:
+[2004-12-03]
+  * Updated to gqview-1.4.5.
+[2004-09-10]
+  * Updated to gqview-1.4.4.
+[2004-09-08]
+  * Formal changes.
+  * Minor text changes.
+  * Added Command explanations.
+[2004-07-10]
+  * Typographic mistakes corrected.
+[2004-05-30]
+  * Initial revision.

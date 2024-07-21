@@ -1,0 +1,224 @@
+01234567890123456789012345678901234567890123456789012345678901234567890123456789
+TITLE:		IceWM
+LFS-VERSION:	3.3
+AUTHOR:		Vassili Dzuba <vassili.dzuba@wanadoo.fr>
+
+SYNOPSIS:
+	How to install the window manager IceWM on your LFS
+
+HINT:
+
+CONTENT
+=======
+  1) REQUIREMENTS
+  2) BUILDING THE REQUIRED LIBRARIES
+  3) GETTING IceWM
+  4) BUILDING IceWM
+  5) CONFIGURING IceWM
+
+REQUIREMENTS
+============
+
+As IceWM is a window manager, it requires of course X11.
+One will assume that X has been installed according to the
+BLFS book.
+
+To build XIceW, you will need the following libraries
+
+- libXpm (required)
+- Imlib (optional, for wider image support)
+- zlib (required by gnome-libs)
+- libpng (required by gnome-libs)
+- libjpeg (required by gnome-libs)
+- libtiff (required by gnome-libs)
+- libungif  (required by gnome-libs)
+- DB (required by gnome-libs)
+- gtk+ 1.2.xx (required by gnome-libs)
+- gnome-libs (optional, for gnome menu support)
+- sgml2html (optional, to rebuild HTML documentation)
+- XFreeType (optional, for antialiasing)
+
+IceWM is released under the LGPL.
+
+BUILDING THE REQUIRED LIBRARIES
+===============================
+
+libXpm
+------
+  XPM is a format for storing/retrieving X Pixmaps
+  from/to files
+
+  current version : 3.4k
+  where to get it : http://koala.inria.fr/ftp/pub/xpm/
+                    ftp://ftp.x.org/contrib/libraries
+  how to build it :
+
+       tar xzvf xpm-3.4k.tar.gz /usr/src
+       cd /usr/src/xpm-3.4k
+       xmkmf -a
+       make
+       make install
+
+  note : by default, Xpm is installed in the X11 tree
+
+Imlib
+-----
+  The imlib package contains image libraries. These are useful
+  for loading, rendering and dithering a wide variety of image data formats.
+
+  see BLFS book
+
+zlib
+----
+  see BLFS book
+
+libpng
+------
+  see BLFS book
+
+libjpeg
+------
+  see BLFS book
+
+libtiff
+-------
+  see BLFS book
+
+libungif
+--------
+  see BLFS book
+
+DB
+--
+  see BLFS book 
+
+ORBIT
+-----
+  Instructions to build ORBIT are not yet available in the BLFS
+
+  current version : 0.5.17
+  where to get it : ftp://ftp.gnome.org/pub/GNOME/stable/sources/ORBit/
+  how to build it :ftp://ftp.gnome.org/pub/GNOME/stable/sources/ORBit/ORBit-0.5.17.tar.bz2
+
+        tar xjvf ORBit-0.5.17.tar.bz2 /usr/src
+	cd /usr/src/ORBit-0.5.17
+	./configure --prefix=/usr
+	make
+	make install
+
+gnome-libs
+----------
+  Instructions to build gnome-libs are not yet available in the BLFS
+
+  current version : 1.4.1.7
+  where to get it : ftp://ftp.gnome.org/pub/GNOME/sources/gnome-libs
+  how to build it :
+
+        tar xjvf gnome-libs-1.4.1.7.tar.bz2 /usr/src
+	cd gnome-libs-1.4.1.7
+	./configure --prefix=/usr
+	make
+	make install
+
+sgml2html
+---------
+  sgml2html is necessary only if you want to update the documentation
+  of IceWM. The original format of the docmentation uses linuxdoc
+  (a SGML DTD previously used by the  Linux Documentation project,
+  now replaced by DocBook XML)
+
+  At the moment, i don't know where to get a .tar.gz distribution
+  of linuxdoc-tools, that contains sgml2html.
+  It seems to be  available as a RPM from Red Hat site, and a .deb
+  from Debian site.
+
+
+XFreeType
+---------
+  ...TO BE COMPLETED...
+       
+      
+GETTING IceWM
+=============
+
+  IceWM home page is : http://icewm.sourceforge.net/
+  The current version is 1.2.0
+
+
+BUILDING IceWM
+==============
+
+  tar xjvf icewm-1.2.0 /usr/src
+  cd /usr/src/icewm-1.2.0
+
+  # if you dare to use experimental features :
+
+  ./configure --with-imlib --enable-i18n --enable-antialiasing
+
+  # otherwise
+
+  ./configure --with-imlib
+ 
+  #
+
+  make
+  make install
+  make install-docs
+
+  
+  Notes : 
+  - by default, icewm is installed into /usr/local/bin
+  - by default, the configuration files are installed
+    in /usr/local/lib/X11/icewm
+  - by default, the documentation is installed in
+    /usr/local/doc/icewm-1.2.0
+    
+  
+CONFIGURING IceWM
+=================
+
+  To use IceWM as your window manager, you may call it from your .xinitrc
+  file.
+
+  The default configuration of IceWM is fully usable. If you want to 
+  customize it anyway, you should create a directory ~/.icewm in your
+  home directory and copy the files you want to modify from
+  the global configuration directory /usr/local/X11/icewm.
+
+  For instance, if you want to modify the menus, you should copy the file
+  /usr/local/X11/icewm/menu into ~/.icewm
+
+  Note that if a program is not installed, IceWm will not display it in the
+  menu. The syntax for an entry in the menu is : 
+    prog "<title>" <icon> <program> 
+
+  For instance, the (very simple) menu definition for my LFS box is :
+
+    prog xterm xterm xterm
+    separator
+    menu Applications folder {
+        prog Emacs - emacs
+        prog Mozilla - /usr/local/mozilla/bin/mozilla
+        prog Sylpheed - sylpheed
+    }
+    menu Utilities folder {
+        prog top top xterm -e top
+    }
+    menu "Window Managers" folder {
+        restart twm - twm
+        restart sawfish - sawfish
+        restart icewm - icewm
+        restart wmaker - /opt/wm/bin/wmaker
+        restart enlightenment - /usr/enlightenment/bin/enlightenment
+        restart blackbox - blackbox
+        restart AmiWM - amiwm
+        restart AfterStep - afterstep
+    }
+
+  If you want to change some defaults, you may copy in ~/.icewm the file
+  /usr/local/lib/X11/icewm/preferences.
+  For instance, i changed only an entry in this file, to change the default
+  theme :
+
+     Theme="Infadel2/Ergonomic.theme"
+

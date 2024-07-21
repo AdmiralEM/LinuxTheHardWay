@@ -1,0 +1,393 @@
+TITLE:		How to get rid of the /etc/mtab -> /proc/mounts symlink
+LFS VERSION:	LFS-3.2-RC1 to LFS CVS 2003-02-02 (pre LFS 4.1)
+AUTHOR:		Oliver Brakmann <obrakmann@gmx.net>
+
+LAST CHANGES:	2003-02-27: Moved to old/
+		2003-01-02: Minor stylistic changes
+		2003-01-02: Added a note for glibc 2.3.1 users
+		2002-11-14: Minor stylistic changes (thanks to DJ Lucas)
+		2002-08-06: Restructured the whole hint
+		2002-08-04: Corrected a few technical details
+		2002-08-04: Minor stylistic changes
+		2002-07-30: Added a note for those who do not want to
+			    recompile glibc
+		2002-07-30: rephrased some parts to prevent misunderstanding
+		2002-07-29: fixed a couple of typos
+
+SYNOPSIS:
+	A default LFS install sets up /etc/mtab as a symlink to /proc/mounts,
+	which breaks (u)mount's behaviour.  This hints tells you how to
+	solve this problem elegantly, even on a read-only root partition.
+
+HINT:
+
+!!	Important note: Since 2003-02-03, the LFS Book uses a real /etc/mtab
+	file again.  The first public release including that change will be
+	LFS 4.1.  Because of that, this hint has become obsolete in parts. 
+	For an mtab hint that applies to recent LFS versions, take a look at
+	the new hint at <http://hints.linuxfromscratch.org>.
+
+
+CONTENTS
+========
+
+1. INTRODUCTION
+2. MOTIVATION
+3. WRITEABLE ROOT
+4. READ-ONLY ROOT
+5. CONCLUSION
+
+
+1. INTRODUCTION
+===============
+
+This hint really covers two issues:
+1. getting rid of that annoying symlink
+2. doing so on a read-only root partition.
+
+Because the instructions to achieve the second goal (discussed in chapter 4)
+include those from chapter 3, albeit in slightly modified form, you will find
+that a lot of information is more or less duplicated in this hint.  I did not
+know how to solve this any other way without this hint becoming way too
+confusing.
+
+OK, as a final note before we begin: keep in mind that I take no responsibility
+whatsoever for any damage done to your computer.  Be careful doing this, you
+might badly screw your system.
+
+
+2. MOTIVATION
+=============
+
+If /etc/mtab is a link to /proc/mounts, the following issues with the
+mount/umount programs show up:
+
+	- the fstab `user' option does not work
+	  (you have to specify `users' as a workaround)
+	- loop devices are not freed properly when unmounting
+	  (you have to use `umount -d' or run `losetup -d' manually)
+	- certain kernel versions under certain circumstances list /dev/root
+	  instead of the real root device in /proc/mounts.
+
+The reasons one might want to have /etc/mtab as a link to /proc/mounts
+are the following:
+
+	- if, for some reason, the system crashes and you have to do
+	  a hard reboot, /etc/mtab will not contain inconsistent data upon
+	  the next boot.
+	- you can mount your root partition read-only.
+
+However, those two points can also be dealt with without the need for
+the symlink.
+
+
+3. WRITEABLE ROOT
+=================
+
+Follow these instructions if your / and /var directories are on the same
+partition.  If they are not, but your / is writeable nevertheless, go to
+chapter 4 anyway.  If you want to have a read-only / one day, you do not
+need to start all over again with this.
+
+
+	1. Switch to single-user mode
+
+		# telinit 1
+
+	2. Remove /etc/mtab
+
+		# rm /etc/mtab
+
+	   Be careful: from this point on, you lose all information about the
+	   currently mounted filesystems (that umount can work with, at least)!
+	   If you have any filesystems mounted that do not get mounted at boot-
+	   time (ie. by the /etc/rc.d/init.d/mountfs script), unmount them
+	   _before_ this step! If you are not sure what you have mounted, you
+	   can still take a look at /proc/mounts.
+
+	3. Create an empty /etc/mtab
+
+		# touch /etc/mtab
+		# chown root:root /etc/mtab
+		# chmod 644 /etc/mtab
+
+	4. Now you have to modify your init scripts so that they basically
+	   do this:
+
+		1. mount -n /proc	# this is in /etc/rc.d/init.d/mountproc
+		2. fsck			# this is in /etc/rc.d/init.d/checkfs
+		3. remount -n / rw	# so that we can write to /
+		4. > /etc/mtab		# clear /etc/mtab
+		5. mount -f /		# update mtab with the already
+		6. mount -f /proc	# mounted partitions.
+		7. mount -a		# mount all remaining partitions
+
+	   
+	   The first step requires a change in /etc/rc.d/init.d/mountproc,
+	   whereas the second one does not require any changes.
+ 	   The remainder is handled in /etc/rc.d/init.d/mountfs:
+
+,---[ /etc/rc.d/init.d/mountfs ]------->8--------------------------------------
+#!/bin/bash
+# Begin $rc_base/init.d/mountfs - File System Mount Script
+
+# Based on mountfs script from LFS-3.1 and earlier.
+# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+case "$1" in
+        start)
+                echo "Remounting root file system in read-write mode..."
+                mount -n -o remount,rw /
+                evaluate_retval
+
+                echo "Cleaning /etc/mtab..."
+                > /etc/mtab &&
+		mount -f -o remount,rw / &&
+		mount -f /proc
+		evaluate_retval
+
+                # The following mount command will mount all file systems.  If
+                # you have other (network based) file system that should not
+                # be or cannot be mounted at this time, add them to the NO_FS
+                # variable below.  All file systems that are added to the
+		# variable in the form of no<filesystem> will be skipped.
+
+                NO_FS="nonfs,nosmbfs,noproc"
+                echo "Mounting remaining file systems..."
+                mount -a -t $NO_FS
+                evaluate_retval
+                ;;
+
+[...remainder of the script omitted...]
+`-------------------------------------->8--------------------------------------
+
+	   If you use another set of init scripts, you are surely competent
+	   enough to know how to implement these changes in your scripts.
+
+	5. Modify your /etc/fstab so that /proc does not get mounted by
+	   mount -a:
+
+		proc			/proc proc noauto	0 0
+
+	   The important part here is the `noauto' keyword.
+	   While this has nothing to do with the task at hand and is not
+	   really necessary with the lfs-bootscripts, it is good to have
+	   though, in case you ever run `mount -a' from outside of any
+	   bootscripts (like in the following step :-).
+
+	6. If you have not unmounted any other partitions during the process,
+	   all those listed in /etc/fstab should still be mounted.  Check out
+	   /proc/mounts to be sure.  The userland tools do not know all this
+	   anymore, so we have to tell them:
+
+		# mount -f /
+		# mount -f /proc
+		# mount -af
+
+	   Be sure that /etc/mtab and /proc/mounts contain consistent data
+	   after this step.
+
+	7. You can telinit back to your favourite runlevel now.  Enjoy!
+
+
+
+4. READ-ONLY ROOT
+=================
+
+Follow these instructions if you have your / and /var directories on
+separate partitions.
+
+
+	1. Switch to single-user mode
+
+		# telinit 1
+
+	2. Remount / read-write
+
+		# mount -o remount,rw /
+
+	3. Rebuild glibc with the following patch applied:
+	   (or just do the change by hand, which is probably faster *g*)
+
+	   Please note that this patch works with both glibc 2.2.5 and 2.3.1.
+
+,---[ glibc.mtab-patch ]--------------->8--------------------------------------
+diff -Naur glibc-2.2.5/sysdeps/unix/sysv/linux/paths.h.orig glibc-2.2.5/sysdeps/unix/sysv/linux/paths.h
+--- glibc-2.2.5/sysdeps/unix/sysv/linux/paths.h.orig	2000-11-16 00:06:47.000000000 +0100
++++ glibc-2.2.5/sysdeps/unix/sysv/linux/paths.h	2003-01-02 13:37:12.000000000 +0100
+@@ -51,7 +51,7 @@
+ #define	_PATH_MAN	"/usr/share/man"
+ #define	_PATH_MEM	"/dev/mem"
+ #define	_PATH_MNTTAB	"/etc/fstab"
+-#define	_PATH_MOUNTED	"/etc/mtab"
++#define	_PATH_MOUNTED	"/var/lib/misc/mtab"
+ #define	_PATH_NOLOGIN	"/etc/nologin"
+ #define	_PATH_PRESERVE	"/var/lib"
+ #define	_PATH_RWHODIR	"/var/spool/rwho"
+`-------------------------------------->8--------------------------------------
+
+	Look up the installation instructions for glibc in the LFS Book.
+
+	This patch makes newly compiled programs look for the mtab file
+	in /var/lib/misc/mtab.
+
+	4. Now unmount /var
+
+		# umount /var
+
+	5. Create /var/lib/misc/mtab.  This file should contain only
+	   one line that lists your root partition mounted read-only.
+	   On my system, using devfs, it looked like this:
+
+		# mkdir -p /var/lib/misc
+		# echo "/dev/discs/disc0/part2 / ext3 ro 0 0" > /var/lib/misc/mtab
+		# chown root:root /var/lib/misc/mtab
+		# chmod 644 /var/lib/misc/mtab
+
+	   Substitute your root device and file system according to your setup.
+
+	6. To prevent scripts and broken code from failing, create
+	   /etc/mtab as a link to /var/lib/misc/mtab
+
+		# ln -sf ../var/lib/misc/mtab /etc/mtab
+
+	   Be careful: from this point on, you lose all information about the
+	   currently mounted filesystems (that umount can work with, at least)!
+	   If you have any filesystems mounted that do not get mounted at boot-
+	   time (ie. by the /etc/rc.d/init.d/mountfs script), unmount them
+	   _before_ this step! If you are not sure what you have mounted, you
+	   can still take a look at /proc/mounts.
+
+	7. At this point you have to mount /var again
+
+		# mount -n /var
+
+	8. Create an empty /var/lib/misc/mtab
+
+		# touch /var/lib/misc/mtab
+		# chown root:root /var/lib/misc/mtab
+		# chmod 644 /var/lib/misc/mtab
+
+	9. Now you have to modify your init scripts so that they basically
+	   do this:
+
+		1. mount -n /proc	# this is in /etc/rc.d/init.d/mountproc
+		2. fsck			# this is in /etc/rc.d/init.d/checkfs
+		3. mount -n /var	# so that /var/lib/misc/mtab shows up
+		4. > /var/lib/misc/mtab # clear /var/lib/misc/mtab
+		5. mount -f /		# update mtab with the already
+		6. mount -f /proc	# mounted partitions.
+		7. mount -f /var	#
+		8. mount -a		# mount all remaining partitions
+
+	   The first step requires a change in /etc/rc.d/init.d/mountproc,
+	   whereas the second one does not require any changes.
+ 	   The remainder is handled in /etc/rc.d/init.d/mountfs:
+
+,---[ /etc/rc.d/init.d/mountfs ]------->8--------------------------------------
+#!/bin/bash
+# Begin $rc_base/init.d/mountfs - File System Mount Script
+
+# Based on mountfs script from LFS-3.1 and earlier.
+# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+case "$1" in
+        start)
+		# Uncomment the following three lines if you do not have
+		# a read only root filesystem.
+
+		# echo "Remounting root file system in read-write mode..."
+		# mount -n -o remount,rw /
+		# evaluate_retval
+
+                echo "Cleaning /var/lib/misc/mtab..."
+                mount -n /var &&
+		> /var/lib/misc/mtab &&
+		mount -f / &&
+		mount -f /proc &&
+		mount -f /var
+		evaluate_retval
+
+                # The following mount command will mount all file systems.  If
+                # you have other (network based) file system that should not
+                # be or cannot be mounted at this time, add them to the NO_FS
+                # variable below.  All file systems that are added to the
+		# variable in the form of no<filesystem> will be skipped.
+
+                NO_FS="nonfs,nosmbfs,noproc"
+                echo "Mounting remaining file systems..."
+                mount -a -t $NO_FS
+                evaluate_retval
+                ;;
+
+[...remainder of the script omitted...]
+`-------------------------------------->8--------------------------------------
+
+	    If you use another set of init scripts, you are surely competent
+	    enough to know how to implement these changes in your scripts.
+
+	10. Modify your /etc/fstab so that /proc and /var do not get mounted by
+	    mount -a:
+
+		/dev/discs/disc0/part7  /var  xfs  noauto	0 0
+		proc			/proc proc noauto	0 0
+
+	    The important part here is the `noauto' keyword.
+	    This is, again, what it looks like on my system.  Change it
+	    so that it fits your system.
+	    Note that with the lfs-bootscripts, /proc does not really need
+	    the `noauto' option.  It is good to have it though, in case you
+	    ever run `mount -a' from outside of any bootscripts (like in
+	    step 13 :-).  So while you are at it...
+
+	11. Rebuild util-linux so that mount, umount and friends are
+	    aware of mtab's new location.  There are no patches required,
+	    just look up the instructions in the LFS Book.
+
+	    Other packages you might want to rebuild are the GNU fileutils
+	    (df) and other programs that might access /etc/mtab.
+	    As long as these programs do not write to that file, it is not
+	    absolutely required, though.  That is why we set up that symlink.
+
+	12. If you have a read-only root, remount / read-only now, since 
+	    we are not changing any more files.
+
+		# mount -n -o remount,ro /
+
+	13. If you have not unmounted any other partitions during the process,
+	    all those listed in /etc/fstab should still be mounted.  Check out
+	    /proc/mounts to be sure.  The userland tools do not know all this
+	    anymore, so we have to tell them:
+
+		# mount -f /
+		# mount -f /proc
+		# mount -f /var
+		# mount -af
+
+	    Be sure that /etc/mtab and /proc/mounts contain consistent data
+	    after this step.
+
+	14. Finally done! You can telinit back to your favourite run-level now.
+
+
+
+CONCLUSION
+==========
+
+Credits are due to Seth W. Klein for teaching me through the process in the
+first place and further corrections and suggestions.  Also thanks to DJ Lucas,
+Jesse Tie-Ten-Quee, Richard Lightman and Wouter Vanwalleghem for additional
+feedback.
+
+If you have any questions, comments or suggestions regarding this hint, write
+to me at <obrakmann@gmx.net> or to the blfs-support mailing list.
+
+I hope this helps some people out there.
+
+Oliver Brakmann

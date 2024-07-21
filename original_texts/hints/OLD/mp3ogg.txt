@@ -1,0 +1,193 @@
+TITLE:		Ripping CDs into MP3 and OGG
+LFS-VERSION:	any (tested on 3.0)
+AUTHOR:		Adam Ottley <aottley@shaw.ca>
+
+SYNOPSIS:
+	This hint covers how to setup the tools for ripping and encoding CDs
+into MP3 or Ogg Vorbis format using the GTK-based Grip frontend.  All that is
+needed for this hint beyond the base system is for XFree86 to be installed.
+
+Changelog:
+	Jan 03/02: Update to new vorbis & LAME versions, add curl.
+
+HINT:
+
+The packages you'll need:
+
+  curl-7.9.2.tar.bz2                    (http://curl.haxx.se/)
+  libao-0.8.2.tar.gz			(http://www.vorbis.com/)
+  libogg-1.0rc3.tar.gz
+  libvorbis-1.0rc3.tar.gz
+  vorbis-tools-1.0rc3.tar.gz
+  lame-3.91.tar.gz			(http://www.mp3dev.org/mp3/)
+  cdparanoia-III-alpha9.8.tar.gz	(http://www.xiph.org/paranoia/)
+  gtk+-1.2.10.tar.gz			(http://www.gtk.org/)
+  glib-1.2.10.tar.gz			(http://www.gtk.org/)
+  grip-2.96.tgz				(http://www.nostatic.org/grip/)
+
+
+
+INSTALL INSTRUCTIONS
+
+
+Curl 7.9.2
+
+Curl is a very powerful multi-protocol file-transfer utility.  Curl is used by
+ogg123 from the vorbis-tools package for http access.
+
+Build and install curl using the following commands:
+
+  ./configure --prefix=/usr &&
+  make &&
+  make install
+
+
+----------------------------
+
+
+Ogg Vorbis 1.0rc3
+
+Vorbis is a next-gen audio codec with much better quality than MP3 and no 
+patent strings attached.
+
+NOTE:  libvorbis may cause a compiler error if compiled with a high level of
+optimization.  If you get a fatal compiler error, try using this patch:
+
+http://homepage.usask.ca/~aco907/vorbisrc3.patch
+
+First build libao, then libogg, then libvorbis, then vorbis-tools, each with
+the following commands:
+
+  ./configure --prefix=/usr/local &&
+  make &&
+  make install
+
+
+NOTE: Some programs that link to the vorbis libraries for vorbis encoding will
+encode incorrectly when using rc3 instead of rc2.  One such program is KDE's
+audiocd:/ ioslave.  A patch for KDE 2.2.2 that corrects the problem is
+available here:
+
+http://homepage.usask.ca/~aco907/audiocd-vorbisrc3.patch
+
+To use this patch, follow these instructions in the kdebase directory:
+(assuming you already have KDE installed and only want to update the ioslave)
+
+  patch -Np1 -i ../audiocd-vorbisrc3.patch &&
+  ./configure <your configure options> &&
+  cd kioslave/audiocd &&
+  make &&
+  make install
+
+
+----------------------------
+
+
+lame 3.91  (http://www.mp3dev.org/mp3/)
+
+After over a year and a half in beta, the LAME project finally has released a
+new stable package.  It is recommended that if you have any intent to make MP3s
+that you install LAME - it is bar-none the best MP3 encoder there is.
+
+There are a couple of optional parts to the LAME package that require other
+packages.  Particularly useful is the nasm assembler, which enables LAME to use
+processor-specific assembler optimizations for MMX, 3DNow and SSE, speeding up
+the encoding process.  If you choose to install nasm or already have it
+installed, add --enable-nasm to the ./configure flags for LAME, and the 
+configure script will automatically detect the optimizations that apply to your
+processor.
+
+Install LAME with these commands:
+
+  ./configure --prefix=/usr/local &&
+  make &&
+  make install
+
+Don't worry if you see that vorbis was not found during the configure step.
+LAME only builds with Vorbis support using very old versions of the Vorbis
+libraries.
+
+
+----------------------------
+
+
+cdparanoia III 9.8  (http://www.xiph.org/paranoia/)
+
+cdparanoia is the best-known error correcting audio CD ripper in the Linux
+world.
+
+Install cdparanoia with these commands:
+
+  ./configure --prefix=/usr/local &&
+  make &&
+  make install
+
+This will set up both shared and static libs plus the command-line ripper.
+Keep the cdparanoia source directory; you'll need it for compiling Grip.
+
+
+----------------------------
+
+
+glib 1.2.10
+
+Glib is a library of C functions.
+
+
+Install glib using the following commands:
+
+  ./configure --prefix=/usr &&
+  make &&
+  make install
+
+
+----------------------------
+
+
+gtk+ 1.2.10
+
+The GIMP ToolKit is a popular C GUI toolkit.
+
+
+Install gtk+ using the following commands:
+
+  ./configure --prefix=/usr &&
+  make &&
+  make install
+
+
+----------------------------
+
+
+grip 2.96
+
+Grip is a GTK+-based ripping and encoding frontend.  It supports the
+command-line lame and oggenc encoders, and can integrate the cdparanoia ripper,
+or use the command-line cdparanoia and cdda2wav rippers.  The cdda2wav program
+is a part of the cdrtools package, and install instructions can be found in the
+cdwriter.txt hint.
+
+
+Install grip using the following commands:
+
+  ln -s ../cdparanoia-III-alpha9.8 cdparanoia
+  make PARLIBS="-lcdda_paranoia -lcdda_interface"
+  make PREFIX=/usr/local install
+
+
+Command explanations:
+
+  ln -s ../cdparanoia-III-alpha9.8 cdparanoia
+Grip looks for the cdparanoia headers in the cdparanoia subdirectory of the
+grip source tree.
+
+  make PARLIBS="-lcdda_paranoia -lcdda_interface"
+Normally, grip links statically with cdparanoia, which means that if cdparanoia
+is upgraded grip will not benefit.  Changing PARLIBS ensures grip is linked
+with the dynamic cdparanoia libraries.
+
+
+It's worth looking over the grip man page to find the aliases for title, artist,
+etc for constructing filenames the way you want and for how to remove
+underscores and capitalize the filenames.  Happy ripping!
+

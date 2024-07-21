@@ -1,0 +1,419 @@
+TITLE:		Install LFS next to existing systems on the same partition (v2)
+LFS VERSION:	3.0 (but should work for later versions, too)
+AUTHOR:		Matthias S. Benkmann <m.s.b@gmx.net>
+
+SYNOPSIS:
+	This hint explains how you can install your new LFS system on a
+	partition (typically the / partition) already occupied by another
+	Linux system.
+	Compared to the one-partition-hint.txt, this hint has the
+	following advantages:
+	
+	-does not require the use of a loopback mounted filesystem. This means
+	 that you never have to recompile your host kernel for this hint.
+	-does not require destroying or modifying the host system
+	-host and new LFS system will *both* be bootable without loss of 
+	 performance to either.
+	-can be used to install several LFS systems in parallel on the
+	 same partition. Note that this hint does *NOT* require the 
+	 installation of a special boot manager to achieve this.
+
+HINT:
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+NOTE: I DO NOT TAKE RESPONSIBILITY FOR ANY DAMAGE CAUSED BY THESE 
+INSTRUCTIONS! ALL THAT I GUARANTEE IS THAT I WROTE THEM WITH BEST INTENTIONS!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+#############################################################################
+                            CHANGELOG
+#############################################################################
+
+2002-02-18   -moved fixing of mount points to before reboot, to prevent
+              (harmless) mountfs failure when rebooting to make LFS the 
+              primary system
+             -changed build instructions for static mount to something less
+              typo-prone
+             -minor textual changes 
+             -submitted v2
+
+#############################################################################
+                            REQUIREMENTS    
+#############################################################################
+
+This hint requires at least a 2.4.x kernel on the LFS system you want to
+build (the host system's kernel can be anything).
+Beginning with LFS 3.0, the book uses a 2.4.x kernel, so if you are building
+by a recent version of the book, this requirement is met.
+
+This hint assumes that you install your LFS system in a top-level directory
+on the partition you want to use, such as /lfs or /mnt/lfs (assuming you
+have a different partition mounted on /mnt, otherwise this would not be
+a top-level dir)
+Other directories are possible but may cause problems (e.g. installing in
+/bin/lfs is a stupid idea). You should not use a subdirectory unless you
+have used this hint at least once and understand what you have to change.
+
+
+
+#############################################################################
+                        BUILDING THE LFS SYSTEM
+#############################################################################
+
+You build the LFS system as described in the book (well, of course you
+skip the creation of a new partition and filesystem). After installing bash
+in chapter 5, make a backup copy of the static bash
+
+   cp $LFS/bin/bash $LFS/bin/static-bash
+
+
+After installing sh-utils in chapter 5, make a backup copy of the static chroot
+
+   cp $LFS/usr/bin/chroot $LFS/usr/bin/static-chroot
+
+No special precautions have to be taken when building the rest of chapter 5
+and 6.
+
+
+After installing all the packages in chapter 6, do the following
+(outside of chroot):
+
+1. compile a static version of the mount utility according to the following
+   instructions
+   
+   cd util-linux-* &&
+   ./configure &&
+   cp defines.h defines.h.old &&
+   sed /ENABLE_NLS/d defines.h.old >defines.h &&
+   make -C lib &&
+   make -C mount LDFLAGS=-static &&
+   cp mount/mount $LFS/bin/static-mount
+   
+2. create an empty directory $LFS/old-distro.
+
+3. Now create the following script as $LFS/sbin/init2 
+   You have to replace
+   "<LFS directory>" with the directory where your LFS system is located
+   RELATIVE TO THE PARTITION IT IS ON. If you installed in /mnt/lfs for
+   instance this would be just "/lfs". If you installed in /lfs (i.e. on
+   the / partition), this is "/lfs", too, of course.
+   Note that you can *NOT* use the
+   variable "$LFS" as it is not available when init2 is started.
+
+------------------- $LFS/sbin/init2 ------------------------------------------
+#!<LFS directory>/bin/static-bash
+export PATH=<LFS directory>/sbin:<LFS directory>/bin:<LFS directory>/usr/sbin
+export PATH=$PATH:<LFS directory>/usr/bin
+static-mount -n --bind / <LFS directory>/old-distro
+exec static-chroot <LFS directory> /usr/bin/env -i /sbin/init "$@"
+--------------------------------------------------------------------------
+
+Make sure that env is located in $LFS/usr/bin (it usually is but you might
+have moved it to /bin for some reason).
+
+Make init2 executable with the command `chmod +x $LFS/sbin/init2'
+
+
+#############################################################################
+                      CREATING SYSTEM BOOT SCRIPTS
+#############################################################################
+
+You have to make the following changes to the checkfs and mountfs boot 
+scripts when creating them:
+
+- in both the start) and the stop) section change 
+     /bin/mount -? -o remount,r? /
+  to   
+     /bin/mount -? -o remount,r? /old-distro
+  i.e. replace / with /old-distro
+  
+- in the stop) section of mountfs add the line
+     /bin/mount -o remount,ro /old-distro
+  before the line
+     /bin/umount -a -r
+
+
+Make sure you did not forget to change the checkfs script, too!
+
+
+
+#############################################################################
+                    MAKING THE LFS SYSTEM BOOTABLE
+#############################################################################                    
+
+Execute the instructions from "Making the LFS system bootable" with
+the following changes:
+
+1. In the /etc/fstab file you create, *replace* "/" with "/old-distro" 
+   IN THE ENTRY FOR THE ROOT FILESYSTEM (not everywhere!), 
+   so that /etc/fstab does not have a / entry but only
+   a /old-distro entry. IMPORTANT! Give this entry the `noauto' option.
+
+2. When preparing your boot loader, make the following changes:
+
+If you use LILO (as the book):   
+- <partition> is the partition you new LFS system is located on, e.g. the
+  same as your host distro's / if you installed in /lfs, or the partition
+  mounted at /mnt if you installed in /mnt/lfs.
+  This is not really a change from the standard LFS instructions. I just
+  repeat it in case you were wondering if it still holds.
+  
+- "image=/boot/lfskernel" must be changed to 
+  "image=<LFS directory>/boot/lfskernel"
+  <LFS directory> must be replaced with the appropriate directory as in
+  the creation of the init2 script above.
+
+- make LILO pass "init=<LFS directory>/sbin/init2" to the kernel. You do
+  this by adding the line 
+     append="init=<LFS directory>/sbin/init2"
+  to the boot entry for your new LFS in lilo.conf.
+  
+If you use GRUB:
+- change the kernel line of the menu.cfg entry you created for your new LFS
+  system so that it uses <LFS directory>/boot/lfskernel as the kernel and
+  passes "init=<LFS directory>/sbin/init2". The line should look similar to
+  the following
+  
+    kernel /lfs/boot/lfskernel root=/dev/hda1 ro init=/lfs/sbin/init2
+  
+  Replace /lfs with the appropriate value for <LFS directory> as in the
+  creation of the init2 script above. Replace /dev/hda1 with the appropriate
+  partition (e.g. the same as your host system's / if you installed in /lfs, 
+  or the partition mounted at /mnt if you installed in /mnt/lfs).
+  
+  NOTE: Unless you reinstall GRUB, you have to add the entry for the LFS
+  system to the menu.lst OF YOUR HOST SYSTEM. Just creating a menu.lst
+  in $LFS/boot/grub won't achieve anything. It is best to sync the menu.lst
+  from your host system with that from your LFS system.
+
+3. In the unlikely case that the partition of your new LFS system does not 
+   already have a /dev directory (e.g. because you're installing on the /usr
+   partition of your host system), you have to create one. 
+   The easiest way is to copy the one from your LFS
+
+     cp -a $LFS/dev $LFS/..
+
+4. Now continue with the book. Everything should work as advertised and if you
+   did everything right, you should be able to boot into your LFS system
+   without problems.
+   Via the directory /old-distro you have access to the real / of the 
+   partition and to the files of your host distribution. Note that the
+   files in /old-distro may belong to users that do not exist on the LFS 
+   system so that ls only shows numeric UIDs and GIDs.
+
+
+#####################
+GOTCHAS
+#####################
+
+1. You may or may not see errors from umount regarding "/dev/root: not found" 
+   and/or "/: not mounted" during shutdown. These are harmless.
+
+2. If you want to remount the / partition, you have to actually remount
+   /old-distro
+
+   NEVER unmount /old-distro. If you do this, you won't be able to remount /
+   read-only anymore, i.e. you won't be able to shutdown cleanly.
+   Note that `umount -a' unmounts /old-distro, so don't use this command. 
+   "mountfs stop" is safe because it remounts /old-distro (and hence /) 
+   read-only prior to calling umount -a (provided you changed mountfs properly
+   as you were told above). However after `mountfs stop' there is
+   no way to remount / read-write anymore, so don't use `mountfs stop' unless
+   you're shutting down your computer.
+
+   If it happens to you that you do unmount /old-distro by 
+   "accident" (read: "stupidity"), do the following:
+   1. kill all processes and log out on all terminals
+   2. log in as root
+   3. Issue the command 
+         /bin/sync 
+      3 times. Say "I don't want a corrupted filesystem" aloud and knock on your 
+      head after each time (this is !important! Do not
+      complain to anyone about corrupted filesystems if you did not follow the
+      sync, speak, knock on head, sync, speak, knock on head, sync, speak, 
+      knock on head order precisely)
+   4. /sbin/reboot 
+      fsck should start automatically after the reboot, but there
+      should not be any corruption (at least if you did step 3 properly)
+
+
+##############################################################################
+                       SWAPPING HOST AND LFS SYSTEM
+##############################################################################
+
+Right now your LFS system is booted via chroot. This does not have any
+adverse effects on performance but it doesn't "feel right" so once you are
+content with your LFS system you will want to make it the primary system.
+This is a bit tricky. The following instructions don't delete any
+files but if something goes wrong, it is possible that neither your LFS nor
+your host distro boots anymore. You should keep a Linux boot disk or CD
+handy. Now this is what you have to do:
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+NOTE: I DO NOT TAKE RESPONSIBILITY FOR ANY DAMAGE CAUSED BY THESE 
+INSTRUCTIONS! ALL THAT I GUARANTEE IS THAT I WROTE THEM WITH BEST INTENTIONS! 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+1. Boot into your LFS system.
+   Make sure that you don't have any mount points in /old-distro (why would
+   you want to?). Then do
+   
+     cd /old-distro
+     mkdir old-distro  #this creates directory /old-distro/old-distro
+     for dir in * ; do
+       if [ ! $dir -ef / -a ! $dir -ef ./old-distro -a ! $dir -ef ./boot \
+                         -a ! $dir -ef ./lost+found ]; then
+         mv $dir old-distro
+       fi
+     done
+   
+   THIS IS THE POINT OF NO RETURN! AFTER THE ABOVE COMMANDS, NEITHER YOUR
+   LFS NOR YOUR HOST ARE BOOTABLE ANYMORE! YOU HAVE TO COMPLETE THE FOLLOWING
+   INSTRUCTIONS SUCCESSFULLY!
+   
+     cd /
+     for dir in * ; do
+       if [ $dir != old-distro -a $dir != boot -a $dir != lost+found ]; then 
+         ln -s <LFS directory>/$dir /old-distro/$dir
+       fi
+     done
+       
+   In the above, replace <LFS directory> as always with the directory of
+   your LFS system relative to its partition.
+
+   Note that these symlinks are currently broken.
+   They will work when booted without the init2 script, however.
+   
+2. Change the config file of your boot manager and remove the "2" from
+   "init=<LFS directory>/sbin/init2" , i.e. we now want to start the real
+   init program, not the init2 script.
+   MAKE SURE YOU EDIT THE CORRECT CONFIG FILE. Depending on how you have
+   your boot manager set up, this is either /boot or /old-distro/boot.
+   It is best to synchronize those 2 to avoid trouble.
+
+3. If your boot manager requires being reinstalled after changing the config
+   file, reinstall it (e.g. run `/sbin/lilo' for LILO).
+   
+4. Unmount (or remount read-only) all filesystems EXCEPT /, /old-distro
+   and non-physical filesystems (such as proc, devfs, devpts,...). 
+   Note that you MUST NOT use umount -a. You have to issue a `umount -r' 
+   command for every filesystem listed in /proc/mounts except for the ones 
+   mentioned above.
+   It may be necessary to kill some processes before the unmounting will
+   succeed. Switching to runlevel 1 should usually give you a system with no
+   processes running to keep your filesystems busy.
+   
+5. Change the /etc/fstab of your LFS system to list / instead of /old-distro.
+   Also change the `noauto' to `defaults' (or whatever you normally use).
+   
+6. Change checkfs and mountfs to what they are on a normal LFS system, i.e.
+   undo the changes you were told to make in CREATING SYSTEM BOOT SCRIPTS
+   above.
+
+7. Now we have to fix the mount points. Check your /etc/fstab to find out
+   which directories are mount points in / (i.e. mount points that contain
+   only one "/". "/dev/pts" for instance does NOT count.). 
+   One directory that is always a mount point in / is /proc. Let's fix it:
+   
+     cd /old-distro    
+     rm proc
+     mkdir proc
+   
+   Now proceed with the other mount points. Remove the symlink in /old-distro
+   and create a real directory instead.
+   NOTE: You don't really need to do this for all mount points, only for those
+   that are mounted automatically at boot. Mount points marked "noauto" can
+   be skipped.
+
+8. Now remount your root fs read-only with
+
+     /bin/mount -o remount,ro /old-distro
+
+   and then reboot and choose the boot entry for your new LFS system again
+   (your host system doesn't work anymore).
+
+9. Your LFS system should work as usual but every directory <dir> in / (except
+   for old-distro/, <LFS directory> and some mount points) is just
+   a symlink to <LFS directory>/<dir>. 
+   This is not pretty, so we are going to fix it now.
+   
+   First we have to check the mount points. If you did everything right so
+   far, then there should be no mount points that are symlinks into 
+   <LFS directory> anymore (at least none that have a filesystem currently 
+   mounted).
+    Use the command
+   
+     cat /proc/mounts
+     
+   to get a list of all mounted filesystems. The dangerous entries will look 
+   like this
+   
+     foo   <LFS directory>/bar   type   rw   0 0
+   
+   Note that only mount points directly under <LFS directory> are dangerous.
+   A mount point "<LFS directory>/xyzzy/bar" is harmless because it's in a
+   subdirectory of <LFS directory>.
+   
+   If you did indeed forget a mount point <LFS directory>/bar, 
+   do the following
+   
+     umount <LFS directory>/bar
+     cd /
+     rm bar
+     mkdir bar
+   
+   Do the same with other mount points in <LFS directory>. Unmount, remove the 
+   symlink and create a real directory instead.
+   
+   NOTE: If you absolutely can't unmount a certain filesystem, this doesn't
+   matter AS LONG AS YOU REMOVE THE SYMLINK. THERE ***MUST NOT*** REMAIN ANY
+   SYMLINKS IN / THAT POINT TO MOUNT POINTS THAT ARE CURRENTLY IN USE!
+   
+   WARNING!!!  WARNING!!!  WARNING!!!  WARNING!!! 
+
+   TRIPLE CHECK THAT ALL SYMLINKS IN / POINT TO REAL DIRECTORIES AND ***NOT***
+   TO MOUNT POINTS THAT ARE CURRENTLY IN USE.
+   
+
+   Okay, now that we have made *positively sure* that none of the symlinks in
+   / point to mount points that are in use, we can continue.
+   
+   First we have to turn /tmp into a real directory:
+   
+     rm tmp
+     mv <LFS directory>/tmp .
+   
+   Now we need a few preparations
+     
+     export LD_LIBRARY_PATH=<LFS directory>/lib:<LFS directory>/usr/lib
+     cp /bin/mv /tmp
+     cp /lib/ld-linux.so.2 /tmp
+   
+   Finally we can get rid of the rest of the symlinks.  
+   NOTE: If something goes wrong with the moving of the /lib directory,
+   don't panic. <LFS directory>/sbin/sln is a statically linked ln that
+   you can use to set up symlinks to make it work again.
+   
+     cd /
+     for l in * ; do
+       if [ -L $l ]; then
+         source=$(find $l -printf "%l\n") &&
+         rm $l &&
+         /tmp/ld-linux.so.2 /tmp/mv $source $l
+       fi
+     done
+     
+     rm /tmp/mv
+     rm /tmp/ld-linux.so.2
+     
+10. Finally change the entry in your boot manager's config file to what it is
+   really meant to be. Remove the "init=<LFS directory>/sbin/init"
+   and change "<LFS directory>/boot/lfskernel" to "/boot/lfskernel".
+   Note that if you followed the instructions exactly, /boot is still the 
+   old /boot from the host distro. Synchronize with /lfs/boot if necessary.
+   Don't forget to run /sbin/lilo if you use LILO after you changed your
+   lilo.conf.
+
+11. Just to be safe you should now unmount all filesystems or remount them
+   read-only. Then you can reboot and
+   everything should be fine. Your old distro can be found in /old-distro .
+   

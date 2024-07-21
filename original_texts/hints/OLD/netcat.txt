@@ -1,0 +1,39 @@
+TITLE:		netcat
+LFS VERSION:	All
+AUTHOR:		Gintautas Miliauskas <gintautas.m@centras.lt>
+
+SYNOPSIS:
+	Getting netcat to compile on LFS.
+
+netcat is a very useful tool for various small networking tasks. It's
+capabilities are somewhat similar to cat, it just works with IP addresses and
+port numbers instead of file paths. It supports piping, opening sockets for
+listening and a few other simple, but very handy features.
+
+You can get this utility here:
+http://www.atstake.com/research/tools/index.html   (section 3)
+
+Direct link:
+http://www.atstake.com/research/tools/nc110.tgz
+
+Installation:
+
+mkdir netcat &&
+tar -C netcat -xvzf nc110.tgz &&
+cd netcat &&
+mv netcat.c netcat.c~ &&
+sed -e 's/res_init();/\/\* res_init(); \*\//' <netcat.c~ >netcat.c &&
+mv Makefile Makefile~ &&
+sed -e 's/CFLAGS =/# CFLAGS =/' -e 's/\$(STATIC)//' <Makefile~ >Makefile &&
+make linux &&
+cp nc /usr/bin
+
+The first sed fixes a small bug, if you don't trust it, you can manually
+comment or remove line #312 of the file netcat.c. The first part of the second
+sed enables CFLAGS set in your environment (it comments out the implied -O), the
+second part enables dynamic linking, you may leave it out if you want a static
+binary.
+
+Browse the directory for more info about usage of netcat. A quick command-line
+reference is available by `nc -h'.
+

@@ -1,0 +1,79 @@
+TITLE:        PCMCIA-CS install hint
+LFS VERSION:  any LFS with a 2.0, 2.2, 2.4 or 2.5 kernel
+AUTHOR:       Roland van Laar <the_mip_rvl@hotmail.com>
+
+SYNOPSIS: 
+	Installing the PCMCIA-CS package
+
+HINT: 
+Version 0.1.1
+
+Contents:
+
+  1. Preface
+  2. Getting the right stuff
+  3. Configuring + install the kernel and pcmcia-cs package
+  4. Errors I've encountered
+  5. More information
+
+1. Preface
+	                                                                             
+I included an Errors I've encountered section, it's just a section
+about how I changed some things to get my pcmcia netword card
+setup properly.
+
+There are two possibilities for using pcmcia:
+					       
+  - using the kernel pcmcia modules and the pcmcia-cs tools
+  - using the pcmcia-cs modules and tools	
+
+
+2. Getting the right stuff
+
+Download the pcmcia-cs source package from http://pcmcia-cs.sourceforge.net/
+Unpack the package into a directory, logical would be the /usr/src.
+
+3. Configuring + install the kernel and pcmcia-cs package
+
+   - Using the kernel pcmcia modules and the pcmcia-cs tools
+											           
+	When compiling the kernel during the LFS build, don't forget to 
+	compile the right pcmcia modules, and compile the kernel as
+	described in the LFS book.
+
+   - Using the pcmcia-cs modules and tools
+
+        Don't include the pcmcia support in the kernel. 
+        It's located in general setup; PCMCIA/CardBus support.
+
+After compiling the kernel, change to the pcmcia-cs directory and
+execute these commands for BOTH methods:
+
+	 make config
+	 make all
+	 make install
+
+Do a reboot and the PCMCIA support should be working properly.
+
+
+4. Errors I've encountered
+
+I have a pcmcia NIC, it's my only nic, if you do have onboard nic, eth0 will 
+be detected and the /etc/rc.d/init.d/network file will not generate an error.
+(In the onboard nic case do not remove or chmod the network file)
+The pcmcia daemon is started after the network is brought up. This resulted 
+in an error because eth0 wasn't detected.
+
+I configured /etc/pcmcia/network.opts (that shouldn't be too hard) so that a 
+./network eth0 up is given by the input of the pcmcia nic, which dissolves 
+the need of the disabled /etc/rc.d/init.d/network. 
+After this do a 
+	chmod 644 /etc/rc.d/init.d/network
+and have a reboot, so you can check if it worked out allright.
+If this works ok, go ahead and delete the /etc/rc.d/init.d/network file and 
+all links to it.
+
+5. More infomation
+
+The PCMCIA-HOWTO is located in the doc directory in the 
+pcmcia source dir.

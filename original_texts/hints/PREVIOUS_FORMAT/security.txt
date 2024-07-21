@@ -1,0 +1,192 @@
+TITLE:          Secured LFS
+LFS VERSION:    3.3 (but really any)
+AUTHOR:         James Smaby <jsmaby@virgo.umeche.maine.edu>
+
+SYNOPSIS:
+        Turn that shiny new LFS into a chained down fortress.
+
+HINT:
+   Most linux distros out there don't pay enough attention to security
+as they should.  They normally sacrifice security for ease of use.
+Unfortunately, LFS--though not a distro--does the same thing.  Sure,
+it doesn't run any services by default, and has only a bare minimum
+of packages installed, but even then, there's a lot that can be fixed
+up.  A linux system should be secured down so that even a cracker with
+a local account can't root the box.  It is generally accepted as being
+trivial to do so with linux though.  After following this hint, it is
+hoped that there will be a base system that will allow you to give
+accounts to even the most questionable friends with ease of mind.
+
+_Worst Case Scenario_
+   In the worst case, a cracker gets root on the system.  If this should
+happen, we want to minimize the damage that can be done.  Normally
+there are five things that the cracker could do:
+1. # nohup dd if=/dev/zero of=/dev/hda
+  This would be a smart, though nasty cracker.  If you don't use hda
+  very often, make it a copy of /dev/null, so that the dd won't trash
+  the hard drive.  And, of course, make backups often.
+2. # rm -rf /
+  A favorite of stupid kiddies that don't like you.  It might be worth
+  patching rm so that this particular command doesn't work.  You could
+  also make a very complex directory structure in /a, so that you have
+  time to kill the rm before it gets to the system.  It's always a good
+  idea to keep as many partitions as possible mounted read-only, and
+  have backups of the system.
+3. # tar zxf my_rootkit.tgz
+  The most common thing for a cracker to do.  Keep md5sums of all the
+  files on the system so that you can see what has changed.
+4. # nmap, tcpdump, etc.
+  If they don't really care about, they'll just start scanning for
+  more open hosts, grab passwords, and so on.  To clean up, kill the
+  processes, and look for an installed rootkit.
+5. # touch ~/haha_I_hacked_you
+  A prankster (maybe an IRC buddy) got in, and wanted to let you know.
+  Ask them how they got in, and close up that hole.  Check for a
+  rootkit, just in case.
+For all these things, you should check your logs to try and figure out
+how they got in, so that you can fix the hole.  Always change your
+passwords if people have had access to you /etc/shadow.
+
+_User-level access_
+   Either a network daemon was compromised, or you've given out accounts
+to the wrong sort of people.  The things they can do to you are:
+1. $ rm -rf /
+  A quite silly thing to do, as it will only delete files that exist in
+  (non-sticky-bit) directories that are writable by that user.  If your
+  IRC client is compromised, this will delete all of you user's files.
+  Since this is quite unwanted, IRC as a dummy account.  Other ways into
+  your account include web browsers (with javascript enabled), some
+  mail clients, and compiling/installing/running untrusted software.
+  All these things can either not be done, or done with a dummy account.
+2. $ find / -perm -4000 -o -perm -2000
+  Programs with the setuid or setgid bits set run as the owner/group of
+  that binary.  Some programs need root privileges in order to work
+  correctly.  A couple examples are su, ping, passwd, and XFree86.
+  These have the setuid bit set so that users can start them.  By
+  looking for bugs in these programs (buffer overflows are a favorite),
+  a crafty cracker can run arbitrary commands as root.  The fix is to
+  remove the bits from any programs that don't need to be run by your user.
+  One can change passwords as root, and start X via xdm.  One could
+  even get rid of all setuid bits completely, and have init put a root
+  shell on tty1 for system maintenance.
+3. $ ps --user=root -u
+  Look for daemons running as root, and try to convince them to do
+  stuff.  Many daemons can drop privileges, and run as nobody, or
+  a specific user.  Those that can't can always bu run in chroot, so
+  in the init script you may have
+    cd /static && chroot . bin/daemon
+  If the daemon is compiled statically, that makes setting up the chroot
+  environment trivial.
+4. $ for PID in `seq $$ $[$$+1000]`; do ln -s /etc/shadow /tmp/foo$PID; done
+  Some programs use mktemp, tmpnam, or just getpid() to choose temporary
+  filenames.  If the program isn't careful, such a symlink attack as
+  shown could lead to mangling the passwd file if the program is run
+  by root.  One should keep a lookout for linktime warnings about mktemp
+  usage, grep ones binaries for the string mktemp, and keep an eye on
+  what files are in /tmp, to see if any have predictable names.
+5. $ echo 'main(){while(1) fork();}' > fork.c && make fork && ./fork
+  There are many ways to DOS a box with a local account.  My favorite is
+  the forkbomb.  To fix it, try as root killall -STOP fork; killall -9 fork
+  To avoid the unpleasant thing from happening in the first place, set
+  ulimit so that a user can't eat up the process table, or fill up RAM,
+  or hog the CPU.
+
+
+_Remote access_
+   While LFS has no daemons running, it is still accessible from the net.
+You may want to install sshd, a web server, or something else to make
+the box more useful.  Securing these services from remote attackers
+is extremely important.  Some things to keep in mind:
+1. Run network services as an unprivileged user, and preferably in
+  a chroot jail.  Keep up to date on version releases.  Only run
+  services that were written with security in mind (sshd, qmail, not telnet).
+2. LFS comes with inetd from netkit-base.  Don't use it.  Use stand-
+  alone servers, or xinetd.  In the old days, tcpwrappers was used
+  with this.  Now, use iptables to firewall off your service's ports
+  from IPs that don't need to use them (i.e. ssh connections only from
+  your own hosts).
+3. The disgruntled script kiddie that can't get into your box may resort
+  to denial of service attacks.  Stop ping floods by setting an appropriate
+  number in /proc/sys/net/ipv4/icmp_ratelimit.  You can stop SYN floods
+  by enabling syncookies in the kernel.  And if someone is still bothering
+  you, iptables can let you drop all packets from their IP.
+
+
+_Other hints_
+
+   Apply all the given patches to LFS's sources. There isn't an official
+home for them yet, but try downloading from
+< http://virgo.umeche.maine.edu/misc/security_patches.tar.gz >
+and send bug reports to jsmaby@virgo.umeche.maine.edu
+
+   Sudo is an excellent little tool which allows a user (depending on the 
+configuration) to execute a command as root, but w/o giving them root's 
+password.  It's great if you just want a user to be able to 
+restart a webserver or certain daemon; http://www.courtesan.com/sudo/
+
+   For system accounts that people shouldn't be able to log into, use
+/bin/false as the login shell, and /dev/null as home.  If they are
+left blank (bin:x:1:1:bin::), login defaults to /bin/sh and /.
+
+   Make sure to enable MD5 passwords in /etc/login.defs, then change
+your passwords to apply it.  This will allow passwords larger than
+eight characters.  Try running a dictionary-based password cracker on
+the encrypted passwords of you and any user on the system to find
+week passwords that need to be changed.
+
+   Break the system up into multiple partitions.  The only parts of the
+filesystem that should be writable are /home and /var.  Some programs
+may complain about / being mounted read-only though (like kdm).  Parts
+of the filesystem could also be mounted with noexec, nosuid, nodev, and
+so on.
+
+   After getting the system setup the way you want, either use Tripwire,
+or just take md5sums of all the files on the system.  Try the following
+(really slow) script to keep track of md5sums:
+
+#!/bin/bash
+mv /var/log/checksums /var/log/checksums.old
+DIRS="/bin /boot /etc /lib /root /sbin /usr"
+for DIR in $DIRS; do
+  FILES=`find $DIR -type f -o -type l`
+  for FILE in $FILES; do
+    SUM=`md5sum $FILE 2> /dev/null`
+    echo $SUM >> /var/log/checksums
+    SUM=`echo $SUM | cut -d " " -f 1`
+    OLDSUM=`grep " $FILE$" /var/log/checksums.old | cut -d " " -f 1`
+    if [ "$SUM" != "$OLDSUM" ]; then
+      echo $FILE
+    fi
+  done
+done
+echo "Old overall checksum:"
+md5sum /var/log/checksums.old
+echo "New overall checksum:"
+md5sum /var/log/checksums
+
+Make sure to put a copy of the checksums on a floppy disk (and take
+the disk out of the computer), and write down the overall checksums
+so that you'll know if they've been tampered with.
+
+   Make sure to check permissions after installing everything.  Look
+for setuid bits, and world writable files and directories.  Use find
+commands similar to the second user-level access cracker's command.
+
+   A good replacement for syslogd is syslog-ng.  It allows for easier
+sorting, and is more powerful.  Either way, consider having logs
+sent to a log server, so that crackers can't cover their tracks
+by editing log files.
+
+   For more fine grained kernel-level security, check out the patches
+at < http://www.lids.org >.
+
+   Another kernel-level security enhancement is at
+< http://www.nsa.gov/selinux >, but is redhat-centered, so maybe
+of minimal use to LFSers.
+
+   A security-conscious distribution is at < http://www.openwall.com/Owl >.
+Their package source is distributed as SRPMs, but after unpacking them,
+patches to the program are given (although not always an explanation
+of what they do).  It is always good to take a look at what patches
+they're applying before installing a new package.
+

@@ -1,0 +1,205 @@
+
+AUTHOR:		Sylvie Migneault <alisou@alixe.org>
+
+DATE:		2005-11-07
+
+LICENSE:	GNU Free Documentation License Version 1.2
+
+SYNOPSIS:	lfscd-remastering-HOWTO
+
+DESCRIPTION:	This is a guide that will show you how to remaster LFSliveCD-x86-6.1-3
+		Note: commands should appear on one line, after the symbol #
+
+PREREQUISITES:	- at least 1 GB of FREE RAM+Swap total (e.g. 256M ram, and 750M swap AVAILABLE) 	
+		- 2 GB free on a Linux filesystem formatted disk partition	
+		- Host System with SquashFS supported
+		- mksquashfs tools
+		- mkisofs tools
+		- link: http://squashfs.sourceforge.net
+
+HINT:
+
+Contents
+--------
+
+    1. Host System Requirements
+    2. LiveCD's structure  
+    3. My working environment
+    4. Boot from the lfslivecd-x86-6.1-3 and mount it
+    5. Mount the work partition, create directories
+    6. Uncompress .root.sqfs
+    7. Copy CD's contents into lfscd (not .root.sqfs)
+    8. Install mksquashfs
+    9. chroot into lfshd
+   10. Install any programs
+   11. Create .root.sqfs
+   12. Create iso file
+   13. Burn and test
+
+
+1. Host System Requirements
+   ------------------------
+
+	I use lfslivecd-x86-6.1-3 because SquashFS is supported by the kernel.
+	If you want to use your Linux system, patch your kernel with SquashFS.
+	
+
+2. LiveCD's structure
+   ------------------
+
+	/boot
+	/sources
+	.root.sqfs
+
+	I work with ".root.sqfs" file
+
+
+3. My working environment
+   ----------------------
+	
+	/dev/hdc		my CD drive
+	/mnt/cdrom		content of lfslivecd-x86-0.6-3
+	/mnt/hda5 		my working partition
+	/mnt/hda5/lfscd		content of final CD
+	/mnt/hda5/lfshd		chroot environment
+	/mnt/hda5/lfsiso	content of ISO files
+	/mnt/hda5/lfstmp	tempory directory
+
+
+4. Boot from the lfslivecd-x86-6.1-3 and mount it
+   ----------------------------------------------
+
+	# mkdir /mnt/cdrom
+	# mount /dev/hdc /mnt/cdrom
+
+		
+5. Mount the work partition, create directories
+   --------------------------------------------
+
+	# mkdir /mnt/hda5
+	# mount /dev/hda5 /mnt/hda5
+	# cd /mnt/hda5
+	# mkdir lfscd lfshd lfstmp lfsiso
+
+
+6. Uncompress .root.sqfs
+   ---------------------
+
+	# cd /mnt/cdrom
+	# mount .root.sqfs /mnt/hda5/lfstmp -o loop
+	# cd /mnt/hda5/lfstmp
+	# cp -Rp * /mnt/hda5/lfshd
+	# cd ..
+	# umount lfstmp/
+	
+
+7. Copy LiveCD's content into lfscd (not .root.sqfs)
+   -------------------------------------------------
+
+	# cd /mnt/cdrom
+	# cp -Rp * /mnt/hda5/lfscd
+	# cd ..
+	# umount cdrom/
+
+
+8. Install mksquashfs
+   ------------------
+	
+	Before starting, i have downloaded squashfsXX.tar.gz
+	at this URL http://squashfs.sourceforge.net
+	copy it into /sources
+
+	If squashfsXX.tar.gz is on floppy
+	Insert floppy in the floppy drive
+	# mkdir /mnt/floppy
+	# mount /dev/fd0 /mnt/floppy
+	# cd /mnt/floppy
+	# cp squashfsXX.tar.gs /sources
+	# cd ..
+	# umount floppy/
+	# cd /sources
+	# tar -xvf squashfsXX.tar.gz
+	# cd squashfsXX
+	# cd squashfs-tools
+	# make
+
+	install mksquashfs into host system
+	# cp mksquashfs /usr/sbin
+
+	install mksquashfs into chroot environment
+	# cp mksquashfs /mnt/hda5/lfshd/usr/sbin
+
+
+9. chroot into lfshd
+   -----------------
+
+	create the environment variable TOTO,
+	verify the output
+
+	# export TOTO=/mnt/hda5/lfshd
+	# echo $TOTO
+	
+	Make sure the output shows is:
+	/mnt/hda5/lfshd
+
+	run the following command:
+	# chroot "$TOTO" /usr/bin/env -i \
+		HOME=/root TERM="$TERM" PS1='\u:\w\$ ' \
+		PATH=/bin:/usr/bin:/sbin:/usr/sbin \
+		/bin/bash --login +h
+
+	reference:
+	http://www.linuxfromscratch.org/lfs/view/stable/chapter06/chroot.html
+	
+
+10. Install any programs
+    --------------------
+
+	- ./configure 
+	- make
+	- make install
+	- ...
+	- for exit the chroot environment:
+
+	# exit
+
+
+11. Create .root.sqfs
+    -----------------
+
+	# cd /mnt/hda5
+	# mksquashfs lfshd/ /mnt/hda5/lfscd/.root.sqfs
+
+
+12. Create iso file
+    ---------------
+
+	mkisofs tool is not present on lfslivecd-x86-6.1-3.
+	
+	umount all:
+	# cd /
+	# umount /mnt/hda5
+
+	Reboot your PC unless lfslivecd.
+	Create ISO file with this command:
+
+	# mkisofs -pad -l -r -J -v -V "LFS_CD" -no-emul-boot -boot-load-size 4 -boot-info-table \
+		-b boot/isolinux/isolinux.bin -c boot/boot.cat -hide-rr-moved \
+		-o /mnt/hda5/lfsiso/livecd-remaster.iso /mnt/hda5/lfscd
+
+
+13. Burn and test
+    -------------
+
+	«Have a fun!» ;-)
+
+ACKNOWLEDGEMENTS:
+
+	The team of «Linux from scratch» and all users.
+	All users wich contribute at the OpenSource project.	:-)
+
+CHANGELOG:
+
+   [2005-11-07]
+    * Initial hint.
+

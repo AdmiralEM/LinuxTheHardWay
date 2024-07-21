@@ -1,0 +1,346 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+  <meta http-equiv="content-type"
+ content="text/html; charset=ISO-8859-1">
+  <title>BLFS Package Dependencies</title>
+  <meta name="author" content="Chuck Rhode">
+  <meta name="description"
+ content="Extract a database of software packages from the BLFS book and order them in prerequisite installation sequence.">
+</head>
+<body>
+<code>AUTHOR: <a
+ href="mailto:%22Chuck%20Rhode%22%20%3Ccrhode@excel.net%3E"><code>"Chuck
+Rhode" &lt;crhode@excel.net&gt;</code></a><br>
+<br>
+DATE: 2004-04-29<br>
+<br>
+LICENSE: Public Domain<br>
+<br>
+SYNOPSIS: BLFS Package Dependencies.<br>
+<br>
+DESCRIPTION:<br>
+Extract a database of software packages from the BLFS book and order
+them in <br>
+prerequisite installation sequence.<br>
+<br>
+ATTACHMENTS:<br>
+* <a
+ href="http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/AuditPackages.py">http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/AuditPackages.py</a><br>
+* <a
+ href="http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/BLFS-Deps.toc">http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/BLFS-Deps.toc</a><br>
+* <a
+ href="http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/DownloadPackages.py">http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/DownloadPackages.py</a><br>
+* <a
+ href="http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/HarvestPackages.py">http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/HarvestPackages.py</a><br>
+* <a
+ href="http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/InstallPackages.py">http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/InstallPackages.py</a><br>
+* <a
+ href="http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/MaskDonePackages.py">http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/MaskDonePackages.py</a><br>
+* <a
+ href="http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/PackageDB.py">http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/PackageDB.py</a><br>
+* <a
+ href="http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/PrerequisitePackages.py">http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/PrerequisitePackages.py</a><br>
+* <a
+ href="http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/ReportPackages.py">http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/ReportPackages.py</a><br>
+* <a
+ href="http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/UninstallPackages.py">http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/UninstallPackages.py</a><br>
+* <a
+ href="http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/alllist.txt">http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/alllist.txt</a><br>
+* <a
+ href="http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/pkgs.dat">http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/pkgs.dat</a><br>
+* <a
+ href="http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/xml.sax.expatreader.patch">http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/xml.sax.expatreader.patch</a><br>
+* <a
+ href="http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/xml.sax.expatreader.patch.README">http://www.linuxfromscratch.org/hints/downloads/attachments/blfs-deps/xml.sax.expatreader.patch.README</a><br>
+<br>
+<br>
+PREREQUISITES:<br>
+* BLFS 5.0<br>
+* python 2.3<br>
+* patch for xml.sax.handler (included)<br>
+<br>
+HINT:<br>
+<br>
+</code><cite>Beyond Linux from Scratch 5.0</cite> contains a list of a
+couple hundred software packages with installation instructions and
+code examples. <br>
+<br>
+Packages are cited in prerequisite order. Prerequisites are those
+packages that a given package depends on. When installing a given
+package, the User must be sure all of its prerequisites have already
+been installed. However, not all the preceding packages are necessarily
+prerequisite to the given one. The given package may be optional and in
+turn may depend on other optional packages. The User is expected to
+skip optional packages that he does not need. Prerequisites
+in turn may have their own prerequisites. Determining which packages
+are in the dependency cascade leading to the given package is
+non-trivial. <br>
+<br>
+There are many code examples in <cite>BLFS</cite>. I have written some
+scripts to extract the code examples from the <cite>BLFS</cite> text
+and build a database of packages and prerequisites. A User may
+submit a package name and receive a script for installing not only the
+given package but also its prerequisites in prerequisite order.<br>
+<h2><var>PrerequisitePackages.py</var></h2>
+<a href="PrerequisitePackages.py"><var>PrerequisitePackages.py</var></a>
+sorts and lists the dependency tree for a given
+package (or list of packages). For example:<br>
+<blockquote><code>echo linc &gt; <var>wishlist.txt</var></code><br>
+  <code>./<var>PrerequisitePackages.py</var> -W <var>wishlist.txt</var></code><br>
+</blockquote>
+... would print the following report:<br>
+<blockquote><samp># Install packages in this order:</samp><br>
+  <samp>pkgconfig (pkgconfig-0.15.0)</samp><br>
+  <samp>GLib2 (GLib-2.2.3)</samp><br>
+  <samp>openssl (OpenSSL-0.9.7c)</samp><br>
+  <samp>linc (linc-1.0.3)</samp><br>
+  <samp>4 packages needed.</samp><br>
+</blockquote>
+All of the parameters are optional:<br>
+<blockquote><code>./<var>PrerequisitePackages.py</var>
+-P <var>pkgs.dat</var> -W <var>wishlist.txt</var> -O <var>wishlist.txt</var></code></blockquote>
+... would expand the wishlist to include all prerequisites.<br>
+<ul>
+  <li>If omitted, -P defaults to <var>pkgs.dat</var>, the packages
+database.
+A version of <a href="pkgs.dat"><var>pkgs.dat</var></a> corresponding
+to <cite>BLFS 5.0</cite> is
+included in the tarball for this hint.<br>
+  </li>
+  <li>If omitted, -W defaults to standard input.</li>
+  <li>If omitted, -O defaults to standard output.</li>
+</ul>
+More than one package may be named in <var>wishlist.txt</var>,
+separated by spaces
+or newlines. The package names are the ones in
+<var>alllist.txt</var>. To see if a package is in <var>alllist.txt</var>:<br>
+<blockquote><code>grep -i linc <var>alllist.txt</var></code></blockquote>
+A version of <a href="alllist.txt"><var>alllist.txt</var></a>
+corresponding to <cite>BLFS 5.0</cite> is
+included in the tarball for this hint.<br>
+<h2><var>DownloadPackages.py</var></h2>
+<a href="DownloadPackages.py"><var>DownloadPackages.py</var></a>
+generates a <var>wget</var> script for downloading
+the
+requisite packages. For example:<br>
+<blockquote><code>./<var>DownloadPackages.py</var>
+-W <var>wishlist.txt</var> -O <var>/usr/src</var>/download.sh</code></blockquote>
+... would place the script in the source library where it could be
+executed like this:
+<blockquote><code>cd <var>/usr/src</var><br>
+chmod 755 download.sh<br>
+./download.sh</code></blockquote>
+Here is what the script looks like:<br>
+<blockquote><samp>wget
+ftp://ftp.netbuddy.org/linux/pkgconfig-0.15.0.tar.gz</samp><br>
+  <samp>wget ftp://ftp.gtk.org/pub/gtk/v2.2/glib-2.2.3.tar.bz2</samp><br>
+  <samp>wget ftp://ftp.openssl.org/source/openssl-0.9.7c.tar.gz</samp><br>
+  <samp>wget ftp://ftp.openssl.org/source/openssl-0.9.7c.tar.gz</samp><br>
+  <samp>wget
+ftp://ftp.gnome.org/pub/GNOME/sources/linc/1.0/linc-1.0.3.tar.bz2</samp></blockquote>
+All of the parameters are optional:<br>
+<blockquote><code>./<var>DownloadPackages.py</var>
+-P <var>pkgs.dat</var> -W <var>wishlist.txt</var> -O download.sh</code></blockquote>
+<ul>
+  <li>If omitted, -P defaults to <var>pkgs.dat</var>, the packages
+database. <br>
+  </li>
+  <li>If omitted, -W defaults to standard input. It should be the
+expanded wishlist output by <var>PrerequisitePackages.py</var>.<br>
+  </li>
+  <li>If omitted, -O defaults to standard output. It is a shell
+script.</li>
+</ul>
+<h2><var>InstallPackages.py</var></h2>
+<a href="InstallPackages.py"><var>InstallPackages.py</var></a>
+generates a script for installing the
+requisite
+packages. For example:<br>
+<blockquote><code>./<var>InstallPackages.py</var>
+-W <var>wishlist.txt</var> -O <var>/usr/src</var>/install.sh</code></blockquote>
+... would place the script in the source library where it could be
+executed like this:
+<blockquote><code>cd <var>/usr/src</var><br>
+chmod 755 install.sh<br>
+./install.sh</code></blockquote>
+The script must be edited first, though. It contains install and
+configuration code fragments from <cite>BLFS</cite>. Where alternates
+are given, all options have been exhaustively expressed, and you must
+elide those not relevant to your installation. As nice as it is not to
+have to copy these code fragments from the book, it is not a substitute
+for reading and understanding the sections where they are described.<br>
+<br>
+All of the parameters are optional:<br>
+<blockquote><code>./<var>InstallPackages.py</var>
+-P <var>pkgs.dat</var>
+-W <var>wishlist.txt</var> -O install.sh -S <var>/usr/src</var></code></blockquote>
+<ul>
+  <li>If omitted, -P defaults to <var>pkgs.dat</var>, the packages
+database. <br>
+  </li>
+  <li>If omitted, -W defaults to standard input. It should be the
+expanded wishlist output by <var>PrerequisitePackages.py</var>.<br>
+  </li>
+  <li>If omitted, -O defaults to standard output. It is a shell
+script.<br>
+  </li>
+  <li>If omitted, -S defaults to <var>/usr/src</var>, the source
+library.<br>
+  </li>
+</ul>
+Once the packages are successfully installed, add their names to the
+end of <var>donelist.txt</var>, a permanent file.<br>
+<blockquote><code>sed "s/ .*\$//" <var>wishlist.txt</var>
+|
+sed "s/\$/ /" | sed s/^/\^/ &gt; patterns.txt<br>
+grep -f patterns.txt <var>alllist.txt</var> &gt;&gt; <var>donelist.txt</var></code></blockquote>
+... where <var>wishlist.txt</var> contains the list of packages just
+recently
+installed. <var><br>
+<br>
+</var><a href="alllist.txt"><var>alllist.txt</var></a> contains
+the list of all the
+packages in <cite>BLFS</cite>.
+<var>alllist.txt</var> is included in the tarball for this hint.<br>
+<h2><var>MaskDonePackages.py</var></h2>
+The next time after you run <var>PrerequisitePackages.py</var>, you
+need to remove
+the names of the packages in <var>donelist.txt</var> from the output <var>wishlist.txt</var>
+to avoid
+reinstalling them. This may be accomplished with
+<a href="MaskDonePackages.py"><var>MaskDonePackages.py</var></a>. For
+example:<br>
+<blockquote><code>./<var>MaskDonePackages.py</var>
+-W <var>wishlist.txt</var> -D <var>donelist.txt</var> -O <var>wishlist.txt</var></code><br>
+</blockquote>
+... would restrict the wishlist to exclude already installed packages.<br>
+<br>
+All of the parameters are optional:<br>
+<ul>
+  <li>If omitted, -W defaults to standard
+input. It should be the expanded wishlist output by <var>PrerequisitePackages.py</var>.</li>
+  <li>If omitted, -D defaults to <var>donelist.txt</var>. </li>
+  <li>If omitted, -O defaults to standard
+output. </li>
+</ul>
+<var>MaskDonePackages.py</var> does not update <var>donelist.txt</var>.<br>
+<h2><var>UninstallPackages.py</var></h2>
+<a href="UninstallPackages.py"><var>UninstallPackages.py</var></a>
+generates a script for uninstalling the
+requisite
+packages.<br>
+<br>
+All of the parameters are optional:<br>
+<blockquote><code>./<var>UninstallPackages.py</var>
+-P <var>pkgs.dat</var>
+-W <var>wishlist.txt</var> -O uninstall.sh -S <var>/usr/src</var></code></blockquote>
+<ul>
+  <li>If omitted, -P defaults to <var>pkgs.dat</var>, the packages
+database. <br>
+  </li>
+  <li>If omitted, -W defaults to standard input. It should be the
+list of packages to uninstall.<br>
+  </li>
+  <li>If omitted, -O defaults to standard output. It is a shell
+script.<br>
+  </li>
+  <li>If omitted, -S defaults to <var>/usr/src</var>, the source
+library.</li>
+</ul>
+<h2><var>PackageDB.py</var></h2>
+<a href="PackageDB.py"><var>PackageDB.py</var></a> defines objects used
+by the other scripts.<br>
+<h2><var>HarvestPackages.py</var></h2>
+<a href="HarvestPackages.py"><var>HarvestPackages.py</var></a> extracts
+a new packages database from the
+<cite>BLFS</cite>
+xml document.<br>
+<br>
+The tarball for this hint includes <a href="pkgs.dat"><var>pkgs.dat</var></a>
+and <a href="alllist.txt"><var>alllist.txt</var></a>,
+which are
+derived from <cite>BLFS 5.0</cite> with this script and the next
+two. Unless you plan to install from a newer version of <cite>BLFS</cite>,
+you should not need to run these scripts. The swindle is that
+they are not guaranteed to work with any level of <cite>BLFS</cite>
+other than 5.0.<br>
+<blockquote><code>./<var>HarvestPackages.py</var>
+-I index.xml
+-P <var>pkgs.dat</var></code></blockquote>
+<ul>
+  <li>If omitted, -I defaults to <var>~/BLFS/BOOK/index.xml</var>.<br>
+  </li>
+  <li>If omitted, -P defaults to standard output. It is the new
+output packages database.<br>
+  </li>
+</ul>
+<h2><var>AuditPackages.py</var></h2>
+<a href="AuditPackages.py"><var>AuditPackages.py</var></a> identifies
+any inconsistencies in the
+database
+generated automatically by <var>HarvestPackages.py</var>. <br>
+<br>
+All parameters are optional:<br>
+<blockquote><code>./<var>AuditPackages.py</var> -P <var>pkgs.dat</var>
+-O rept.txt -A -C -U -S -L -I <var>PkgName</var>
+-F</code></blockquote>
+<ul>
+  <li>If omitted, -P defaults to <var>pkgs.dat</var>, the packages
+database. <br>
+  </li>
+  <li>If omitted, -O defaults to standard output. It is a report.</li>
+  <li>-A reports packages that have no tarball.</li>
+  <li>-C reports packages that have no install code fragments.</li>
+  <li>-U reports packages that depend on unknown packages.</li>
+  <li>-S reports packages that are not in a dependency cascade leading
+to any other package.</li>
+  <li>-L lists the names of all packages.</li>
+  <li>-I reports packages that immediately depend on <var>PkgName</var>.</li>
+  <li>-F updates <var>pkgs.dat</var> (in place) with information that
+could not be
+extracted automatically from <cite>BLFS 5.0</cite>.<br>
+  </li>
+</ul>
+<h2><var>ReportPackages.py</var></h2>
+<a href="ReportPackages.py"><var>ReportPackages.py</var></a> writes a
+full report of the packages
+database.<br>
+<blockquote><code>./<var>ReportPackages.py</var> -P <var>pkgs.dat</var>
+-O rept.txt </code></blockquote>
+<ul>
+  <li>If omitted, -P defaults to <var>pkgs.dat</var>, the packages
+database. <br>
+  </li>
+  <li>If omitted, -O defaults to standard output. It is a report.</li>
+</ul>
+<h2><var>xml.sax.expatreader.patch</var></h2>
+The <a href="xml.sax.expatreader.patch"><var>xml.sax.expatreader.patch</var></a>
+for <cite>PyXML 0.8.3</cite> or <cite>Python 2.3.3</cite> is required
+by
+<var>HarvestPackages.py</var> and is included in the tarball for this
+hint. <span style="font-weight: bold;">Please do not apply this patch</span>
+unless you plan to run <var>HarvestPackages.py</var>. Most people
+shouldn't
+need to. To apply the patch, see <a
+ href="xml.sax.expatreader.patch.README"><var>xml.sax.expatreader.patch.README</var></a>.<br>
+<br>
+<code>ACKNOWLEDGMENTS:<br>
+* "Joern Abatz" &lt;joern@abatz.de&gt; for <var>depsort</var> hint for
+BLFS 1.0 2003-09-23<br>
+* Zoltan for beta testing.<br>
+<br>
+CHANGELOG:<br>
+[2004-04-19]<br>
+* First Release.<br>
+[2004-04-29]<br>
+* Fix DownloadPackages.py to write patch names correctly (per Zoltan).<br>
+* Fix PrerequisitePackages.py to suppress duplicates at outer level
+(per Zoltan).<br>
+* Stipulate Python 2.3 or better.<br>
+* Correct location of attachments in this document.<br>
+* Amplify xml.sax.expatreader.patch.README to suggest that Python 2.3.2
+is supported, too.<br>
+</code>
+</body>
+</html>

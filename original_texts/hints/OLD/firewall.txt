@@ -1,0 +1,460 @@
+TITLE:		Firewall.txt
+LFS VERSION:	any
+		Kernel   >= 2.4.9
+		iptables >= 1.2.3
+AUTHOR:		Henning Rohde	Henning.Rohde(at)uni-bayreuth.de
+
+SYNOPSIS:	
+	Question:	What's a firewall?
+ 	Answer:		a fire-resistant wall separating a building into 
+			departments, designed to prevent the spread of fire
+And on Networks?	A box that restricts the malicious (eg crackers, 
+			worms, trojans) out of your intranet.
+How Do I build one?	fetch iptables and read the following:
+
+Personally I prefer the following definition:
+Answer:		A wall of fire that only the Saints can pass through!
+@Networks:	Just a box, that permits only sane packets to pass!
+
+HINT:
+--------------
+|Introduction|
+--------------
+The general purpose of a firewall is to save the labour of securing every
+box by securing a single firewall.
+This means that the firewall is a single point of failure, but it makes
+the admin's life a lot easier.
+
+But please, don't assume that having a firewall makes careful 
+configuration redundant!
+
+If you knew every daemon or service on every machine was correctly configured
+and trustworthy, and trusted every user accessing your services to cause 
+no harm, you wouldn't need to do firewalling!
+But if you'd like to choose which services are accessible only from your 
+intranet, which machines or applications are allowed to have internet access,
+or if you don't trust some of your apps or users, you might benefit by using
+a firewall.
+
+When you read the word "firewall" there's more than one way to interpret it:
+a) "Personal Firewall":	
+	Program sold by e.g., Symantec, that is claimed to secure a home / 
+	desktop-pc with internet access. Quite relevant for users being 
+	always online with (flat rate) broadband links.
+b) Firewall as it was originally meant: 
+	A box placed between the internet and intranet doing, besides routing, 
+	nothing but protecting the intranet. 
+	This could include the function of masquerading: rewriting IP-headers
+	of the packets it routes from clients with private IP-adresses onto 
+	the internet, so that they seem to come from the firewall itself.
+c) Firewall offering services:
+	Some old box you may have retired and nearly forgotten, doing (B), 
+	but offering a bunch of services, e.g., web-cache, mail, etc.
+	This may be very commonly used for home networks, but it severely 
+	violates some principles of (B).
+d) Firewall with a demilitarized zone	[not described here]:
+	Doing (B), but giving public access to some branch of your network,
+	that is, because of public IP's and a physically separated structure,
+	neither considered to be part of the inter- nor intranet.
+	Here those servers are connected that must be easily accessible
+	from both the inter- and intranet. The firewall protects them all.
+e) Packetfilter / partly accessible net	[only partly described here, see (C)]:
+	Doing (B) but permitting only selected services to be accessible,
+	sometimes only by selected internal users or boxes; mostly used in
+	highly secure business contexts, sometimes by distrusting employers.
+	This was the common configuration of a firewall at the time of 
+	the Linux 2.2 kernel.
+	It's still possible to configure a firewall this way, but it makes 
+	the rules quite complex and lengthy.
+
+
+------------
+|DISCLAIMER|
+------------
+I AM NOT RESPONSIBLE FOR ANY DAMAGES INCURRED DUE TO ACTIONS TAKEN BASED 
+ON THIS DOCUMENT. 
+This document is meant as an introduction to how to setup a firewall. 
+I am not, nor do I pretend to be, a security expert.		;-)
+I am just some guy who still has not read enough and whose computers
+still like to play tricks on him if he wants to tweak them.	;-)
+Please, I am writing this to help people get acquainted with this subject, 
+and I am not ready to stake my life on the accuracy of what is in here.
+(Taken from www.linuxdoc.org/HOWTO/Firewall-HOWTO.html, slightly modified)
+
+FIREWALL-SECURITY IS A COMPLEX ISSUE THAT REQUIRES GOOD CONFIGURATION.
+The scripts quoted here are not at the very least meant to give you 
+the one and perfect firewall, being perfect until the universe collapses.
+They may not fit into any imaginable configuration and may not prevent 
+any imaginable attack.
+
+The purpose of this text is simply to give you a hint on how to get started
+with firewalling.
+
+Customization of these scripts for your specific situation is likely to be 
+necessary for an optimal configuration, but you should make a serious study 
+of the iptables documentation and firewalling in general before hacking away.
+Have a look at Appendix I. There you'll find a list of URLs that contain quite 
+comprehensive information about building your own firewall.
+
+
+--------------------------------------
+|Getting a firewalling-enabled Kernel|
+--------------------------------------
+If you want your Linux-Box to do firewalling you must first ensure that you 
+have an appropriate kernel and the appropriate tools:
+
+But, before you do a 'make menuconfig', consider patching your kernel with 
+the latest iptables enhancements. To get them, download the latest version 
+of iptables from http://netfilter.samba.org.
+
+Having current kernel sources in /usr/src/linux, unpack iptables and 'cd' into 
+its top-level directory.
+Now enter 'make pending-patches', as an user who is allowed to patch the kernel.
+There's no need to apply every patch, but e.g. the ipt_REJECT-checkentry-patch
+could be sensible, depending on your needs. 
+
+Applying a patch may result in errors, mostly because the hooks for the
+patches have changed or because the runme script doesn't recognize that 
+a patch has already been incorporated.
+If you do get errors don't worry too much; the important thing is that
+iptables has scanned the kernel for the already accepted / incorporated 
+patches. The default kernel should be adaequate for most needs!
+
+Now configure the kernel:
+Personally I prefer to have a maximally modularized kernel, but for highest
+security you could configure the kernel with this code built in:
+    Networking options:
+	Network packet filtering	= CONFIG_NETFILTER
+	IP: TCP/IP networking		= CONFIG_INET
+	IP: advanced router		= CONFIG_IP_ADVANCED_ROUTER
+	IP: verbose route monitoring	= CONFIG_IP_ROUTE_VERBOSE
+	IP: TCP Explicit Congestion Notification support
+					= CONFIG_INET_ECN
+	IP: TCP syncookie support	= CONFIG_SYN_COOKIES
+	IP: Netfilter Configuration: every option
+					= CONFIG_IP_NF_*
+		BUT NO ipchains- and ipfwadm-compatibility.
+					w\ CONFIG_IP_NF_COMPAT_*
+    Although you are unlikely to have enabled it, please make sure not to 
+    select "Fast switching"		w\ CONFIG_NET_FASTROUTE
+    because it would currently bypass your firewalling-rules.
+
+Now compile and install your new kernel, update your bootloader and reboot.
+
+-------------------
+|Building iptables|
+-------------------
+Before compiling you might want to edit the Makefile to adapt install-dir's.
+Now compile and install iptables via 'make && make install'.
+
+
+-----------------------------------------
+|Now we can start to build your Firewall|
+-----------------------------------------
+(A) 
+A Personal Firewall is supposed to let you access the all services offered 
+on the internet, but keep your box secure and your data private.
+
+Below is a slightly modified version of Rusty Russel's recommendation,
+(http://netfilter.samba.org/unreliable-guides/packet-filtering-HOWTO):
+
+#!/bin/sh
+##/etc/init.d/firewall
+# Insert connection-tracking modules	(not needed if built into kernel).
+modprobe ip_tables
+modprobe iptable_filter
+modprobe ip_conntrack
+modprobe ip_conntrack_ftp
+modprobe ipt_state
+modprobe ipt_LOG
+# free output on any interface to any ip for any service   (equal to -P ACCEPT)
+iptables -A OUTPUT					  	-j ACCEPT
+# permit answers on already established connections
+# and permit new connections related to established ones (eg active-ftp)
+iptables -A INPUT	-m state --state ESTABLISHED,RELATED	-j ACCEPT
+# Log everything else:	What's the latest exploitable vulnerability?
+iptables -A INPUT		-j LOG --log-prefix "FIREWALL:INPUT  "
+# set a sane policy:	everything not accepted > /dev/null
+iptables -P INPUT		DROP
+iptables -P FORWARD		DROP
+iptables -P OUTPUT		DROP
+# be verbose on dynamic ip-adresses	(not needed in case of static IP)
+echo 2 > /proc/sys/net/ipv4/ip_dynaddr
+# disable ExplicitCongestionNotification - too many routers are still ignorant
+echo 0 > /proc/sys/net/ipv4/tcp_ecn
+
+His script is quite simple, but simply surfing the internet you are unlikely 
+to exceed its limits.
+
+Even if you have daemons / services running on your box, these should be
+inaccessible everywhere but on your box itself.
+The case to be cautious about is misconfigured daemons that could broadcast
+to the public to announce their service.
+If you have such daemons (e.g., cups, samba) running and if you are not 
+confident in their configuration, restrict OUTPUT and INPUT, see (C) and (E).
+
+
+(B)
+A true Firewall has two interfaces, one connected to an intranet, 
+in this example, eth0, and one connected to the internet, here, ppp0.
+To provide the maximum security against the box itself being broken into, e.g.,
+by exploiting an offered service, make sure that there are no servers running 
+on it, especially not X11 et al., and, as a principle, that it does not itself
+access any services:
+
+#!/bin/sh
+##/etc/init.d/firewall
+echo
+echo -n	"You're using the example-config "
+echo	"for a setup of a firewall "
+echo -n	"from the firewalling-hint "
+echo	"written for LinuxFromScratch. "
+echo -n	"This example is far from being "
+echo	"complete, it is only meant "
+echo	"to be a reference. "
+echo -n	"Firewall security one could rely "
+echo	"on is a complex issue, "
+echo -n "that exceeds the scope of the "
+echo	"quoted configuration rules. "
+echo -n "You can find some quite "
+echo	"comprehensive information "
+echo	"about firewalling at Appendix I of "
+echo -n	"http://hints.linuxfromscratch.org/hints/firewall.txt"
+echo	"."
+echo	"Be cautious!"
+modprobe ip_tables
+modprobe iptable_filter
+modprobe ip_conntrack
+modprobe ip_conntrack_ftp
+modprobe ipt_state
+modprobe iptable_nat
+modprobe ip_nat_ftp
+modprobe ipt_MASQUERADE
+modprobe ipt_LOG
+modprobe ipt_REJECT		# needed for (C), example 4
+# allow local-only connections
+iptables -A INPUT	-i lo					-j ACCEPT
+iptables -A OUTPUT		-o lo				-j ACCEPT
+# allow forwarding
+iptables -A FORWARD -m state --state ESTABLISHED,RELATED 	-j ACCEPT
+iptables -A FORWARD -m state --state NEW	-i ! ppp+	-j ACCEPT
+# do masquerading    (not needed if intranet is not using private ip-adresses)
+iptables -t nat -A POSTROUTING  -o ppp+				-j MASQUERADE
+# Log everything for debugging (last of all rules, but before DROP/REJECT)
+iptables -A INPUT			-j LOG --log-prefix "FIREWALL:INPUT  "
+iptables -A FORWARD			-j LOG --log-prefix "FIREWALL:FORWARD"
+iptables -A OUTPUT			-j LOG --log-prefix "FIREWALL:OUTPUT "
+# set a sane policy
+iptables -P INPUT		DROP
+iptables -P FORWARD		DROP
+iptables -P OUTPUT		DROP
+# be verbose on dynamic ip-adresses (not needed in case of static IP)
+echo 2 > /proc/sys/net/ipv4/ip_dynaddr
+# disable ExplicitCongestionNotification
+echo 0 > /proc/sys/net/ipv4/tcp_ecn
+# activate TCPsyncookies
+echo 1 > /proc/sys/net/ipv4/tcp_syncookies
+# activate Route-Verification = IP-Spoofing_protection
+for f in /proc/sys/net/ipv4/conf/*/rp_filter; do
+	echo 1 > $f
+    done
+# activate IP-Forwarding 
+echo 1 > /proc/sys/net/ipv4/ip_forward
+
+With this script your net should be sufficiently secure against external 
+attacks: your intranet should be invisible because it's masqueraded or, 
+at least, no one should be able to setup a new connection to its services, 
+and your firewall should be immune because there are no services running 
+that a cracker could attack.
+
+If you are in the need of stronger security (e.g., against DOS, connection 
+highjacking, spoofing, etc.) see Appendix.1 and start to read a bit!
+
+
+(C)
+This scenario is not too different from (B), but you'd like to offer some 
+services to your intranet. This gets relevant when you want to admin your 
+box from another host on your intranet or use it as a proxy or a nameserver.
+
+Be cautious: every service you do offer and have enabled makes your setup 
+more complex and your box less secure. See introduction to (B)!
+
+If the services you'd like to offer do not need to access the internet 
+themselves, like an internal-only mail- or name-server, it's quite simple 
+and should still be acceptable from a security standpoint.
+Just add the following lines _before_ the logging-rules of script (B):
+iptables -A INPUT	-i ! ppp+				-j ACCEPT
+iptables -A OUTPUT	-o ! ppp+			  	-j ACCEPT
+
+If your daemons have to access the web themselves, like squid would need to, 
+you could open OUTPUT generally and restrict INPUT.
+iptables -A INPUT	-m state --state ESTABLISHED,RELATED	-j ACCEPT
+iptables -A OUTPUT					  	-j ACCEPT
+
+Personally I am not so confident in the configuration of my own daemons that 
+I would feel comportable with this, I think that this way it is too risky. 
+Every misconfigured daemon and any trojan could easily open a connection to 
+the public and expose private data.
+As a result, I prefer to restrict not only INPUT but both INPUT and OUTPUT 
+on all ports except those that it's absolutely necessary to have open.
+Which ports you have to open depends on your needs: you will find them 
+by looking at the FIREWALL-lines in your log-files.
+
+Have a look at the following examples:
+1) Squid is requesting data:
+iptables -A OUTPUT -p tcp --dport 80				  -j ACCEPT
+iptables -A INPUT  -p tcp --sport 80 -m state --state ESTABLISHED -j ACCEPT
+
+2) Your caching-nameserver (e.g., dnscache) does its lookups via udp:
+iptables -A OUTPUT -p udp --dport 53				  -j ACCEPT
+iptables -A INPUT  -p udp --sport 53 -m state --state ESTABLISHED -j ACCEPT
+
+3) Alternativly, if you want to ping your box to ensure it's still alive:
+iptables -A INPUT  -p icmp -m icmp --icmp-type echo-request	-j ACCEPT
+iptables -A OUTPUT -p icmp -m icmp --icmp-type echo-reply	-j ACCEPT
+
+These are only examples to show you some of the capabilities of the new 
+firewalling-code in Linux-Kernel 2.4. Have a look at the man-page of iptables.
+There you will find more of them. The port-numbers you'll need for this can be
+found in /etc/services, if you didn't find them in your logfile.
+
+If you add any of your offered or accessed services such as the above,
+maybe even in FORWARD and for intranet-communication, and delete the general 
+clauses, you get an old fashioned packet filter, not unlike that one 
+mentioned in (E).
+
+4) If you are frequently accessing ftp-servers or enjoy chatting you might 
+notice a certain delay because some oldfashioned implementations of these 
+daemons insist on querying an identd on your box for your username.
+Although there's no harm in this, I wouldn't recommend using an
+identd, as many of them are known to be vulnerable.
+To avoid these delays you could reject the requests with a 'tcp-reset':
+iptables -A INPUT  -p tcp --dport 113	-j REJECT --reject-with tcp-reset
+iptables -A OUTPUT -p tcp --sport 113	-m state --state RELATED   -j ACCEPT
+
+5) To log and drop invalid packets, mostly harmless packets that came in 
+after netfilter's timeout, sometimes scans.
+iptables -I INPUT 1	-p tcp	-m state --state INVALID	-j LOG	\
+	--log-prefix "FIREWALL:INVALID"
+iptables -I INPUT 2	-p tcp	-m state --state INVALID	-j DROP
+
+6) Anything coming from the outside should not have a private address, 
+this is a common attack called IP-spoofing:
+iptables -t nat -A PREROUTING	-i ppp+	-s 192.168.0.0/16	-j DROP
+iptables -t nat -A PREROUTING	-i ppp+	-s 10.0.0.0/8		-j DROP
+iptables -t nat -A PREROUTING	-i ppp+	-s 172.16.0.0/12	-j DROP
+
+7) To simplify debugging and be fair to anyone who'd like to access a service
+you have disabled, purposely or by mistake, you should REJECT those packets 
+that are dropped.
+Obviously this must be done directly after logging as the very last lines 
+before the packets are dropped by policy:
+iptables -A INPUT	-i eth+		-j REJECT
+iptables -A OUTPUT		-p icmp --icmp-type 3		-j ACCEPT
+
+
+---------
+|THE END|
+---------
+Finally, I'd like to remind you of one fact we must not forget:
+The effort spent attacking a system corresponds to the value the cracker
+expects to gain from it.
+If you are responsible for such valuable assets that you expect great
+effort to be made by potential crackers, you hopefully won't be in need 
+of this hint!
+
+Be cautious!
+		Henning Rohde
+	(Henning.Rohde@uni-bayreuth.de)
+
+PS: And always do remember:
+	SecureIT is not a matter of a status-quo 
+	but one of never stopping to take care!
+PPS: If any of these scripts fail, please tell me. I will try to trace
+     any faults.
+
+
+--------
+|THANKS|
+--------
+Jeff Bauman	jbauman(at)adsl-63-193-249-142.dsl.snfc21.pacbell.net
+	He calls himself to be paranoid, at least in matters of security;  ;-)
+	I'd like to thank him for our discussion about security-related 
+	philosophies and furtherly for reviewing the hint and for giving
+	not only a bit of help with the fine points of wording.
+
+
+------------
+|APPENDICES|
+------------
+(1)
+Nowadays, we must face the threat of denial of service attacks (DoS) even 
+against private users (this seems to be quite common if you do online-gaming),
+trojans (read on IRC for commands), and worms exploiting the internet as if
+someone was doing a blitzkrieg.
+
+There may be ways to protect both your router and your intranet, but any
+solution I'm able to give here could become insufficent tomorrow
+and would give you a false sense of security.
+If you are really concerned, this is not the document to help you out!
+
+But have a look, here's where I'd suggest you start reading:
+http://netfilter.samba.org/unreliable-guides
+http://netfilter.samba.org/netfilter-faq.html
+http://www.linuxdoc.org/HOWTO/Firewall-HOWTO.html (IIRC outdated!)
+http://www-106.ibm.com/developerworks/security/library/s-fire.html +s-fire2.html
+http://www.interhack.net/pubs/fwfaq/
+http://csrc.nist.gov/isptg/html/ISPTG-6.html
+http://www.linuxsecurity.com/docs/
+http://www.little-idiot.de/firewall (German & outdated, but very comprehensive)
+http://www.linuxgazette.com/issue65/stumpel.html
+http://linux.oreillynet.com/pub/a/linux/2000/03/10/netadmin/ddos.html
+http://staff.washington.edu/dittrich/misc/ddos
+http://ipmasq.cjb.net/
+http://www.e-infomax.com/ipmasq
+http://www.circlemud.org/~jelson/writings/security/index.htm
+http://www.securityfocus.com
+http://www.cert.org/tech_tips/
+http://www.uni-siegen.de/security/pointers.html
+http://security.ittoolbox.com/
+http://www.linux-firewall-tools.com/linux/
+http://logi.cc/linux/athome-firewall.php3
+http://www.insecure.org/reading.html
+http://www.robertgraham.com/pubs/firewall-seen.html
+
+If a link proves to be dead or if you think I missed one, please mail!
+
+(2)
+If you need to turn firewalling off, this script will do it:
+
+#!/bin/sh
+##/etc/init.d/firewall.stop
+# deactivate IP-Forwarding 
+echo 0 > /proc/sys/net/ipv4/ip_forward
+iptables -Z
+iptables -F
+iptables -t nat         -F PREROUTING
+iptables -t nat         -F OUTPUT
+iptables -t nat         -F POSTROUTING
+iptables -t mangle      -F PREROUTING
+iptables -t mangle      -F OUTPUT
+iptables -X
+iptables -P INPUT       ACCEPT
+iptables -P FORWARD     ACCEPT
+iptables -P OUTPUT      ACCEPT
+
+(3)
+If you'd like to have a look at the chains your firewall consists of and 
+the order in which the rules take effect:
+
+#!/bin/sh
+##/etc/init.d/firewall.status
+echo "iptables.mangling:"
+iptables -t mangle	-v -L -n --line-numbers
+echo
+echo "iptables.nat:"
+iptables -t nat		-v -L -n --line-numbers
+echo
+echo "iptables.filter:"
+iptables		-v -L -n --line-numbers
+

@@ -1,0 +1,63 @@
+TITLE:		Setting up and configure xpdf
+LFS VERSION:	any
+AUTHOR:		Alex Kloss <l.x.@gmx.de>
+
+SYNOPSIS:
+	xpdf is a free and fast replacement for the Acrobat Reader,
+	featuring some very useful utils (like pdftotext
+
+HINT:	
+	Pine is one of the most userfriendly mail reading/sending
+	utilities. 
+
+DOWNLOADS:
+	ftp://ftp.foolabs.com/pub/xpdf/ or
+	http://www.foolabs.com/xpdf/download.html
+	-> xpdf-<version>.tar.gz
+	optional: t1lib-<version>.tar.gz and freetype-<version>.tar.gz
+	The t1lib is only to render Type 1 fonts (not really necessary),
+	while freetype2 is usually already installed with XFree86.
+
+INSTALL:
+	Since Freetype2 is usually already installed with XFree86, here
+	are no separate instructions how to install this package.
+	You don't need to install t1lib either to use xpdf, but you can
+	have antialiased Type1 fonts with it (which is extremely cool),
+	so you may want to install it anyway.
+
+	t1lib:
+	======
+	
+	./configure --prefix=/usr/X11R6 &&
+	make [without_doc*] &&
+	make install
+	
+	*: if you don't have LaTeX or want the documentation, otherwise
+	simply use "make"
+
+	
+	xpdf:
+	=====
+
+	 ./configure --prefix=/usr/X11R6 --enable-a4-paper \
+	--with-freetype2-includes=/usr/X11R6/include/freetype2 \
+	--with-freetype2-library=/usr/X11R6/lib --with-gzip \
+	--with-appdef-dir=/usr/X11R6/lib/X11/app-defaults/ &&
+	make &&
+	make install
+
+
+CONFIGURATION:
+	Copy the sample configuration file:
+
+	cp doc/sample-xpdfrc ~/.xpdfrc
+
+	and edit the file to match your needs. Everything is commented
+	out, so you should at least choose your favourite browser and
+	whatever font replacements are necessary on your system (and
+	maybe you want antialiasing, too - both settings are on the
+	bottom of the file).
+
+
+Hope this was helpful!
+Alex

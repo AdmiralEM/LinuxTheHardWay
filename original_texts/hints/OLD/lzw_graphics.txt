@@ -1,0 +1,158 @@
+Title:		LZW Compression for Graphics Libraries in BLFS
+BLFS VERSION:	1.0
+Author:		Michael A. Peters <mpeters@mac.com>
+
+SYNOPSIS:
+	Adding LZW compression to graphics applications that can utilize it
+
+HINT:
+ver 1.0
+08/05/2003
+
+Contents
+--------
+
+	0. Preface
+	1. Why care about LZW
+	2. Legal Issues
+	3. Giflib as replacement for libungif
+		3a. Makefile Issues
+	4. libtiff
+	5. gd library
+
+0. Preface
+----------
+	In the early 1980's a compression algorithm known as LZW emerged that
+	was very good at lossless compression of data. This algorithm was used
+	in a variety of software products, such as the UNIX compress command.
+
+	LZW was chosen as the compression algorithm for the CompuServe GIF image
+	format, as well as the TIFF image format. A free library emerged called
+	Giflib that allowed freeware and shareware authors to write programs for
+	the GIF image format, and as a result, the GIF image format became very
+	popular.
+
+	A company called Unisys existed that owned a patent on this algorithm,
+	but they did not complain until the GIF image format was already in very
+	wide use. At that point in time, they decided they wanted to charge a
+	very expensive licensing fee to use the LZW compression algorithm.
+
+	Since free software is free, this became a problem for the free software
+	industry. The result was that LZW was ripped out of several products.
+
+	This document tells you how to put it back in since many countries do
+	not recognize the Unisys software patent, and the patent is very close
+	to expiring in the U.S. if it has not expired already.
+
+1. Why Care About LZW
+---------------------
+	The PNG image format has largely replaced the GIF image in the free
+	software world. However, the evil was not with LZW - but rather, with
+	the software patent that restricted its use without licensing.
+	
+	Since the compression algorithm itself is a very good one, there is no
+	reason not to use it where we can. Also, while PNG can be used as a
+	replacement for GIF, there is not really a suitable replacement for the
+	TIFF image format. Patching LZW support back into libtiff will allow the
+	creation of compressed TIFF images, and the compression makes a big
+	difference in the final file size.
+	
+2. Legal Issues
+---------------
+	In some countries it may not be legal to use the LZW algorithm without
+	paying a license fee. To the best of my knowledge the patent expires in
+	June 2003 in the United States. However, I believe the patent does not
+	expire in Japan until June 2004. You are advised to follow your local
+	law with respect to using the LZW compression algorithm and any license
+	fees that you are required to pay to do so. You are also advised to
+	look up the patent expiration date yourself, rather than rely on the
+	information I provide. I am not a patent lawyer.
+	
+3. Giflib as replacement for libungif
+-------------------------------------
+	libungif was written as a replacement for Giflib. libungif does not use
+	LZW but instead produces uncompressed GIF images. If you would rather
+	produce compressed GIF images, then build Giflib instead of libungif.
+	
+	Giflib 4.1.0 can be downloaded from:
+	http://ftp.rge.com/pub/multimedia/libungif/giflib-4.1.0.tar.gz
+	
+	Follow the same build instructions for libungif in the BLFS book.
+	
+3a. Makefile Issues
+-------------------
+	Most configure scripts will find libgif in your library path and use
+	that if you don't have libungif install. This is not universally true.
+	Some packages, such as emacs, will specifically look for libungif.
+	
+	There are two ways to solve this issue. The first to make the following
+	symlinks in your /usr/lib directory:
+		ln -s libgif.a libungif.a
+		ln -s libgif.la libungif.la
+		ln -s libgif.so libungif.so
+		ln -s libgif.so.4 libungif.so.4
+		ln -s libgif.so.4.1.0 libungif.so.4.1.0
+
+	The second method, which is a little cleaner IMHO, is to modify the
+	configure scripts and Makefiles of the source to the software before
+	building it. For example, with emacs, there are two files that need
+	to be edited: configure and src/Makefile.in
+	
+	In both files you just need to change every reference of lungif to lgif:
+	
+	cp configure configure.orig &&
+	sed -e s?"ungif"?"gif"? < configure.orig > configure &&
+	cd src &&
+	cp Makefile.in Makefile.in.orig &&
+	sed -e s?"ungif"?"gif"? < Makefile.in.orig > Makefile.in &&
+	cd ..
+	
+	Then you can proceed to build as normal and emacs will use libgif.
+	
+4. libtiff
+----------
+	To put LZW compression back into libtiff, all you need to do is apply
+	the LZW Compression Kit to the source before building it.
+	You can download the kit from:
+	ftp://ftp.remotesensing.org/libtiff/libtiff-lzw-compression-kit-1.3.tar.gz
+	
+	The official instructions in the kit say:
+	"Just copy tif_lzw.c over the copy in libtiff and rebuild libtiff."
+	
+	In other words, unpack the libtiff source as you would while following
+	the BLFS instructions. Before you do anything else, also unpack the
+	libtiff-lzw-compression-kit and replace the tif_lzw.c file in the
+	libtiff source directory with the one in the compression kit.
+	
+	Then continue to build libtiff as described in the BLFS book.
+	
+5. gd library
+-------------
+	Most applications that offer gif support will use libgif or libungif.
+	However, some applications will look for gif support in the gd library
+	and use gd for gif support if it finds it.
+	
+	The author of the gd library no longer includes any gif support in his
+	library. However, we can patch gif support (with LZW compression) back
+	into gif so that software that wants to use gd for gif support can find
+	it.
+	
+	The gd library can be downloaded from:
+	http://www.boutell.com/gd/http/gd-2.0.12.tar.gz
+	
+	The patch to the gd library can be downloaded from:
+	http://downloads.rhyme.com.au/gd/patch_gd2.0.12_gif_20030401.gz
+	
+	to build:
+	patch -p1 < ../patch_gd2.0.12_gif_20030401 &&
+	./configure --prefix=/usr &&
+	make &&
+	make install &&
+	/sbin/ldconfig
+	
+	It is best to build gd after building zlib, libpng, freetype2, libjpeg,
+	and XFree86 - as gd will use those libraries if configure finds them.
+
+	
+	
+	

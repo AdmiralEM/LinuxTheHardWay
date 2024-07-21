@@ -1,0 +1,117 @@
+GENERAL OUTLINE
+==============
+
+TITLE:		Blackbox-hint
+LFS VERSION:	LFS 3.3 (using gcc-3.1)
+AUTHOR:		Roy Ens <ens@cs.ttu.edu>
+
+SYNOPSIS:
+	How to add and configure Blackbox using various Blackbox tools to your
+	personal X configured LFS system.
+
+HINT:
+
+1. Introduction
+-------------------------
+This hint is going to attempt to show you how to install Blackbox and
+eventually how to configure some of it as well. It will also eventually 
+have a brief overview of some of the most common Blackbox tools (also known as
+bb-tools). Blackbox is very simple to install and does not have any major
+library requirements. The hint assumes that you have an LFS system that has
+XFree86 installed and configured on it. It will not attempt to show you how to
+install and configure X since there is already a good hint on that.
+This hint is going to attempt to show you how to install Blackbox and
+eventually how to configure it as well. It will also give you a brief overview of some of the
+most commmon Blackbox tools (also known as bb-tools). Blackbox is very simple
+to install and does not have any major library requirements. The hint assumes
+that you have an LFS system that has XFree86 configured on it. It will not
+attempt to show you how to install and configure X since there is already a
+good hint on that.
+
+2. What is Blackbox?
+-------------------------
+For this I'm going to take a quote directly off of the Blackbox homepage
+<http://blackboxwm.sourceforge.net>.
+	"Blackbox is that fast, light window manager you have been looking for
+	 without all those annoying library dependencies. If you have a C++ 
+	 compiler and the X Window system you can compile and use it."
+So there you have it. There really are no dependencies except those that you
+get when you create a LFS system and the XFree86 dependency which is just
+common sense.
+
+3. ChangeLog
+------------------------
+
+08/22/2002-
+	Creation date
+
+4. Getting Sources
+-------------------------
+We are going to use stable versions for this. Even though the beta versions
+are very good with only a few bugs.
+
+Blackbox v 0.62.1
+http://prdownloads.sf.net/blackboxwm/blackbox-0.62.1.tar.gz
+
+5. Installing Blackbox
+-------------------------
+The installation for Blackbox is quite simple. It's just like all the other
+packages you have installed. I like to install Blackbox in /usr because it
+doesn't create a whole lot of files and therefore I have everything a little
+more centralized. I don't like having it in the /usr/X11R6/ directory because
+the best way to upgrade or even get a new installation of XFree86 is normally
+easier when getting rid of the entire /usr/X11R6 directory. But following is
+how to compile Blackbox:
+
+./configure --prefix=/usr --with-x --enable-slit &&
+make &&
+make install
+
+Command Explanation:
+	./configure --prefix=/usr --with-x --enable-slit
+	You should know what --prefix does. I put in --with-x just to make
+	sure it uses X. Of course this isn't necessary but I like to use it 
+	for the sake of completeness. --enable-slit is also not necessary
+	but I use it for completeness sake as well. We'll talk about the 
+	slit more later on.
+
+6. Editting ~/.xinitrc
+-------------------------
+Once you have installed Blackbox you will have to edit your ~/.xinitrc file to
+make sure it reflects that Blackbox is now installed and working. If you have
+no other window managers than edit the line in your ~/.xinitrc that has
+	exec fvwm
+as the list line of the file to the following
+	exec /usr/bin/blackbox
+
+If you have more than one window manager then you will have to add Blackbox to
+your ~/.xinitrc in whatever way you add window managers. 
+
+For more information and a good ~/.xinitrc for changing window managers see:
+http://www.rapierbit.org/linux/winmgrs.html
+
+7. Starting Blackbox
+-------------------------
+If you have only one window manager like Blackbox in your ~/.xinitrc then all
+you have to do is the following ($ signifies prompt):
+
+$ startx
+
+If you have an ~/.xinitrc that takes arguments for different window managers
+than add the argument to the above to get blackbox started. For instance for
+my personal system I use the following
+
+$ startx blackboxBeta
+
+This should load your brand new Blackbox window manager. If you have never
+used it before right-click on the mouse will bring up the menu.
+
+8. TODO List
+-------------------------
+	1. Add configuration information
+	2. Add bbkeys information
+	3. Add bbconf information
+	4. Add other sources for blackbox information
+
+-------------------------
+END OF HINT

@@ -1,0 +1,192 @@
+AUTHOR: Kelledin <kelledin@users.sourceforge.net>
+DATE: 2003-09-06
+LICENSE: GNU Free Documentation License
+SYNOPSIS: Adding ACL support to your LFS
+DESCRIPTION:
+ACLs (Access Control Lists) are a means of fine-grained control of filesystem
+access permissions.  These are useful not just for extending local filesystem
+security on your Linux system, but also for serving Windows clients via samba.
+
+PREREQUISITES: LFS-CVS-20030906 or later, kernel 2.4.21
+
+HINT:
+
+1. Background Information
+------------------------------------------------------------------------------
+Access Control Lists (ACLs) are a means of providing fine-grained per-user
+access control for files and directories.  The traditional UNIX method of
+access control divides users into three categories: file owner, group members,
+and everyone else.  Access control via POSIX ACLs can be achieved on an
+individual user basis, effectively superseding the traditional UNIX access
+control.
+
+ACLs depend on Extended Attributes (EA) functionality, a means for certain
+arbitrary pieces of metadata to be associated with files and directories.
+Currently ACLs are the only major use of EAs in Linux.
+
+Currently, Linux can support POSIX ACLs in ext2/3 and SGI's XFS.  ReiserFS,
+however, will probably not get ACL support until Reiser4 (which is currently
+experimental).
+
+As far as networked filesystems go, samba servers can support ACLs when
+working with Windows-based clients, but not Linux/UNIX-type clients.  Cross-
+platform NFS support is even more tricky with ACLs.  Patches to extend the
+current NFSv3 implementation are available from http://acl.bestbits.at/ ;
+however, they are not covered here, and the full extent of their ACL support
+is unknown.
+
+
+2. Caveats
+------------------------------------------------------------------------------
+It should be noted that some versions of ACL support don't play nice with
+quota support in ext3.  You will likely have frequent lockups if you try to
+use both at the same time.
+
+It should also be noted that if you're using fileutils instead of the newer
+coreutils, an ACL-enabled fileutils has a few quirks that break some shell
+scripts.  This is because "ls -l" from an ACL-enabled fileutils will mark each
+ACL-enabled entry with a "+" sign trailing after the traditional permissions
+bits.  In short, instead of this:
+
+	-rw-r--r--   1 root     root        27173 Jun 12 02:41 filename
+
+"ls -l" will print this instead:
+
+	-rw-r--r--+   1 root     root        27173 Jun 12 02:41 filename
+
+Any shell script that parses the output of "ls -l" for itself is liable to not
+expect that "+" sign.
+
+coreutils-5.0 does not add this extra "+" sign.
+
+
+3. Download
+------------------------------------------------------------------------------
+In order to get ACL/EAs working, you will first need kernel patches.  You
+should try to make this work with a recent (2.4.18+) kernel.  This hint
+recommends and assumes that you use a reasonably vanilla 2.4.21 kernel.
+
+If you plan to use ACLs with ext2/3, you need the following patch:
+
+    http://acl.bestbits.at/current/diff/ea+acl+nfsacl-2.4.21-0.8.60.diff.gz
+
+
+If you plan to use ACLs with SGI XFS, you need the patches from:
+
+    ftp://oss.sgi.com/projects/xfs/Release-1.3.1/kernel_patches/ \
+        linux-2.4.21-core-xfs-1.3.1.patch.gz
+    ftp://oss.sgi.com/projects/xfs/Release-1.3.1/kernel_patches/ \
+        linux-xfs-1.3.1.patch.gz
+
+It should be noted that as of Dec 8 2003, SGI XFS is integrated with the
+vanilla Linux kernel.  2.4.24 should come with XFS support when it is released,
+so the above XFS patches will likely be unnecessary.
+
+You will also need userland libraries and utilities.  Thanks to the recent
+ACL/EA syscall reservations, both XFS and ext2/3 ACLs are served by the same
+packages.  However, the packages hosted at http://acl.bestbits.at are very
+outdated.  It is recommended that you retrieve the packages from the SGI
+FTP server:
+
+    ftp://oss.sgi.com/projects/xfs/cmd_tars/attr-2.4.12.src.tar.gz
+    ftp://oss.sgi.com/projects/xfs/cmd_tars/acl-2.2.21.src.tar.gz
+
+
+You should also compile a version of coreutils that works with ACLs, so that
+you don't lose ACL information with day-to-day file manipulation.  In addition
+to the coreutils source package, you need the coreutils patchset for this:
+
+    http://acl.bestbits.at/current/diff/coreutils-5.0-0.tar.gz
+
+
+4. Compile
+------------------------------------------------------------------------------
+Now the fun really begins.
+
+First, apply the necessary patches and compile a kernel with ACL support
+(CONFIG_FS_POSIX_ACL=y).  This can be found under "Filesystems" when
+using "make menuconfig."  For XFS, you may also need to enable certain
+suboptions of XFS support, found in the same menu screen.
+
+Once you've got the kernel compiled and installed, it may be necessary to copy
+your new kernel headers to /usr/include/{linux,asm,asm-generic} all over again
+(I hear FHS zealots wailing already).
+
+For the next bit, compile the attr-2.4.12 libraries:
+
+    # set CFLAGS...
+    ./configure --prefix=/usr --enable-shared --enable-static &&
+    make OPTIMIZER="" DEBUG="-DNDEBUG" &&
+    make install install-lib install-dev &&
+    mv /usr/libexec/libattr.*a /lib &&
+    rm -f /usr/libexec/libattr.* /lib/libattr.so &&
+    ln -s ../../lib/libattr.so.1.1.0 /usr/lib/libattr.so
+
+
+Now compile the acl-2.2.21 libraries:
+
+    # set CFLAGS...
+    ./configure --prefix=/usr --enable-shared --enable-static &&
+    make OPTIMIZER="" DEBUG="-DNDEBUG" &&
+    make install install-lib install-dev &&
+    mv /usr/libexec/libacl.*a /lib &&
+    rm -f /usr/libexec/libacl.*a /lib/libacl.so &&
+    ln -s ../../lib/libacl.so.1.1.0 /usr/lib/libacl.so
+
+
+At this point, you should immediately be able to examine ACL's on an XFS
+filesystem using getfacl and setfacl.
+
+In order to enable ACLs on ext2/ext3, you will need to configure certain mount
+options.  The "user_xattr" option enables user-accessible extended attributes;
+the "acl" option enables ACL support.  You can either specify these options at
+every mount (possibly via /etc/fstab) or make these options enabled-by-default
+on a specific ext2/ext3 filesystem via tune2fs:
+
+    tune2fs -o user_xattr /dev/<fs-device>
+    tune2fs -o acl /dev/<fs-device>
+
+Now you need to patch coreutils.  This is a bit complicated, as the coreutils
+patchset from acl.bestbits.at is a disorganized mess.  I will assume you have
+untarred the patchset in /usr/src:
+
+    # set CFLAGS...
+    patch -p1 < /usr/src/coreutils-5.0-0/coreutils-acl.diff &&
+    patch -p1 < /usr/src/coreutils-5.0-0/coreutils-acl+posix.diff &&
+    patch -p1 < /usr/src/coreutils-5.0-0/coreutils-xattr.diff &&
+    patch -p1 < /usr/src/coreutils-5.0-0/coreutils-i18n.patch &&
+    patch < /usr/src/coreutils-5.0-0/coreutils-5.0.dif &&
+    patch < /usr/src/coreutils-5.0-0/coreutils-tests.patch
+
+
+Now you should compile coreutils according to the instructions in your favorite
+version of the LFS book.
+
+At some point, you may wish to compile samba with ACL support.  This is a
+simple matter of passing the "--with-acl-support" flag to samba's configure
+script.
+
+
+5. Aftermath
+------------------------------------------------------------------------------
+You should now be able to view and modify ACLs on an ACL-ready filesystem, by
+way of the setfacl and getfacl utilities from the acl package.  coreutils will
+not view or modify ACLs directly but will preserve them when moving, copying,
+or creating files.
+
+A properly compiled samba should be able to support ACLs over the network.
+While samba servers aren't in the habit of providing even complete UNIX-style
+permissions to UNIX/Linux clients, an ACL-enabled samba server is better
+equipped to support Windows clients.
+
+------------------------------------------------------------------------------
+
+CHANGELOG:
+[2003-12-08]
+* Updated with ext2/ext3 instructions (thanks to Daniel Thaler).
+* Updated to support new SysV-free XFS 1.3.1 release.
+* Updated to include newer versions of acl and attr.
+
+[2003-09-06]
+* Updated to support coreutils, linux-2.4.21, and recent new XFS 1.3 release.
+* Rewrote to accommodate new hints format.

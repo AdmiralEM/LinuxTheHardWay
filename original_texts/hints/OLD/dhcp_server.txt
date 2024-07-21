@@ -1,0 +1,213 @@
+TITLE:		Creating a DHCP server from scratch
+LFS VERSION:	Any
+AUTHOR:		Thinus Pollard <12322741@puknet.puk.ac.za>
+
+SYNOPSIS:
+	This hint handles the installation of the ISC DHCP daemon. The daemon is
+	used to automatically hand out ip addresses to client pc's on your
+	network. Obviously this is a much smarter way of doing things than to
+	physically go to each of the 150+ pc's on your network and setup the 
+	network on all of them.
+
+HINT:
+
+1. Introduction
+
+The idea behind dhcp is indeed very simple, yet it's an elegant solution to a
+majorish problem. When a client PC on the network comes up, it sends a
+DHCPDISCOVER packet. The dhcp server receives this packet, check the database
+for the client's ip address, and sends a DHCPACK packet, informing the client of
+an ip address it should use, or confirmation that the client should continue to
+use the current ip. The ip address allocation can either be dynamic, or static
+in which the dhcp server matches the client's MAC address to an ip address in
+the database. This way you can ensure a certain network card always gets the
+same ip on the network, and now you can start thinking about all kinds of
+interesting routing tricks you can pull to make your network a good place to
+be ;)
+
+2. Packages to download
+
+    dhcp-3.0.tar.gz
+	ftp://ftp.isc.org/isc/dhcp/dhcp-latest.tar.gz
+    Web Page
+        http://www.isc.org
+        
+3. Installation
+
+    1.  Unpack the dhcp package anywhere you like as long as it's in /usr/src.
+
+    2. The people at ISC sometimes have some funny ideas about the location of
+       certain files. We're gonna fix this.
+    
+        1. Run the following in the top level directory to install to /usr
+           instead of /usr/local:
+       
+              sed 's%usr/local%usr%' Makefile.conf > Makefile.conf.temp
+    
+        2. You may just as well fix the manpaths in the file by:
+
+              sed 's%usr/man%usr/share/man%' Makefile.conf.temp > Makefile.conf
+
+        3. The server wants the database file in /var/state/dhcp. Not me, I
+           want it in /var/cache/dhcp, so...
+       
+              sed 's%/var/state/dhcp%/var/cache/dhcp%' Makefile.conf \
+                  > Makefile.conf.temp
+          
+        4. The Makefile doesn't seem to know about linux-2.4, lets tell it ;)
+    
+              sed 's/Linux 2.2/Linux 2.4/' Makefile.conf.temp > Makefile.conf
+              sed 's/linux-2.2/linux-2.4/' Makefile.conf > Makefile.conf.temp
+          
+        5. It also has a high disregard for CFLAGS and CXXFLAGS
+    
+              sed 's%\$(BINDEF) \$(CC_OPTIONS)%\$(BINDEF) \$(CC_OPTIONS) \
+                  -O3 -march=i586%' Makefile.conf.temp > Makefile.conf
+          
+        That should fix up the Makefile.conf
+        
+        6. Edit the configure script and go to line no 82 change:
+        
+              0) sysname=linux=linux-2.0 ;;
+              1) sysname=linux=linux-2.1 ;;
+              2) sysname=linux=linux-2.2 ;;
+              *) sysname=linux=linux-2.2 ;;
+           to
+              0) sysname=linux=linux-2.0 ;;
+              1) sysname=linux=linux-2.1 ;;
+              2) sysname=linux=linux-2.2 ;;
+              4) sysname=linux=linux-2.4 ;;
+              *) sysname=linux=linux-2.2 ;;
+
+        7. Change to the includes directory and run
+        
+              sed 's%/etc/dhcpd.conf%/etc/dhcp/dhcpd.conf%' dhcpd.h > tmp~ &&
+              mv tmp~ dhcpd.h
+               
+              sed 's%/etc/dhcpd.conf%/etc/dhcp/dhcpd.conf%' site.h > tmp~ &&
+              mv tmp~ site.h
+        
+        8. Change to the includes/cf directory and run the following
+        
+              sed 's%/var/state/dhcp%/var/cache/dhcp%' linux.h > linux.h.tmp
+              mv linux.h.tmp linux.h
+
+    3. Now do a
+           
+           ./configure &&
+           make &&
+           make install
+
+4. Configuration
+
+    1. Do a 'touch /var/cache/dhcp/dhcpd.leases'
+    
+    2. Here is my config file. Read the man-pages and the DHCP mini howto for
+       more information. The config file goes into /etc/dhcp/dhcpd.conf
+       
+       # Begin /etc/dhcp/dhcpd.conf
+       
+       authorative; # For the subnets it's configured for
+       ddns-update-style none; # Lotsa trouble here... rtfm
+       deny bootp; # we're not using it, so why allow it?
+       one-lease-per-client true; # Should make sense
+       
+       subnet 192.168.1.0 netmask 255.255.255.0 { # You need to change the ip
+                                                  # if you're using something
+                                                  # else
+       
+           option broadcast-address 192.168.1.255; # Self explanitory
+           option routers 192.168.1.1; # Available routers
+           option domain-name-servers 192.168.1.1; # Available DNS
+           option domain-name "rivendell.org.za"; # Domain name
+           option ip-forwarding false; # You don't really want clients doing
+                                       # NAT ;)
+           option netbios-name-servers 192.168.1.1; # SMB Nameservers on your
+                                                    # network
+           
+           pool {
+               
+               range 192.168.1.240 192.168.1.254; # Range of available ip's
+               default-lease-time 300;
+               max-lease-time 300;
+               allow unknown clients;
+           }
+           
+           pool {
+           
+               range 192.168.1.11 192.168.1.239;
+               default-lease-time 86400;
+               max-lease-time 604800;
+               deny unknown clients;
+           }
+       }
+       
+       use-host-decl-names true;
+       
+       # For static addresses, use these host declariations.
+       
+       host legolas {
+           
+           hardware ethernet 00:80:AD:87:7F:59;
+           fixed-address 192.168.1.10;
+       }
+       
+       # For dynamic addresses, use these host declariations. Without the
+       # "fixed address" part the host is still known, it's just allowed to
+       # get any ip from the pool
+       
+       host gimli {
+           
+           hardware ethernet 00:80:AD:87:7F:59;
+       }
+
+       # End /etc/dhcp/dhcpd.conf
+
+    3. And the init script...
+
+       #!/bin/sh
+       # Begin $rc_base/init.d/dhcpd
+       
+       # Based on sysklogd script from LFS-3.1 and earlier.
+       # Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+       
+       source /etc/sysconfig/rc
+       source $rc_functions
+       
+       case "$1" in
+           start)
+               echo -n "Starting DHCP daemon..."
+               loadproc /usr/sbin/dhcpd -q
+               ;;
+           stop)
+               echo -n "Stopping DHCP daemon..."
+               killproc dhcpd
+               ;;
+           restart)
+               $0 stop
+               sleep 5
+               $0 start
+               ;;
+           status)
+               statusproc /usr/sbin/dhcpd
+               ;;
+           *)
+               echo "Usage: $0 {start|stop|restart|status}"
+               exit 1
+               ;;
+       esac
+       
+       # End $rc_base/init.d/dhcpd
+       
+    4. Add a symlink in rc[345].d to start the dhcpd server just after starting
+       the network and a symlink in rc[0126].d to stop the server just before
+       stopping the network
+       
+5. The End
+
+    1. You should be done now, give it a whirl. Now go read the man-pages and
+       start servin them ip's ;)
+    
+    2. Any comments, flames, suggestions etc is always welcome. Have a nice
+       day ;)
+

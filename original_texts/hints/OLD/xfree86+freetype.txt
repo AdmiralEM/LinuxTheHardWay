@@ -1,0 +1,453 @@
+TITLE:		XFree86 4.2.1, the _friendly_ way.
+
+LFS VERSION:	3.x or newer
+
+AUTHOR:		Dagmar d'Surreal
+
+EMAIL ADDRESS:	Thou shalt not spam. <`echo qntzne@fcrnxrnfl.arg | rot13`>
+
+SYNOPSIS:	This hint demonstrates an extremely elegant method for
+		installing XFree86 4.2.1 that minimizes the chance of
+                library conflicts.
+
+HINT:
+
+ChangeLog:
+
+  2002 Dec 15 - Updated to be current with XFree86 4.2.1
+                Updated to include shm patch
+                Added download URLs for all packages
+                Added a walkthru for using xf86config 
+
+  2003 Jan 7  - Altered explanation of patent-violating option for Freetype
+		Minor changes to patch listings for XFree86		
+		Removed an unneeded setting from sample host.def
+		Further fine-tuning of the xf86config walkthru
+              - Fixed embarrassing typos spotted by honorable messirs Mark
+                Hymers and Seth W. Klein.
+		Removed two gratuitious (and needless) uses of awk.
+
+Some Caveats
+------------
+
+Note...  Do not, I repeat, do _not_ play games with the PKG_CPU and PKG_ARCH
+variables in the example shell scripts.  I would really recommend you stick
+with i386 for PKG_ARCH, but try to get PKG_CPU as close to your exact CPU
+type as possible, which is going to be something like i386, i486, i586, i686,
+k6, athlon, etc.  If you don't know what you should use, i486 and i586
+are really good catch-alls.  Using the commented out examples is probably also
+very safe.  (You could also read the info pages for gcc to learn what all the
+available targets are...)
+
+There are two packages which you must install _before_ you build XFree86 4.2.1
+and they would be zlib 1.1.4 (or newer) and FreeType2 2.1.3 (or newer).
+Neither of these are dependent on anything in XFree86 or on each other so this
+can be easily done on a clean build with no X at all.  You should also
+_obliterate_ any pre-existing versions of zlib and FreeType2 which might be
+living in /usr/local, /opt, or even your soon-to-be-destroyed /usr/X11R6
+directories.  Building these two libraries independently of XFree86, and
+instructing XFree86 to use our versions of the libraries instead of building
+it's own stale/dated versions eliminates problems caused by having multiple
+versions of those packages installed at once, and allows us to capitalize on
+the benefits of using shared libraries in the first place.
+
+
+Obtaining zlib Source
+---------------------
+
+ http://www.libpng.org/pub/png/src/zlib-1.1.4.tar.bz2
+   md5sum = ea16358be41384870acbdc372f9db152
+
+Get the source code for zlib from the location above, and be sure to check the
+MD5 sum before you do anything with the source.  If you were previously using
+an older version of zlib, you may need to recompile a lot of applications due
+to a security issue.  See http://www.gzip.org/zlib/advisory-2002-03-11.txt for
+more details.
+
+
+Building zlib
+-------------
+
+The short of this is that you need to install zlib in a manner which includes
+the _shared_ (libz.so) version of the library.  Here is a quick example method
+for doing it, with optimizations.  (I use PKG_CPU=i686 personally, because
+I've got a celery and i'm lazy.)
+
+Note: the normal LFS way of building zlib should work quite well for this, but
+just in case you missed it (*ahem*) here's a brief run-down...
+
+--------8<---------
+#!/bin/sh
+
+PKG_CPU=i686
+PKG_ARCH=i386
+#PKG_ARCH=`uname -m`
+#PKG_CPU=$PKG_ARCH
+
+CFLAGS="-fPIC -O3 -DHAVE_UNISTD_H -DUSE_MMAP -march=$PKG_ARCH -mcpu=$PKG_CPU" \
+./configure --prefix=/usr --shared && 
+make && 
+make test && 
+make install
+-------->8---------
+
+The CFLAGS argument given above isn't nearly as fancy as it appears to be.
+The first three arguments inside it are the same as what the package normally
+uses.  It is, IMHO, not worth bothering trying to guess at "better" flags
+for optimization, since the people who develop zlib have already spent a great
+deal of time looking at the resulting assembly code to determine if any
+further speedups are possible.
+
+
+Obtaining Freetype2 Sources
+---------------------------
+
+ http://unc.dl.sourceforge.net/freetype/freetype-2.1.3.tar.bz2
+   md5sum = 09775a4111e066f782866d8a57d8481b
+
+Get the source tarball for Freetype2 and verify it's md5sum, as usual.  Then
+uncompress the tarball into a working directory somewhere.  
+
+
+Building Freetype2
+------------------
+
+The next step is to install FreeType2, and if you don't mind violating a
+patent in the name of a good-looking desktop, you can make a quick change to
+include/freetype/config/ftoption.h inside the freetype2 source package
+before you build it.  Just remove the comment markers from around the line
+that says:
+
+#define TT_CONFIG_OPTION_BYTECODE_INTERPRETER
+
+If you decide not to do this, then your freetype library won't do anything
+about TrueType glyphs that are "hinted", meaning you'll always see the
+vector-drawn letters, even if the font contains a special set of partially
+rasterized glyphs for the font size you are using.  If this makes no sense to
+you, then leave it alone, as it can't cause you any problems.
+
+You can use the following shell script below to compile and install the
+Freetype2 library:
+
+----------8<----------
+#!/bin/sh
+
+PKG_OPT=-O2
+PKG_ARCH=i386
+PKG_CPU=i686
+# Really sane defaults
+#PKG_ARCH=`uname -m`
+#PKG_CPU=$PKG_ARCH
+
+CFLAGS="$PKG_OPT -march=$PKG_ARCH -mcpu=$PKG_CPU" \
+./configure --prefix=/usr && 
+make && 
+make install &&
+ldconfig
+---------->8----------
+
+There are still a few packages out there that will do something very broken
+and explicitly search /usr/X11R6/include for the FreeType2 headers,
+specifically because their maintainers have apparently grown tired of seeing
+the terrible things that happen when more than one version of FreeType2 is
+installed.  Eventually these guys will get around to realizing that it's less
+work to merely demand people fix their installations of Freetype2 than it is
+to do something almost as broken to get around the problem.  Brokenness is
+always bad, especially in this case as it requires us to put symlinks under
+/usr/X11R6 pointing to the Freetype2 files in /usr.  Do so with the following
+shell script _after_ you have installed the XFree86 binaries:
+
+---------->8----------
+#!/bin/sh
+
+cd /usr/X11R6/lib
+ln -s ../../lib/libfreetype.* .
+mkdir -p /usr/X11R6/include
+cd /usr/X11R6/include
+ln -s ../../include/freetype2 .
+ln -s ../../include/ft2build.h .
+----------8<----------
+
+(This means you can now merrily rm -rf /usr/X11R6 to prepare for the next
+step--installing XFree86s 4.2.1, instead of having to take partial measures
+to remove XFree86 without destroying these symlinks.)
+
+
+Before you install XFree86
+--------------------------
+
+I'd like to suggest at this point that you go ahead and make backups of your
+current XFree86 configuration and any custom app-defaults files you may have
+had, since you may be able to recycle these between minor revisions and
+avoid some extra hassle of configuring things again.  To avoid problems with
+having stale versions of libraries and whatnot lying around, I also recommend
+that you remove your old XFree86 installation entirely before continuing on.
+This means deleting /etc/X11, /var/X11, and /usr/X11R6, and then probably
+running ldconfig to clear the stale things out of the linker cache.
+
+
+Obtaining XFree86 Source
+------------------------
+
+Note: XFree86 source code is pretty large (around 50Mb compressed), so if you
+know of a mirror that has these files closer to you, it would behoove you to
+use it.  You should also be aware that not all three tarballs are necessarily
+needed to build XFree86, although the third one contains documentation in a
+number of unusual formats.  Obtain at least the first two tarballs listed and
+all three of the patches.
+
+Source Tarballs:
+ ftp://ftp.xfree86.org/pub/XFree86/4.2.0/source/X420src-1.tgz
+   md5sum = ad43a8e9e39703322005cd6f7145b77f
+ ftp://ftp.xfree86.org/pub/XFree86/4.2.0/source/X420src-2.tgz
+   md5sum = dae33268a9f2735b9678a81fb23e8d3e
+ ftp://ftp.xfree86.org/pub/XFree86/4.2.0/source/X420src-3.tgz
+   md5sum = 560899e175a02ab592185b69756f539e
+
+Required Patches:
+ ftp://ftp.xfree86.org/pub/XFree86/4.2.1/patches/4.2.0-4.2.1.diff.gz
+   md5sum = 38adc94a4953a6b29e8619c25dda4887
+ ftp://ftp.xfree86.org/pub/XFree86/4.2.1/fixes/4.2.1-mit-shm-security.patch
+   md5sum = 18eb56110c7f66895111bd9f3513b54e
+
+Optional Patch:
+ http://www.jg555.com/cvs/cvsweb.cgi/~checkout~/patches/xfree/xfree-4.2.x.-bison.fixes.patch
+   md5sum = f48429288375f68fdaa3ef010f641e75
+
+The md5 values are provided here only as a basic means of determining that
+the tarballs weren't damaged during the transfer.  These same md5 values are
+also given in a separate file on the XFree86 site, and should any of them
+suddenly not match, you should proceed with caution.  There are currently
+*no* tarballs of 4.2.1, and it doesn't appear that the XFree86 devel team
+are going to make any available, so don't be suprised that you can't find
+any.  You will need the 4.2.0 source and patches, as listed above.  If you
+are using a version of bison newer than 1.35 (which is the case for LFS 4.0
+users) you will need the last patch listed which was very thoughtfully
+provided by Jim Gifford.  *Everyone* should use the shm security patch.
+
+
+Preparing the XFree86 Source
+----------------------------
+
+You will need quite a lot of disk space available to compile XFree86 4.2.1.
+Use a partition with at _least_ 300-400Mb of space available to compile in,
+and pick (or create) a work directory.  Untar at least the first two tarballs
+(X420src-1.tgz and X420src-2.tgz, the third as well if you want the full set
+documentation installed on the system) and then apply the three patches to the
+source tree in the order listed to bring it entirely up to date.  You may
+wish to check ftp://ftp.xfree86.org/pub/XFree86/4.2.1/fixes/ to see if there
+are any more fixes which have been published since this document was written.
+
+
+Building the Binaries
+---------------------
+ 
+Now we move on to the real meat and potatoes of this operation.  Go ahead and
+untar X420src-1.tgz and X420src-2.tgz (and the third one as well if you like)
+someplace with about 300-400Mb of space free (for safety's sake).  Cd into
+the xc/ directory and get ready for the _easy_ part.
+
+Note, this is not a shell script, and YOU are expected to put the appropriate
+values in place of PKG_ARCH and PKG_CPU. 
+
+Create the file config/cf/host.def under the xc/ directory to tell XFree86's
+build system that we want it to use the system-installed versions of zlib
+and Freetype2 that we just built...
+
+---------->8----------
+#define HasFreetype2 YES
+#define BuildFreetype2Library NO
+#define HasZlib YES
+
+#define DefaultGcc2i386Opt -O2 -fno-strength-reduce -march=i386 -mcpu=i686
+----------8<----------
+
+The last line is entirely optional, and really isn't all that different from
+the default one XFree86 will use when left to it's own to decide.  I would 
+strongly recommend that you not attempt to set numerous things in the
+host.def file unless you are _absolutely_ _positively_ sure that you need to.
+XFree86's build system is rather crude compared to other packages, but it
+does manage to autodetect everything correctly in the vast majority of cases
+(the incorrect minority being mainly esoteric non-x86 hardware).  
+
+Once you've written the host.def file, the next step is to (in the xc/ 
+directory) type the following commands, as given in the README...
+
+make World >& world.log
+make install >& install.log
+make install.man &>> installman.log
+
+The install.man can be skipped if you didn't uncompress the third source
+tarball.  make World takes a _long_ time, so be patient and just tail the
+world.log file in another window if you like.  On my machine, it will grow
+until it reaches approximately 5,900Kb, and generally bores me to death while
+it does it.
+
+At this point, make sure that "/usr/X11R6/lib" appears in your /etc/ld.so.conf
+file and then run ldconfig one last time.  You may now configure XFree86
+normally, and/or install any third party drivers for your card that you need.
+(...as is the case with users of nVidia cards, for example.) 
+
+
+Final Notes
+-----------
+
+Some last tidbits... XFree86 4.2.x comes with a set of Bigelow & Holmes fonts
+which live under /usr/X11R6/lib/X11/fonts/TTF.  I wouldn't suggest adding any
+other fonts to this directory, and don't worry about this directory not
+appearing in the default XF86Config and XftCache files... everything seems to
+be hard-coded to look there for truetype fonts whether it's been specified or
+not.  Better to keep _your_ fonts in a directory you can explicitly specify so 
+you can keep better track of them.  I use /usr/X11R6/lib/X11/fonts/TrueType.
+
+Oh, and don't forget to consult the FHS to make sure you have all the symlinks
+for your filesystem pointing to the right parts of XFree86, just in case
+XFree86 didn't put them there already.
+
+You can also probably go ahead and build Freetype 1.3.1 and ttmkfdir (which
+are discussed elsewhere) now that you have XFree86 installed.  Between these
+two versions you will have everything you need to satisfy the requirements of
+literally every package that can make use of TrueType fonts.
+
+There is a newer version of ttfmkdir available which compiles against
+Freetype 2.x, but frankly, it's just as problematic to compile as the old
+ttmkfdir, and it will be obsolete with XFree86 4.3.x which is less than a
+month away, so we're just not going to bother with it.
+
+
+Configuring XFree86
+-------------------
+
+I swore that when I wrote this I wasn't going to get involved in the mess that
+is configuring XFree86 since the majority of people who are having problems
+always seem to be trying to do things with only one buttock (to put it
+politely).  There *is* however, a reliable (the "easy" autoconfiguration some
+people may recommend of `XFree86 -configure` does not always work properly, if
+it fails, you will _need_ this method) way to configure XFree86, and it's the
+one that's still pretty guaranteed to work with just a tiny bit of research
+on the part of the user.  A walkthru for it is a _large_ amount of typing,
+which is why it is formally beyond the scope of this document, but I'm
+including a quick run-down anyway.  It is as follows:
+
+  1. As root, run `xf86config`.  Hit enter at the first do-nothing prompt.
+
+  2. At the prompt for the mouse, pick whatever is appropriate, or at least
+    close to the correct value.
+
+  3. If your mouse has three buttons on it (if your mouse has a wheel, and it
+    clicks when you push down on it--most all do--then it's a third button)
+    then you do not want Emulate3Buttons.  This is only for 2-button mice.
+
+  4. For the mouse device location, enter /dev/input/mice if you have a USB
+    mouse, /dev/psaux if you have a PS/2 mouse, or /dev/ttyS0 (or whatever)
+    if you have a serial mouse.  We are _long_ past the point where it
+    should be necessary to do weird things like running gpm in repeater mode.
+    For anyone using LFS 3.3 or newer, just trust me and try it.
+
+  5. The question about keyboards is deceptively simple to answer.  Most US
+    people will say "3" if they have a "Windows" key, and "1" if they don't.
+    Non-US people will be saying "4" or "2" for the same reasons.  Notebook
+    people will REALLY want to pay attention here, but basically if nothing
+    listed matches exactly what they have, they should go with one of the
+    first four generic options depending on the presence of the "Windows" key.
+    You *may* have to use Shift-PgUp as _many_ new keyboard types have been
+    added to the list in 4.3.x.
+
+  6. Now comes the part where non-US or i18n users should pay attention.  Pick
+    the country your keyboard is localized for, not just the country you are
+    in.  If you have a boring US keyboard, enter 1 no matter where you are.
+
+  7. You should just hit enter for the default variant of your keyboard unless
+    you already know of a specific other choice you should make.  When in
+    doubt, just choose the defaults.   Overthinking gets people into trouble.
+
+  8. If you have no idea what "group switcher" and such are, just say no
+    and move on because you clearly do not need them.
+
+  9. Now comes one of the two questions that will _punish you if you make an
+    unintelligent guess.  The odds are that you _can_ guess, but be smart
+    about it.  If you can find the correct and accurate answers from the web
+    site of your monitor's manufacturer, _do so_.  If you don't know, and
+    you intend to operate your monitor at 1024x768, you can probably enter 7
+    and not worry about it.  If you intend to operate at 1280x1024, you can
+    probably get away with 9 and not have it interlace the image.  If you
+    intent to use something higher than 1280x1024, and you are _certain_
+    your monitor can actually handle it, then you can probably pick the
+    broadest setting shown and only worry about changing it if it doesn't
+    work.  (More expensive monitors tend to be willing to discuss their
+    options with the video card and make intelligent choicess for you.)
+
+  10. The vertical sync range is the other place where guessing can really
+    burn you.  LCD panels will likely be using a single, fixed value, which
+    they can almost certainly communicate to XFree86 on their own, so whatever
+    value you select will either be ignored, or in some cases you might need
+    to just use 60.   The "safe" choice for monitors and LCD panels here would
+    be answer #3, 50-100, but don't guess if you can easily find out the
+    answer.
+
+  11. The next answer is just a text string.  Enter whatever you like to
+    describe your monitor.  It won't affect things at all.
+
+  12. This is the biggie.  You _do_ want to look at the card database unless
+    you like pain.  Hit enter as many times as you need until the exact
+    model of your video card appears, then pick that number.  If you intend
+    to use a different driver later on, you can pick something "close" to 
+    just to get through the massive list of cards.  If you already know
+    which of X's drivers you need to use, 4.3.x has a generic entry for
+    each driver at the top of the list so you don't _have_ to wade through
+    the entire thing if you don't want to.
+
+  13. The question about the amount of memory your card has is merely used
+    by xf86config to decide what modes to offer you as possible.  It will
+    not affect the configuration file because it will only store the value
+    you enter here as a comment.  If you don't know whether or not your
+    card has 16Mb or 64Mb of RAM, just enter 16384K and be done with it.
+    This is one of the things that XFree86 has become really reliable about
+    detecting properly on it's own.
+
+  14. Yet another free-form string... Describe your video card any way you
+    like, so long as you don't enter the exact same string as you used to
+    describe your monitor.
+
+  15. This menu will almost always require you reconfiguring things.  In
+    each color depth, the _first_ value listed will be the default, so
+    if you want 1024x768 as the default for 16bpp, enter 2 to change
+    those values, and then enter "4" as the first number ("432" is a good
+    example).  Keep changing until you have things the way you like them
+    and remember that the largest size for each color depth will control the
+    "virtual" desktop size, which may annoy you.
+
+    Note: The only time I ever change resolution or color-depth is when 
+    I'm doing something with SDL that changes them both anyway, so I
+    only bother to enter one resolution per color depth.  You might wish
+    to do the same.
+
+  16. Almost done!  Pick your default color depth.
+
+  17. Do whatever you like about letting it write out the config you have
+    just created, just be sure that if you use /etc/X11/XF86Config that
+    you don't have a stale /etc/X11/XF86Config-4 file lying in wait.
+
+  18. You should now have a basic, working X configuration.  Provided nothing
+    went terribly wrong, you should be able to run `startx` and be presented
+    with an extremely primitive window manager called twm.  I recommend
+    Blackbox as a quick replacement (no dependencies other than X) for this
+    before your eyes begin to bleed.
+
+One last clue... If you have a mouse wheel, the only thing you need to do
+to get it working with XFree86 now is to add two lines for the ZAxisMapping
+and number of buttons to the mouse section so that it looks like this:
+
+    Identifier  "Mouse1"
+    Driver      "mouse"
+    Option "Protocol"    "IMPS/2"
+    Option "Device"      "/dev/psaux"
+    Option "ZAxisMapping"       "4 5"
+    Option "Buttons"            "5"
+
+I'd like to think that the mouse wheel information will be something that
+xf86config in 4.3.0 will ask about, but considering that it took them years
+to add the question for DefaultColorDepth, and it has yet to manifest in
+4.2.99.3 pre-releases, so I doubt it.
+
+Peace!

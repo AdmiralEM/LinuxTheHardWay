@@ -1,0 +1,741 @@
+TITLE:		Linux Appliance
+LFS VERSION:	Tested Against 4.0
+AUTHOR:		Robert Petersen <robert_lfshint@orangefood.com> (LFS ID:2092)
+
+SYNOPSIS:
+	Build a very small LFS based GNU/Linux system suitable for use as a 
+"network appliance."
+
+HINT:
+
+HINT VERSION: 0.0.1 (20030329)
+
+CHANGELOG:
+	0.0.1
+		Initial Draft Version
+
+
+==================================
+0. Table of Content
+==================================
+
+1...................................Introduction
+2.......................................Packages
+3.........................LFS Chapter 5 Addendum
+4.............................Post LFS Chapter 5
+5.........................Configuring the system
+6............................................FAQ
+Appendix A............................References
+Appendix B..........................LFS Packages
+Appendix C...............................Patches
+Appendix D..........................init Scripts
+Appendix E......................Hardware Example
+
+==================================
+1. Introduction
+==================================
+The purpose of this hint is to create a "network appliance."  What this means
+for each person is an object of some debate.  Webopedia says:
+
+     A typically inexpensive personal computer, sometimes called 
+     a thin client, that enables Internet access and some business-
+     related activities but lacks many features of a fully equipped 
+     PC, such as a hard drive or CD-ROM. Applications used on 
+     network appliances typically are housed on a Web server accessed
+     by the appliance. Network appliances are used to ease remote 
+     management and cut costs.
+
+     http://networking.webopedia.com/TERM/N/network_appliance.html  
+
+Despite the various meanings which exist, for the purposes of this hint a 
+network appliance is:
+- An inexpensive computer, x86 based in this case
+- Limited utility outside it's particular purpose, e.g. file serving, mp3
+  playing, X10 controlling, firewall, etc.
+- Limited resources such as: minimal storage(e.g. fit on a CF card), not an 
+  very fast processor, minimal memory.
+
+To get a better idea if this hint will be right for you it might helpful to 
+understand what my initial project was.  I wanted a small and quite computer 
+which will play MP3s streamed from a remote "server" and show a slide show of 
+images also hosted on a remote computer.  The details of the hardware I used in
+my project are listed in Appendix E, though this hint should work on hardware
+other than that which is listed.
+
+So, "why not use vanilla LFS," you ask?  Well LFS was a little bit big for me.
+Part of the "quite" part of the target system was to use a CF card rather than
+a hard drive (see Appendix E).  Also LFS makes a rather useful generic system,
+I had a specific purpose in mind, and development and the associated tools, 
+were not part of that purpose, so no GCC.
+
+In a nutshell here are the changes I made to the standard LFS:
+- No development tools on the target system
+- No documentation
+- No glibc, used uClibc instead
+- Use busybox rather than various miscellaneous utilities and the shell
+- No getty or login
+- No system v init scripts, use the busybox version.
+
+This leaves a platform perfect adding whatever functionality you want with a 
+minimal amount of overhead, but on it's own has very limited functionality.
+
+If this sounds like what you are looking for then keep reading.  If this sounds
+a bit too striped down then you may want to read these hints instead:
+
+uclibc-lfs:
+	http://hints.linuxfromscratch.org/hints/uclibc-lfs.txt
+
+Stripping down an LFS:
+	http://hints.linuxfromscratch.org/hints/stripped-down.txt
+
+Glad you decided to keep reading!
+
+Despite your willingness to continue on you might want the above hints anyway,
+as they inform a lot of what happens here.  Also your success with this hint 
+is more likely if you have actually built a "regular" LFS system.  Also the 
+instructions here are _very_ brief and not really explained well, so reading
+LFS will help you gain a greater understanding.
+
+==================================
+2. Packages
+==================================
+One of the benefits of building a smaller system is that you need to download
+fewer packages.  While there is no harm in downloading all the LFS packages. If
+you would rather download only the necessary files then checkout Appendix B 
+and download only those files.
+
+In addition to the set of "standard" LFS packages you'll need to download the
+following packages and extract them in the same directory as the other packages.
+
+uClibc Patches
+ftp://ftp.linuxfromscratch.org/lfs-hints/patches/uclibc-lfs-patches-0.3.tar.bz2
+
+uClibc 0.9.14
+http://www.uclibc.org/downloads/uClibc-0.9.14.tar.gz
+
+BusyBox 0.60.5
+http://www.busybox.net/downloads/busybox-0.60.5.tar.bz2
+
+==================================
+3. LFS Chapter 5 Addendum
+==================================
+Chapter 5 created a bunch of tools which are statically linked.  Thus, when we 
+enter the chroot environment the tools will continue to work in the absence 
+shared libraries, a more detailed and undoubtedly more correct explanation 
+can be found here: 
+http://www.linuxfromscratch.org/view/4.0/chapter05/whystatic.html.  
+Chapter 6 
+continues to build the main system
+the LFS system once we enter the chroot environment (Chapter 6).  However given
+that we will not be building all the packages in Chapter 6, specifically some
+of the necessary development packages, we need to create statically linked 
+versions of those which are needed.  It turns out that we really only need to 
+build two packages:
+- Perl (for the uClibc build)
+- modutils (for the kernel build)
+
+
+--INSTALL STATICALY LINKED PERL 5.8.0--
+./Configure -Dprefix=/static -Dinstallprefix=$LFS/static -Dso=none \
+  -Dldflags=-static -Uinstallusrbinperl -Uusedl -Dman1dir=none \
+  -d -e &&
+make &&
+make install
+
+--INSTALL STATICALY LINKED MODUTILS 2.4.19--
+./configure --prefix=$LFS/static/usr &&
+make LDFLAGS=-static &&
+make install
+
+==================================
+4. Post LFS Chapter 5
+==================================
+This section of the hint is an alternative to rest of LFS only insomuch 
+as it provides the commands to execute to build the basic LFS appliance system.
+If you've not built the full LFS system then you should give the original LFS
+a read, as it explains the purpose of each command, the files in the 
+packages and is very educational.  That being said to actually build the system
+you should execute the commands listed here.
+
+As an aside, I don't really trust "make clean" so as a personal preference I
+usually delete the source and start over.  By the way there is no real basis 
+for this irrational disbelief in "make clean" so a reasonable person would 
+ignore me.
+
+Before you begin make sure you are root again and the $LFS is set.
+
+--ENTER THE CHROOT ENVIRONMENT--
+chroot $LFS /static/bin/env -i \
+    HOME=/root TERM=$TERM PS1='\u:\w\$ ' \
+    PATH=/bin:/usr/bin:/sbin:/usr/sbin:/static/bin \
+    /static/bin/bash --login
+
+--CHANGE OWNERSHIP--
+chown -R 0:0 *
+
+--CREATE DIRECTORIES--
+mkdir -p /{bin,boot,dev/pts,etc,home,lib,mnt,proc} &&
+mkdir -p /{root,sbin,tmp,usr,var} &&
+mkdir -p /usr/{bin,etc,lib,sbin,include,share}
+mkdir /var/{lock,log,mail,run,spool} &&
+mkdir -p /var/{tmp,cache,lib/misc,local} &&
+ln -s ../var/tmp /usr
+
+*note: This directory tree is based on the LFS tree which is based on FHS
+(http://www.pathname.com/fhs/) but lacks /usr/local/games and /usr/share/games.
+This tree lacks additional directories:
+/usr/src
+/usr/share/*
+/usr/local/*
+/opt/*
+
+/usr/include is created but will be deleted during the cleanup.
+
+--SET PERMISSIONS--
+chmod 0750 /root &&
+chmod 1777 /tmp /var/tmp
+
+--MOUNT THE PROC FILE SYSTEM--
+mount proc /proc -t proc
+
+*note: The message "warning: can't open /etc/fstab: No such file or directory"
+is ok
+
+--CREATE THE SYMLINKS--
+ln -sf /proc/mounts /etc/mtab &&
+ln -sf /static/bin/bash /bin &&
+ln -sf bash /bin/sh &&
+ln -sf /static/bin/perl /usr/bin &&
+ln -sf /static/bin/true /bin &&
+ln -sf /static/usr/sbin/depmod /sbin &&
+ln -sf /static/bin/find /usr/bin/ &&
+ln -sf /static/bin/gzip /bin/gzip
+
+--CREATE THE PASSWD AND GROUP FILES--
+echo "root:x:0:0:root:/root:/bin/bash" > /etc/passwd &&
+cat > /etc/group << "EOF"
+root:x:0:
+bin:x:1:
+sys:x:2:
+kmem:x:3:
+tty:x:4:
+tape:x:5:
+daemon:x:6:
+floppy:x:7:
+disk:x:8:
+lp:x:9:
+dialout:x:10:
+audio:x:11:
+EOF
+
+--CREATE DEVICES--
+cp MAKEDEV-1.7 /dev/MAKEDEV &&
+cd /dev &&
+chmod 754 MAKEDEV &&
+./MAKEDEV -v generic
+
+--INSTALL KERNAL HEADERS--
+ln -sf /static/bin/pwd /bin/pwd &&
+make mrproper &&
+make include/linux/version.h &&
+make symlinks &&
+mkdir /usr/include/asm &&
+cp include/asm/* /usr/include/asm &&
+cp -R include/asm-generic /usr/include &&
+cp -R include/linux /usr/include &&
+touch /usr/include/linux/autoconf.h &&
+rm /bin/pwd
+
+--INSTALL UCLIBC --
+patch -Np1 < ../uclibc-lfs-patches/uClibc-0.9.14.patch &&
+ln -sf extra/Configs/Config.i386 Config &&
+make DOSHAREDMAIN=true DO_C99_MATH=true HAS_SHADOW=true DOLFS=true \
+  INCLUDE_RPC=true HAS_WCHAR=true KERNEL_SOURCE=/usr/src/linux-2.4.19 \
+  all install
+
+--INSTALL BUSYBOX--
+patch -Np1 < ../busybox-0.60.5-appliance.patch &&
+make &&
+make PREFIX=/ install
+
+
+--INSTALL LINUX KERNEL--
+Installing Linux is a bit interesting in our chroot environment.  The first
+thing to do is prepare the source code by executing the command:
+
+make mrproper
+
+Next is to configure the kernel.  You ought to read this:
+http://www.linuxfromscratch.org/view/4.0/chapter08/kernel.html
+You should include what your system needs.  Helpful statement huh?  Well I'll
+tell you for my project I configured the following;
+- My network card (as a module)
+- My sound card (as a module)
+- Frame buffer support
+
+We don't have ncurses so "make menuconfig" will _not_ work in the chroot 
+environment, so if you want to configure the kernel in the chroot environment
+then your are stuck with this:
+
+make config
+
+* What I do, and this is very ungeek because it involves a gui, is switch to
+another terminal window in X and do a "make xconfig".  The same technique 
+applies to menuconfig.
+
+Now you we actually build the kernel:
+
+make dep &&
+make bzImage &&
+make modules &&
+make modules_install &&
+cp arch/i386/boot/bzImage /boot/kernel-2.4.19 &&
+ln -sf kernel-2.4.19 /boot/bzImage &&
+cp System.map /boot/System.map-2.4.19 &&
+ln -sf System.map-2.4.19 /boot/System.map
+
+==================================
+5. Configuring the system
+==================================
+You've now got actually have _very_ basic system which is essentially the 
+appliance platform. As it is not configured if you started it up you would
+get a prompt, some nifty programs and not much else.  This chapter introduces
+the init system and does some cleanup
+
+--init scripts--
+The details of the init script are highly specific to my purposes.  Your needs
+will likely be different.  Therefore the scripts here are presented as a guide
+rather something which should be copied.
+
+In our system init program is actually BusyBox.  BusyBox _does not_ provide
+a full System V style init.  To understand how it works read the "init" 
+description on:
+http://www.busybox.net/downloads/BusyBox.html
+
+BusyBox looks for a program called /etc/init.d/rcS.  The listing of all the
+init scripts in Appendix D.  Briefly, my scripts do this: 
+
+/etc/init.d/rcS
+  This program simply looks in /etc/init.d/rcS.d/ for any scripts that 
+  start with an 'S' and runs that program.  If there is an error then 
+  a message is printed to the console.
+/etc/init.d/rcS.d/S01rd
+  Sets up a ram disk
+/etc/init.d/rcS.d/S02syslog
+  Starts logging
+/etc/init.d/rcS.d/S03mount
+  Mounts the filesystems
+/etc/init.d/rcS.d/S04network
+  Starts the network
+/etc/init.d/rcS.d/S05sound
+  Loads the sound modules
+/etc/init.d/rcS.d/S04modules
+  Loads kernel modules
+
+-- Clean Up --
+If you have more programs to build, which you should because they system isn't 
+very useful right now, then do that first.  
+
+Exit the chroot environment:
+exit
+
+At this point we move the sources, the headers and the statically linked tools.
+Insure that $LFS is set.  Also there should be a place to hold the sources,
+headers and tools.  I create a directory, /lfs_static and set the environment
+variable $LFS_STATIC.  The point of moving the files is so that if later some
+additional software needs to be build or some kernel modules added then that
+can be done.
+
+mv $LFS/usr/include $LFS_STATIC &&
+mv $LFS/usr/src $LFS_STATIC &&
+mv $LFS/static $LFS_STATIC &&
+rm /bin/bash &&
+rm /sbin/depmod &&
+ln -sf busybox /bin/sh &&
+ln -sf busybox /bin/gzip &&
+ln -sf ../../bin/busybox /usr/bin/find
+
+==================================
+6. FAQ
+==================================
+There are no FAQ, yet.
+
+==================================
+Appendix A: References
+==================================
+LFS, this is base LFS book
+http://www.linuxfromscratch.org/
+
+BusyBox, provides commands, a simple shell and init. 
+"The Swiss Army Knife of Embedded Linux"
+http://www.busybox.net/ 
+uClibc (yew-see-lib-see), a much smaller glibc replacement
+http://www.uclibc.org/
+
+udhcp, a small dhcp client/server.  Indirectly referenced in the init script
+appendix.
+http://udhcp.busybox.net/
+
+==================================
+Appendix B: LFS Packages
+==================================
+
+Bash (2.05a) - 1,400 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/bash-2.05a.tar.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/bash-2.05a.tar.bz2
+
+Binutils (2.13) - 9,651 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/binutils-2.13.tar.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/binutils-2.13.tar.bz2
+
+Bzip2 (1.0.2) - 610 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/bzip2-1.0.2.tar.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/bzip2-1.0.2.tar.bz2
+
+Diffutils (2.8.1) - 642 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/diffutils-2.8.1.tar.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/diffutils-2.8.1.tar.bz2
+
+Fileutils (4.1) - 1,217 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/fileutils-4.1.tar.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/fileutils-4.1.tar.bz2
+
+Fileutils Patch (4.1) - 1 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/fileutils-4.1.patch.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/fileutils-4.1.patch.bz2
+
+Findutils (4.1) - 226 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/findutils-4.1.tar.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/findutils-4.1.tar.bz2
+
+Findutils Patch (4.1) - 1 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/findutils-4.1.patch.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/findutils-4.1.patch.bz2
+
+Gawk (3.1.1) - 1,420 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/gawk-3.1.1.tar.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/gawk-3.1.1.tar.bz2
+
+Gawk Patch (3.1.1-2) - 1 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/gawk-3.1.1-2.patch.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/gawk-3.1.1-2.patch.bz2
+
+GCC (3.2) - 20,043 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/gcc-3.2.tar.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/gcc-3.2.tar.bz2
+
+GCC Patch (3.2) - 4 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/gcc-3.2.patch.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/gcc-3.2.patch.bz2
+
+Grep (2.5) - 545 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/grep-2.5.tar.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/grep-2.5.tar.bz2
+
+Gzip (1.2.4a) - 179 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/gzip-1.2.4a.tar.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/gzip-1.2.4a.tar.bz2
+
+Gzip Patch (1.2.4b) - 1 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/gzip-1.2.4b.patch.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/gzip-1.2.4b.patch.bz2
+
+Linux (2.4.19) - 25,432 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/linux-2.4.19.tar.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/linux-2.4.19.tar.bz2
+
+Make (3.79.1) - 794 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/make-3.79.1.tar.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/make-3.79.1.tar.bz2
+
+Modutils (2.4.19) - 213 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/modutils-2.4.19.tar.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/modutils-2.4.19.tar.bz2
+
+Patch (2.5.4) - 149 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/patch-2.5.4.tar.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/patch-2.5.4.tar.bz2
+
+Perl (5.8.0) - 8,416 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/perl-5.8.0.tar.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/perl-5.8.0.tar.bz2
+
+Sed (3.02) - 221 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/sed-3.02.tar.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/sed-3.02.tar.bz2
+
+Sh-utils (2.0) - 824 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/sh-utils-2.0.tar.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/sh-utils-2.0.tar.bz2
+
+Sh-utils Patch (2.0) - 1 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/sh-utils-2.0.patch.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/sh-utils-2.0.patch.bz2
+
+Tar (1.13) - 730 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/tar-1.13.tar.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/tar-1.13.tar.bz2
+
+Tar Patch (1.13) - 1 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/tar-1.13.patch.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/tar-1.13.patch.bz2
+
+Texinfo (4.2) - 1,175 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/texinfo-4.2.tar.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/texinfo-4.2.tar.bz2
+
+Textutils (2.1) - 1,847 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/textutils-2.1.tar.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/textutils-2.1.tar.bz2
+
+Util-linux (2.11u) - 1,073 KB:
+ftp://ftp.linuxfromscratch.org/lfs-packages/4.0/util-linux-2.11u.tar.bz2
+http://ftp.linuxfromscratch.org/lfs-packages/4.0/util-linux-2.11u.tar.bz2
+
+==================================
+Appendix C: Patches
+==================================
+This patch to the BusyBox Config.h enables a few extra featurs, like insmod,
+without which our system would be really useless.  If you plan on adjusting
+Config.h to suit your own needs then you don't need this patch
+
+diff -ru busybox-0.60.5.orig/Config.h busybox-0.60.5/Config.h
+--- busybox-0.60.5.orig/Config.h	2002-09-17 15:04:28.000000000 -0700
++++ busybox-0.60.5/Config.h	2003-03-19 22:54:19.000000000 -0800
+@@ -38,7 +38,7 @@
+ #define BB_ECHO
+ #define BB_ENV
+ //#define BB_EXPR
+-//#define BB_FBSET
++#define BB_FBSET
+ //#define BB_FDFLUSH
+ #define BB_FIND
+ #define BB_FREE
+@@ -51,12 +51,12 @@
+ #define BB_HALT
+ #define BB_HEAD
+ //#define BB_HOSTID
+-//#define BB_HOSTNAME
++#define BB_HOSTNAME
+ //#define BB_HUSH
+ #define BB_ID
+-//#define BB_IFCONFIG
++#define BB_IFCONFIG
+ #define BB_INIT
+-//#define BB_INSMOD
++#define BB_INSMOD
+ #define BB_KILL
+ #define BB_KILLALL
+ #define BB_KLOGD
+@@ -75,9 +75,9 @@
+ //#define BB_MD5SUM
+ #define BB_MKDIR
+ //#define BB_MKFIFO
+-//#define BB_MKFS_MINIX
++#define BB_MKFS_MINIX
+ #define BB_MKNOD
+-#define BB_MKSWAP
++//#define BB_MKSWAP
+ //#define BB_MKTEMP
+ #define BB_MODPROBE
+ #define BB_MORE
+@@ -86,9 +86,9 @@
+ //#define BB_MT
+ #define BB_MV
+ //#define BB_NC
+-//#define BB_NSLOOKUP
++#define BB_NSLOOKUP
+ #define BB_PIDOF
+-//#define BB_PING
++#define BB_PING
+ //#define BB_PIVOT_ROOT
+ #define BB_POWEROFF
+ //#define BB_PRINTF
+@@ -102,7 +102,7 @@
+ #define BB_RM
+ #define BB_RMDIR
+ //#define BB_RMMOD
+-//#define BB_ROUTE
++#define BB_ROUTE
+ //#define BB_RPM2CPIO
+ #define BB_SED
+ //#define BB_SETKEYCODES
+@@ -134,7 +134,7 @@
+ //#define BB_UPDATE
+ #define BB_UPTIME
+ //#define BB_USLEEP
+-//#define BB_VI
++#define BB_VI
+ //#define BB_WATCHDOG
+ #define BB_WC
+ //#define BB_WGET
+@@ -333,7 +333,7 @@
+ //#define BB_FEATURE_MINIX2
+ //
+ // Enable ifconfig status reporting output -- this feature adds 7k.
+-//#define BB_FEATURE_IFCONFIG_STATUS
++#define BB_FEATURE_IFCONFIG_STATUS
+ //
+ // Enable ifconfig slip-specific options "keepalive" and "outfill"
+ //#define BB_FEATURE_IFCONFIG_SLIP
+diff -ru busybox-0.60.5.orig/Makefile busybox-0.60.5/Makefile
+--- busybox-0.60.5.orig/Makefile	2002-10-26 21:47:54.000000000 -0700
++++ busybox-0.60.5/Makefile	2003-03-19 21:07:34.000000000 -0800
+@@ -49,7 +49,7 @@
+ # just 1.4k to the binary size (which is a _lot_ less then glibc NSS costs).
+ # Note that if you want hostname resolution to work with glibc, you still need
+ # the libnss_* libraries.  
+-USE_SYSTEM_PWD_GRP = true
++USE_SYSTEM_PWD_GRP = false
+ 
+ # This enables compiling with dmalloc ( http://dmalloc.com/ )
+ # which is an excellent public domain mem leak and malloc problem
+
+==================================
+Appendix D: init Scripts
+==================================
+
+-- /etc/init.d/rcS --
+This program simply looks in /etc/init.d/rcS.d/ for any scripts that 
+start with an 'S' and runs that program.  If there is an error then 
+a message is printed to the console.
+
+#!/bin/sh
+# Begin /etc/init.d/rcS
+
+for i in /etc/init.d/rcS.d/S*
+do
+  [ ! -f  "$i" ] && continue;
+  $i start
+  error_value=$?
+
+  if [ $error_value != 0 ]
+  then
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    echo "An unexpected error has occurred is the script $i."
+    echo "The script exited with a return value of $error_value."
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+  fi
+done
+
+# End /etc/init.d/rcS
+
+-- /etc/init.d/rcS.d/S01rd --
+On the system I build I mount the root partition as read only.  The root 
+partition is a CF card and I didn't want to use up the 100,000 write cycles
+with a bunch of logging and temp stuff.  So the writable areas are mapped to
+a ram disk.  The kernel will need to be compiled with ram disk support, but
+initrd is not necessary for this.  This is useful for CD-ROM as well.
+
+Preparations:
+The first thing to do is setup the writable bits of the LFS partition to
+link to the ram disk, in this case /mnt/ram.  Execute these commands, insure
+that $LFS is set:
+
+mkdir $LFS/mnt/ram
+ln -sf /mnt/ram/etc/resolv.conf $LFS/etc/resolv.conf &&
+rm -Rf $LFS/var &&
+ln -sf /mnt/ram/var $LFS/var &&
+rm -Rf $LFS/tmp &&
+ln -sf var/tmp $LFS/tmp &&
+
+The dhcp client will write the names servers to use to /etc/resolv.conf so
+this file is linked to the ram disk. The /var and /tmp areas need to be writable
+by various programs and for logging so they too are linked to the ram disk.
+
+The script creates ram disk of 20MB, though you can make it what ever size
+suits your needs.  It then creates a filesystem. Minix is used because it's the
+only thing BusyBox knows how to create.  The ram disk is mounted and the 
+appropriate directories are created to satisfy the links.
+
+echo Setting up ramdisk
+insmod rd rd_size=20000
+dd if=/dev/zero of=/dev/ram
+mkfs.minix /dev/ram
+mount /dev/ram /mnt/ram -t minix
+mkdir -p /mnt/ram/var/log
+mkdir /mnt/ram/var/tmp
+mkdir /mnt/ram/etc
+echo Setting up ramdisk complete
+
+-- /etc/init.d/rcS.d/S02syslog --
+Simply starts up the logging daemons.
+
+echo Starting system logging
+klogd
+syslogd
+echo Starting system logging complete
+
+
+-- /etc/init.d/rcS.d/S03mount --
+Mounts the file systems, in this case /proc.  A mount -a could be thrown in if
+you have other filesystems listed in /etc/fstab (I don't).
+
+echo Mounting file systems
+mount /proc /proc -t proc
+echo Mounting file systems complete
+
+-- /etc/init.d/rcS.d/S04network --
+Loads the correct network module, yours will likely be different and starts
+the udhcp client.  *note the udhcp client is not installed as part of this hint
+see the URL in the references appendix for more information.
+
+echo Bringing up network
+modprobe via-rhine
+ifconfig eth0 up
+udhcpc
+echo Bringing up network complete
+
+-- /etc/init.d/rcS.d/S05sound --
+Loads the sound card module.  Your sound card will likely be different.
+
+echo Starting sounds subsystems
+modprobe via82cxxx_audio
+echo Starting sounds subsystems complete
+
+==================================
+Appendix E: Hardware Example
+==================================
+This is a list of the hardware I used for my project.  You don't need to use
+this hardware, though I've only tested on the hardware listed below.  I main
+reason for this selection of hardware is that it was relatively inexpensive and
+quite.  I have no fans or moving parts in this system.  The three main pieces 
+a computer which move and make noise are the CPU fan on the mainboard, the
+hard drive and the power supply.
+
+-- Mainboard --
+VIA EPIA M 
+(http://www.viavpsd.com/product/epia_m_spec.jsp?motherboardId=81)
+This mainboard was selected because of it's size and fanless operation. The 
+mainboard includes a network interface, sound subsystem, 1 PCI slot, fireware,
+USB 2.0 and TV out.  Full details at the link above.
+
+Unfortunately as a Linux platform it is less that perfect.  Driver support 
+isn't fantastic.  A good thread on the current support is here:
+http://forums.viaarena.com/messageview.cfm?catid=28&threadid=33324
+
+I have not tried to use the USB or the firewire, they are not even compiled 
+into the kernel, so I have no idea if they will work.  The network device 
+works with the VIA Rhine module that comes with the stock kernel 
+(CONFIG_VIA_RHINE).
+
+The sound drives were a bit of a trick, as they are not supported in the 2.4.19
+kernel, the kernel which this hint and LFS are based on.  The modules in the
+Alan Cox patched 2.4.20 kernel (2.4.20-ac2) do work.  You can get them from
+kernel.org:
+http://www.kernel.org/pub/linux/kernel/v2.4/linux-2.4.20.tar.bz2
+http://www.kernel.org/pub/linux/kernel/people/alan/linux-2.4/2.4.20/patch-2.4.20-ac2.bz2
+
+-- Hard drive --
+I replaced the hard drive with a CF card, I'm using a 16 MB CF card and have 
+about 10 MB left over.  It looks like a regular hard drive with the help of 
+an IDE/CF adapter, the software doesn't need to be changed at all.  I bought 
+this one:
+http://www.acscontrol.com/Index_ACS.asp?Page=/Pages/Products/CompactFlash/IDE_To_CF_Adapter.htm
+
+-- Power Supply --
+As of this moment my power supply is on back order.  I am planning on using 
+This one, which has no fan and produces 60 watts of power from a 12 volt 
+input:
+http://www.mini-box.com/PW-60.htm
+It's been a couple of weeks now so I may end up building one myself.

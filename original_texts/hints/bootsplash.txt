@@ -1,0 +1,294 @@
+AUTHOR:      Joachim Beckers <jbeckers@linuxfromscratch.org>
+DATE:        2005-07-31
+LICENSE:     GNU Free Documentation License version 1.2
+
+SYNOPSIS:    How to beautify the kernel 2.4/2.6 boot process using bootsplash.
+
+PRIMARY URI: http://jbeckers.webhop.org/en/hints.html
+
+DESCRIPTION:
+This hint describes how to create your own graphical boot using bootsplash.
+Bootsplash is a packages that allows you to display background pictures with or
+without animations on your consoles, during kernel boot and during init. It's
+fully themeable and it uses the framebuffer. Hence it works with kernel 2.4 as
+well as 2.6 and you can use hardware graphics acceleration.
+
+PREREQUISITES:
+This hint was tested on LFS-5.1.1/kernel-2.6.8.1 and LFS-6.0/kernel-2.6.11.7.
+These combinations are tested, but others will probably work too. Just get the
+patch that matches your kernel version.
+The bootsplash package requires that libmng is installed. See the BLFS book for
+libmng build instructions.
+
+HINT:
+
+    How things are to be done:
+    ==========================
+Setting up bootsplash is to be done in six stages:
+1. Patching the kernel with the bootsplash patch, configuring and recompiling.
+2. Installing the bootsplash package.
+3. Installing a theme.
+4. Creating a initial ramdisk.
+5. Configuring bootsplash and configuring your bootloader.
+6. Adapting bootscripts.
+
+Before we can start however, we'll need to download some packages.
+
+
+    Required Packages:
+    ==================
+The bootsplash kernel patch:
+     http://www.bootsplash.de/files/ (for kernel 2.6 patches)
+or:
+     http://www.bootsplash.de/files/old (for kernel 2.4 patches)
+
+The bootsplash package:
+     http://www.bootsplash.de/files/splashutils/bootsplash-3.2.tar.bz2
+
+A patch for bootsplash's makefile:
+     http://www.linuxfromscratch.org/hints/downloads/attachments/bootsplash/bootsplash-3.2_makefile.patch
+
+A theme:
+     http://www.bootsplash.de/files/themes/
+
+If you don't have your kernel's sources, get them from:
+     ftp://ftp.kernel.org/pub/linux/kernel/
+
+
+    Patching, configuring and recompiling the kernel:
+    =================================================
+If you just downloaded the kernel sources, unpack them in the right place by
+running the following commands:
+     cd /usr/src/
+     tar -xvjf /path/to/kernel-tarball
+
+Now cd to the directory containing your kernel sources, and apply the patch:
+     cd /usr/src/linux-2.*
+     patch -p1 -i /path/to/bootsplash-kernel-patch
+
+Now configure your kernel using your favorite configuration tool:
+     make *config
+
+Make sure you compile these things _into_ your kernel, not as a module:
+ -for kernel 2.4:
+      Code maturity level options 
+        --> Prompt for development and/or incomplete code/drivers
+      Block devices
+        --> RAM disk support
+        --> Initial RAM disk (initrd) support
+      Console drivers
+        --> Video mode selection support
+        --> Frame-buffer support
+              --> Support for frame buffer devices
+              --> VESA VGA graphics console
+              --> Use splash screen instead of boot logo
+
+ - for kernel 2.6:
+     Device drivers 
+       --> Block devices
+             --> RAM disk support
+             --> Initial Ram disk (initrd) support
+       --> Graphics support
+             --> Support for framebuffer devices
+                   --> VESA VGA graphics support
+                   --> Console display driver support
+                         --> Video mode selection support
+                         --> Framebuffer console support
+                   --> Bootsplash configuration
+                         --> Bootup splash screen
+
+Note: If there is a framebuffer driver for your graphics card in the kernel,
+you may want to select the matching entry. This will allow you to use hardware
+acceleration.
+
+Finish off by compiling and installing the new kernel:
+ - for kernel 2.4:
+     make dep
+     make bzImage
+     make modules
+     make modules_install
+     cp ./arch/i386/boot/bzImage /boot/lfskernel-2.4.*
+     cp .config /boot/config-2.4.*
+     cp System.map /boot/System.map-2.4.*
+
+ - for kernel 2.6:
+     make all
+     make modules_install
+     cp ./arch/i386/boot/bzImage /boot/lfskernel-2.6.*
+     cp .config /boot/config-2.6.*
+     cp System.map /boot/System.map-2.6.*
+
+
+    Installing the bootsplash package:
+    ==================================
+Install the bootsplash package by running the following commands:
+     tar -xvjf bootsplash-3.1.tar.bz2
+     cd ./bootsplash-3.2/
+     patch -Np1 -i /path/to/bootsplash-3.2_makefile.patch
+     cd ./Utilities/
+     make
+     cp splash fbresolution fbmngplay /sbin
+     cd ../Scripts/
+     cp bootanim /sbin
+     chmod +x /sbin/bootanim
+
+Note: We only need three programs and one script from the bootsplash package.
+The others are Suse-specific bootscripts. Take a look at the documentation in
+bootsplash-3.2/Documentation to learn more.
+
+
+    Installing a theme:
+    ===================
+Install a bootsplash theme by running the following commands:
+     mkdir -p /etc/bootsplash/themes
+     cd /etc/bootsplash/themes
+     tar -xvjf /path/to/your/theme
+
+Now create a symlink that points to the default theme that will be used:
+     ln -s /path/to/your/theme current
+
+
+    Creating an initial ramdisk:
+    ============================
+To show a splashimage on kernel startup, bootsplash uses an initial ramdisk.
+Create an initial ramdisk by running the following command:
+     /sbin/splash -s -f \
+       /etc/bootsplash/themes/current/config/bootsplash-1024x768.cfg > \
+       /boot/bootsplash-initrd
+
+Note: If you want to boot into a resolution other than 1024x768, simply replace
+1024x768 by your favorite resolution. Remember to do the same during the
+following sections. Also make sure that your theme supports the resolution that
+you choose.
+
+
+    Configuring bootsplash and the bootloader:
+    ==========================================
+Bootsplash can display a picture on the background of your terminals, but this
+is only automatically done for tty1. To add a background to tty2, tty3, tty4,
+tty5 and tty6, run the following command, where * is the tty number minus 1:
+     splash -n -s -u * \
+       /etc/bootsplash/themes/current/config/bootsplash-1024x768.cfg
+
+Note: To have all your tty's get a nice background on startup, you can put this
+command into a bootscript.
+
+Now configure your bootloader. This hint provides the instructions for lilo and
+grub. If you're using another bootloader, check out its documentation. The
+instructions will probably be very similar.
+- for lilo:
+     Edit /etc/lilo.conf
+     Make sure to change the kernel entry to match your new kernel. Under the
+     entry for your kernel, add:
+       vga=791
+       initrd=/boot/bootsplash-initrd
+       append="splash=silent"
+     Now apply your changes by running the following command:
+       lilo
+
+- for grub:
+     Edit /boot/grub/menu.lst
+     Make sure to change the kernel entry to match your new kernel. Add the
+     following to the kernel entry:
+       vga=791 splash=silent
+     Below the kernel entry, add:
+       initrd /boot/bootsplash-initrd
+
+Note: If you want to boot into a resolution other than 1024x768, change
+"vga=791" to the number that matches your setup. The table below shows the
+theoretically possible values. Note that some of these resolutions aren't
+implemented yet.
++---------+---------+---------+----------+-----------+
+|         | 640x480 | 600x800 | 1024x768 | 1280x1024 |
++---------+---------+---------+----------+-----------+
+|  8 bit  |   769   |   771   |    773   |    775    |
+|  15 bit |   784   |   787   |    790   |    793    |
+|  16 bit |   785   |   788   |    791   |    794    |
+|  24 bit |   786   |   789   |    792   |    795    |
++---------+---------+---------+----------+-----------+
+
+
+    Adapting the bootscripts:
+    =========================
+Bootsplash can not only display pictures, it also supports animations. You can
+adapt your bootscripts to make a progressbar move during startup, or to display
+an animation when an event occurs. For a tidy way to use this, add the
+following code to your /etc/rc.d/init.d/functions script:
+
+     progressbar()
+     {
+
+          if [ $# != 1 ]
+          then
+               echo "Usage: progressbar {progress}"
+               exit 1
+          fi
+		
+          echo "show $(( 65534 * $1 / 100 ))" > /proc/splash
+
+     }
+
+     animate()
+     {
+
+          if [ $# = 0 ]
+          then
+               echo "Usage: animate {hook}"
+               exit 1
+          fi
+
+          splash "$*"
+
+     }
+
+To use the progressbar, edit your bootscripts in /etc/rc.d/init.d.
+Whenever you see "evaluate_retval", add "progressbar XXX" (where XXX is a
+number between 0 and 100 that matches the boot progress). Take a look at
+/etc/rc.d/rcsysinit and /etc/rc.d/rc*.d to get to know the order in which the
+bootscripts are executed.
+
+To use animation, you need to know on which events your theme can play an
+animation. Take a look at /etc/bootsplash/themes/current/config/animations.cfg
+to determine this. The animations.cfg file will probably look like this:
+
+     fsck start:bootanim start bounce.mng
+     master:bootanim stop
+     shutdown: bootanim start bounce.mng
+
+Now add the following to the bootscript that runs fsck:
+     animate fsck start
+
+Place the following just before the bootscripts finish, as this will
+stop all animations:
+     animate master
+
+The following should be placed somewhere in the shutdown scripts:
+     animate shutdown
+
+
+Congratulations: that's it. You can now reboot and enjoy your new splashimage.
+
+
+ACKNOWLEDGMENTS:
+Thanks to Bryan Gale, the previous author of this hint.
+Thanks to Anton Strobl for providing bootsplash-3.2_makefile.patch.
+
+
+CHANGELOG:
+[2004-09-19]
+* Maintainership taken over.
+* Converted to new hint format.
+* Updated to include instructions for kernel 2.6 and grub.
+* Published the hint on my website.
+
+[2005-04-07]
+* Added a note about which versions of the packages to use.
+
+[2005-04-24]
+* Removed the note added on 2005-04-07.
+* Updated to bootsplash-3.2.
+* Added a patch that makes bootsplash compile more cleanly.
+* Some other fixes.
+
+[2005-07-31]
+* Updated primary URI

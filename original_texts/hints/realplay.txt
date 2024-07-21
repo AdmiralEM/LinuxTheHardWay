@@ -1,0 +1,91 @@
+AUTHOR: Ken Moffat <ken@kenmoffat.uklinux.net>
+DATE: 2005-08-03
+LICENSE: MIT License
+SYNOPSIS: playing realplayer audio on LFS-6.1.
+DESCRIPTION: On a clear day, with the wind in the right direction,
+you can do it.  On a bad day it can be akin to disputing the
+airspeed velocity of swallows.
+
+PREREQUISITES: i586, i686, or ppc.
+
+HINT:
+
+ Realplayer is binary, and therefore undesirable.  OTOH, the BBC provide
+realplayer audio feeds, and so do Bad Dog Blues.  Depending on what you
+want to listen to, it may be useful.  As always,  running binary
+software means you can't tell what it will really do.  
+
+ Find the realplay-10.0.5.756-linux-2.2-libc-gcc32-{i586,powerpc}.bin
+In theory, this is the current RealPlay-10.0.5-GOLD release, but to
+confirm what I'm downloading I find it easier to go to
+
+ https://helixcommunity.org/project/showfiles.php?group_id=154
+
+(you'll need to go down to the RealPlayer for Unix part of the page).
+Earlier versions had a number of vulnerabilities in the (open) helix
+part of the code.
+
+ You'll need libstdc++ from gcc-3.3 (follow BLFS for installing
+gcc-3.3.4 or use gcc-3.3.5 with suitable modifications. You'll also
+need pango, gtk2 and glib2, X11, expat, freetype and fontconfig.
+And mozilla or freetype as host for the plugins.  If you want to
+run this from x86_64, you'll need 32-bit versions of all of these,
+so plan your installation carefully to make sure no 32-bit programs
+overwrite 64-bit versions.
+
+ Make a note of where the plugins directory can be found (the BLFS
+method of installing in /usr/lib/firefox-1.0.x/ means the installer
+can't find it, but it finds /usr/lib/firefox/ ).  Take your life in
+your hands, hold onto everything that you hold sacred, and run the
+binary installer.  If running as root,  /opt/RealPlayer seems a good
+place to put it, and symlink the plugin from /usr.  Installing only
+for the current user is an alternative.  After the installer has
+completed, run 'realplay' as the user who installed it - you should
+get the control window, and from the help check for upgrades: this
+should fire up the browser, take you to a helix site, and tell you
+it is up to date. 
+
+ At this point you need to make sure other sound applications work -
+trying to debug when your amplifier is set to a different source is
+not very easy :)  For preference, avoid anything using arts (that
+includes kmix!).
+
+ As a normal user, try to play a realplayer station, e.g. one of the
+BBC radio stations.  The first time, it may work better if you click
+on the BBC's "play with stand-alone realplayer" link instead of using
+their funny pop-up player.  If it works, count yourself very lucky!
+More likely, it will appear to play (often there is an initial delay
+while the station is contacted) but be silent (with the volume
+slider at the left and ineffective, or the volume boxes in the BBC
+player greyed-out).
+
+ For non-BBC stations, you may have to tell the browser to open with
+/usr/bin/realplay (if the installer symlinked it from there). 
+
+ If it is silent, try killing artsd if that is running.  Sometimes,
+logging out and then logging in is the key.  Basically, the process
+seems random - sometimes it works first time, other times not.
+Investigation of a silent system shows udev has not created /dev/adsp
+and /dev/dsp, but that is just an indication of a problem elsewhere.
+To be fair, I mainly use kmix as my desktop volume control, so arts
+could be the main cause of my difficulties.
+
+ Strangely, once you have it working, it should be fine for the rest
+of that session.
+
+ I have no idea if it works on video feeds - last time I tried (with
+firefox-1.0.5 which had broken the plugin API) a BBC video clip
+crashed my X server (and left something running that continued to
+crash it - I have graphical logins).  Now, I can't find any real
+clips on the BBC website.  
+
+ACKNOWLEDGEMENTS:
+
+CHANGELOG:
+
+2005-08-03	First public version.
+
+
+Updated versions of this hint may be found at
+http://www.kenmoffat.uklinux.net/hints/
+

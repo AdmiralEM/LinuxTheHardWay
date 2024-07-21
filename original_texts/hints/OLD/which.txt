@@ -1,0 +1,33 @@
+TITLE:		The Which Hint
+LFS VERSION:	any
+AUTHOR:		Jesse Tie Ten Quee <highos@highos.com>
+
+SYNOPSIS:
+	Different ways to install which.
+
+HINT:
+
+
+There about three different ways to include the program which in your
+LFS system.
+
+alias which='type -p'
+
+This will work, allthough give you trouble perhaps with things that need
+which that don't spawn a shell so something more like this is in order;
+
+cat >/usr/bin/which
+#!/bin/sh
+type -p $1
+<CTRL-C>
+chmod +x /usr/bin/which
+
+This should work fine for all general purposes of which, allthough if
+you do want to have the genral which program with man pages, etc. then i
+suggest you use the GNU Which (if you do a search on [fm] there are
+others)
+
+packages: ftp://ftp.gnu.org/gnu/which/which-2.12.tar.gz
+
+Enjoy!
+

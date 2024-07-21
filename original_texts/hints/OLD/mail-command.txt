@@ -1,0 +1,58 @@
+TITLE:		Installation of the 'mail' command
+LFS VERSION:	2.3.6+
+AUTHOR:		Jason Gurtz <jason(at)tommyk(dot)com>
+
+SYNOPSIS:
+	The 'mail' command is convienient for use in shell scripts and cron jobs as well as emergent interactive use when dealing with a screwy terminal or, when you just feel like using a very simple client  ;)
+
+HINT:
+Background:
+	The mutt MUA also has a way of being invoked at the command line for non-interactive use, but, nontheless remains a full-screen application for interactive use.  To send a message with mutt from a script use:
+'mutt -x <recipient@addy> [-s "subject"] [-a  "/path/attached_file"] [< message.txt or "my message"]'
+
+It's a good idea to redirect stderr > /dev/null when using the above.  Sometimes a terminal is screwed up so that full screen apps are unusable.  The fcron lfs-hint, and sometimes 3rd party scripts and commercial applications depend on a /usr/bin/mail being available.
+
+----------------------------Start-Install----------------------------
+
+Source:  http://omnibus.ruf.uni-freiburg.de/~gritter/archive/nail/nail-9.27.tar.gz	(NOTE:  The original bsd mail program is no longer supported by anyone although by searching you can find updated versions at debian.org.  It is much easier to use the derivative, nail, which also adds support for MIME attachments.)
+
+1. For most people a simple ./configure --prefix=/usr && make && make install should work.  The ./configure script should find everything, but if you have some oddities in your setup then take note of the following ./configure options:
+
+	--with-mailspool=DIR    mail spool directory
+	--with-csh=FILE         csh binary
+	--with-more=FILE        more binary
+	--with-ex=FILE          ex binary
+	--with-vi=FILE          vi binary
+	--with-sendmail=FILE    sendmail binary
+
+2.  After a successfull installation make the symbolic links:
+
+	cd /usr/bin && ln -s /usr/bin/nail mail && ln -s /usr/bin/nail mailx
+
+3. That's it, you're done!  :)
+
+
+-----------------------------End-Install-----------------------------
+
+	The ...src/mailx-8.1.1.orig/debian/README.debian makes for intersting
+reading
+
+Hints for interactive use:
+
+	simply typing 'mail' will get you a list of one line headers of messages in
+your mailbox, if any, and the '&' prompt.  'p' prints the current message to
+screen  Just like the 'ed' line editor, you use the '+' and '-' commands to
+move forwards and backwards through messages, or type the number of the
+message to jump around.  While reading a message 'r' reply's 'd' deleats.
+you can deleat mulitiple messages with a space delimeted list 'd 1 2 4 6' or
+by specifing a range 'd 1-7'.  'u 1' undeleats message one.
+
+	composing is semi-non-interactive in that you invoke from the regular shell
+prompt.  Simply type 'mail recipient@domain' it will prompt for subject then
+you type message.  End by typeing a single dot '.' on a line and hit enter.
+It will prompt for a cc: addy and then it'll send.  to attach a file use '-a /path/to/file'
+	'mail -?'
+	and
+	'man nail' for the rest...!
+
+HTH, and Have fun!

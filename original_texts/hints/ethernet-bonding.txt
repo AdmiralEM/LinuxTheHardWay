@@ -1,0 +1,287 @@
+AUTHOR:         Jim Gifford <lfs-hints at jg555.com>
+		
+DATE: 		2003-03-25
+
+LICENSE: 	GNU Free Documentation License Version 1.2
+
+SYNOPSIS:	How to setup ethernet bonding with LFS.
+
+DESCRIPTION:	This hint will provide the necessary information for
+		ethernet interface teaming.
+
+PREREQUISITES:	Backup your /etc/syconfig/network-devices before you
+		start this hint.
+
+HINT:
+
+BACKGROUND:
+
+Ethernet bonding allows you combine ethernet interfaces. You can have
+then setup in a few different modes.
+
+	Round Robin - This mode provides load balancing and fault tolerance.
+
+	Active Backup - This mode provides fault tolerance.
+
+I have tried to make this hint as easy as possible, but if you have any
+suggestions or comment, please email me	at the email address above.
+
+SOURCE:
+
+Everything you need is included in the linux source code.
+
+INSTALLATION:
+
+Kernel Settings
+
+	In the 2.4 and 2.6 Kernel, you will need to add the following option
+	to build your kernel.
+
+	2.4
+		Network device support  --->
+			<M> Bonding driver support
+				    or
+			<*> Bonding driver support
+
+	2.6
+
+		Device Drivers  --->
+			Networking support  --->
+				<M>     Bonding driver support
+						or
+				<*>     Bonding driver support 
+
+	At this point you can recompile your kernel.
+
+-----
+Bootscript Changes		
+
+	After you are finished recompiling your kernel you will need to go to 
+	the Documentation/networking directory in your linux kernel source files.
+
+	You will find a program called ifenslave.c. You will need to compile the
+	program in the following manner.
+
+	gcc -O -I/usr/src/linux/include ifenslave.c -o ifenslave
+	cp ifenslave /sbin
+	chmod 755 /sbin/ifenslave
+
+
+	Now we will need to create a new ifup and ifdown that is compatible with
+	bonding.
+
+	cat > /etc/sysconfig/network-devices/ifup << "EOF"
+	#!/bin/sh
+
+	source /etc/sysconfig/rc 
+	source $rc_functions 
+	source $network_devices/ifconfig.$1 
+
+	if [ -f $network_devices/ifup-$1 ]
+		then
+			$network_devices/ifup-$1
+		else
+			if [ -z $IP ] && [ -z $SLAVE ]
+				then
+					echo "IP variable missing for ifconfig.$1, cannot continue"
+					exit 1
+			fi
+	
+			if [ -z $NETMASK ] && [ -z $SLAVE ]
+				then 
+					echo -n "NETMASK variable missing for ifconfig.$1, "
+					echo "using 255.255.255.0"
+					NETMASK=255.255.255.0
+			fi
+
+			if [ -z $BROADCAST ] && [ -z $SLAVE ]
+				then
+					echo -n "BROADCAST variable missing for ifconfig.$1, "
+					echo "using default address"
+			fi
+
+			if [ -z $SLAVE ]
+				then
+					echo "Bringing up the $1 interface..."
+					ifconfig $1 $IP netmask $NETMASK broadcast $BROADCAST
+					evaluate_retval
+				else
+					echo "Bringing up the $1 interface..."
+					ifenslave $MASTER $1
+					evaluate_retval
+			fi
+	fi
+	EOF
+
+	cat > /etc/sysconfig/network-devices/ifdown << "EOF"
+	#!/bin/sh
+
+	source /etc/sysconfig/rc 
+	source $rc_functions 
+	source $network_devices/ifconfig.$1 
+
+	if [ -f $network_devices/ifdown-$1 ]
+		then
+			$network_devices/ifdown-$1
+		else
+			if [ -z $SLAVE ]
+				then
+					echo "Bringing down the $1 interface..."
+					ifconfig $1 down
+					evaluate_retval
+			fi
+	fi
+	EOF
+
+	Now we need to recreate our ifconfig.(interface files). You do not need to
+	change your existing ones if the adapter is not going to be bonding partner.
+
+	For interfaces that are not bonding members
+
+	cat > /etc/sysconfig/network-devices/ifconfig.{interface_that_is_not_bonded} << "EOF"
+	ONBOOT=yes
+	IP={ip_address}
+	NETMASK={subnet_mask}
+	BROADCAST={broadcast_address}
+	EOF
+
+	The bonding interface is the interface name of now teamed ethernet interfaces.
+	For the bonding interface. This will either be bond0
+	cat > /etc/sysconfig/network-devices/ifconfig.bond0 << "EOF"
+	ONBOOT=yes
+	IP={ip_address}
+	NETMASK={subnet_mask}
+	BROADCAST={broadcast_address}
+	EOF
+	
+	For interfaces that are bonding members
+
+	cat > /etc/sysconfig/network-devices/ifconfig.{interface_that_is_bonded} << "EOF"
+	ONBOOT=yes
+	MASTER=bond0
+	SLAVE=yes
+	EOF
+	
+	******Explanation what we actually need to do.*******
+
+	Ok this is the mosting confusing part. So I am going to give examples of the above
+	files.
+
+	eth0 is the wan interface.
+	eth1 and eth2 are the lan interfaces for network 192.168.0.0
+
+	ifconfig.eth0 would look like this
+	
+	ONBOOT=yes
+	IP=64.30.195.78
+	NETMASK=255.255.255.0
+	BROADCAST=64.30.195.255
+	
+	ifconfig.bond0 would look like this
+
+	ONBOOT=yes
+	IP=192.168.0.1
+	NETMASK=255.255.255.0
+	BROADCAST=192.168.0.255
+
+	ifconfig.eth1 and ifconfig.eth2 would look like this
+
+	ONBOOT=yes
+	MASTER=bond0
+	SLAVE=yes
+	
+	Now when we boot, bond0 will be the team of eth1 and eth2.
+
+-----	
+Bootup Options
+
+	You will need to add the following to your modprobe.conf for 2.6 or your
+	modules.conf for 2.4
+
+	alias bond0 bonding
+	options bond0 miimon=100
+
+-----
+Did it work
+
+	Now after you have rebooted, you can check to see if your bonding is working ok.
+
+	You can run "ifconfig bond0", if you see data your probably fine. Make sure
+	the IP addresses information is correct.
+
+	Here is my output as a reference
+
+	bond0     Link encap:Ethernet  HWaddr 00:00:D1:1F:20:49
+        	  inet addr:192.168.0.1  Bcast:192.168.0.255  Mask:255.255.255.0
+	          UP BROADCAST RUNNING MASTER MULTICAST  MTU:1500  Metric:1
+        	  RX packets:36491 errors:0 dropped:0 overruns:0 frame:0
+	          TX packets:37519 errors:57 dropped:0 overruns:5 carrier:52
+	          collisions:1 txqueuelen:0
+	          RX bytes:3295515 (3.1 Mb)  TX bytes:13366345 (12.7 Mb)
+
+	You can also use cat /proc/net/bonding/bond0.
+
+	Here is my output as a reference
+
+	Ethernet Channel Bonding Driver: v2.6.0 (January 14, 2004)
+
+	Bonding Mode: load balancing (round-robin)
+	MII Status: up
+	MII Polling Interval (ms): 100
+	Up Delay (ms): 0
+	Down Delay (ms): 0
+
+	Slave Interface: eth1
+	MII Status: up
+	Link Failure Count: 0
+	Permanent HW addr: 00:00:d1:1f:20:49
+
+	Slave Interface: eth2
+	MII Status: up
+	Link Failure Count: 0
+	Permanent HW addr: 00:00:d1:1f:20:4a
+
+	Slave Interface: eth3
+	MII Status: up
+	Link Failure Count: 0
+	Permanent HW addr: 00:00:d1:1f:20:4b
+
+-----
+Want more the one ethernet Team
+
+	By default the bonding driver only allows one bonded group. If you want more teamed
+	interfaces you can use the following commands.
+
+	Change modprobe.conf or modules.conf
+	
+	change 	
+		options bond0 miimon=100
+	to
+		options bond0 miimon=100 max_bonds={#_of_teams}
+
+	example
+		options bond0 miimon=100 max_bonds=3
+
+		would create bond0 bond1 bond2
+
+----
+Changes to my existing Programs
+
+	The only change is that you don't specify an eth{x} interface, you would
+	specify the bond0 interface instead. 	
+
+-----
+For more Information
+
+	For more information view in the kernel source Documentation/network/bonding.txt.
+
+
+VERSION:        1.1
+
+CHANGELOG:     	1.1 Fixed Date
+		1.0 Initial Release
+
+ New Version of this document can be viewed from http://cvs.jg555.com/viewcvs.cgi/lfs-hints
+
+
+

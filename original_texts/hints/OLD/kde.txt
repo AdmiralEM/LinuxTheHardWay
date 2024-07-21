@@ -1,0 +1,659 @@
+TITLE:		KDE 2.2.2 optimized
+LFS-VERSION:	3.0
+AUTHOR:		Adam Ottley <aottley@shaw.ca>
+
+SYNOPSIS:
+	The point of this hint is to build not just a simple KDE2 install, but
+a highly optimized one.  KDE2 has a reputation for being somewhat of a
+slowpoke, but there are things you can do to alleviate that.  A part of this
+hint borrows from Bruce Dubbs's KDE hint, that being the part about building
+a shared lcms library.  This hint assumes you've followed the x11.txt hint and
+therefore have XFree86 and zlib installed.
+
+Changelog:
+	Oct 30/01: Add symlinks so libmng can find the lcms headers (/me smacks
+his head and thanks Michael Aichler)
+	Dec 01/01: KDE 2.2.2, new versions of support packages, and a better
+list of optional packages.
+	Dec 10/01: Spun off lame/vorbis/cdparanoia into a separate hint, added
+gdb and ispell to list of optional packages, added references to other hints
+with the optional packages, added a fix for no font AA in kicker.
+
+HINT:
+
+The packages you'll need:
+
+----Required----
+
+  jpegsrc.v6b.tar.gz (http://www.ijg.org/)
+  libpng-1.2.0.tar.gz (http://www.libpng.org/pub/png/libpng.html)
+  tiff-v3.5.7.tar.gz (http://www.libtiff.org/)
+  libmng-1.0.3.tar.gz (http://www.libmng.com/)
+  qt-x11-2.3.1.tar.gz (http://www.trolltech.com/)
+  pcre-3.4.tar.gz (http://www.pcre.org/)
+  audiofile-0.2.3.tar.gz (http://dreamscape.68k.org/~michael/audiofile/)
+  libxml2-2.4.8.tar.gz (http://xmlsoft.org/)
+  libxslt-1.0.6.tar.gz (http://xmlsoft.org/)
+  lcms-1.0.7.tar.gz (http://www.littlecms.com/)
+  kdelibs-2.2.2.tar.bz2 (http://www.kde.org/)
+  kdebase-2.2.2.tar.bz2
+
+
+Optional (but recommended) KDE packages:
+  kdeaddons-2.2.2.tar.bz2
+  kdeadmin-2.2.2.tar.bz2
+  kdeartwork-2.2.2.tar.bz2
+  kdegames-2.2.2.tar.bz2
+  kdegraphics-2.2.2.tar.bz2
+  kdemultimedia-2.2.2.tar.bz2
+  kdenetwork-2.2.2.tar.bz2
+  kdepim-2.2.2.tar.bz2
+  kdetoys-2.2.2.tar.bz2
+  kdeutils-2.2.2.tar.bz2
+  kdoc-2.2.2.tar.bz2
+  koffice-1.1.tar.bz2
+  <whichever KDE localization (i18n) package you need>
+
+KDE packages that developers may want:
+  kdebindings-2.2.2.tar.bz2
+  kdevelop-2.0.2.tar.bz2
+  kdesdk-2.2.2.tar.bz2
+
+
+----Optional packages----
+
+KDE relies on a number of outside packages for certain functionalities.  I've
+compiled a list of here of what packages are used for what purposes (if I've
+missed any, let me know).  The optional package lesstif is covered in this
+hint.  
+
+  ltmain.patch (http://homepage.usask.ca/~aco907/ltmain.patch)
+If you get absurdly long link lines when compiling KDE, you need this.
+
+  objprelink  (http://leon.bottou.com/objprelink/howto.html)
+Prelinks the C++ libs, resulting in faster startup.  You also should get the 
+patch for QT from the site, and if you're compiling KOffice, get the KDE patch 
+as well.
+
+-------
+
+The following optional packages must be installed before compiling kdelibs:
+
+  openssl  (http://www.openssl.org/)
+Needed for SSL support (i.e. https://).  See the openssh.txt hint.
+
+  cups  (http://www.cups.org/)
+So KDE can print using the Common Unix Printing System.  See the
+cups-printing.txt hint.
+
+  libfam  (http://oss.sgi.com/projects/fam/)
+Allows libkio to monitor file alteration.
+
+-------
+
+The following optional packages must be installed before compiling kdebase:
+
+  lesstif  (http://www.lesstif.org/)
+A Motif-like GUI toolkit used by Netscape browser plugins in Konqueror.
+
+  libao, libogg, libvorbis  (http://www.vorbis.com/)
+Needed for encoding audio CDs into Ogg Vorbis format using KDE's audiocd:/ 
+ioslave.  See the mp3ogg.txt hint.
+
+  lame  (http://www.mp3dev.org/mp3/)
+Needed for encoding audio CDs into MP3 using audiocd:/.  See the mp3ogg.txt
+hint.
+
+  cdparanoia  (http://www.xiph.org/paranoia/)
+Needed for CD ripping using audiocd:/.  See the mp3ogg.txt hint.
+
+  lm_sensors  (http://www.netroedge.com/~lm78/)
+Enables hardware temperature/voltage/fan RPM monitoring in ksysguard.  See the
+lm_sensors.txt hint.
+
+  libsmbclient  (http://www.samba.org/)
+Used for the SMB kioslave (Samba must be configured --with-libsmbclient).  See
+the samba.txt hint.
+
+  openldap  (http://www.openldap.org/)
+Used for the LDAP kioslave, enabling LDAP access to all KDE apps.
+
+  PAM  (http://www.kernel.org/pub/linux/libs/pam/pre/library/)
+Pluggable authentication modules, used in KDM & Kscreensaver
+(if anyone finds a PAM config that works with KDE + PAM + LFS, let me know
+because KDE's included config doesn't work).
+
+  MesaGL  (http://www.mesa3d.org/)
+OpenGL-compatible library, required for building the OpenGL screensavers.  See
+the tuxracer.txt hint.
+
+-------
+  
+The following optional packages must be installed before compiling
+kdegraphics:
+
+  sane  (http://www.mostang.com/sane/)
+Needed for accessing scanners in KDE apps.
+
+  gPhoto2  (http://www.gphoto.org/)
+For accessing digital cameras in KDE apps.
+
+-------
+
+The following optional packages must be installed before compiling 
+kdemultimedia:
+
+  cdparanoia  (http://www.xiph.org/paranoia/)
+Adds CD playback via Digital Audio Extraction to the included mpeglib.  See the
+mp3ogg.txt hint.
+
+  libao, libogg, libvorbis  (http://www.vorbis.com/)
+Needed for ogg vorbis playback in noatun.  See the mp3ogg.txt hint.
+
+-------
+
+The following optional packages must be installed before compiling kdeadmin:
+
+  rpm  (http://www.rpm.org)
+For RPM support in kpackage.  See the rpm.txt hint.
+
+-------
+
+The following optional packages must be installed before compiling kdepim:
+
+  pilot-link  (http://www.pilot-link.org)
+For connecting to Palm PDAs.
+
+-------
+
+The following optional packages must be installed before compiling kdeaddons:
+
+  SDL  (http://www.libsdl.org/)
+A multimedia API used by noatun visualization plugins.  See the tuxracer.txt
+hint.
+
+-------
+
+These four packages are useful, but do not have to be installed before 
+compiling kde:
+
+  gdb  (http://www.gnu.org/)
+The GNU debugger, allows backtraces to be generated following a crash.
+
+  teTeX  (http://www.tug.org/teTeX/)
+Enables viewing DVI files in kdvi.
+
+  ghostscript  (http://www.cs.wisc.edu/~ghost/doc/gnu/index.htm)
+Enables viewing Postscript and PDF files in kghostview.  See the gnome.txt
+hint.
+
+  ispell  (http://fmg-www.cs.ucla.edu/fmg-members/geoff/ispell.html)
+This multi-language spell checker is used in many KDE apps.
+
+
+----------------------------
+INSTALL INSTRUCTIONS
+----------------------------
+
+
+Optimization
+
+Choose your CFLAGS and CXXFLAGS wisely.  -march=i686 has been known to cause 
+problems in some cases, and the truth is, -march=i686 rarely gives a 
+noticeable speedup over using just -mcpu=i686.  I built everything in this 
+hint using "-O3 -march=i386 -mcpu=i686" on a LFS 3.0 system, and have not had 
+problems.  That said, set your CFLAGS and CXXFLAGS variables to your choice of 
+optimization.
+
+  export CFLAGS='-O3 -march=i386 -mcpu=i686'
+  export CXXFLAGS='-O3 -march=i386 -mcpu=i686'
+
+
+-----------------------------
+
+
+libjpeg v6b  (http://www.ijg.org/)
+
+This library handles JPEG images.
+
+Install jpeglib with these commands:
+
+./configure --prefix=/usr --enable-shared --enable-static &&
+make &&
+make install
+
+
+-----------------------------
+
+
+libpng 1.2.0  (http://www.libpng.org/pub/png/libpng.html)
+
+WARNING: If you already have libpng-1.0.x installed and have apps linked to it,
+it is recommended that you NOT install libpng-1.2.0.  Conflicts may occur if
+you do.
+
+libpng is used for portable network graphics images, which are losslessly 
+compressed and used extensively in KDE.
+
+Copy the appropriate makefile from the scripts directory to the root libpng 
+directory.  makefile.linux is the obvious choice, but you can use 
+makefile.gcmmx to get MMX optimizations if you like.
+
+  cp scripts/makefile.linux Makefile
+
+Now edit the Makefile and change
+
+	prefix=/usr/local
+
+to your choice of prefix and
+
+	#ZLIBLIB=/usr/local/lib
+	#ZLIBINC=/usr/local/include
+	ZLIBLIB=../zlib
+	ZLIBINC=../zlib
+
+to
+
+	ZLIBLIB=/usr/lib
+	ZLIBINC=/usr/include
+	#ZLIBLIB=../zlib
+	#ZLIBINC=../zlib
+
+and add any optimization flags you want to the CFLAGS declaration.  After 
+that, it's just
+
+  make &&
+  make install
+
+to install libpng.
+
+
+--------------------------
+
+
+lcms 1.07  (http://www.littlecms.com/)
+
+LCMS is a colour management system.
+
+Edit the install.gcc file to add the optimizations you want to the gcc line.  
+i.e: gcc -O3 -march=i386 -mcpu=i686 -c *.c
+You will get an error at the end of the build, but that's just a test of the 
+library failing because of a missing parameter. The test will not fail if you 
+add -lm after /usr/lib/liblcms.a in the second-last line of install.gcc.
+
+To build and install the static library, run
+
+  ./install.gcc
+
+I had to build a shared library in order for QT to successfully build against
+libmng, so do that using these commands:
+
+  cd src &&
+  gcc -o liblcms.so.1.0.7 -shared *.o &&
+  cp liblcms.so.1.0.7 /usr/lib &&
+  cd /usr/lib &&
+  ln -s liblcms.so.1.0.7 liblcms.so.1 &&
+  ln -s liblcms.so.1 liblcms.so
+
+Some programs (like libmng) look in different places for the lcms headers, so
+we'll set up symlinks with these commands:
+
+  mkdir /usr/include/lcms &&
+  cd /usr/include/lcms &&
+  ln -s ../lcms.h lcms.h &&
+  ln -s ../icc34.h icc34.h
+
+
+----------------------------
+
+
+libmng 1.0.3  (http://www.libmng.com/)
+
+MNG is basically animated PNG.  With the patent controversy over GIF, there's
+been a call to replace GIF with PNG, but until MNG there was nothing to
+replace animated GIF.
+
+Install libmng with these commands:
+
+  ./configure --prefix=/usr --with-zlib --with-jpeg --with-lcms &&
+  make &&
+  make install
+
+
+----------------------------
+
+
+libtiff 3.5.7  (http://www.libtiff.org/)
+
+libtiff handles TIFF format images.
+
+If you don't want it installed in /usr/local, edit the config.site file and
+uncomment the DIR_BIN, DIR_INC, DIR_LIB, and DIR_MAN declarations, and change
+them to your preferred install location.
+
+Configure tiff:
+
+  ./configure --noninteractive
+
+In order to avoid inserting debug code, we unset COPTS in the make command,
+but first we have to fix the Makefile:
+
+  cp Makefile Makefile.old &&
+  sed 's/-${MAKEFLAGS}/${MAKEFLAGS}/' Makefile.old > Makefile &&
+  make COPTS="" OPTIMIZER="$CFLAGS" &&
+  make install
+
+
+----------------------------
+
+
+pcre 3.4  (http://www.pcre.org/)
+
+PCRE stands for perl-compatible regular expressions, and is used by KDE for 
+regular expressions in Javascript.
+
+Install pcre with these commands:
+
+  ./configure --prefix=/usr &&
+  make &&
+  make install
+
+
+-----------------------------
+
+
+libxml2 2.4.8  (http://xmlsoft.org/)
+
+Formerly a part of the kdesupport package, libxml2 is used for KDE's 
+documentation and help system.  There are newer versions of libxml
+available, but there are many reports of newer versions not working
+with KDE 2.2.2.
+
+
+Install libxml2 with these commands:
+
+  ./configure --prefix=/usr &&
+  make &&
+  make install
+
+
+-----------------------------
+
+
+libxslt 1.0.6  (http://xmlsoft.org/)
+
+libxslt is a companion package to libxml2, and is used in KDE's help
+system.  There are newer versions of libxslt available, but there are 
+many reports of newer versions not working with KDE 2.2.2.
+
+
+Install libxslt with these commands:
+
+  ./configure --prefix=/usr &&
+  make &&
+  make install
+
+
+-----------------------------
+
+
+audiofile 0.2.3  (http://dreamscape.68k.org/~michael/audiofile/)
+
+Also a former part of kdesupport, you need audiofile for sound in KDE.
+
+Install audiofile with these commands:
+
+  ./configure --prefix=/usr &&
+  make &&
+  make install
+
+
+------------------------------
+
+
+objprelink  (http://leon.bottou.com/objprelink/howto.html)
+
+This part is optional, but highly recommended.  You'll need the latest 
+version of binutils (2.11.2 at this point), and if any of glibc, gcc or 
+binutils were compiled with optimizations there is a chance that everything 
+you prelink will segfault when run.  Prelinking failed for me on my LFS 2.4.3 
+system where those were built with optimizations; on a LFS 3.0 system where 
+glibc, gcc and binutils were compiled with no optimizations and everything 
+else was built -O3 -march=i386 -mcpu=i686, prelinking worked fine.  Proceed 
+with caution.
+
+That said, build and install objprelink with these commands:
+
+  gcc -o objprelink -O2 objprelink.c -lbfd -liberty &&
+  cp objprelink /usr/bin
+
+We can dynamically link with libbfd because the reason for statically linking 
+given on the objprelink page doesn't apply to LFS.
+
+
+------------------------------
+
+
+qt 2.3.1  (http://www.trolltech.com/)
+
+The C++ GUI toolkit on which KDE is built may take an hour or two to compile.  
+We'll save time by not compiling some of the things that aren't needed.  qt 
+version 2.3.2 is NOT recommended, as KDE will likely not build against it due
+to bugs.
+
+Personally, I unpack qt into /usr/lib/qt-2.3.1 and make a symlink /usr/lib/qt2 
+that points to qt-2.3.1.  You may have to add /usr/lib/qt2/lib to 
+/etc/ld.so.conf, which I do just in case.
+
+If you're prelinking, then apply the patch from the root qt directory:
+
+  patch -p0 -i qt-configs.patch
+
+This will patch the file configs/linux-g++-shared.  You can also edit the 
+linux-g++-shared file and add your optimizations to the SYSCONF_CXXFLAGS and 
+SYSCONF_CFLAGS entries.  
+
+
+Now configure qt:
+
+  export QTDIR=$PWD
+  ./configure -shared -sm -thread -gif -system-libpng -system-libmng \
+-system-zlib -system-jpeg -no-opengl -xft -no-g++-exceptions
+
+
+Configure parameter explanations:
+
+  -gif -system-libpng -system-libmng -system-zlib -system-jpeg:  
+By default, GIF support is disabled and QT uses its own included zlib, libmng, 
+libpng and jpeglib distributions.  We want it to use the libs we've already 
+built, and we want GIF support.
+
+  -no-opengl:
+OpenGL support isn't needed.
+
+  -xft:
+Build with font antialiasing support.
+
+  -no-g++-exceptions:
+Building QT without exceptions cuts a few megabytes off of the library size 
+and speeds it up noticeably.
+
+
+Now compile QT by running:
+
+  make symlinks sub-src sub-tools
+
+And let it run for a while.  Telling it to make just those targets will keep 
+it from compiling the tutorial and examples which aren't needed.  If you 
+applied the objprelink patch and the build process unexpectedly stops with a 
+segmentation fault when it runs "moc", that's an indication that prelinking 
+will not work on your system.  I wish I knew what to do about it, but there 
+is no known fix right now.
+
+Once the make process is finished, that's it for building QT.
+
+Since font anti-aliasing support has been compiled in, you'll need to add the 
+path to your TrueType fonts to /etc/X11/XftConfig.  Just insert the line:
+
+  dir "/usr/X11R6/lib/X11/fonts/TrueType"
+
+(or wherever you put your TrueType fonts), save and you're golden.  You may 
+also want to prevent it from antialiasing certain font sizes.  For example, 
+you can prevent it from antialiasing sizes between 8pt and 14pt by adding 
+these lines to /etc/X11/XftConfig:
+
+  match
+        any size > 8
+        any size < 14
+  edit
+        antialias = false;
+
+
+----------------------------
+
+
+lesstif  (optional) (http://www.lesstif.org/)
+
+lesstif is an open version of the Motif toolkit, and is used by KDE for 
+Netscape plugin support in Konqueror.
+
+Install lesstif with these commands:
+
+  ./configure --prefix=/usr --disable-debug &&
+  make &&
+  make install
+
+
+----------------------------
+
+
+KDE 2.2.2 preparation  (http://www.kde.org/)
+
+
+KDE 2.2.x has been known to be problematic when compiled with -march=i686. 
+Most notably, aRts tends to fail completely.  If you experience flakiness,
+tone down your CFLAGS and CXXFLAGS and try again.
+
+
+KDE2 usually goes into its own directory, most of the time /usr/local/kde2 or 
+/opt/kde2.  I use the former.  Whatever you use, be sure to add the bin 
+directory to your path and the lib directory to /etc/ld.so.conf.
+
+
+Note for Nvidia driver users:  If you installed MesaGL into /usr for the 3D 
+screensavers and subsequently installed the Nvidia drivers, the kdebase build
+process will not find the libGL.la file and will halt.  To fix this, install
+MesaGL, then KDE2, then the Nvidia drivers.
+
+
+The included ltmain.sh file in each KDE package has a bug that causes very
+long link commands, resulting in libtool taking much longer than normal to
+execute.  However, this bug appears to only show up if you have multiple
+versions of gcc installed simultaneously.  It didn't show up when building
+KDE 2.2.2 with only gcc 2.95.3 installed, but when building KDE it with both
+2.95.3 and 3.0.2 installed (with 2.95.3 being the default), the bug did show
+up.  You'll know you're affected if you see something like this when doing a
+make:
+
+-lgcc_s -lgcc -lc -lgcc_s -lgcc -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc -lm -lc
+-lm -lm -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc -lm -lgcc_s -lgcc -lc -lgcc_s
+-lgcc -lm -lc -lpthread -lpthread -lm -lm -lm -lgcc_s -lgcc -lc -lgcc_s
+-lgcc -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc -lm -lc -lm -lm -lm -lgcc_s -lgcc
+-lc -lgcc_s -lgcc -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc -lm -lc -lpthread -lm
+-lm -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc
+-lm -lc -lm -lm -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc -lm -lgcc_s -lgcc -lc
+-lgcc_s -lgcc -lm -lc -lpthread
+
+If this happens, apply the ltmain.patch
+(http://homepage.usask.ca/~aco907/ltmain.patch) file to each module using this
+command in each module's directory:
+
+  patch -p0 -i ../ltmain.patch
+
+This patch will not get the compile time down to the levels it would be with
+only one gcc installed, but things will improve a lot.
+
+
+The kdemultimedia configure script fails to enable the cdparanoia libraries
+because of a missing link parameter.  To fix this, run the following commands
+in the kdemultimedia directory before configuring:
+
+  cp configure configure.old
+  sed 's/-lcdda_interface/-lcdda_interface -lm/' configure.old > configure
+
+
+----------------------------
+
+
+Installing KDE 2.2.2 (finally!)
+
+Installing the KDE packages is straightforward.  First install kdelibs, then 
+kdebase.  The rest can be done in any order.  Compile each package using
+these commands:
+
+  ./configure --prefix=/usr/local/kde2 --disable-debug --enable-objprelink \
+--enable-final &&
+  make &&
+  make install
+
+Remove --enable-objprelink if you're not prelinking.  --enable-final is used 
+because it tends to cut compile times by about 30-40%.  All optional packages
+you've installed will be automatically detected by the configure script.
+
+
+If you want KOffice prelinked, you'll need the kde-admin-acinclude.patch from 
+the objprelink page.  Also, you'll need to use autoconf 2.13 and automake 
+1.4-p5 - newer versions of autoconf and automake will NOT work.
+
+If you're not prelinking KOffice, you can ignore the first two commands in the
+instructions below.
+
+Install KOffice with the following commands:
+
+  patch -p0 -i ../kde-admin-acinclude.patch &&
+  make -f Makefile.cvs &&
+  ./configure --prefix=/usr/local/kde2 --disable-debug --enable-objprelink \
+--enable-final &&
+  make &&
+  make install
+
+
+Now add "exec startkde" to your ~/.xinitrc.
+
+  echo "exec startkde" >> ~/.xinitrc
+
+And fire it up by running "startx".  Configure it to your heart's content, but
+check for another oddity:  if even after enabling font antialiasing in the
+control center, programs launched from kicker (the panel where the K Menu/
+taskbar/system tray reside) still don't have their fonts antialiased, exit KDE
+and open up the startkde script (found in KDEDIR/bin) in a text editor and
+go to the line near the bottom:
+
+  LD_BIND_NOW=true kdeinit +kcminit +knotify
+
+remove LD_BIND_NOW=true so that it looks like
+
+  kdeinit +kcminit +knotify
+
+and restart KDE.  That should fix the problem without slowing things down.
+
+
+For reference, here are the times it took for me to compile the KDE2 packages
+on a 400MHz Pentium 2 with 256MB of RAM, with only gcc 2.95.3 installed:
+
+kdeaddons:      6 min
+kdeadmin:       7 min
+kdeartwork:     2 min
+kdebase:        82 min
+kdegames:       21 min
+kdegraphics:    11 min
+kdelibs:        55 min
+kdemultimedia:  31 min
+kdenetwork:     27 min
+kdepim:         9 min
+kdeutils:       18 min
+kdetoys:        4 min
+kdoc:           1 min
+koffice:        55 min
+
+

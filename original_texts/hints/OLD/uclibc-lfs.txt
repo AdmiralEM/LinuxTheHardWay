@@ -1,0 +1,619 @@
+TITLE:		uclibc-lfs
+LFS VERSION:	N/A
+AUTHOR:		Michaël Tousignant <evanidus@videotron.ca>
+
+SYNOPSIS:
+	How to build a uClibc based, base LFS system.
+
+HINT:
+
+HINT VERSION:	0.3r4 (20020816)
+
+CHANGELOG:
+	0.3r3 -> 0.3r4
+		- Updated the faulty reiserfsprogs install instructions
+	0.3r2 -> 0.3r3
+		- Added static gcc 2.95.3-2 installation commands.
+		- Added gcc 2.95.3 tarball download location.
+	0.3r1 -> 0.3r2
+		- Added a changelog
+		- Added notes about GCC 3.x and static perl 5.6.1
+		- Added gcc 2.95.3-2 note about LFS chapter 5.
+	0.3   -> 0.3r1
+		- Fixed url for patches
+	0.2r1 -> 0.3
+		- Added patch to compile GCC's C++ compiler and libraries
+		- Removed man2cat instructions
+		- Removed static groff compilation, added it shared.
+		- Removed file and ncurses' tic workarounds, added patches.
+		- Removed nasm
+		- Updated packages versions
+		- Did some cleanups.
+	0.2   -> 0.2r1
+		- Small modifications to make the hint more LFS hints 
+		  standards compilant.
+	0.2
+		- Initial public release.
+
+Before trying to build a uClibc system, you should ask yourself if you
+really want to because it means:
+    - No modutils (Unless if you don't mind using a glibc static modutils)
+    - No support (for now) for installing non-LFS packages (good luck)
+    - This hint was made/tested using gcc 2.95.3-2 on x86 only. If you are 
+      using gcc 3.x.x or different arch, you 'might' encounter new problems. 
+      (good luck)
+Be sure to check the uClibc website (http://www.uclibc.org/) and docs to see 
+what it support and what it don't.
+
+=======================
+0. Table of Content
+=======================
+
+1. Prerequisites
+2. System preparations
+3. Building the system
+4. F.A.Q.
+
+=======================
+1. Prerequisites
+=======================
+
+Prerequisites (Before starting LFS chapter6):
+    - A complete LFS chapter 5
+      (keep chap 5 & 6 separated (/static style) is very recommended moreover 
+       since this hint will assume you are using it.)
+    - gcc 2.95.3 tarball         (ftp://ftp.gnu.org/gnu/gcc/)
+    - perl-5.6.1 tarball         (http://www.perl.org/)
+    - (optional) modutils tarball(ftp://ftp.kernel.org/pub/linux/utils/kernel/)
+
+Prerequisites (To complete LFS chapter6)
+    - All LFS chapter6 packages tarballs and patches except:
+        1. psmisc 20.2+
+        2. modutils
+        3. gcc 3.x+
+        4. glibc
+
+    - uClibc-0.9.14 tarball             (http://www.uclibc.org/)
+    - psmisc-20.1 tarball               (http://psmisc.sourceforge.net/)
+
+    - Various patches (their functions are explained later) that can be found
+      under: ftp://ftp.linuxfromscratch.org/lfs-hints/patches/ from the file 
+      named "uclibc-lfs-patches-0.3.tar.bz2"
+
+    - The LFS book, 3.3+ recommended.   (http://www.linuxfromscratch.org/)
+
+=======================
+2. System preparations
+=======================
+
+Before starting chapter6 in the book, we'll need to add some extras to the 
+chapter5 static utilities:
+
+Note: Every commands are expected to be run inside the freshly extracted 
+      clean source of the package.
+
+- static gcc 2.95.3-2
+    If the LFS Chapter 5 static utilities you are going to use have gcc 3.x 
+    rather than gcc 2.95.3. Here is the instructions to replace it (if you 
+    already have gcc 2.95.3-2 ready, you may skip this step):
+
+    patch -Np1 -i ../uclibc-lfs-patches/gcc-2.95.3-2.patch &&
+    mkdir ../gcc-build &&
+    cd ../gcc-build &&
+    ../gcc-2.95.3/configure --prefix=/static --enable-languages=c \
+            --disable-nls --disable-shared --enable-threads=posix &&
+    make BOOT_LDFLAGS=-static bootstrap &&
+    make prefix=$LFS/static install &&
+    ln -s gcc $LFS/static/bin/cc
+
+- static perl (tested with 5.6.1)
+    GCC 3.x notice: If the host compiler you are using is gcc 3.x, you might 
+    encounter problems compiling a static perl 5.6.1. If this is the case, 
+    use perl 5.8.0 instead.
+
+    Perl is needed to execute a script during uClibc compilation
+    It can be installed by running the following commands:
+
+    ./Configure -Dprefix=/static -Dinstallprefix=$LFS/static -Dso=none \
+                -Dldflags=-static -Uinstallusrbinperl -Uusedl -Dman1dir=none \
+                -d -e &&
+    make &&
+    make install
+
+    Note: Don't bother configuring perl properly (i.e. the way you want it)
+          because it'll be normally reinstalled in chapter6, defaults will do.
+
+- optional static modutils (tested with 2.4.16)
+    For still unknown reasons, utils from modutils tends to segfault when 
+    doing certain operations when linked against uClibc making them unusable.
+
+    If, for you, modules are important (you can always build a modules-free 
+    kernel), you'll need to build a static glibc modutils by running the 
+    following commands:
+
+    ./configure --prefix=$LFS/usr --exec-prefix=$LFS \
+                --mandir=$LFS/usr/share/man &&
+    make LDFLAGS=-static &&
+    make install
+
+=======================
+3. Building the system
+=======================
+
+    Now, let's start the LFS chapter6. Do everything the LFS book tell you to 
+    do until you reach the first package (usualy linux headers or glibc)
+
+    First, extract the uclibc-lfs-patches package inside the same directories
+    as other packages.
+
+    If not already done, (some versions of the book do it while building glibc,
+    some do it before and some run MAKEDEV itself before which do it), also do:
+
+    mknod -m 0666 /dev/null c 1 3
+
+    From here on, every commands are expected to be run inside the freshly 
+    extracted clean source of the package we are working on.    
+
+    Note: You can install things in the same order of the book or whichever 
+          order you prefer except for the followings 'should' be installed in 
+          this order:
+
+        1. linux source and headers
+        2. uClibc 0.9.14
+        3. GCC 2.95.3-2
+
+           Some packages uses utilities like 'chown' and 'id' which might need
+           to resolve user and group names. Since our chapter 5 is glibc based,
+           they won't be able to resolve them even after uClibc is installed so
+           we must recompile/install them first.
+
+        3. fileutils
+        4. sh-utils
+
+        5. MAKEDEV (Creating Devices)
+          -> This might be already done based on book version, if so, skip.
+
+        6. ncurses
+        7. bash
+
+        For other packages, you can use the order you want but the one stated 
+        in this hint is prefered since it is with what it was tested.
+
+        Instructions to install packages are found further down.
+
+- Linux source and headers (tested 2.4.19)
+    Some versions of the book do this in chapter 5 and some others before 
+    glibc in chapter 6. uClibc will need the kernel source to be around.
+
+    If you didn't install the headers in chapter 5, run the commands in 
+    the book (near start of chapter 6) and keep the source.
+
+    If you installed the headers in chapter 5 and did not keep the source,
+    run the following commands (ignore symlinks errors):
+        ln -s ../static/bin/pwd /bin/pwd
+        ln -s ../static/bin/bash /bin/sh
+        make mrproper &&
+        make include/linux/version.h &&
+        make symlinks
+
+- uClibc 0.9.14
+    Instead of glibc (which we won't install at all), we'll now install 
+    uClibc-0.9.14.
+
+    We'll first need some symbolic links. Some of these might already exist 
+    so you can ignore errors (Note: if any binaries were installed in 
+    /static/usr/bin rather than /static/bin, you'll need to update the links):
+
+    ln -s ../static/bin/bash /bin/sh
+    ln -s ../static/bin/pwd /bin
+    ln -s ../../static/bin/perl /usr/bin
+    ln -s ../static/bin/true /bin
+
+    Note: These were not created before because some version of the book 
+          create and delete the pwd symlink installing linux headers. So we 
+          ensure we got everything here.
+
+    You can now compile/install uClibc by running the following commands 
+    for which explanations are found further down:
+
+    Note: It is strongly recommended to use the default optimizations
+          suggested by uClibc. This includes -march=
+
+    In the following commands, replace '/usr/src/linux-2.4.19' to the path 
+    where the kernel source is (if needed).
+
+    patch -Np1 < ../uclibc-lfs-patches/uClibc-0.9.14.patch &&
+    ln -s extra/Configs/Config.i386 Config &&
+    make DOSHAREDMAIN=true DO_C99_MATH=true HAS_SHADOW=true DOLFS=true \ 
+         INCLUDE_RPC=true KERNEL_SOURCE=/usr/src/linux-2.4.19 all install
+
+    /dev/pty* notes: uClibc can be configured to use /dev/pty* devices 
+         rather than devpts/devfs's /dev/pts directory; but to use these, 
+         the 'pt_chown' program is needed and is not provided by uClibc.
+         If you really need /dev/pty* support, you'll need to grab the 
+         pt_chown source from glibc, compile it with uClibc and put it in
+         /sbin as set-uid root. - I strongly advise everyone to use devpts 
+         or devfs instead (the LFS book explains how to setup devpts)
+
+    Commands explanation:
+        patch -Np1 < ../uclibc-lfs-patches/uclibc-0.9.14.patch
+          -> This adds "DOSHAREDMAIN=true" support to Makefiles which allow 
+             us to install uClibc while no o1ther libc is present and as 
+             "main" libc. (e.g. use /lib, /usr/{lib,include} etc.. rather than
+             all under /usr/<arch>-linux-uclibc/). It also removes the need 
+             of a gcc/ld wrapper and add a small flag in uClibc_stdio.h which 
+             will help with GCC's C++ compilation.
+
+        ln -s extra/Configs/Config.i386 Config
+          -> Simply gets the default configs for Config.<arch>. If you are 
+             using a non-x86 system you'll need to adjust this. (Sadly, this 
+             hint was made/tested by using x86 only, but good luck.)
+               
+        make DOSHAREDMAIN=true DO_C99_MATH=true HAS_SHADOW=true DOLFS=true 
+             INCLUDE_RPC=true all install \
+          -> Will build/install uClibc, the different variables set will do:
+               - DOSHAREDMAIN=true
+                 -> Activate our patch (install uClibc as main libc)
+               - DO_C99_MATH=true
+                 -> Provide a full set of C99 math features for the math 
+                    library (libm) Many recent packages using libm needs this.
+               - HAS_SHADOW=true
+                 -> Add shadow password support (which a normal LFS use)
+               - DOLFS=true
+                 -> Add Large File Support (2GB+), although you can disable 
+                    the use of this on most packages if you don't need it. 
+                    Some (such as recent e2fsprogs) just won't compile without
+                    it. So best to enable it.
+                    Note: the kernel will also need to support large files
+               - INCLUDE_RPC=true
+                 -> RPC is not used by much things besides NFS (network file 
+                    system). Yet, some packages like shadow will try to use 
+                    a function provided by this. So we enable it by default.
+               - KERNEL_SOURCE=/usr/src/linux-2.4.19
+                 -> Simply tells uClibc where the kernel source is.
+
+        Note: If you need a full set of RPC functions, you can also supply 
+              "INCLUDE_FULL_RPC=true". Most people shouldn't need this, NFS 
+              mounts works fine without it.
+
+----------------------
+
+    To install the following packages, just follow the LFS book instructions 
+    in chapter6 and apply the modifications/additions to these commands 
+    mentioned below (if any) while doing so:
+
+    Note: Exact commands won't be given to increase compatibility with the LFS 
+          book version you are using and make this hint be easier to keep up 
+          to date.
+
+- man-pages (tested with 1.52)
+
+- GCC 2.95.3-2
+    Since gcc 2.95.3 is being made obsolete in recent LFS books (replaced
+    by gcc 3.1+), we'll give the exact commands.
+
+    GCC's libstdc++ library use libio which is normaly avaible within glibc
+    and fail to properly detect missing functions and create proper headers.
+
+    The following commands will solve the problem and build/install GCC's C
+    and C++ compiler (Note: the fix is still experimental, might not work
+    for everyone.)
+
+    patch -Np1 < ../uclibc-lfs-patches/gcc-2.95.3-2.patch &&
+    patch -Np1 < ../uclibc-lfs-patches/gcc-2.95.3-uClibc.patch &&
+    cp ../uclibc-lfs-patches/_G_config.h /usr/include &&
+    mkdir ../gcc-build &&
+    cd ../gcc-build &&
+    ../gcc-2.95.3/configure --prefix=/usr --enable-shared --disable-nls \
+          --enable-languages=c,c++ --enable-threads=posix &&
+    make bootstrap &&
+    make install &&
+    ln -sf ../usr/bin/cpp /lib &&
+    ln -sf ../bin/cpp /usr/lib &&
+    ln -sf gcc /usr/bin/cc &&
+    rmdir /usr/*-gnu/include &&
+    rmdir /usr/*-gnu
+
+- fileutils (tested with 4.1)
+    append to ./configure flags: --disable-nls
+    
+- sh-utils (tested with 2.0)
+    run before starting: rm -f /bin/{true,pwd}
+    append to ./configure flags: --disable-nls
+    
+- MAKEDEV (tested with 1.5)
+
+- ncurses (tested with 5.2)
+    run before starting: 
+        patch -Np1 < ../uclibc-lfs-patches/ncurses-5.2-uClibc.patch
+
+      -> Solve a obscure problem (probably caused by faultly is* (ctype)
+         in uClibc)
+    append before ./configure: CXX="g++ -D_ISOC99_SOURCE"
+      -> This will declare vsscanf in stdio.h which is normaly not with uClibc 
+         headers.
+
+- bash (tested with 2.05a)
+    run before starting: ln -s ../static/bin/cat /bin
+       -> Bash will use /bin/cat for some operations and since we still didn't 
+          install textutils, this symbolic link will be needed.
+          
+- zlib (tested with 1.1.4)
+    Only recents LFS book (CVS only at this momment) gives zlib installation 
+    commands. Because of this, we also include them here:
+
+    ./configure --prefix=/usr &&
+    make libz.a &&
+    cp libz.a /usr/lib &&
+    chmod -x /usr/lib/libz.a &&
+    ./configure --shared --prefix=/usr --libdir=/lib &&
+    make clean all &&
+    make install &&
+    rm -f /lib/libz.so &&
+    ln -sf ../../lib/libz.so.1 /usr/lib/libz.so &&
+    cp zlib.3 /usr/share/man/man3
+
+    Commands explanations:
+        zlib build only either a the static or shared copy of itself. Since it
+        is often preferred to get both, we do so by building it twice.
+
+        [...] --libdir=/lib
+          -> Since a few programs that use zlib will be installed in /sbin
+             we install libz in /lib rather than /usr/lib so that it'll
+             always be available for them even if /usr is not mounted.
+
+        make clean all
+          -> code build from the first build could be re-used but cleaning
+             let zlib be build with preferred compiler flags for shared
+             libraries (-fPIC) rather than those chosen for the static one.
+
+        rm -f /lib/libz.so &&
+        ln -sf ../../lib/libz.so.1 /usr/bin/libz.so
+          -> libz.so is not needed in /lib, while it is in /usr/lib, this is
+             only used as information for the linker to help it find the
+             library. (No programs will directly be linked against libz.so,
+             they will use /lib/libz.so.1)
+
+- ViM (tested with 6.1)
+    Note: --disable-nls shouldn't be needed (auto-detected)
+
+- findutils (tested with 4.1)
+
+- gawk (tested with 3.1.1)
+    append to ./configure flags: --disable-nls    
+
+- bison (tested with 1.35)
+    append to ./configure flags: --disable-nls
+
+- less (tested with 374)
+
+- groff (tested with 1.17.2)
+
+- textutils (tested with 2.1)
+    run: rm -f /bin/cat
+      -> We made that symbolic link when building bash, we only remove it 
+         because recent LFS books expect /bin/cat to be inexistent.
+    append to ./configure flags: --disable-nls
+
+- sed (tested with 3.02)
+
+- flex (tested with 2.5.4a)
+
+- binutils (tested with 2.13)
+    append to ./configure flags: --disable-nls
+
+- gettext
+    Skip this package for now because it'll make some packages think we want 
+    NLS support. (Will save us work if they don't) - If you need gettext for 
+    other reasons  (such as running 'aclocal' in a source that support gettext 
+    and without problems) Do it at the end of this hint, you'll also find
+    instructions there.
+
+- net-tools (tested with 1.60)
+    Two protocols (enabled by default) won't compile because of missing 
+    includes/functions missing in uClibc.
+    These are, AX25 and NET/ROM (Packet Radio) which are unused and safe to 
+    disable for 'most' people.
+
+    If you configure net-tools 'without' using 'yes "" | make', just say 'n' 
+    each time it mention them (AX25 and NET/ROM) and install it normally. 
+    Otherwise, use these commands instead of those in the LFS book:
+
+        yes "" | make config &&
+        mv config.h config.h~ &&
+        sed -e /AX25/s/1/0/ -e /NETROM/s/1/0/ < config.h~ > config.h &&
+        make &&
+        make update
+
+- m4 (tested with 1.4)
+    run before starting: patch -Np1 < ../uclibc-lfs-patches/m4-1.4-uClibc.patch
+      -> m4 needs some functions missing in uClibc, this patch provides them.
+    append in front of ./configure:
+        CPPFLAGS='-D__FORCE_NOGLIBC -D_ISOC99_SOURCE'
+
+      -> -D__FORCE_NOGLIBC tells configure/m4 we don't have glibc so that it'll
+         define its own obstack functions which aren't avaible in uClibc. 
+         -D_ISOC99_SOURCE is needed to properly compiles our added functions 
+         from the patch.
+
+- texinfo (tested with 4.2)
+    append to ./configure flags: --disable-nls
+
+- autoconf (tested with 2.53)
+
+- automake (tested with 1.6.2)
+
+- file (tested with 3.39)
+    run before starting:
+        patch -Np1 < ../uclibc-lfs-patches/file-3.39-uClibc.patch
+
+      -> Solve a obscure problem (probably caused by faultly is* (ctype)
+         in uClibc)
+
+- libtool (tested with 1.4.2)
+
+- bin86 (tested with 0.16.3)
+
+- bzip2 (tested with 1.0.2)
+
+- ed (tested with 0.2)
+
+- kbd (tested with 1.06)
+
+- diffutils (tested with 2.8.1)
+    append to ./configure flags: --disable-nls
+
+- e2fsprogs (tested with 1.27)
+    Note: --disable-nls shouldn't be needed (auto-detected)
+
+- grep (tested with 2.5)
+    append to ./configure flags: --disable-nls
+
+- gzip (tested with 1.2.4a)
+
+- man (tested with 1.5k)
+    append to make flags: CFLAGS='-DNONLS'
+      -> Remove native language support which fix compilation.
+         Note: CFLAGS is a empty var for man's makefiles, setting it will not 
+               remove any C compiler flags it already use.
+
+- lilo (tested with 22.2)
+
+- make 3.79.1
+    append to ./configure flags: --disable-nls
+
+- modutils
+    Skip this package, it will compile but will segfault on many operations 
+    making it unusable. Either use a modules-less kernel or get a static 
+    modutils (until the problem is solved). This was explained earlier in 
+    section 2.
+
+- netkit-base (tested with 0.17)
+
+- patch (tested with 2.5.4)
+
+- procinfo (tested with 18)
+
+- procps (tested with 2.0.7)
+    run before starting:
+         patch -Np1 < ../uclibc-lfs-patches/procps-2.0.7-uClibc.patch
+
+      -> This patch stop top.c from using an include + function not provided 
+         by uClibc related to locales in order to have it build properly. 
+
+- psmisc (tested with 20.1)
+    Note: psmisc 20.2 and 21 has incomplete '--disable-nls' support and won't 
+          compile with uClibc without modifications. Since psmisc 20.1 programs
+          works properly and do not have NLS support at all, we will install 
+          it instead. (You can do so by using the same commands as in the LFS
+          book)
+
+- reiserfsprogs (tested with 3.6.3)
+    Note: reiserfsprogs was removed from recent LFS books, yet since many 
+          are probably using it and that there is a problem compiling it with
+          uClibc, we includes it here with the fix. If you don't use reiserfs,
+          just skip this package.
+
+    run before starting:
+        patch -Np1 < ../uclibc-lfs-patches/reiserfsprogs-3.6.3-uClibc.patch
+
+      -> provide the (missing in uClibc) obstack functions and include 
+         needed by reiserfs.
+
+    Instructions to install reiserfsprogs should be avaible in the BLFS book
+    (http://beyond.linuxfromscratch.org). But since they arn't in the LFS book 
+    itself anymore, we also give them:
+        ./configure --prefix=/usr --exec-prefix= &&
+        make &&
+        make install
+
+- shadow (tested with 4.0.3)
+    run before starting: 
+         patch -Np1 < ../uclibc-lfs-patches/shadow-4.0.3-uClibc.patch
+
+      -> Shadow tries to use the putgrent function missing in uClibc, this 
+         patch will provide it. It also try to use 'innetgr' a NIS related 
+         function which is not supported by uClibc at all so disable it.
+    append to ./configure flags: --disable-nls
+
+- sysklogd (tested with 1.4.1)
+
+- sysvinit (tested with 2.84)
+
+- tar (tested with 1.13)
+    append to ./configure flags: --disable-nls
+
+- util-linux (tested with 2.11o)
+    omit from the 'make' and 'make install' flags: HAVE_SLN=yes
+      -> The LFS book use this because glibc already provide a sln (static ln)
+         Since uClibc don't, we should get the util-linux one.
+         
+- perl (tested with 5.6.1)
+    Note: perl will compile with uClibc but "make test" will fail on some
+          tests. Yet, there's a good chance you'll never need these features so
+          you shouldn't pay attention to it.
+
+- gettext (tested with 0.11.5)
+    Note: You should only install this packages if you need it for other 
+          purposes than native language support. (like running aclocal in 
+          a source supporting gettext) If you install it, you should consider 
+          installing it under a different prefix than /usr (like /opt/gettext 
+          for instance)
+    append to ./configure flags: --disable-nls
+
+- Chapter 7+ of the LFS book 
+    Can be completed without any modifications at the exception of the 
+    /etc/localtime symlink which should be ommited, it's over for the hint; yet
+    you might want to have a look at section 4 (F.A.Q) if not already done.
+
+=======================
+4. F.A.Q.
+=======================
+
+Q: This hint mention "keep chap 5 & 6 separated", "/static" style, and often
+   use some /static directory. What is that? How do I make one?
+A: LFS 4.0 (currently only in CVS as this is written) will use a special
+   directory ($LFS/static) to install all the statically compiled utilities 
+   of chapter5. This is an implementation of the "keep_chap5_and_chap6_sep.txt"
+   hint. If you wish to do the same, see that hint or build a chapter5 
+   based on LFS CVS/4.0+ instructions. (Note: LFS CVS/4.0+ also use gcc 3.1+.
+   If you wish to keep using gcc 2.95.3-2, just use the instructions from the
+   LFS 3.3 book and replace the occurences of "/usr" by "/static" for chapter5)
+
+Q: Do I really need to build a static perl?
+A: For now yes, uClibc need it to run one perl script required for the 
+   build process. It should be easily rewritable using AWK however; if you 
+   wish to do so, you'll find the script at "extra/scripts/initfini.pl" inside
+   the uClibc source. Patches are welcome (and in this case, it should be sent 
+   to uClibc peoples directly)
+
+Q: With many packages, I keep on seeing: "the 'setlocale' function supports 
+   only C|POSIX locales" - Is this bad?
+A: No. uClibc could be compiled with locales support (i.e. support other 
+   locales than C/POSIX locales), but this is a "horrible hack" using parts 
+   from glibc. I strongly recommend you don't bother about this.
+
+Q: Why is '--disable-nls' used for so many packages? Some packages compile just 
+   fine with native language support.
+A: Even if it compile, the NLS won't be usable. It will just make the compiled 
+   binaries and files use a little more disk space/RAM for nothing.
+
+Q: Will I be able to use XFree86?
+A: You can, but this hint don't explain how. (Expect troubles)
+
+Q: This hint told me how to make a normal LFS system with uClibc, but I was 
+   interested in uClibc to make a minimal system, which packages should I 
+   remove?
+A: A "minimal system" is very relative on what you want the system to do.
+   The thing is that you can have a linux system work with only a kernel and 
+   one thing to do such as running a shell.
+     - Do you need it to be able to compile binaries? (development)
+     - Do you need to be able to login on it?
+     - Do you need documentation?
+     - Do you need a specific interpreted language?
+     - etc...
+   Hint: You should look at the busybox package (http://www.busybox.net/)
+
+=======================
+  End of Hint
+=======================

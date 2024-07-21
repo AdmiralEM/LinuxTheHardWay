@@ -1,0 +1,331 @@
+GENERAL OUTLINE
+===============
+
+TITLE:		Sendmail 8.11
+LFS VERSION:	Any
+AUTHOR:		J. Jones <wwbarf@qnexfvqr.qlahc.arg>
+
+SYNOPSIS:
+	This hint covers the building, configuring, and use of Sendmail 8.11.  Any
+and all feedback is welcome.  Rot13 the address.
+
+HINT:
+
+Software you need
+=================
+
+  Sendmail (duh):  ftp://ftp.sendmail.org/pub/sendmail/
+    This hint *only* covers version 8.11.  Grab the latest, which is 8.11.5 at
+    this time.  This hint will *not* work for version 8.12.
+
+  Procmail:  http://www.procmail.org/
+    This will be used as our local delivery agent.
+
+  Berkeley DB:  http://www.sleepycat.com/download.html
+    Sendmail uses this (libdb) to store much of it's configuration.
+    Use the latest 3.* version (3.3.11 currently).
+
+Building the required packages
+==============================
+
+Berzerkeley DB:
+
+  Unpack the source tarball, cd into the build_unix/ subdirectory of the directory
+  created.  From here, run the following:
+
+    ../dist/configure --prefix=/usr --enable-compat185 \
+      --enable-shared --enable-static
+    make
+    make docdir=/usr/doc/Berkeley-DB install
+    mv /usr/lib/libdb-3.3.a /usr/lib/libdb.a
+
+    There was apparently a typo in the 3.3.11 package.  The sed below reverts
+    db_185.h to it's last working state.  Sendmail does not use this
+    compatibility, but many other packages do (GNOME).
+
+    sed 's/^DB185/DB/' /usr/include/db_185.h > /usr/include/db_185.h.new
+    mv /usr/include/db_185.h.new /usr/include/db_185.h
+
+Procmail:
+
+  Unpack the source tarball, cd into the directory it created.  From here, run
+  the following:
+
+    touch /usr/sbin/sendmail
+    make
+    make install
+    make install-suid
+
+  Procmail will look for a sendmail file anywhere in the $PATH.  If it doesn't
+  exist, it will prompt you for it.  Touching the file will allow it to find
+  sendmail in the location where we will later install it.
+
+Sendmail:
+
+  Unpack the source tarball, cd into the directory it created.
+
+  Edit the file devtools/OS/Linux.  At the end of this file, add the following
+  lines:
+
+    define(`confMANGRP',`root')
+    define(`confMANOWN',`root')
+    define(`confSBINGRP',`root')
+    define(`confUBINGRP',`root')
+    define(`confUBINOWN',`root')
+
+  You can also define/change the optimization flags here.  By default, we will
+  be building the 'OPTIMIZED' variant, so this is the only one you need to edit.
+
+  Run the following:
+
+    cd sendmail/ && sh Build && cd ../
+
+  Once that has completed (without error, hopefully), we need to build a
+  config file.  The file cf/README has explanations of virtually every
+  sendmail configuration option available.  I would advise you to at least
+  browse the sections the config below mentions.
+
+  cd into the cf/cf/ directory.  Edit the file config.mc (it doesn't exist..
+  we are creating it).  The following is the config I use, and it has proven
+  itself to be quite flexible.  I am recommending this config for most.  If
+  you feel you may have special needs, consult the cf/README file.
+
+  The following lines belong in the config.mc file you should be editing now.
+
+    divert(0)dnl
+    VERSIONID(`$Id: sendmail.txt,v 1.1 2003/09/13 16:18:13 tushar Exp $')
+    OSTYPE(linux)dnl
+    DOMAIN(generic)dnl
+    FEATURE(smrsh)dnl
+    MAILER(local)dnl
+    MAILER(smtp)dnl
+    FEATURE(`nouucp',`reject')dnl
+    FEATURE(`virtusertable', `hash -o /etc/mail/virtusertable')dnl
+    define(`confCW_FILE', `-o /etc/mail/local-domains')dnl
+    FEATURE(`access_db',`hash /etc/mail/access')dnl
+    FEATURE(`no_default_msa')
+
+  This config enables the following features.
+    * smrsh (sendmail restricted shell).
+    * procmail as the local delivery agent.  (This is default with
+        OSTYPE(linux))
+    * No uucp support.
+    * Virtual user table support.
+    * Access database support (handles relaying, blacklisting, etc).
+
+  Save this file, and run the following command:
+
+    sh Build config.cf
+    mkdir -p /etc/mail /var/spool/mqueue /var/lib/smrsh
+    cp config.cf /etc/mail/sendmail.cf
+    cp config.mc /etc/mail/
+
+  If there were any errors generating the config.cf file, please double check
+  the config.mc's syntax (check those `' things).
+
+  We are going to change smrsh's bin directory from /var/adm/sm.bin to
+  /var/lib/smrsh, because the default doesn't seem very appropriate to me,
+  and it's not very FHS compliant.  Enter the sendmail-root/smrsh/ directory
+  (should be a cd ../../smrsh/ away), and run the following commands:
+
+    sed 's|\(.*var/\)adm/sm.bin\(.*$\)|\1lib/smrsh\2|' smrsh.c > new-smrsh.c
+    mv new-smrsh.c smrsh.c
+
+  Now, enter the top source directory (should be a cd ../ away), and run
+  the following:
+
+    sh Build
+    sh Build install
+
+  Sendmail is now installed.
+
+  The sendmail restricted shell is what will be executed (in place of /bin/sh)
+  in order to process any commands that may appear in a user's .forward file.
+  It can only execute a program if it appears in it's command directory.  From
+  the /var/lib/smrsh directory, execute the following:
+
+    ln -s /usr/bin/procmail
+    ln -s /usr/bin/vacation
+
+  This will allow smrsh to execute procmail and vacation, and nothing else.
+  You should never allow it to execute any shell, as it will defeat any
+  security advantages gained by using it.
+
+  Edit the /etc/mail/aliases file.  Insert (at least) the following lines:
+
+    postmaster: root
+    MAILER-DAEMON: root
+
+  See man 5 aliases for an explanation of this file.  It is fairly
+  straight-forward.
+
+  Edit the /etc/mail/access file.  This file only has to exist.. null content
+  is OK.  This file is quite powerful.. you should read the cf/README section
+  about it to fully understand it.
+
+  These lines are to serve as an example, and are not required in any way.
+
+    10.0.0 RELAY
+    spammer@aol.com ERROR:"550 spam sucks"
+
+  The first line tells sendmail to relay any request from my LAN, 10.0.0.*.
+  The second line tells sendmail to reject any mail from spammer@aol.com with
+  the message, "spam sucks".
+
+  IMPORTANT:  The following command MUST BE EXECUTED after ANY changes to the
+              /etc/mail/access file.
+
+  Now, we must create the access.db (in the form sendmail wants it).  The
+  following command will do so.
+
+    makemap hash /etc/mail/access < /etc/mail/access
+
+  This is the last step in the sendmail configuration.  We will create the
+  local-domains file, which sendmail uses as a list of domains which will be
+  treated as 'local'.  If I wanted to accept mail for @microsoft.com, I would
+  insert, on one line, microsoft.com.  Here's my sample local-domains file.
+
+    darkside.dynup.net
+    crypt.dynup.net
+
+  Finally, run the following command:
+
+    sendmail -v -bi
+
+  This command tells sendmail to build it's alias database.  The -v tells it
+  to be very verbose about any possible permission and/or configuration issues
+  that may exist.  If it's output is more than something like:
+
+    /etc/mail/aliases: 5 aliases, longest 6 bytes, 62 bytes total
+
+  you should attempt to correct the error (these are usually filesystem
+  permission issues).  Check sendmail's output into syslog, too.
+
+  Sendmail provides the newaliases command which you should use from now on to
+  update your aliases.
+
+Running sendmail
+================
+
+  To run sendmail in daemon mode, where it will listen on port 25 and accept
+  mail, use the following.
+
+    /usr/sbin/sendmail -bd -q20m
+
+  The -q20m tells sendmail to re-run the mail queue every 20 minutes.
+
+  To stop sendmail, use the following:
+
+    kill -SIGTERM `head -1 /var/run/sendmail.pid`
+
+  Sendmail provides a few useful tools:
+
+    mailq:
+      Dumps the contents of the mail spool, along with the status of
+      each message.
+
+    mailstats:
+      Shows various usage stats.
+
+    praliases:
+      Displays current aliases.
+
+    vacation:
+      Auto-responder of sorts for when you're laying on the beach.
+
+  See the corresponding man pages for more information.
+
+Testing your configuration
+==========================
+
+  The easiest way will be to open an MUA (like mutt), and first attempt to
+  send a message to "root".  If root recieves the message, things should be
+  ok.  Second, send a message to root@some.host.you.listed.in./etc/sendmail.cw.
+  Do this for each domain you have listed in that file.  All mail should go to
+  root.
+
+  There are some more 'advanced' features that are beyond the scope of this.
+  You should refer to the excellent documentation which comes with the sendmail
+  source and the FAQ located at www.sendmail.org for more information.
+
+Common Problems / FAQ
+=====================
+
+  Q:  Sendmail takes forever to start! WTF!
+
+  A:  Sendmail can't resolve your hostname.  In /etc/hosts, you need the
+      following:
+
+        127.0.0.1 hostname.domain.tld hostname
+
+  Q:  The hostname and domain sendmail picks up isn't the right one!  Any mail
+      I send comes from an unresolvable/incorrect domain!
+
+  A:  Add the following lines to /etc/mail/sendmail.cf
+
+        Dwmyhostname
+        Dmmydomain.tld
+        Dj$w.$m
+
+      The Dw<string> defines the hostname, Dm<string> defines the subdomain
+      name, and the Dj line expands the Dw and the Dm values into the
+      canonical domain name, which is myhostname.mydomain.tld in the above
+      example.
+
+      The above will force sendmail to act as that host.domain.tld.
+      Alternatively, you could simply:
+
+        DMhostname.domain.tld
+
+      which would tell sendmail to 'masquerade' all mail as
+      hostname.domain.tld.
+
+      Either of these will fix the issue, but the previous is probably the
+      one you will want to go with.  With the latter, sendmail will still
+      identify itself as the erroneous host.domain.tld.
+
+  Q:  Mutt (the *ONLY* MUA!) errors out when I try to send a message!
+      Something about an exec error 127!  WTF!
+
+  A:  Add the following line to either 1) your ~/.muttrc, or 2) the
+      system-wide Muttrc (mutt's ./configure --prefix/etc/Muttrc).
+      The latter is the more sensible of the two.
+
+        set sendmail = "/usr/sbin/sendmail"
+
+      Restart mutt.
+
+  Q:  Sendmail complains about some files in group writable directories, and
+      refuses to use them!
+
+  A:  If you are *absolutely* certain you know what you're doing, make the
+      following changes to your /etc/mail/sendmail.cf.  Otherwise, fix the
+      directory permissions.
+
+      You need to add the following options to the DontBlameSendmail option in
+      your /etc/mail/sendmail.cf.
+        GroupWritableDirPathSafe
+        GroupWritableForwardFileSafe
+        ForwardFileInGroupWritableDirPath
+        GroupWritableAliasFile
+
+      The format of that line should be something resembling this:
+        O DontBlameSendmail=option1,option2,option3
+
+      See http://www.sendmail.org/tips/DontBlameSendmail.html for more info.
+
+
+  Q:  I want to use Maildir damnit!
+
+  A:  Edit your ~/.procmailrc, insert the following:
+
+        :0
+        *
+        /home/your_username/Mail/
+
+      Run:  mkdir -p ~/Mail/{cur,new,tmp}
+
+      Voila.  Your mail will now be delivered to ~/Mail/, in the maildir format.
+
+===========
+End of hint

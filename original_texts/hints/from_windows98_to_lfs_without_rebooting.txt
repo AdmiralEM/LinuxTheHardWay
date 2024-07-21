@@ -1,0 +1,78 @@
+AUTHOR: Cedric de Wijs cedric.de.wijs<at>softhome<dot>net
+
+DATE: 2004-04-09
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: How to get from windows 98 to LFS without a complete reboot
+
+DESCRIPTION:
+This hint describes how to prepare your dual-boot system to reboot from windows 98 to LFS faster
+
+ATTACHMENTS:
+Loadlin 1.6c: (86K)
+http://suse.oregonstate.edu/projects/loadlin/loadlin-1.6/update-1.6c/loadlin.exe.gz
+
+
+
+PREREQUISITES:
+This hint expect you to have a dual boot system with both windows 98 and LFS
+
+HINT:
+=================
+TABLE OF CONTENTS
+=================
+
+1 Introduction
+2 Required Files
+3 Preparation
+4 Installation
+5 Usage
+
+===============
+1 Introduction
+===============
+Linux can be loaded from windows 98. This hit explains how.
+
+=================
+2. REQUIRED FILES
+=================
+Loadlin 1.6c: (9.5k)
+http://suse.oregonstate.edu/projects/loadlin/loadlin-1.6/update-1.6c/loadlin.exe.gz
+
+==============
+3. Preparation
+==============
+-Copy loadlin, your kernel and /etc/lilo.cfg or /boot/grub/menu.lst to the root of your windows C-drive
+-Reboot to windows 98
+
+=============
+4 Instalation
+=============
+rename your kernel to something DOS understands i.e. bzimage
+make a batfile "linux.bat" containing something like this:
+
+loadlin bzmage root=/dev/hda4 ro
+
+change the root= parameter to match your situation.
+This, and the rest of your kernel options can be found in lilo.cfg or menu.lst
+
+right-click on it and choose create shortcut
+right-click on the shortcut and choose properties
+choose program-advanced and check MS-DOS mode
+drag the shortcut to your desktop
+
+==============
+5 Usage
+==============
+Double-click on the icon on your desktop to reboot to linux
+
+
+
+ACKNOWLEDGEMENTS:
+None yet
+
+
+CHANGELOG:
+[2004-04-09]
+  * Initial release

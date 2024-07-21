@@ -1,0 +1,122 @@
+#!/bin/bash -e
+function describe () {
+
+# Describe this package, and/or how it's built, however you want.
+
+if [ x$1 = "xshort" -o x$1 = "xbrief" ]; then
+  echo "One line description here."
+else
+  cat <<"EOF"
+A longer description of any nature can go here.
+Just make sure to leave the following end-of-file marker.
+EOF
+fi
+}
+
+function setup () {
+
+# These are steps which must be taken before the code base can be
+# compiled & installed.  For example, creating new daemon users/groups. 
+# These things cannot be saved in the as-built pio backup.  That could
+# cause inappropriate restoration of modified system files, overwriting,
+# say, etc/passwd.  Very bad!  During cloning, this function will be
+# called before the as-built package is restored.
+
+:		# null command (empty functions disallowed)
+}
+
+function build () {
+# Compile, install, and save the code base.
+
+# Build 
+echo "Estimated build time: 0.0SBU"
+# (-Search for prerequisites.-)
+PREREQ1=`basename $(find /usr/local/pio -maxdepth 1 -name \
+ '*xyz*') 2>/dev/null` || nf="$nf 1" &&
+[ "${nf}" ] && echo "Not found: prereqs" $nf && exit
+# (-Normal make sequence.-)
+(./configure --target="$CTARGET" 2>&1 | \
+  tee log.conf && exit $PIPESTATUS) &&
+(make -j $MMPF 2>&1 | tee log.make && exit $PIPESTATUS) &&
+pio `basename $0` &&
+(make install 2>&1 | tee log.inst && exit $PIPESTATUS) &&
+#
+# (-Need to add a source file, e.g. daemon startup script?-)
+# N.B. If you need variable substitution _NOW_ remove quotes from "EOF"
+(cat >/etc/init.d/daemon <<"EOF"
+EOF
+) &&
+# (-Pattern for starting runlevels.-)
+ln -s ../init.d/daemon /etc/rc2.d/S00daemon &&
+ln -s ../init.d/daemon /etc/rc2.d/K99daemon &&
+chmod 755 /etc/init.d/daemon &&
+#
+echo f | pio `basename $0` &&
+# (-Record prerequisite.-)
+pio `basename $0` --requires $PREREQ1 &&
+pio --backup `basename $0`
+
+}
+
+function finish () {
+
+# These are the steps which must happen after the package is installed.
+# Generally they are special customizations & initializations.  During 
+# cloning, this function will be called after the as-built files are
+# restored, allowing new customizations for the new system to be
+# installed.
+
+:		# null command (empty functions disallowed)
+}
+
+function remove () {
+
+# These are the steps necessary to remove what was done during setup &
+# finish to complete package removal.  For example: deleting daemon
+# users/groups, removing initialization or operational files.  Removal 
+# of the installed code-base is currently handled by pio.
+
+:		# null command (empty functions disallowed)
+}
+
+case "$1" in
+
+# The correct way to replace this package is to run the "remove"
+# function on the installed package, and have pio remove the as-builts. 
+# Then you can build a replacement.  When it comes to restoring a
+# damaged package, sometimes you can just have pio restore the files,
+# when nothing done in the setup or finish functions needs to be
+# changed.  However, note carefully: the backups made by pio in the
+# build function are of the generic as-built package files.  The
+# customizations done by the finish function are not saved in those
+# backups.  They're not saved anywhere!  They may have to be redone.
+
+	describe)
+		# short or brief produces a one-liner, anything else
+		# produces a longer description.
+		describe $2
+		;;
+	setup)
+		setup
+		;;
+	build)
+		build
+		;;
+	finish)
+		finish
+		;;
+	all)
+		setup
+		build
+		finish
+		;;
+	remove)
+		remove
+		;;
+
+	*)
+		echo "Usage: $0 {describe|setup|build|finish|all|remove}"
+		exit 1
+		;;
+esac
+

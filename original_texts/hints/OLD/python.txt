@@ -1,0 +1,244 @@
+TITLE:		Python
+VERSION:	any
+AUTHOR:		Righard Lightman <richard@reika.demon.co.uk>
+
+SYNOPSIS:
+	How to install python.
+
+HINT:
+Why install python
+------------------
+ 
+Cribbed from the python html docs:
+ 
+  Python is an easy to learn, powerful programming language. It has
+  efficient high-level data structures and a simple but effective
+  approach to object-oriented programming. Python's elegant syntax and
+  dynamic typing, together with its interpreted nature, make it an
+  ideal language for scripting and rapid application development in
+  many areas on most platforms.
+ 
+ 
+I have done some simple python programs, and I find it fast, and
+much easier to use than my every day languages (C/assembler). It
+is also far more powerful than my 'I could not be bothered to do
+this properly' language (bash it with sed and mawk). And so far
+I have used it instead of trying out perl. Anyone know when perl
+is a better choice than python?
+ 
+ 
+Where get it
+------------
+ 
+ftp://ftp.python.org/pub/python/src/python-2.0.tar.gz
+???html-1.5.2p2
+ 
+You may also want:
+  an html browser
+  to get you sound card working
+  readline: ftp://ftp.gnu.org/pub/gnu/readline
+  zlib:     ftp://ftp.uu.net/graphics/png/src
+  lots of graphics libraries: See Sergey Ostrovsky's X hint
+  gmp:      ftp://ftp.gnu.org/pub/gnu/gmp
+  bc:       ftp://ftp.gnu.org/pub/gnu/bc
+  openssl:  ftp://ftp.openssl.org/source
+  gdbm:     ftp://ftp.gnu.org/pub/gnu/gdbm
+  to add python support to gnome
+
+I know python can do something useful with tcl/tk, and there
+is also a 'stackless python' that is much better at running
+multi-threaded. I have not tried these, and leave them as an
+exercise for the reader.
+ 
+ 
+Installing the instructions
+---------------------------
+ 
+mkdir /usr/share/doc/python
+cd /usr/share/doc/python
+gzip -cd ??? | tar -x
+ 
+Now put add link so this is easy to read with your favourate browser.
+ 
+Mine is lynx, so in /home/richard/.bash_profile i have:
+  export WWW_HOME=/home/richard/html/links.html
+/home/richard/html/links.html contains this link:
+  <a href="/usr/share/doc/index.html" class=link>System documentation</a><br>
+and /usr/share/doc/index.html contains this link:
+  <a href="python/index.html" class=link>Python documents</a><br>
+ 
+ 
+Configuring Python
+==================
+ 
+Unpack the source and change to its directory:
+ 
+cd Modules
+less setup.in
+ 
+Take a look at all the things you can access from python. This
+is a good time to install the ones you want. A copy of this file
+should be edited with your preferences, and stored as 'setup' in
+this directory.
+ 
+I am too lazy to edit anything myself, so I have sed do it for
+me:
+ 
+sed -e 's!#\*shared\*!\*shared\*!'\
+    -e 's!#_curses.*!_curses _cursesmodule.c -lncurses!'\
+    -e 's!#crypt.*!crypt cryptmodule.c  -lcrypt!'\
+    -e 's!#timing!timing!'\
+    -e 's!#syslog!syslog!'\
+    < Setup.in > Setup
+ 
+This was a bit minimal, so if you have any of the following
+installed, add the appropriate substitutions:
+ 
+ 
+sound
+-----
+    -e 's!#linuxaudiodev!linuxaudiodev!'\
+    -e 's!#audioop!audioop!'\
+ 
+I am using the alsa drivers, but this probably works with
+the kernel drivers too. If you run 'make test' below,
+expect the spannish inquistion
+
+
+readline
+--------
+    -e 's!#readline.*!readline readline.c -lreadline -lncurses!'\
+ 
+This library gives you the look and feel of editing in bash shell
+when using python (and lots of other things) interactively. It
+installs without much trouble:
+ 
+./configure --prefix=/usr --with-curses
+make
+make shared
+make install
+cd shlib
+make install
+
+
+zlib
+----
+    -e 's!#zlib!zlib!'\
+ 
+Take a look at Sergey Ostrovsky's X hint to see how it is installed.
+ 
+ 
+libpng, libjpeg, libungiff...
+-----------------------------
+    -e 's!#imageop!imageop!'\
+ 
+I am not sure how many libraries this uses. I have all the ones
+from Sergey Ostrovsky's excellent X hint, and a few extras.
+ 
+ 
+gmp
+---
+    -e 's!#GMP=.*!GMP=/usr!'\
+    -e 's!#mpz.*!mpz mpzmodule.c -I$(GMP)/include $(GMP)/lib/libgmp.so!'\
+ 
+Precise maths library. Last time I checked this had difficulty with
+pentium pro's, but is has no problems with my athlon or pentium 2.
+The configure script does some excellent auto detection. If its does
+not work, try: info -f ./gmp.info
+CFLAGS=""
+./configure --disable-static --prefix=/usr --sysconfdir=/etc\
+  --infodir=/usr/share/info --mandir=/usr/share/man"
+make
+make check
+make install
+ 
+ 
+bc
+--
+ 
+Unlimited precission calculator used by openssl. I usually
+install this after gmp, so I do not know if there is a dependancy.
+ 
+./configure --prefix=/usr --sysconfdir=/etc\
+  --infodir=/usr/share/info --mandir=/usr/share/man
+make
+make install
+ 
+ 
+openssl
+-------
+    -e 's!#_socket!_socket!'\
+    -e 's!#SSL=.*!SSL=/usr!'\
+    -e 's!#.*-DUSE_SSL! -DUSE_SSL!'\
+    -e 's!#.*-L$(SSL)/lib!  -L$(SSL)/lib!'\
+ 
+I think that bc is only needed for make test, but as it was so easy
+to install, I did not try compiling withoutit.
+ 
+./Configure linux-elf --prefix=/usr --openssldir=/etc/ssl
+make
+make test
+make install
+
+
+gdbm
+----
+    -e 's!#gdbm.*!gdbm gdbmmodule.c -I/usr/include -L/usr/lib -lgdbm!'\
+ 
+Yet another data base library. When configure scripts cannot find dbopen
+in BerkleyDB, sleepy cat's port of BerkleyDB (db) and the new glibc-2.2,
+they will not find it here either.
+ 
+./configure --disable-static --prefix=/usr --sysconfdir=/etc
+  --infodir=/usr/share/info --mandir=/usr/share/man
+ 
+Well that was wishful thinking. Now let's correct all the things
+configure did wrong. I configure, make and make test as a user
+called build, then install as a user called install who is in
+group bin. If you are doing everything as root, forget the
+lines with 'BINOWN', 'BINGRP' and 'chown'
+ 
+sed -e "s?/local??" -e "s?= bin?= root?"\
+    -e 's@^\(manprefix = \).*@\1/usr/share@'\
+    -e 's@^\(man3dir = \).*@\1\$(manprefix)/man/man3@'\
+    -e 's@^\(infodir = \).*@\1/usr/share/info@'\
+    -e "s@^\(BINOWN = \).*@\1install@"\
+    -e 's@^\(BINGRP = \).*@\1bin@'\
+    Makefile > Makefile~
+mv Makefile~ Makefile
+ 
+make
+chown -R $install.bin .
+make install
+ 
+ 
+ 
+make, test and install
+======================
+ 
+./configure --with-threads --prefix=/usr --sysconfdir=/etc
+  --infodir=/usr/share/info --mandir=/usr/share/man
+ 
+You can put what you like in --man-dir - it will not do any good.
+I do not have the link from /usr/man to /usr/share/man so I need:
+sed -e 's@^\(MANDIR=[[:space:]]*\).*@\1/usr/share/man@'\
+  Makefile >Makefile~
+mv Makefile~ Makefile
+ 
+make
+make test
+make install
+ 
+Try it out put this in a file:
+ 
+#!/usr/bin/python
+for n in range(2, 10):
+  for x in range(2, n):
+    if n % x == 0:
+      print n, 'equals', x, '*', n/x
+      break
+    else:
+      print n, 'is a prime number'
+ 
+make the file executable, and run it twice - it will be faster
+the second time because a compiled version will be it python's cache.

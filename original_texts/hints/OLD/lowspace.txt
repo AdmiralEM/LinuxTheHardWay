@@ -1,0 +1,120 @@
+TITLE:		LFS for small hard drives
+LFS VERSION:	4.0
+AUTHOR:		James Smaby <jsmaby@virgo.umeche.maine.edu>
+
+SYNOPSIS:
+	The recommended LFS partition size is 1GB.  By following
+	this hint, that number can be 300MB, and possibly lower.
+	So if you're on a 486, or want to compile LFS in RAM,
+	this hint is for you.
+
+HINT:
+    Much more space is needed to build LFS than is needed for the
+final system.  There used to be a general rule that once you're past
+glibc, you're all set, but now gcc-3 is a similarly high hurdle.
+Note that gcc-2.95.3-2, used in LFS-3.3, is smaller, and in some
+people's opinions, better than gcc-3, and using it might be a good
+idea for people low on disk space.  You'll need about 300MB of disk
+space available to LFS, less if you use gcc-2 and don't install
+the locales.  The disk space doesn't all have to be physical.  You can
+stick some things on a tmpfs if you have spare RAM, or just really
+need the space.  Indeed, you can build an LFS entirely in RAM if
+you have more than about 350MB, using:
+  mount tmpfs -t tmpfs -o size=300m $LFS
+You can also save quite a bit of space if the sources for glibc
+and glibc are already unpacked and on a cdrom.
+
+    First off, the default compiler options of "-O2 -g" make large
+binaries/object files.  Assuming you won't need debugging information
+in the system's executables/libraries, the following environment
+variables should be set (these are conservative; -march=i686 will
+help, but might break glibc/gcc/binutils).
+  export CC="gcc -s"
+  export CFLAGS="-Os -fomit-frame-pointer -s"
+  export BOOT_CFLAGS="$CFLAGS"
+
+     For chapter 5, build gcc-3 first, as it's the biggest package.
+Depending on available space, you may want to delete some of the
+unused sources first:
+  rm -rf libjava libobjc gcc/ada gcc/f gcc/java gcc/objc
+Using make bootstrap uses extra space, and if you have a trustworthy
+compiler on your host, bootstrap is unneeded.
+
+     After completing chapter 5, make a minimal static by running
+these commands:
+  mkdir -p $LFS/minimal/bin
+  mkdir -p `echo $LFS/static/lib/gcc-lib/*/*/include | sed s/static/minimal/`
+  # Copy over only the files used by building a chapter 6.
+  # These were found using find -anewer
+  cp -a $LFS/static/bin/{ar,as,awk,basename,bash,bzip2,cat,cc,chmod,\
+    chown,cmp,cp,cpp,cut,date,diff,dirname,du,echo,egrep,env,expr,fgrep,\
+    find,fold,gawk,gcc,grep,gunzip,gzip,head,hostname,install,install-info,\
+    ld,ln,ls,make,makeinfo,mkdir,mknod,mount,mv,nl,nm,objdump,od,pwd,\
+    ranlib,readelf,rm,rmdir,sed,sleep,sort,strip,tail,tar,touch,tr,true,\
+    uname,uniq,wc,whoami,xargs,zcat} $LFS/minimal/bin
+  cp -a $LFS/static/lib/gcc-lib/*/*/{cc1,collect2,cpp0,crtbegin.o,crtbeginS.o,\
+    crtbeginT.o,crtend.o,crtendS.o,libgcc.a,specs} $LFS/minimal/lib/*/*/*
+  cp -a $LFS/static/lib/gcc-lib/*/*/include/{float.h,limits.h,stdarg.h,
+    stdbool.h,stddef.h,stdio.h,syslimits.h} $LFS/minimal/lib/*/*/*/include
+  # Strip any unneeded symbols from binaries
+  strip $LFS/minimal/bin/* $LFS/minimal/lib/*/*/*/{cc1,collect2,cpp0}
+  # Strip debugging symbols from object files
+  strip -g $LFS/minimal/lib/*/*/*/*.*
+  # Use bash builtins for some commands
+  echo -e '#!/bin/bash\n echo $@' > $LFS/minimal/bin/echo
+  echo -e '#!/bin/bash\n pwd' > $LFS/minimal/bin/pwd
+  echo -e '#!/bin/bash\n sleep $@' > $LFS/minimal/bin/sleep
+  echo -e '#!/bin/bash\n' > $LFS/minimal/bin/true
+  echo -e '#!/bin/bash\n echo root' > $LFS/minimal/bin/whoami
+If all goes well, "du -sh $LFS/minimal" should produce 35M.  That's all
+you need of a chapter 5 to build a chapter 6.  Replace the old static:
+  rm -rf $LFS/static
+  mv $LFS/minimal $LFS/static
+
+After entering chroot, you lose your environment variables.  Reset
+them here:
+  export CC="gcc -s"
+  export CFLAGS="-Os -fomit-frame-pointer -s"
+  export CXXFLAGS="$CFLAGS"
+  export BOOT_CFLAGS="$CFLAGS"
+
+On to the first hurdle, glibc.  Really the only thing you can do
+that I've found is add "--enable-omitfp --enable-kernel=2.4.19" to
+the configure line.  After it's built, you should be getting awfully
+close to 300MB.  Relieve a little stress by killing libc_g.a:
+  echo -n > libc_g.a
+We don't care about debugging, so this (25MB!) file isn't needed.
+Now "make install" should have room.  Run the following commands
+to free up even more:
+  strip /{usr/,}{lib/*so,sbin/*,bin/*}
+  strip -g /usr/lib/*.a
+  rm /usr/lib/*_g.a
+  bzip2 /usr/share/info/*info*
+If you really, _really_ need them, you can install the locales, but
+they eat up precious space.
+
+    Okay, onto gcc.  If you're using gcc-2, then you're fine, and can
+just go on to do the rest of the LFS.  We'll need some tweaking for gcc-3.
+Note that installing man-pages is preferably done after gcc to save
+about 6MB for the gcc build.  First, delete some of the bigger unneeded
+source directories:
+  rm -rf libjava libobjc gcc/ada gcc/f gcc/java gcc/objc
+There won't be enough room (to stay under 300MB) to do a bootstrap compile,
+so just type "make".  This has the advantage that it takes quite a bit
+less time to compile :-)  You may need to do some preliminary stripping
+before installing:
+  strip gcc/{cc1,cc1plus}
+  find . -name *.so -exec strip {} \;
+
+    Things may start getting a little tight when building perl; compressing
+the man and info pages should be enough to make room:
+  bzip2 -d /usr/share/info/*.bz2
+  bzip2 /usr/share/info/*info*
+  bzip2 /usr/share/man/man?/*.?
+
+    Now you can get busy stripping down your fresh LFS to make room for
+more programs/data.
+
+-- 
+Unsubscribe: send email to listar@linuxfromscratch.org
+and put 'unsubscribe hints' in the subject header of the message

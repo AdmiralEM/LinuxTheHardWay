@@ -1,0 +1,31 @@
+TITLE:          /etc/services and port-assignments
+LFS VERSION:    ALL
+AUTHOR:         Scot Mc Pherson <scotATlinuxfromscratchDOTorg>
+
+
+SYNOPSIS:
+        Replacing the default /etc/services file with the more complete
+	port-assignments file from iana.org
+
+
+Resources:
+http://www.iana.org/assignments/port-numbers
+
+
+HINT:
+Visit the above URL to get the current version of the /etc/services file.
+
+Save the page to ~/port-assignments
+
+
+Comment out or remove the beginning and the end of the file so that its
+syntax matches
+the current /etc/services file.
+
+mv /etc/services /etc/services.old
+cp ~/port-assignments /etc/services
+chown root.root /etc/services
+chmod 444 /etc/services
+
+
+You are done.

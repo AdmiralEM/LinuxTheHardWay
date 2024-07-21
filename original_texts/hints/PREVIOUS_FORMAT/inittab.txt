@@ -1,0 +1,193 @@
+TITLE:		Adding extra stuff to inittab
+LFS VERSION:	3.0-rc1
+AUTHOR:		Laurence Withers <lwithers@lwithers.demon.co.uk>
+
+SYNOPSIS:
+	Adding extra things to inittab gives you options such as more
+	consoles (if 6 isn't enough!), log files on a virtual terminal, and
+	programs such as `top'.
+
+HINT:
+
+
+
+0. Contents
+-----------
+
+    1. Introduction
+    2. Adding extra consoles
+    3. Log files on a virtual terminal
+    4. Top on a virtual terminal
+    5. Caveats
+
+    Appendix A. Format of /etc/inittab explained
+
+
+
+1. Introduction
+---------------
+
+    By editing /etc/inittab, you can achieve all sorts of nifty and
+useful things. This file is the configuration of `init', the utility
+which controls booting, shutting down, etc.; look at the LFS book for
+some details, and also examine the /etc/inittab file given.
+
+    In this hint, I will show you how to add extra consoles (if, like
+me, you appreciate having 10 or so consoles available), how to have a
+virtual terminal display a log file, and how to run `top' (or any other
+utility you like) on a virtual terminal.
+
+    Note that the virtual terminals used in this hint, /dev/tty1 to
+/dev/tty12, correspond to the screens you get when you press Alt+F1 to
+Alt+F12. If a VT is unused, then it won't pop up when you press its key;
+it will only appear once some data has been sent to it.
+
+
+
+2. Adding extra consoles
+------------------------
+
+    With the /etc/inittab that ships with LFS, you get six consoles (on
+VTs 1 through 6). First, decide which VTs you want to have terminals on.
+Then, add the following line to /etc/inittab for each console that you
+want:
+
+XXX:2345:respawn:/sbin/agetty ttyXXX 9600
+
+(replace XXX with the number of the VT, 7-12).
+
+    If, like me, you don't want other people to see what was on the
+screen after you finished with your console, you can use some trickery
+to clear the screen after you logout. Firstly, create a script:
+
+# cat >/sbin/agetty-init.sh <<EOF
+>#!/bin/sh
+># /sbin/agetty-init.sh
+>#  For clearing the screen after you have finished with a console.
+>
+>/sbin/agetty tty$1 9600
+>clear >/dev/tty$1
+>
+>EOF
+# chmod +x /sbin/agetty-init.sh
+
+    Then, in /etc/inittab, change the console lines. These are in the
+same format as above. The stock LFS file will contain entries starting
+1:, 2:, 3:, 4:, 5: and 6: (not l1: et al.; these are something else).
+Find each such line and delete it. Now add the following line once for
+each console you want:
+
+cXXX:2345:respawn:/sbin/agetty-init.sh XXX
+
+(replace XXX with the number of the VT you want, 1 through 12).
+
+    Remember that agetty will print the contents of /etc/issue to the
+screen before its login prompt; you can use this to customise the
+appearance of your login screens. Also, you can put any additional
+actions into `agetty-init.sh' (before or after agetty is called); these
+allow you to customise your system even more.
+
+
+
+3. Log files on a virtual terminal
+----------------------------------
+
+    If you want a VT to display the contents of a log file, you can use
+a simple entry in /etc/inittab. Add a line like the following:
+
+log:2345:respawn:/usr/bin/tail -f --retry /var/log/sys.log >/dev/ttyXXX
+
+    Replace the initial `log:' with any 4-character name you like; as
+long as each identifier is unique, there is no problem. For instance,
+you could use `9x3d:', if it meant something to you. Replace the final
+filename with the name of the log file you want to examine. Finally,
+replace XXX with the number of the VT you want to output to.
+
+
+
+4. Top on a virtual terminal
+----------------------------
+
+    `top' is a great program to have running on a spare VT! It lets you
+see which processes are running, what your CPU is up to, how much memory
+is in use, and so on. To get it running on a spare VT, use the following
+line in /etc/inittab:
+
+top:2345:respawn:/usr/bin/top d 1 s S c >/dev/ttyXXX </dev/ttyXXX
+
+    Replace XXX with the number of the VT you want to use. Also note the
+parameters we pass to top: `d 1' sets the delay between updates to 1s
+(change this if you want), `s' runs top in secure mode (see the man page
+for details; basically, this stops any old user from killing processes),
+and `S c' are aesthetic options. See `man top' for more info.
+
+    You can use this sort of line to add any program you like on a VT.
+Note that you need to redirect both output and input for an interactive
+program like top to work.
+
+
+
+5. Caveats
+----------
+
+    If you are trying anything ambitious, please read the information
+in Appendix A, below. This explains the format of /etc/inittab, so you
+are less likely to make a mistake which needs rectifying. Also, before
+you start messing with /etc/inittab, you should probably have some
+backup way of booting into your system (for instance, I use an old SuSE
+6.3 bootable CDROM).
+
+    Although nothing can really go disastrously wrong with this sort of
+setup, sometimes your VTs can get scrambled by programs such as X and
+any sort of graphical login manager. I don't know when this happens, or
+how to avoid or rectify it, but it hasn't caused me any problems. Note
+that I don't use a graphical login, however.
+
+    Jurgen Nagel has reported that his extra consoles don't work
+correctly. He has fixed this by adding an initialisation field to the
+agetty call:
+
+c2:2345:respawn:/sbin/agetty -I [H[J tty2 9600
+
+    The initialisation is <escape>[H<escape>[J and this fixes his
+problem. I can't reproduce this on any of my systems but if you get this
+problem, just add the -I parameter to the agetty call. Thanks Jurgen!
+
+
+
+Appendix A. Format of /etc/inittab explained
+--------------------------------------------
+
+    For the version of init used in LFS, the /etc/inittab file has the
+following format:
+
+identifier:runlevels:actiontype:command
+
+`identifier' is a unique identifier, from 1 to 4 characters. Make sure
+you don't use duplicate identifiers in your file. The identifier has no
+bearing on how init works; the names don't have to mean anything.
+
+`runlevels' is a list of the runlevels in which this line should be
+activated. Read `man init' for more detail about runlevels.
+
+`actiontype' is one of the following:
+    respawn         run the command every time it finishes
+    wait            run the command when entering the runlevel, and wait
+                        for it to finish before moving on
+    once            run the command once when entering the runlevel
+    boot            executed only during system bootup (ignores
+                        runlevels)
+    bootwait        as above, only wait for finish
+    off             ignore this entry
+    initdefault     this actually specifies which runlevel is considered
+                        the default on the system (usually 3)
+    sysinit         executed during bootup, before boot/bootwait
+    ctrlaltdel      what to do when the user hits ctrl+alt+del
+
+    There are some more actions, but these are more advanced. Details
+are available (see `man inittab' and possibly `man init').
+
+`command' is the commandline to run. Note that the PATH environment
+variable isn't set: you need to specify the whole path to any executable
+files.
+

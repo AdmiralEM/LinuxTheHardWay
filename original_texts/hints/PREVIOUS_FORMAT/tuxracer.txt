@@ -1,0 +1,204 @@
+TITLE:		Tuxracer Hint
+LFS VERSION:	Tested with LFS-3.0pre4 => LFS-3.0 (3dfx voodoo3)
+AUTHOR:		Paul Campbell <lfshints@cmm.uklinux.net>
+
+SYNOPSIS:	Tuxracer is a crackingly good open source game.
+It is probably your first port of call for testing you have a working 
+glide.  Tuxracer requires a lot of pacakges and libraries and in turn they
+require a few more.  Hence the hint.
+
+HINT:
+(see end for download URLS)
+
+
+TuxRacer Hint.txt
+Paul Campbell <lfshints@cmm.uklinux.net>
+
+Introduction:
+
+>From the top, if you don't have supported 3D graphics card forget it.  
+That said, take a look at the DRI hint and come back here.
+
+I had problems compiling Glide for X4.1.0 as per the DRI hint, and after 
+a months DRI less, thaz/#lfs (mike) introduced me to the glide from 
+slackware that works.  If you end up with your glxgears command seg faulting 
+at the end of the DRI hint, then try this.
+	
+	Follow the DRI hint exactly but get you glide from slackware and 
+execute this for the glide install. 
+
+mv swlibs glide3x &&
+chmod +x glide3x/swlibs/include/make/ostype && 
+cd glide3x/h3/minihwc &&
+ln -s linhwc.c.dri linhwc.c && 
+cd ../glide3/src ; ln -s gglide.c.dri gglide.c &&
+ln -s gsst.c.dri gsst.c && 
+ln -s glfb.c.dri glfb.c 
+
+
+## then cd back into the main glide3x directory
+
+make -f makefile.linux && 
+cp -ax h3/lib/libglide* /usr/lib && 
+cp -ax swlibs/include/*.h /usr/include/glide3 &&
+cp -ax h3/include/*.h /usr/include/glide3
+
+Dont try and pass ANY opts to the glide library, it will segfault.
+
+
+Finish the DRI hint.  You may however want to avoid the CVS mesa sources, then...
+
+Get your Mesa from the usual places (see references), version 3.5 I think is the
+ current, unpack both the MesaLibs and MesaDemos, they will both go into the 
+same dir automatically.
+
+cd into the directory and execute....
+
+./configure --prefix=/usr &&
+cd src-glut &&
+make && make install &&
+cd ../src-glu &&
+make && make install &&
+cd .. &&
+cp include/GL/glu.h /usr/include &&
+cp include/GL/glut.h /usr/include &&
+ldconfig
+
+
+Finally is you still don't get anything from glxgears then scream for help.
+
+
+********** ONLY THOSE WITH DRI ENABLED PENGUINS MAY CONTINUE ***************
+Now for the game it's self.  Well ... not quite. :)
+
+<tcl/tk> bit
+
+Compile TCL with
+
+cd unix &&
+./configure --prefix=/usr --enable-threads --enable-shared && 
+make && make install
+
+<ESD> bit
+
+ESD (esound) the elightenmnt sound daemon is required by SDL.
+
+ESD recommends libaudio file.  If you want to enable this, 
+compile libaudiofile with the below.  Also if you use ALSA 
+for your sound you may want to take a qiuck look in the docs for
+esound, or at least run ./configure --help first.
+
+Audio File.
+
+./configure --prefix=/usr && make & make install
+
+
+Then esound (ESD)
+
+./configure --prefix=/usr/local --with-libwrap --with-audiofile &&
+make && make install
+
+I had intermitant problems and errors from this.  Removal of --with-libwrap 
+seems to help.  If the above fails or you don't want lib audiofile try this 
+instead:
+
+./configure && make && make install
+
+<SDL>
+
+Simply 
+
+./configure --disable-debug
+
+add
+	--enable-video-svga  << if you want SVGAlib support
+	--enable-video-aalib << if you have aalib stuff 
+In fact run
+./configure --prefix=/usr/local --disable-debug --help
+and delete the --help and add any options you think are of use.
+
+make && make install
+
+<SMPEG>
+
+./configure &&
+make && make install
+
+I had problems with this and SDL, since SDL had linked against KDE 
+libs and they were not in my /etc/ld.so.conf.  You should be fine.
+
+<SDL_mixer>
+
+You will probably at least require mpg123 for this. I'm not sure, 
+mpg123 is fairly required and is usually right up there on anyones list.
+
+
+./configure &&
+make && make install &&
+ldconfig
+
+<tuxracer>
+
+Unpack both archives tuxracer and tuxracer_data and run this:
+
+cd tuxracer-0.61 &&
+./configure &&
+make && make install &&
+cd .. &&
+mv tuxracer-data-0.61 /usr/local/share/tuxracer
+
+If this fails with "Can't find Tcl", and it probably will.
+
+Run 
+
+ln -s /usr/lib/libtcl.8.4.so /usr/lib/libtcl.so && ldconfig
+
+Then rerun the above.
+
+After you first run the games as any user, you will have to edit 
+the ~/.tuxracer/options file and edit your prefernces, like bumping up 
+the resolutions etc.  There are hundreds of options.  Have fun.
+
+Happy racing penguins, enjoy.
+
+PS for outright speed, run tuxracer with.....
+
+xinit /usr/local/bin/tuxracer
+
+No WM no DE no messing around, just tux. :)
+(works with UT and quake too)
+
+For support or complaints, email, lfshints@cmm.uklinux.net
+
+Cya.
+
+
+
+References and Download URLs.
+
+Glide:
+ftp3.sourceforge.net/pub/mirrors/slackware/slackware-8.0/contrib/contrib-sources/3dfx
+Version depends on your vid card.  I have a voodoo3 3000 and used glide_h3_dri.tar.gz
+
+
+Mesa:
+http://www.mesa3d.org/
+Version is 3.5
+
+Tcl:
+Search on www.sourgeforge.net for Tcl
+
+EsoundD:
+http://www.tux.org/~ricdude/download.html
+
+SDL:
+http://www.libsdl.org/
+
+SMPEG:
+http://www.lokigames.com/development/smpeg.php3
+
+SDL_mixer:
+http://www.libsdl.org/projects/SDL_mixer/
+
+TuxRacer / Tuxracer-data
+http://www.tuxracer.com

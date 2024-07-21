@@ -1,0 +1,167 @@
+AUTHOR: Kelledin <kelledin@users.sourceforge.net>
+DATE: 2003-09-20
+LICENSE: GNU Free Documentation License
+SYNOPSIS: Managing hot-pluggable devices with Murasaki
+DESCRIPTION:
+The Linux 2.4 kernel sports a new, more unified infrastructure for
+hot-pluggable devices (USB, IEEE1394, HotPlug PCI, etc).  This new
+infrastructure is designed to support automatic device and driver
+management by privileged userspace apps.  One such app designed for
+the purpose is murasaki.
+
+PREREQUISITES: LFS 3.3 or later, kernel 2.4.1 or later
+
+HINT:
+1. Background Information
+------------------------------------------------------------------------------
+The Linux 2.4.x kernel sports a nifty little method of handling hot-pluggable
+devices (USB, IEEE1394, CardBus, hot-plug PCI).  Essentially, whenever the
+kernel detects the connection or disconnection of a hot-plug device, it will
+call a specified user-space program to handle loading/unloading of the
+associated driver.  Although an admin can load/unload the necessary drivers
+manually via modprobe, it's rather convenient to have a background process
+do this automatically.
+
+This is where murasaki comes in.  It's based closely on an older application
+called usbmgr; in fact, it comes from many of the same authors and shares
+much of the same code.  usbmgr, however, only supports USB devices.
+
+When the "murasaki" service is started, it will register
+"/sbin/hotplug.murasaki" as the user-space process that should be called to
+handle loading/unloading of hot-plug device drivers.  Currently, this is done
+by setting the contents of /proc/sys/kernel/hotplug to
+"/sbin/hotplug.murasaki"; the default value assigned by the kernel on boot is
+"/sbin/hotplug".
+
+If you're wondering how this package came by the name Murasaki...I don't know.
+Google tells me that Murasaki is Japanese for "purple", and it happens to be
+the first name of the world's first novelist (Murasaki Shikibu).
+
+
+2. Caveats
+------------------------------------------------------------------------------
+murasaki works quite well for USB and FireWire, but for CardBus/PCMCIA
+devices, pcmcia-cs is the preferred solution.  Fortunately, the two can
+coexist, although you should prevent murasaki's PCMCIA loader from running,
+just to be safe.  This is a simple matter of setting certain parameters in a
+configuration file; this will be described later.
+
+Not all hot-plug devices are supported (obviously).  You can check the status
+of your devices at http://www.dotaster.com/~shuu/murasaki/device.html .
+
+Also, note that not all PCI implementations are hot-plug PCI.  Hot-plug PCI
+features is currently only present in a few heavy-duty x86 servers, such as
+those from Compaq, and they require support from both the motherboard (or PCI
+backplane) and the PCI peripheral being hot-plugged.  Check your system
+documentation to determine whether your hardware supports hot-plug PCI; DO
+NOT JUST YANK RUNNING PCI CARDS TO EXPERIMENT, as this could very easily damage
+your hardware!!!  Also, make sure your specific hot-plug PCI implementation is
+supported by your Linux kernel.
+
+
+3. Detailed prerequisites
+------------------------------------------------------------------------------
+In order to get Murasaki working, you will first need a 2.4.x kernel.  2.4.0
+does not cooperate with Murasaki without some patching, which I won't cover
+here.  Get your preferred kernel from ftp.kernel.org or one of its many
+mirrors, if you haven't already.
+
+When you compile this kernel, you will need to make sure it has HotPlug
+support (CONFIG_HOTPLUG) and /proc filesystem support (CONFIG_PROC_FS), in
+addition to all the other options you normally use.  If you wish to use the
+kernel's PCMCIA hardware modules, you should enable these as well, otherwise
+DISABLE "PCMCIA support" in the kernel.  Currently it is recommended that you
+disable "PCMCIA support" in the kernel and rely upon the modules from pcmcia-cs
+to serve your PCMCIA support needs.
+
+Also, in the (unlikely) event that your system has a working, usable hot-plug
+PCI implementation, you might want to enable the appropriate kernel driver
+for this functionality.
+
+You will also (obviously) need Murasaki.  At the time of this writing, the
+latest "stable" version is 0.6.11, located at
+
+    http://www.dotaster.com/~shuu/murasaki/0.6/0.6.11/murasaki-0.5.4.tar.gz
+
+Although this may not be necessary, you should also get the latest preload
+and device maps at http://www.dotaster.com/~shuu/linux/murasaki/ .  They
+should be listed separately among the other package downloads.  These files
+should add the most current level of device support to Murasaki.
+
+
+4. Compiling
+------------------------------------------------------------------------------
+I refuse to hold your hand through a kernel compile.  If you don't know how
+to compile your own kernel, you shouldn't be using LFS in the first place.
+
+Compiling Murasaki is easy.  First untar the source in your favorite compiling
+directory and cd to the resulting source-tree directory.  Before you actually
+run "make", however, you should make a few decisions.
+
+Murasaki defaults to putting binaries in /sbin, config files in /etc/murasaki,
+the init script under /etc/rc.d/init.d, and runlevel symlinks under /etc/rc.d.
+While this is generally sensible, you may want to make a few changes.  For
+instance, I like for init scripts to go under /etc/init.d (as per the
+LSB+FHS), and runlevel symlinks to go under /etc.  Plus, I prefer to make my
+runlevel symlinks manually.  In order to make such changes yourself, edit the
+make.defs file in the Murasaki source tree and search for the definitions of
+BIN_DIR, CONF_DIR, RC_DIR, and RC_INIT_DIR.  If you are like me (you prefer to
+create runlevel symlinks yourself), or you use a BSD-style init, you can
+simply set RC_DIR to point to some middle-of-nowhere path in /tmp and scrap
+the files Murasaki creates under there after you're done.  Just be sure to set
+RC_INIT_DIR properly whenever you change RC_DIR.
+
+Also, if you have an /etc/murasaki/murasaki.preload file left around from an
+earlier version, and you would like it replaced by the file from 0.5.4,
+be sure to remove /etc/murasaki/murasaki.preload before you run "make".
+
+Now run the following commands:
+
+    make &&
+    make install
+
+Now copy the separate preload and device maps you downloaded to /etc/murasaki
+(or whatever location you specified for CONF_DIR).
+
+
+5. Enabling Murasaki
+------------------------------------------------------------------------------
+First, you may want to enable or disable murasaki's handling of certain device
+types.  This involves editing your murasaki.conf file to (located in CONF_DIR).
+In particular, you may wish to disable the "pci" functionality, which happens
+to encompass both PCMCIA and hot-plug PCI.
+
+Now you can now go about enabling Murasaki.  The preferred way to do this is
+is to use its SysV init script (i.e. run "/etc/init.d/murasaki start").  This
+takes care of some additional setup that may be necessary--mainly checking
+your PCI device tables to see what USB/FireWire controller chip you're using,
+and loading the appropriate driver.
+
+You could also simply create a symlink called "/sbin/hotplug" to your
+hotplug.murasaki exectuable (usually /sbin/hotplug.murasaki), but you then
+lose the automatic initial setup.  You may be able to get by like this, but
+you're on your own if you try it.
+
+To check and see if the murasaki service has been started, you can run
+
+    cat /proc/sys/kernel/hotplug
+
+and see if the output is identical to the full path of your hotplug.murasaki
+executable.  If it is, Murasaki will handle all requests for driver
+loading/unloading whenever an appropriate hot-plug device is connected or
+disconnected.
+
+You can now connect your favorite (supported) USB/FireWire device.  When you
+plug it in, you should hear your PC speaker beep rather unobtrusively (unless
+you've disabled the beep somehow), and the device driver should be loaded
+automatically.
+
+Congratulations, you (probably) have a properly working Murasaki service.  If
+you don't, well, you're more-or-less on your own. ;)
+
+------------------------------------------------------------------------------
+
+CHANGELOG:
+[2003-09-20]
+* Updated to expand details and
+* Rewrote to accommodate new hints format.

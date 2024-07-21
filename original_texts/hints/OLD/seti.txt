@@ -1,0 +1,93 @@
+TITLE:		SETI Hint
+LFS VERSION:	any
+AUTHOR:		Tim Plessers <tplessers@tiscalinet.be>
+
+SYNOPSIS:
+	This hint provides details about how to install the SETI@Home client 
+	and join 'Team LFS'.
+
+HINT:
+
+1. Background on SETI @ Home
+
+SETI stands for Search for Extraterrestrial Intelligence. 
+It's an organization that analyses cosmic waves, scanned 
+by giant radio telescopes. They are hoping to find a message 
+from another world, one day.
+
+Unfortunatly, the amount of data is so huge, that it simply
+can't be processed by a couple of computers.
+They need our help. You can download a client program that
+connects to a server and retrieves a small packet of data (work unit).
+Then, your computer starts processing the data as a background process
+(7-10 hours needed) and sends back the results.
+
+
+2. The SETI @ Home client
+
+The program is written in such a way, that it only uses
+the 'idle' processor time, that is when no processing is performed
+on your machine. Also, it only needs an internet connection to send
+and receive the work units. It is possible to run clients on
+multiple machine using the same account. When stopping the client
+during processing, it automatically resumes the next time you start it.
+
+You can grab the command-line linux version of the SETI @ Home client at:
+
+http://setiathome.ssl.berkeley.edu/download.html
+
+Note that there are different versions for each platform.
+I use the i686-pc-linux-gnu-gnulibc2.1 which is optimized for Pentium II/III.
+
+After the download, untar it:
+$ tar xvf setiathome-3.03.i686-pc-linux-gnu-gnulibc2.1.tar
+
+and move it to the desired directory:
+$ mv setiathome-3.03.i686-pc-linux-gnu-gnulibc2.1/* /usr/local/bin
+
+Start the client for the first time:
+$ setiathome
+
+Fill in the correct information and if all goes well, you should see
+that the program retrieves 340kb data from the server and starts processing it.
+
+Possible problems:
+
+Q: I get an Illegal instruction error, and the client bails out.
+A: You probably downloaded the wrong version for your machine, 
+	try the i386 optimized version.
+
+Q: The client doesn't seem to connect to the server.
+A: You're probably behind a proxy/firewall. 
+	Try 'setiathome -proxy my.proxy:port'
+	e.g. 'setiathome -proxy 192.168.1.1:8080'
+
+Q: It's still not connecting!
+A: Maybe the SETI @ Home data server went down. Try again tomorrow.
+
+Try to keep that client running.
+
+3. Teams & Statistics
+
+You can keep track of your personal statistics to see what rank you have.
+http://setiathome.ssl.berkeley.edu/individual.html
+
+People are free to create teams, which can compete to eachother.
+There are a lot of communities out there that created their own team
+(Team Slashdot, Microsoft Foundation, Team FreeBSD and of course... Team LFS).
+
+When you have completed more than 1 work unit, make sure that you join
+Team LFS. Surf to:
+
+http://setiathome.ssl.berkeley.edu/cgi-bin/cgi?cmd=team_lookup&name=Team+LFS
+
+and click the 'Join' link. Follow instructions from there.
+
+
+4. Bookmark these links
+
+SETI @ Home homepage
+http://setiathome.ssl.berkeley.edu
+
+Team LFS statistics
+http://setiathome.ssl.berkeley.edu/cgi-bin/cgi?cmd=team_lookup&name=Team+LFS

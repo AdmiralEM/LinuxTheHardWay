@@ -1,0 +1,358 @@
+TITLE:		Locale Aware
+LFS VERSION:	any
+AUTHOR:		Yann Kerhervé <yk@cyberion.net>
+
+SYNOPSIS:
+	How to customize your LFS system so that it is locale-aware (for non-US residents).
+
+HINT:
+*  A                   L O C A L E - A W A R E                   L F S  *
+-------------------------------------------------------------------------
+by Yann Kerhervé <yk@cyberion.net> - http://cyberion.net
+
+$Id: lfs_frlocale_guide.txt,v 1.1 2003/09/15 04:49:15 tushar Exp $
+
+
+
+
+I. Introduction
+---------------
+
+I would like to express my thanks to several people :
+- David Madore ( http://eleves.ens.fr/home/linux/)
+- Guilhem Aznar (French-HOWTO)
+- People on the LFS Mailing-List
+
+Indeed, the information of this mini-guide comes from them.  This guide
+is just a summarized, concise (but incomplete too) rewording. I hope this
+doc will help  you to install a locale-aware LFS box.
+
+In order to be the most complete, please, feel free to add your experiences,
+corrections to this document. I juste retrace here the way I localized LFS
+on my box (French), but if you have different hardware, different config.
+different language too, contribute !
+
+
+II. TODO
+--------
+
+Contributions are welcomed
+
+- csh and other shells (I don't use those)
+- other locales (I use fr_FR)
+- rxvt and other terminals (Xterm for me) 
+- emacs and other editors if necessary (vim for me)
+- XFree 4 complete working solution
+- Compiling installing and testing XFree3.3.6
+- Add some explanations where it is necessary
+- tidy my room (contributions welcomed too :)
+
+
+III. The Kernel compilation
+--------------------------
+
+I always compile the kernel with the ISO-8859-1  support, and I add two
+NLS : 437 (US : recommanded) and 850 (Europe : Adapt). I think this 
+settings are only for the compatibility with Microsoft's product
+(Filesystem).
+
+
+IV. Glibc (2.1.3)
+------------------
+
+What's described here can be done at any moment, as for me I do it as
+soon as my LFS has been autonomous.
+
+In the ./INSTALL, it's said :
+
+        # localedef -i de_DE -f ISO-8859-1 de_DE
+
+for setting a classic german locale. So for a french one :
+
+        # localedef -i fr_FR -f ISO-8859-1 fr_FR
+
+There is also another possibility, cd to the glibc-build directory and
+issue :
+
+        # make localedata/install-locales
+
+this should install all locales (supported by glibc) in your linux system.
+
+Do you need this ? What are the symptoms if you need this ?  One of the
+most important is perl complaints (quite annoying) that's to say :
+
+        perl: warning: Setting locale failed.  perl: warning: Please check
+        that your locale settings:
+            LC_ALL = "fr_FR",
+        LANG = (unset)
+            are supported and installed on your system.
+            perl: warning: Falling back to the standard locale ("C").
+
+each time ou launch the perl interpreter.
+
+The localdef command discribed above fix the problem for me.  (In the
+bash I have exported the environnement variable : LANG, LANGUAGE, LC_ALL
+to 'fr_FR').  Anothers fixes, if perl is too annoying, are described in
+the perllocale page :
+
+        $ perldoc perllocale
+
+for exemple export PERL_BADLANG if you want perl to be quiet
+(dirty). Another solution is to change the locale to something installed
+on your linux. For instance 'C'.
+
+
+V. Gettext
+----------
+
+I don't remember exactely when, but I have installed gettext in my
+LFS system. I remember that I have installed it after all mandatory
+software you should configure with the '--disable-nls' option.
+I don't have the time to reinstall my LFS system since it takes a lot
+of time. But, It could be interesting if someone tests something :
+compiling and installing gettext as soon as possible. Indeed, when
+I installed it, I were forced to reconfigure and reinstall every
+software without the '--disable-nls' option.
+
+Please, send me feedbacks.
+
+
+VI. The console and the shell
+-----------------------------
+
+The set up of the console is quite easy, but results may vary according
+to the way you do it.
+
+* GOALS
+
+My goals were : 
+- a <backspace> erasing left 
+- a <del/suppr> key erasing right 
+- <home> and <end> moving the cursor to the beginning or the end
+  of the prompt line 
+- accented keys working : éàè and ç 
+- a working meta <Alt Gr> for generating <2>->'~', <3>->'#' and so on
+- deadkeys enabled : ^e ¨o ...
+
+The French-Howto was quite handy for reaching these goals.  Everything is
+done with : 
+- loadkeys : for loading a map in the kernel 
+- setfont : changing the console font - be precautionous 
+- readline configuration : INPUTRC
+
+* LOADKEYS
+
+loadkeys loads a map in the kernel. Be sure to install the last version of
+kbd (0.95, at the moment I'm writing these lines) working with your kernel
+(2.2.15).  This package provides a large set of maps and fonts. Please
+refer to the loadkeys manpage for more information
+
+As french user, I use the 'fr-latin1' map
+
+You can find my trivial /etc/init.d/keymaps, sligthy modified from the
+debian's one, with this document (in the tarball).
+
+install a link in ./rcS.d/S06keymaps for example (keymaps should be
+loaded as soon as possible)
+
+* CONSOLEFONTS
+
+As for the font, you can change them according to your needs
+(slackware-like:) But be carreful, some fonts may be incompatible
+with your locale.  If you cannot see any change while you're changing
+those fonts, It's perhaps because you use the linux FB (Frame Buffer -
+/usr/src/linux/Documentation/fb).  BUT, changing those fonts may alter
+your localisation (I'm not sure, nevertheless).
+
+As for me, I don't change the kernel default.
+
+
+* READLINE (bash)
+
+You should find in the tarball my rc scripts for bash. In these scripts a
+Environnement variable is set : $INPUTRC. Inputrc is used by readline
+for the customization at the init. If the INPUTRC is not set, then by
+default readline will have a look to $HOME/.inputrc
+
+here is my system wide /etc/inputrc (FRENCH-Howto):
+
+        # ---- Begin  /etc/inputrc 
+        
+        set convert-meta off
+        set meta-flag on
+        # Be 8 bit clean.
+        set input-meta on
+        set output-meta on
+
+        # home key
+        "\e[1~":beginning-of-line
+        # insert key
+        "\e[2~":kill-whole-line
+        # del key
+        "\e[3~":delete-char
+        # end key
+        "\e[4~":end-of-line
+        # pgup key
+        "\e[5~":history-search-forward
+        # pgdn key
+        "\e[6~":history-search-backward
+
+        # ---- End  /etc/inputrc 
+
+with these settings everything should be ok for a french LFS user... ok,
+in the console, problems come now :(
+
+
+VII. X11 
+--------
+
+I experienced difficulties with XF4 with deadkeys, so you will
+find below, the settings of two different version of XF.
+
+* XFree86 4
+
+With XFree86, I have almost perfect settings. But, there is just dead-keys
+which don't work.
+
+The configuration file syntax has changed with this new version.  For the
+key board, here is settings ok for french people :
+
+        Option "XkbRules"   "xfree86"
+        Option "XkbModel"   "pc101"
+        Option "XkbLayout"  "fr"
+
+
+* XTerm
+
+BUT, if you're using xterm, you've to change several things. Here are the
+real difficulties. I don't know the inner working of that, but the David
+Madore's solution (http://eleves.ens.fr:8080/home/madore) is quite ok!
+
+You have to change the /etc/termcap of your system (installed by termcap)
+so with my LFS 2.3.1, I use termcap-1.3 You should find with this document
+the fixed termcap (in the tarball)
+
+here are the diffs : in the section xterm and xterm color:
+
+        xterm|vs100|xterm terminal emulator (X11R6 Window System):\
+                :am:km:mi:ms:xn:xo:\
+                :co#80:it#8:li#24:\
+                :AL=\E[%dL:DC=\E[%dP:DL=\E[%dM:DO=\E[%dB:IC=\E[%d@:\
+                :LE=\E[%dD:RI=\E[%dC:UP=\E[%dA:ae=^O:al=\E[L:as=^N:\
+                :bl=^G:cd=\E[J:ce=\E[K:cl=\E[H\E[2J:cm=\E[%i%d;%dH:\
+                :cr=^M:cs=\E[%i%d;%dr:ct=\E[3g:dc=\E[P:dl=\E[M:do=^J:\
+                :ei=\E[4l:ho=\E[H:ic=\E[@:im=\E[4h:\
+                :is=\E[r\E[m\E[2J\E[H\E[?7h\E[?1;3;4;6l\E[4l:\
+                :k1=\E[11~:k2=\E[12~:k3=\E[13~:k4=\E[14~:k5=\E[15~:\
+                :k6=\E[17~:k7=\E[18~:k8=\E[19~:k9=\E[20~:kI=\E[2~:\
+                :kN=\E[6~:kP=\E[5~:kb=^?:kD=\E[3~:kd=\EOB:ke=\E[?1l\E>:\
+                :kh=\E[1~:kl=\EOD:kr=\EOC:ks=\E[?1h\E=:ku=\EOA:le=^H:\
+                :md=\E[1m:me=\E[m:mr=\E[7m:nd=\E[C:rc=\E8:sc=\E7:\
+                :se=\E[m:sf=^J:so=\E[7m:sr=\EM:ta=^I:\
+                :te=\E[2J\E[?47l\E8:ti=\E7\E[?47h:ue=\E[m:up=\E[A:\
+                :us=\E[4m:@7=\E[4~:
+        
+        # From: Eric S. Raymond <esr@snark.thyrsus.com> May 4 1995
+        # Should work with the color xterm on the X11R6 contrib tape.
+        xterm-color|xterm with color support:\
+                :tc=xterm:ut:Co#8:pa#64:vi=\E[?25l:ve=\E[?25h:op=\E[39;49m:\
+                :AB=\E[4%dm:AF=\E[3%dm:
+
+I experiences difficulties with xterm. so I had to modify the app-defaults.
+Enclosed, you should fine my entire .Xresources, here is the real point :
+
+        *VT100.Translations: #override\n\
+        <Key>BackSpace: string(0x7f)\n\
+        Ctrl<Key>Prior: string(0x1b) string("[40~")\n\
+        Ctrl<Key>Next: string(0x1b) string("[41~")\n\
+        Ctrl<Key>KP_Prior: string(0x1b) string("[40~")\n\
+        Ctrl<Key>KP_Next: string(0x1b) string("[41~")\n\
+        Ctrl<Key>Home: string(0x1b) string("[42~")\n\
+        Ctrl<Key>End: string(0x1b) string("[43~")\n\
+        Ctrl<Key>KP_Home: string(0x1b) string("[42~")\n\
+        Ctrl<Key>KP_End: string(0x1b) string("[43~")\n\
+        <Key>Delete: string(0x1b) string("[3~")\n\
+        <Key>Insert: string(0x1b) string("[2~")\n\
+        <Key>Home: string(0x1b) string("[1~")\n\
+        <Key>End: string(0x1b) string("[4~")\n\
+        :<Key>KP_Delete: string(0x1b) string("[3~")\n\
+        :<Key>KP_Insert: string(0x1b) string("[2~")\n\
+        :<Key>KP_Home: string(0x1b) string("[1~")\n\
+        :<Key>KP_End: string(0x1b) string("[4~")\n\
+        <Key>KP_Enter: string(0x0d)
+
+
+As for me, this lines are in my $HOME/.Xressources, because, my
+xinitrc (/etc/X11/xinit/xinitrc) specify :
+
+        (...)
+        sysresources=/usr/X11R6/lib/X11/xinit/.Xresources
+        (...)
+        if [ -f $sysresources ]; then
+                  xrdb -merge $sysresources
+        fi
+        (...)
+
+According to David Madore's homepage, you shouldn't use .Xdefaults.
+
+Another way is to modify - or create - the
+-  /usr/X11R6/lib/X11/app-defaults/XTerm
+-  /usr/X11R6/lib/X11/app-defaults/XTerm-color
+
+(Every files in the app-default directory determines the way the apps
+are looking by default)
+
+Ok, now, with these settings, you should be quite happy - at least with
+xterm, since almost all goals were reached.
+
+* VIM Under Xterm
+
+I had to fix vim in order to avoid the headache when editing a file under
+xterm. Here is the trick :
+
+        " XTERM fix for deleting (yk)
+        if &term =~ "xterm"
+          set t_kb=DT
+          fixdel
+        endif
+
+        if &term =~ "xterm"
+          set t_kD=[3~
+        endif
+
+You should have a copy of my complete vimrc. Ok, you should now
+have a vim working under the console as well as under xterm.
+
+TODO : I'm searching help with DEADKEYS 
+
+*  XFree86 3.3.6 
+
+I didn't change my termcap  and Xresources back, so I don't know If the
+changes were necessary
+
+TODO: to complete
+
+
+VIII. Resources
+---------------
+
+o Keyboard-and-Console-HOWTO : 
+  http://www.linuxdoc.org/HOWTO/Keyboard-and-Console-HOWTO.html
+  gives some explanations about kernel inner-working,
+  quite generic
+
+o The David Madores's Excellent Home Page :
+  http://eleves.ens.fr:8080/home/madore/linux.html
+  This homepage receals treasures and some advices given
+  here, dealing with the french keyboard
+  
+o The French-HOWTO : 
+  http://www.freenix.org/unix/linux/HOWTO/
+  A lot of application described, but a bit old
+
+o VIM Homepage :
+  http://www.vim.org
+
+o LFS :
+  http://www.linuxfromscratch.com
+

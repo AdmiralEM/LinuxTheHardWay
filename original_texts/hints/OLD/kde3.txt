@@ -1,0 +1,178 @@
+TITLE:		KDE 3.0
+LFS-VERSION:	3.3
+AUTHOR:		Pascal Adami <pascal.adami@balcab.ch>
+
+SYNOPSIS:
+
+	I would like to show you how to install KDE 3 with all required and
+some optional packages. I assume that you've installed and configured
+your Xfree86 with its depending packages (zlib for example). I don't
+want to show you how to configure all the libraries and utilities
+KDE can take advantage of, because this is documented in the BLFS book
+(http://beyond.linuxfromscratch.org) or in other hints. 
+
+HINT:
+
+Download the required libraries KDE is going to use:
+
+	lcms-1.08.tar.gz (http://www.littlecms.com/)
+	jpegsrc.v6b.tar.gz (http://www.ijg.org/files/)
+	libpng-1.2.1.tar.gz (http://www.libpng.org/pub/png/src/)
+  	tiff-v3.5.7.tar.gz (http://www.libtiff.org/)
+  	libmng-1.0.3.tar.gz (http://www.libmng.com/downloadpublic.html)
+    	pcre-3.9.tar.gz (http://pcre.sourceforge.net/src/)
+  	audiofile-0.2.3.tar.gz (ftp://oss.sgi.com/projects/audiofile/download/)
+  	libxml2-2.4.19.tar.gz (ftp://xmlsoft.org/)
+  	libxslt-1.0.15.tar.gz (ftp://xmlsoft.org/)
+  	qt-x11-free-3.0.3.tar.gz (ftp://ftp.trolltech.com/qt/source/)
+
+Download optional packages KDE can take advantage of:
+	
+	If you want SSL support:
+	openssl-0.9.6c.tar.gz (http://www.openssl.org/source/)
+	If you want to use all the visualization plugins of noatun:
+	SDL-1.2.3.tar.gz  (http://www.libsdl.org/)
+	If you want to use Netscape plugins in Konqueror:
+	lesstif-0.93.18.tar.gz (http://www.lesstif.org/download.html)
+	If you want to encode audio CD's to mp3:
+	lame-3.91.tar.gz (http://www.mp3dev.org/mp3/download/download.html)
+	If you want to rip CD's:
+	cdparanoia-III-alpha9.8.src.tgz
+	(http://www.xiph.org/paranoia/download/)
+	If you have a scanner:
+	sane-backends-1.0.7.tar.gz (http://www.mostang.com/sane/source.html)
+	If you have a digital camera:
+	gphoto2-2.0.tar.gz (http://www.gphoto.org/dist/)
+	If you want an easy way to print:
+	cups-1.1.14-source.tar.gz (http://www.cups.org/software.html)
+	If you have a Palm Pilot:
+	pilot-link.0.9.5.tar.bz2  (http://www.pilot-link.org)
+	If you want to send bug reports to the KDE team:
+	gdb-5.1.1.tar.gz (ftp://ftp.gnu.org/pub/gnu/gdb/)
+	If you want to view postscript and PDF files:
+	ghostscript-6.53.tar.gz (ftp://ftp.gnu.org/pub/gnu/ghostscript/)
+	If you want to spell-check your texts:
+	ispell-3.2.06.tar.gz 
+	(http://fmg-www.cs.ucla.edu/fmg-members/geoff/ispell.html)
+	If you want LDAP support for the KDE address book:
+	openldap-2.0.23.tgz (http://www.openldap.org/software/download/)
+	If you want to use KBabel (The translation tool):
+	db-4.0.14.tar.gz (http://www.sleepycat.com/download.html)
+	If you want to use the documentation for KDevelop:
+	htdig-3.1.6.tar.gz (http://www.htdig.org/where.html)
+	If you want KDE to monitor your motherboard:
+	lm_sensors-2.6.3.tar.gz (http://www.netroedge.com/~lm78/download.html)
+	If you want to access floppies in Konqueror (floppy://):
+	mtools-3.9.8.tar.gz (http://mtools.linux.lu/)
+	If you want to monitor file changes:
+	fam-2.6.7.tar.gz (http://oss.sgi.com/projects/fam/)
+	If you want to browse SMB shares in Konqueror:
+	libsmb-cvs-dec1999.tar.gz (http://nicolas.brodu.free.fr/libsmb/)
+	If you want to use PGP in K-mail:
+	gnupg-1.0.6.tar.gz (http://www.gnupg.org/download.html)
+
+Download the KDE packages:
+
+  	arts-1.0.0.tar.bz2 (ftp://ftp.kde.org/pub/kde/stable/3.0/src/)
+	kdelibs-3.0.tar.bz2
+  	kdebase-3.0.tar.bz2
+	kdemultimedia-3.0.tar.bz2
+	kdenetwork-3.0.tar.bz2
+	kdegraphics-3.0.tar.bz2
+  	kdepim-3.0.tar.bz2
+  	kdeadmin-3.0.tar.bz2
+  	kdegames-3.0.tar.bz2
+	kdeutils-3.0.tar.bz2
+	kdeedu-3.0.tar.bz2
+  	kdeartwork-3.0.tar.bz2
+  	kdetoys-3.0.tar.bz2
+  	kdeaddons-3.0.tar.bz2
+
+If you are a developer also download these packages:
+
+	kdoc-2.0a54.tar.bz2
+	kdebindings-3.0.tar.bz2
+	kdesdk-3.0.tar.bz2
+	kdevelop-2.1_for_KDE_3.0.tar.bz2
+
+If you want KDE in another language than English, download
+the apropriate i18n package, for example if you want KDE in
+German, download:
+
+	kde-i18n-de-3.0.tar.bz2
+	
+And, last but not least, if you want a good office suite designed for KDE:
+
+	koffice-1.1.1-kde3.tar.bz2
+	(ftp://ftp.kde.org/pub/kde/stable/koffice-1.1.1-kde3/src/)
+
+--------------
+
+KDE prerequisites:
+
+I use KDE 3's default path ("/opt/kde"). If you don't like it, you're free
+to change the prefix option of the QT and the KDE packages. If you do so, be
+sure that your library path is in your "/etc/ld.so.conf".
+
+1. Add "/opt/kde/lib" and "/opt/kde/qt/lib" to your "/etc/ld.so.conf" and run 
+   "ldconfig" after every package you've installed
+2. add "QTDIR=/opt/kde/qt" to your profile
+
+--------------
+
+Installing QT:
+
+1. ./configure -prefix /opt/kde/qt -system-zlib -qt-gif -system-libpng \
+   -system-libjpeg -system-libmng -thread -no-g++-exceptions
+2. make
+3. make install
+
+Explanations:
+
+"-prefix /opt/kde/qt"	- This is the prefix where we want QT installed.
+			This is a new option as of version 3 of QT
+"-system-*"		- We want QT to be linked to the already installed
+			libraries
+"-qt-gif"		- We activate QT's own GIF implementation because
+			it can't use libungif
+"-thread"		- We compile QT with threading support. This is 
+			required for KDE
+"-no-g++-exceptions"	- As we compile qith GCC this option is highly
+			recommended
+
+--------------
+
+Installing KDE 3.0:
+
+First install arts, then kdelibs, kdebase and so on. IMHO the best order to 
+compile the packages is the list in the download section of the hint. 
+
+Compile each package using these commands (This works for Koffice too):
+
+1. ./configure --disable-debug --enable-final --enable-fast-malloc=full
+2. make
+3. make install
+
+Explanations:
+
+"disable-debug" 		- This makes the binaries a lot smaller and
+				isn't needed for general use.
+"enable-final"  		- This makes the binaries smaller too and the
+				compilation process a lot faster.
+"enable-fast-malloc=full" 	- This speeds up KDE
+
+Remember to run "ldconfig" after each package. There's no need for
+"--enable-prefix=" because the default of the configure script is "/opt/kde".
+If you don't want to compile all programs of a package you can add 
+"--without-<name>". Replace <name> with the name of a subdirectory of a
+package. An example:
+
+	If you don't need dialup networking you don't need kppp too, so
+	when configuring the kdenetwork package, it'll look like this:
+	./configure --disable-debug --enable-final --enable-fast-malloc=full \
+	--without-kppp
+
+When you're finished with all the packages you need to edit your "~/.xinitrc" 
+file. It should contain "exec startkde".
+
+You're finished, type "startx" and you'll see the cool KDE 3 splash screen!

@@ -1,0 +1,43 @@
+TITLE:		Compiling your keymap into the kernel
+LFS VERSION:	All
+AUTHOR:		Matthias S. Benkmann <m.s.b@gmx.net>
+
+SYNOPSIS:
+	By default the Linux kernel sets a US keymap. That's nice for people
+	with US keyboards but if you don't use one, you need to run loadkeys
+	to set the proper keymap. This is no big deal if you boot normally
+	because you have a boot script to do this, but if you boot with
+	init=/bin/sh, or into single user mode, this boot script is not
+	started and you will have to start loadkeys (by typing "loadkezs" on
+	a qwertz keyboard) manually which, depending
+	on your setup, may require mounting filesystems first.
+	But it need not be like this. You can compile the appropriate
+	keymap into the kernel to get the same native keyboard support,
+	US keyboard users get. 
+
+HINT:
+
+When you have reached the "Making the LFS system bootable" section in the
+end of the LFS book, right before compiling your Linux kernel, do the 
+following:
+
+Tell the kernel about your keymap by running the following commands:
+
+     cd /usr/src/linux &&
+     dumpkeys | loadkeys -m - >defkeymap.c &&
+     cp defkeymap.c drivers/char/defkeymap.c
+
+This assumes that the currently active keymap is the one you want to use. 
+If you want to use a different keymap instead, issue the following 
+commands:
+
+     cd /usr/src/linux &&
+     loadkeys -m /path/to/keymap >defkeymap.c &&
+     cp defkeymap.c drivers/char/defkeymap.c
+
+Replace `/path/to/keymap' with the full path to the appropriate
+keymap file (usually located in a subdirectory of /usr/share/kbd/keymaps).
+       
+Now you can compile your kernel as usual. If you follow these instructions 
+you don't need the loadkeys boot script and /etc/sysconfig/keyboard file
+(they will still work, of course). 

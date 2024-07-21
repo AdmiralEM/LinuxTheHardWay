@@ -1,0 +1,143 @@
+AUTHOR: JanJorre Laurens <darkrealm [dot] drjj [at] gmail [dot] com>
+
+DATE: 2006-06-12
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: How to create a LFS installation if you haven't got a lot of space
+
+DESCRIPTION:
+  This hint describes a way to create an (nA)LFS system if you don't have any space
+  on your LFS system. For this hint you do need a second (possibly windows) 
+  computer with enough space for the compilation.
+
+ATTACHMENTS:
+
+None
+
+PREREQUISITES:
+  - This hint requires that you have sufficient knowledge of LinuxFromScratch.
+  
+  - This hint requires that you have a second windows (preferably XP) PC and a 
+    network connection between the 2 computers.
+
+  - This hint assumes you use the LFS LiveCD but any host system with smbfs / 
+    smbmount will do fine
+
+HINT:
+                        ---------------------------------
+                       | CONFIGURING YOUR WINDOWS SYSTEM |
+                        ---------------------------------
+
+  First thing we have to do is configure your windows system. Since the only 
+  windows system i have is a windows XP OS, i can only explain how to do it for
+  Windows XP, if someone has a diffrent windows version feel free to email me
+  the instructions on how to set up a similar situation on that os.
+
+  Now lets start:
+
+  First thing you have to do is find a partition on your computer with atleast 
+  6 GB of free space (10 GB is recommended).
+
+  Create a folder called LFSDATA.
+  Share it by right clicking on the folder and clicking on properties.
+  Select the Sharing tab
+  Make sure that the box next to 'Share this folder on the network' and 
+  'allow network users to change my files' are checked in
+  Make sure the share is called LFSDATA
+
+  Your windows system is now setup :-)
+
+                -----------------------------------------------
+               | CREATE AND MOUNT ALL THE DIFFRENT FILESYSTEMS |
+                -----------------------------------------------
+
+  Alright, this is the more difficult part. First lets create the share mount point
+
+	mkdir /mnt/LFSDATA
+
+  Then, mount the share using smbmount:
+	smbmount //[YOUR_WINDOWS_XP_IP]/LFSDATA LFSDATA
+
+  What we have to do now is create 3 files with an ext2 filesystem. The reason for 
+  this is: permissions. Especially when you use nALFS, this can be a real problem
+  if you use a direct windows XP share with a windows XP filesystem. So :-) lets 
+  create the files:
+
+	dd if=/dev/zero of=/mnt/LFSDATA/root    bs=1M count=2045
+	dd if=/dev/zero of=/mnt/LFSDATA/tools   bs=1M count=2045
+	dd if=/dev/zero of=/mnt/LFSDATA/sources bs=1M count=2045
+
+  Then, create the filesystems inside those files:
+
+	mkfs.ext2 /mnt/LFSDATA/root
+	mkfs.ext2 /mnt/LFSDATA/tools
+	mkfs.ext2 /mnt/LFSDATA/sources
+
+  With these 3 commands you will get the following error message:
+
+	mke2fs 1.37 (21-Mar-2005)
+	root is not a block special device.
+	Proceed anyway? (y,n)
+
+  press y here :-)
+  The next step is to mount it all:
+      
+	mkdir /mnt/lfs
+	mount /mnt/LFSDATA/root /mnt/lfs -o loop
+	mkdir /mnt/lfs/tools
+	mount /mnt/LFSDATA/tools /mnt/lfs/tools -o loop
+	mkdir /mnt/lfs/tools/packages-6.1.1 
+        mount /mnt/LFSDATA/sources /mnt/lfs/packages-6.1.1 -o loop
+
+		                --------------
+		               | USE THE BOOK |
+                		--------------
+
+  Well - as the title already says :-) its now time to run the book or the nALFS 
+  script and any additions you want. Except do not do the chapter 2, 8 and 9 parts :-)
+
+		                ---------------
+        		       | THE LAST STEP |
+                		---------------
+
+  Well - you are almost done :-) the only thing you have to do now is copy all 
+  the files you created in the 'root' file to your true partition. It is now time
+  for a slightly modified version of chapter 2 ;-)
+
+  First you will have to unmount all the unneccesarry bits. This means 
+  /tools/packages-6.1.1 and /tools (if you have created any other temperary mounts 
+  you have to unmount them aswell)
+   
+	umount /mnt/lfs/tools/packages-6.1.1
+	umount /mnt/lfs/tools
+        rmdir /mnt/lfs/tools
+
+  Then you have to create a partition. I assume you know how to do this and 
+  otherwise check chapter 2 of the LFS book.
+
+  For now i assume your new partition has the device node /dev/hda1. If it does 
+  not change the commands where neccesary.
+
+  Now you will have to create a temporary mountpoint for the host partition:
+	
+	mkdir /mnt/tmp
+	mount /dev/hda1 /mnt/tmp
+	
+  Then, copy the contents of /mnt/lfs to /mnt/tmp:
+	cp /mnt/lfs/* /mnt/tmp -pr
+
+  and unmount the lfs and tmp mounts and remount /dev/hda1 to /mnt/lfs
+        umount /mnt/lfs
+	umount /mnt/tmp
+	mount /dev/hda1 /mnt/lfs
+
+  Then it is now time to chroot back into /mnt/lfs and do chapter 8 and 9.
+
+  Thats it :-) I hope its of some use to somebody out there :-)
+  
+ACKNOWLEDGEMENTS:
+
+CHANGELOG:
+[2006-06-12]
+  * Initial hint.

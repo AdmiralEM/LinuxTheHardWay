@@ -1,0 +1,24 @@
+TITLE:		gpm without teTex
+LFS VERSION:	any
+AUTHOR:		Lee Harris <mr.1ee@ntlworld.com>
+
+SYNOPSIS:
+	gpm fails to compile without tex being install (which entails installing the rather large teTex).
+
+HINT:
+You can compile gpm without the documentation. Then you don't need tex.
+You will still get the man pages anyway.
+
+In the top level dir look in Makefile.in for the line :- 
+         for i in doc sample ; do \  
+
+delete the word doc and save
+
+Do 
+         ./configure;make;make install
+
+Then
+         cp doc/gpm.8 /usr/share/man/man8/gpm.8
+         cp doc/gpm-root.1 /usr/share/man/man1/gpm-root.1
+
+

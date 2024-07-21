@@ -1,0 +1,259 @@
+AUTHOR:		Uli Fahrenberg <uli at math dot auc dot dk>
+AUTHOR:		Original hint by Declan Moriarty <declan dot moriarty at ntlworld dot ie>
+
+DATE:		2003-09-30
+
+LICENSE:	GNU Free Documentation License Version 1.2
+
+SYNOPSIS:	Printing From Scratch
+
+
+DESCRIPTION:
+Do-it-yourself guide for setting up your computer for printing. Also useful
+for troubleshooting. We start with kernel configuration, and at the end you
+will (hopefully) get your printer to print a ps file.
+
+
+PREREQUISITES:
+ghostscript (AFPL, GNU, ESP, whatever; see BLFS book for details)
+
+Optional: a2ps and psutils (again: See BLFS book for how to install these)
+
+
+HINT:
+Setting up a Linux box for printing can be very easy (with a bit of luck). If
+you your setup is simple: One computer and one printer which you want to
+communicate, and that's about it, this hint is for you. If you want to share
+your printer between several computers or anything fancy like this, I cannot
+help you.
+
+
+Step 1:
+
+Check that you have printer support in your kernel, either compiled-in or as a
+module. My config is as follows; you might not need the last two PARPORT_*
+options enabled:
+
+	CONFIG_PARPORT=y
+	CONFIG_PARPORT_PC=y
+	CONFIG_PARPORT_PC_CML1=y
+	CONFIG_PARPORT_SERIAL=y
+	CONFIG_PRINTER=y
+
+
+Step 2:
+
+Check if your printer is working and connected:
+
+	echo -en "blah\f\r" > /dev/lp0
+
+(substitute lp0 with the port your printer is connected to)
+
+If your printer spits out a piece of paper with the word `blah' on it,
+good. If it doesn't, worry.
+
+If your printer is an Epson, the above command most probably will not work. In
+this case, the following info contributed by Jeroen Coumans might help:
+
+	Epson printers don't work without first being given a special
+	character. The gimp-print util escputil is commonly used for that
+	(it's probably possible to do this without first installing
+	gimp-print, but I don't know how). This is the command which works for
+	me (Stylus C80):
+
+		escputil -r /dev/usb/lp0 -i
+
+You might want to install gimp-print anyway (I won't tell you how, though (but
+it appears to be a piece of cake)), as Epson printers are poorly supported by
+Ghostscript. Otherwise, to build just escputil,
+
+	./configure && make -C lib && make -C src/escputil
+
+worked for me.
+
+
+Step 3:
+
+Install your favourite version of Ghostscript.
+
+
+Step 4:
+
+Type gs -h at a prompt and select your printer from the pageful of drivers
+that it gives up. If your driver is not shown, go back to step 3 and install
+another version of Ghostscript. AFPL and ESP Ghostscript differ in what
+printers are supported.
+
+If you don't know what driver to select to get your printer working, go to
+
+	http://www.linuxprinting.org/
+
+and search their database for your printer. You might be told that you need
+some additional software; HPIJS, pnm2ppa, or others. If you do need some extra
+software, you're on your own. Here we only deal with Ghostscript-supported
+printers. (But read on, the hint might still be of use for you.)
+
+
+Step 5:
+
+Test your setup. Get yourself a ps file (pdf will do, too), and run
+
+	gs -q -dBATCH -dNOPAUSE -dSAFER -sDEVICE=<your-printer-driver> \
+	-sOutputFile=/tmp/testit <your-file>
+
+You'll find some ps files in the Ghostscript examples directory; with me this
+is /usr/share/ghostscript/8.00/examples/. This command should give you a
+(probably rather large) binary file /tmp/testit; if you're lucky (I was),
+running
+
+	file /tmp/testit
+
+will identify it as printer data. It may also tell you that the paper size does
+not fit what you have in your printer; if this is the case, adding
+-sPAPERSIZE=<your-papersize> to the gs command above will help. The other
+options above mean:
+
+	-q	tells gs not to display anything & saves it looking for X.
+   -dBATCH	tells gs to quit after processing - always a good idea.
+ -dNOPAUSE	gs will not wait for a key-press after each page.
+   -dSAFER	stops gs from  deleting or zapping anything.
+ -sDEVICE=	your printer driver. Be exact and case sensitive. gs is
+		stupid. Use the spelling on the info at 'gs -h'.
+-sOutputFile=	write to this output file (congratulations for guessing!)
+
+If everything looks OK, you can
+
+	cat /tmp/testit > /dev/lp0
+
+(again, replace lp0 with the port your printer is connected to). This should
+get <your-file> out to <your-printer>.
+
+Both the commands above might give you some trouble with permissions if you do
+them as an ordinary user. If the gs one does, execute
+
+	chmod 4777 /tmp 
+
+and kick yourself for running a machine unusable for ordinary users. If the
+cat command bails out with some 'Cannot write to /dev/lp0' blah, you can
+either decide that only root should be allowed to access your printer, or you
+can be a little lax on some (minor) security issues and do a
+
+	chmod a+rw /dev/lp0
+
+If you want to use the lpr script below for printing, you should do the
+latter.
+
+
+Step 6 (optional):
+
+If you got here, you have your printer working. You can leave it at this; what
+you did in step 5 was printing after all. If you want to be slightly more
+fancy, the script below will provide you with an lpr command, to be used
+either by calling
+
+	lpr <some-file>
+
+or by having lpr as (the last) part of a pipe. This should let you use most of
+your favorite application's `Print' buttons/commands directly.
+
+Another advantage of the script below is that it does not make use of
+temporary files, thus avoiding a) cluttering /tmp with all kinda crap, and b)
+some security hazards. On the other hand, if you want ordinary users to print,
+you have to give them access to /dev/lp0 (or whatever port your printer is
+connected to), see above.
+
+Here we have the script; as you can see, there's some adjusting to do for
+you. I have yet to encounter applications that won't print with this script;
+if you do, please notify me.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cat > /usr/bin/lpr << "EOF"
+#!/bin/bash
+
+####################  Adjust to your needs/desires.
+DEVICE=ljet4
+LP=lp0
+PAPER=a4
+LOCKFILE=/tmp/.${LP}-lock
+####################  End Adjust
+
+# Prints file to printer $DEVICE connected at /dev/$LP, 
+# using paper size $PAPER.
+# Usage: lpr <ps or pdf file> ( or cat <ps or pdf file> | lpr )
+
+# Uli Fahrenberg, early 2003. This file is in the public domain.
+
+if [ -e $LOCKFILE ] ; then
+	echo "Error: printer is locked  ($LOCKFILE exists)"
+	exit 1
+fi
+
+FILE=$1
+if ! [ X$FILE = X ] ; then ### We have a filename as an argument.
+	if ! [ -r $FILE ] ; then
+		echo "Error: Cannot read file $FILE"
+		exit 1
+	fi
+
+	FTYPE=$(file -bL $FILE | awk '{print $1}')
+	if ! [ $FTYPE = 'PDF' ] && ! [ $FTYPE = 'PostScript' ] ; then
+		echo "Error: $FILE is not a PS or PDF file."
+		exit 1
+	fi
+
+	### Comment this out if you want lpr to be quiet:
+	echo -n "Printing $FILE... "
+
+	(touch $LOCKFILE ; \
+	trap 'rm -f $LOCKFILE' EXIT ; \
+	gs -q -dBATCH -dNOPAUSE -dSAFER -sDEVICE=$DEVICE \
+	    -sPAPERSIZE=$PAPER -sOutputFile=- $FILE \
+	> /dev/$LP ) &
+
+	### Without the sleep, some apps delete $FILE
+	###    faster than gs can read it:
+	sleep 1
+	### Comment this out if you want lpr to be quiet:
+	echo "Done."
+
+else ### We have no filename argument, so we try stdin
+	DATA="$(</dev/stdin)"
+	(touch $LOCKFILE ; \
+	trap 'rm -f $LOCKFILE' EXIT ; \
+	echo "$DATA" \
+	| gs -q -dBATCH -dNOPAUSE -dSAFER -sDEVICE=$DEVICE \
+	    -sPAPERSIZE=$PAPER -sOutputFile=- - \
+	> /dev/$LP ) &
+fi
+EOF
+chmod 755 /usr/bin/lpr
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+Step 7 (even more optional):
+
+So now you can print postscript and pdf files on your printer. If you want to
+print other kinds of files (plain text files, say, e.g. LFS hints...), you
+might find the a2ps (AnyToPS) package handy. Also, for manipulating postscript
+files, the psutils package is a good thing to have installed. Both packages
+are covered in the BLFS book.
+
+
+ACKNOWLEDGEMENTS:
+This hint is a reworked edition of the Printing Minority Report, a printing
+hint originally written by Declan Moriarty. He was doing all the ground work
+of sections 1 throuch 5; I was reading and using his hint and cooking up the
+lpr script, and the next thing I knew was that Declan handed over the hint to
+me.
+
+Bill Maltby and Jeroen Coumans were also contributing some tidbits.
+
+CHANGELOG:
+[2003-05-24]
+* Adopted hint from Declan.
+[2003-06-29]
+* Submitted pfs.txt version 1.
+[2003-07-01]
+* Inserted `sleep 1' into lpr script, to make gv happy.
+[2003-09-30]
+* Converted to new fancy format.

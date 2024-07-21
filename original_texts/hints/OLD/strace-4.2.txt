@@ -1,0 +1,108 @@
+TITLE:		Installation of strace-4.2	
+LFS VERSION:	any
+AUTHOR:		Philipp Niemann <lfshints@azagtoth.de>
+ 
+SYNOPSIS:
+	Installing Strace on a LFS system with glibc-2.2.1 and gcc-2.95.3-test2 (might apply to other, too)
+ 
+HINT:      
+Strace is a program useful for debugging or tutorial purposes.
+You can trace systemcalls and signals of programs.
+
+From the manpage:
+
+    In the simplest case strace runs the specified command until 
+	it exits.  It intercepts and records the system calls
+	which are called by a process and the signals which are 
+	received by a process. The name of each system call, 
+	its arguments and its return value are printed on standard 
+	error or to the file specified with the -o option.
+
+So this is a useful program.
+
+You can get the source from
+    
+	http://www.wi.leidenuniv.nl/~wichert/strace/strace-4.2.tar.gz
+	Homepage is: http://www.wi.leidenuniv.nl/~wichert/strace/
+
+If you want to use that stuff you have to untar it first:
+
+    tar xzvf strace-4.2.tar.gz
+
+Now for the compile-thingie:
+    cd strace-4.2.tar.gz
+    configure --prefix=/usr/local   
+	# One could add more --options but
+    # the Makefile doesn't honor that
+    make
+    make install
+
+Not to much. But in my case there occured some errors. 
+So I have made a patch to circumvent those pits. 
+Here it comes:
+
+--------------------------------------------------------
+Snip just below the next line of dashes
+--------------------------------------------------------
+diff -Naur strace-4.2/file.c strace-4.2-done2/file.c
+--- strace-4.2/file.c   Tue Jan 11 14:41:10 2000
++++ strace-4.2-done2/file.c Fri Jan 19 10:03:22 2001
+@@ -34,9 +34,11 @@
+
+ #include <dirent.h>
+ #ifdef linux
+-#define dirent kernel_dirent
+ #include <linux/types.h>
++#define dirent kernel_dirent
++#define dirent64 kernel_dirent64
+ #include <linux/dirent.h>
++#undef dirent64
+ #undef dirent
+ #else
+ #define kernel_dirent dirent
+@@ -611,7 +613,7 @@
+    realprintstat(tcp, &statbuf);
+ }
+
+-#ifdef STAT64
++#ifdef HAVE_STAT64
+ static void
+ printstat64(tcp, addr)
+ struct tcb *tcp;
+diff -Naur strace-4.2/stream.c strace-4.2-done2/stream.c
+--- strace-4.2/stream.c Thu Dec 23 14:20:15 1999
++++ strace-4.2-done2/stream.c   Fri Jan 19 10:06:29 2001
+@@ -34,13 +34,16 @@
+
+ #if defined(linux)
+ #include <sys/poll.h>
++#include <stropts.h>
+
++#ifdef linux2
+ #define RS_HIPRI 1
+ struct strbuf {
+         int     maxlen;                 /* no. of bytes in buffer */
+         int     len;                    /* no. of bytes returned */
+         char    *buf;                   /* pointer to data */
+ };
++#endif /* linux2 */
+ #define MORECTL 1
+ #define MOREDATA 2
+--------------------------------------------------------
+End of patch. Snip just above previous line of dashes
+--------------------------------------------------------
+
+With that patch strace did compile on my machine. 
+You would cut and paste the above patch to a new file
+which I call patchfile for now. Then issue the following command 
+in the directory where the tar-command was executed:
+    patch -p0 < patchfile
+And you should get output about two files being patches.
+
+Beware, I am not a programmer. So it is absolutly possible that 
+this patch only 'works' to get rid of the compile-errors and on 
+the other side breaks the logic of the program. Use caution.
+
+PS: You can find this patch and the hint on
+http://www.azagtoth.de/lfs.html also. 
+As well as some other nonsense ;-)

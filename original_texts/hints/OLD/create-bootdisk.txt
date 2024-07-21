@@ -1,0 +1,249 @@
+TITLE:		Perl script for creating a LFS bootdisk
+LFS VERSION:	obsolete
+AUTHOR:		Randy Janinda <randy.janinda@ndcorp.com>
+
+SYNOPSIS:
+	This script creates a bootdisk that you can use to install LFS on a given computer.
+
+HINT:
+#!/usr/bin/perl
+#Randy Janinda <randy.janinda@ndcorp.com>
+
+@root_dir = qw(
+	bin
+	dev
+	etc
+	home
+	lib
+	root
+	sbin
+	usr
+	usr/lib
+	usr/bin
+	usr/sbin
+	var
+	proc
+);
+
+@etc_files = qw(
+	group 
+	passwd
+	shadow
+	termcap
+);
+
+@bin_files = qw(
+	bash
+	ls
+	cat
+	df
+	login 
+	mount
+	ps
+	chmod
+	chown
+	cp
+	mkdir
+	rm
+	hostname
+);
+
+@sbin_files = qw(
+	ldconfig
+	shutdown
+	getty 
+	mingetty 
+	init
+);
+
+@dev_files = qw(
+	console
+	mem
+	kmem
+	null
+	zero
+	tty1
+	tty2
+	ram
+);
+
+$distro = "/home/distro";
+$image = "/home/distro.img";
+$size = 4000;
+$device = "/dev/loop0";
+$file_copy = "/usr/bin/objcopy --strip-all";
+$lib_copy = "/usr/bin/objcopy --strip-debug";
+
+unless(-e $distro) {mkdir $distro, 0755}
+unless(-e $image) {
+	system("/bin/dd if=/dev/zero of=$image bs=1k count=$size");
+	system("/sbin/losetup $device $image");
+	system("/sbin/mkfs -t ext2 $device $size");
+	system("/bin/mount -t ext2 $device $distro");
+}
+
+chdir $distro;
+foreach (@root_dir) {
+	unless (-e $_) {mkdir $_, 0755;}
+}
+chdir "$distro/dev";
+foreach (@dev_files) {
+	unless (-e $_) {system("/bin/cp -dpR /dev/$_ $_");}
+}
+
+# bin file setup
+chdir "$distro/bin";
+open BINLIB, ">$distro/bin.lib";
+foreach (@bin_files) {
+	unless (-e $_) {system("$file_copy /bin/$_ $_")}
+	print BINLIB `/usr/bin/ldd $_`;
+}
+close BINLIB;
+#unless (-e "true") {system("/bin/cp /bin/true $distro/bin/true")}
+#unless (-e "false") {system("/bin/cp /bin/false $distro/bin/false")}
+#unless (-e "sh") {symlink bash, sh}
+#unless (-e "gunzip") {symlink gzip, gunzip}
+#unless (-e "zcat") {symlink gzip, zcat}
+
+#/usr/bin
+#chdir "$distro/usr/bin";
+#unless (-e top) {system("$file_copy /usr/bin/top top")}
+#chdir "$distro/usr/lib";
+#unless (-e libncurses.so.4.2) {system("$lib_copy /usr/lib/libncurses.so.4.2 libncurses.so.4.2")}
+#unless (-e libncurses.so.4) {symlink libncurses.so.4.2, libncurses.so.4}
+
+# sbin file setup
+chdir "$distro/sbin";
+open SBINLIB, ">$distro/sbin.lib";
+foreach (@sbin_files) {
+	unless (-e $_) {system("$file_copy /sbin/$_ $_")}
+	print SBINLIB `/usr/bin/ldd $_`;
+}
+close SBINLIB;
+	
+# Setup library list
+open LIB, ">$distro/lib.list";
+open BINLIB, "$distro/bin.lib";
+open SBINLIB, "$distro/sbin.lib";
+while (<BINLIB>) {
+	if (/^\t\/?lib/) {
+		s/^\t\/?lib.*\s=\>\s\/lib\/(.*)\s\(0x.{8}\)$/$1/;
+		print LIB $_;
+	}
+}
+while (<SBINLIB>) {
+	if (/^\t\/?lib/) {
+		s/^\t\/?lib.*\s=\>\s\/lib\/(.*)\s\(0x.{8}\)$/$1/;
+		print LIB $_;
+	}
+}
+close LIB;
+close BINLIB;
+close SBINLIB;
+unlink "$distro/bin.lib";
+unlink "$distro/sbin.lib";
+
+# Get libraries
+open LIB, "$distro/lib.list";
+
+while (chomp($new = <LIB>)) {
+	@{$lib_files{$new}} = stat "/lib/$new";
+}
+
+chdir "$distro/lib";
+foreach $key (keys %lib_files) {
+	#print "$key\n";
+	if (-l "/lib/$key") {
+		$file = readlink "/lib/$key"; 
+		unless (-e $file) {system("$lib_copy /lib/$file $file")}
+		unless (-e $key) {symlink $file, $key}
+	}else{
+		unless (-e $key) {system("$lib_copy /lib/$key $key")}
+	}
+}
+close LIB;
+unlink "$distro/lib.list";
+
+unless (-e "security") {mkdir "$distro/lib/security", 0755}
+chdir "$distro/lib/security";
+unless (-e "$distro/lib/security/pam_permit.so") {system("$lib_copy /lib/security/pam_permit.so pam_permit.so")}
+chdir "$distro/lib";
+unless(-e "$distro/lib/libnss_files-2.1.1.so") {system("$lib_copy /lib/libnss_files-2.1.1.so libnss_files-2.1.1.so")}
+unless(-e "$distro/lib/libnss_files.so.1") {symlink "libnss_files-2.1.1.so", "libnss_files.so.1"}
+
+# ETC files
+chdir "$distro/etc";
+foreach (@etc_files) {
+	unless (-e $_) {system("/bin/cp /etc/$_ $_")}
+}
+
+# start cleanup
+unless (-e "$distro/var/log") {mkdir "$distro/var/log", 0755}
+unless (-e "$distro/var/run") {mkdir "$distro/var/run", 0755}
+unless (-e "$distro/var/run/utmp") {system("/bin/touch $distro/var/run")} 
+# Link libraries
+
+open INIT, ">$distro/etc/inittab";
+print INIT <<EOF;
+id:2:initdefault:
+si::sysinit:/etc/rc
+1:2345:respawn:/sbin/mingetty tty1
+2:2345:respawn:/sbin/mingetty tty2
+EOF
+close INIT;
+
+open FSTAB, ">$distro/etc/fstab";
+print FSTAB <<EOF;
+/dev/ram0       /               ext2    defaults
+/dev/fd0        /               ext2    defaults
+/proc           /proc           proc 		defaults
+EOF
+close FSTAB;
+
+open RC, ">$distro/etc/rc";
+print RC <<EOF;
+#!/bin/sh       
+/bin/mount -av
+/bin/hostname Kangaroo
+EOF
+close RC;
+
+open PAM, ">$distro/etc/pam.conf";
+print PAM <<EOF;
+OTHER   auth       optional     /lib/security/pam_permit.so
+OTHER   account    optional     /lib/security/pam_permit.so
+OTHER   password   optional     /lib/security/pam_permit.so
+OTHER   session    optional     /lib/security/pam_permit.so
+EOF
+close PAM;
+
+open NS, ">$distro/etc/nsswitch.conf";
+print NS <<EOF;
+passwd:     files 
+shadow:     files 
+group:      files 
+hosts:      files
+services:   files
+networks:   files
+protocols:  files
+rpc:        files
+ethers:     files
+netmasks:   files     
+bootparams: files
+automount:  files 
+aliases:    files
+netgroup:   files
+publickey:  files
+EOF
+close NS;
+
+chdir $distro; 
+system("/usr/sbin/chroot $distro /sbin/ldconfig");
+chdir "/home";
+sleep 2;
+system("/bin/umount $distro"); 
+sleep 2;
+system("/bin/dd if=$device bs=1k | /bin/gzip -v9 > rootfs.gz");
+sleep 2;
+system("/sbin/losetup -d $device");
+system("/bin/dd if=/home/rootfs.gz of=/dev/fd0 bs=1k");

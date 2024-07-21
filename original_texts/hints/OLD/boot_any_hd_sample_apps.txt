@@ -1,0 +1,584 @@
+TITLE:		Boot (not just root) any HD, sample application
+LFS VERSION:	All.
+AUTHOR:		Bill Maltby <lfsbill@wlmcs.com>
+
+SYNOPSIS:
+	Examples of practical application of the boot_any_hd.txt hint.
+
+HINT:
+
+Version: 0.9 2003-06-14
+
+Change Log:
+   1.0   2003-06-14 - Initial release
+
+Unusual for me, I had no urge to explain much of anything in here. I pre-
+sume that you have read the boot_any_hd.txt hint, if you need to, and any
+of the other reading material it mentions. I also assume you have *some*
+level of bash scripting skill above rank novice. If not, beware!
+
+I present two processes here. The first is script that can be used as a
+prototype for backing up your primary drive to a secondary boot drive. The
+second is a semi-interactive script that will run lilo to install boot
+blocks supporting the concepts discussed in the boot_any_hd.txt hint.
+
+The backup script makes use of a file of sed commands and the lilo script
+uses a configuration file that provides a little adaptation to your system.
+A similar file should be done for the backup script, but I haven't done it.
+
+CONTENTS
+   I. ROOT TO FALL-BACK ROOT BACKUP SCRIPT
+  II. A GENERALIZED LILO.CONF PROTOTYPE FOR USE BY LBI.SH
+ III. A BOOT-BLOCK INSTALL SCRIPT
+  IV. SUPPORT
+
+I. ROOT TO FALL-BACK ROOT BACKUP SCRIPT
+    This script requires that you have bash, find and cpio installed on
+    your system.
+    
+    This script backs up a single root partition, normally /dev/hdb7 for
+    me, to a fall-back root partition on /dev/hdd7, for me. By adjusting
+    these to for your configuration, you should be able to use it. It ex-
+    amines the information from a mount command to generate a script that
+    will do the backup while suppressing copy of directories not contained
+    on your root partition. It also suppresses copy of some files often
+    found in a root FS. By default, the execution of the script made is
+    *not* executed. If you want it to execute automatically just uncom-
+    ment the line near the end of the script.
+
+    After making your adjustments, you can run it by typing
+
+	 ./B7D7BU.sh
+
+    and giving a command line parameter of M, for master or I for incre-
+    mental backup.
+
+    If you give it the "M" parameter, it will generate a script to do a
+    full backup and leave a "timestamp" file on the target partition which
+    is used by an incremental backup to check for newer files to copy.
+
+    If you give it an "I" parameter, it backs up only files with a creation
+    or modification date later than the "time stamp" file.
+
+    The cpio copy is set to verbose mode and creates a log in /tmp named
+    B7D7{M|I}BU.out. This log can be checked to see if things look good.
+    You may want to remove the "v" parameter to cpio to reduce the amount of
+    output.
+
+    A couple of things to watch for: if you intend to be able to boot from
+    the "fall back" drive, remember to adjust various configuration files,
+    like /etc/fstab, that will be sensitive to a (possibly) changed root
+    when you are running from the fall back drive. If you update the orig-
+    inals and back up again, the new ones will overwrite the modified ones
+    unless those files are part of the list of exclusions the script makes.
+
+    You should change those exclusions to meet your needs.
+
+    If you do a full backup, it is better to start with an empty fall back
+    file system. Otherwise old stuff may be left in place. If you do a
+    master backup and then only do incrementals, the same problem will tend
+    to occur over time. Every once-in-awhile, empty the fall back partion
+    and do a master backup again.
+
+    If you are running on the fall back when things like mail happen, and
+    you forgot to put your mail spooling directory someplace *not* on your
+    root partition, you have the possibility that you'll miss some mail
+    when you go back to your normal root because some of the new mail will
+    be on the fall back root.
+
+    I've not tested with mount --bind stuff.
+
+    /boot is excluded from the copy. If you change this, there are times
+    you *may* need to run lilo boot blocks install again. Generally it is
+    better to manually copy /boot stuff and remember to run lilo
+    immediately after.
+
+    Make sure that permissions prevent running or modification by other
+    users. I keep these components in ~root/bin and have my $PATH set
+    accordingly.
+
+    If you use the cron facility to run this automatically in off-hours, it
+    can be very useful.
+
+    I intentionally use inconsistent script constructs. Sometimes "if, then,
+    else, fi" things and other times "test ... " things. Adapt to suit your-
+    self.
+
+    Here is the script.
+
+----------------- CUT ALONG DOTTED LINE ------------------------------------
+#/bin/bash
+SSD=~/bin   # Where sed scripts are.
+
+# Exit if they don't give us a run type
+if [ $# -ne 1 ] ; then
+    echo "Need an I or M parameter for Master or Incremental backup" \
+	>/dev/tty
+    echo "Exit 1" >/dev/tty ; exit 1
+fi
+
+P1="$1"
+
+#########################################################################
+# Make sure I'm rooted on hdb7 or hdd7. CHANGE THIS FOR YOUR CONFIGURATION
+#########################################################################
+set `rdev`
+if [ "x$1" = x/dev/hdb7 ] ; then
+   SP=hdb7;MP=hdd7
+elif [ "x$1" = x/dev/hdd7 ] ; then
+   SP=hdd7;MP=hdb7
+else
+   echo "*** Error: unexpected root mounted: '$1' on '$2'."
+   echo "*** Error: exiting code 1."
+   exit 1
+fi
+
+### Set run type ###
+case "$P1" in
+    M | m ) unset NEWER	# This is not really needed, but looks cleaner
+	BUT=M
+    ;;
+    I | i ) NEWER="-newer /mnt/$MP/BACKUPLAST_$SP"
+	BUT=I
+    ;;
+    * ) echo "Need I or M parameter: Master/Incremental backup" \
+	    >/dev/tty
+	echo "Exit 2" >/dev/tty ; exit 2
+	;;
+esac
+
+### After the first time, the mkdir is a waste. ###
+mkdir -p /mnt/$MP && mount /mnt/$MP
+RC=$?
+
+if [ $RC -eq 1 ] ; then                 # mkdir or mount failed
+   echo "*** Error: mkdir or mount /dev/$MP->/mnt/$MP fail: rc=$RC."
+   echo "*** Error: exiting code 2."; exit 2
+elif [ $RC -ne 0 -a $RC -ne 32 ] ; then
+   echo "*** Error: mkdir or mount bad rc: $RC."
+   echo "*** Error: exiting code 3."; exit 3
+fi
+
+#########################################################################
+# The "meat" of the process. Create a script that finds only the root FS
+# and does either a master backup or an incremental backup. Excludes some
+# files that normally should *not* be copied.
+# NOTE: you can use a inline ("here") document to replace the echos. Be sure
+# you *don't* quote the EOF delimiter - it suppresses variable substitution.
+#########################################################################
+{
+   echo -e "#!/bin/bash\ncd /"
+   echo "find . \( -name 'mtab' -o -name 'fstab' -o -name '.*.swp' \\"
+   echo "-o -path './mnt/$MP/*' -o -path './boot/*' \\"
+   echo "-o -path './mnt/*' -o -path './tmp/*' \\"
+   echo "-o -path './var/log/*' -o -path './var/run/*' \\"
+   echo "-o -path './var/spool/*' -o -path './var/tmp/*' \\"
+   mount 2>&1 \
+      | sed -f $SSD/B7D7BU.se1
+   echo "\\) -prune -o \\( $NEWER -print \\) \\"
+   echo "| cpio -pdamv /mnt/$MP &> /tmp/B7D7${BUT}BU.out"
+   chmod u+x /tmp/B7D7${BUT}BU.sh
+
+    echo "touch /mnt/$MP/BACKUPLAST_$SP"
+} &> /tmp/B7D7${BUT}BU.sh
+
+#########################################################################
+# /tmp/B7D7${BUT}BU.sh	# Uncomment to automatically run the script made.
+#########################################################################
+
+umount /mnt/$MP
+----------------- CUT ALONG DOTTED LINE ------------------------------------
+
+Here are the sed commands contained in $SSD/B7D7BU.se1
+
+----------------- CUT ALONG DOTTED LINE ------------------------------------
+/ on \/mnt/d
+/ on \/ /d
+s/^.* on \([^ ][^ ]*\) .*/-o -path '.\1\/*' \\/
+----------------- CUT ALONG DOTTED LINE ------------------------------------
+
+II. A GENERALIZED LILO.CONF PROTOTYPE FOR USE BY LBI.SH
+
+    This is a "ptototype" file that can be used by the LBI.sh presented
+    later to automatically "do the right thing" when installing lilo boot
+    blocks for a multi-drive boot configuration. It is expected in to be in
+    /etc/LiloBootInst/lilo.conf-proto. Adjust everything to fit your
+    configuration.
+
+    The directory and this file should be inaccessible to all but the user
+    that will run the script - usually root.
+
+----------------- CUT ALONG DOTTED LINE ------------------------------------
+disk=/dev/hda
+	sectors=63
+	heads=16
+	cylinders=6296
+	bios=$HDA
+
+disk=/dev/hdb
+	sectors=63
+	heads=16
+	cylinders=39560
+	bios=$HDB
+
+disk=/dev/hdd
+	sectors=63
+	heads=15
+	cylinders=82714
+	bios=$HDD
+
+menu-title="/dev/hd$BOOTD Drive Boot Menu"
+prompt
+delay=100
+timeout=100
+lba32
+default=B7-K6-20030530
+
+###### lfs20030504 BEG ######
+other=/dev/hda1
+	label=W98
+	loader=$TBBOOT/chain.b
+	map-drive=$MD0
+	    to=$TD0
+	map-drive=$MD1
+	    to=$TD1
+
+image=$TBBOOT/K6-20030530
+	label=B7-K6-20030530
+	root=/dev/hdb7
+	read-only
+	append="pci=biosirq idebus=66"
+
+image=$TBBOOT/K6-20030530
+	label=D7-K6-20030530
+	root=/dev/hdd7
+	read-only
+	append="pci=biosirq idebus=66"
+
+image=$TBBOOT/vmlinuz-2.2.5-15
+	label=RH-6.0-linux
+	root=/dev/hdb2
+	read-only
+
+###### lfs20030504 END ######
+----------------- CUT ALONG DOTTED LINE ------------------------------------
+
+III. A BOOT-BLOCK INSTALL SCRIPT
+
+    This has been tested using lilo 22.2 on a "pure" (B)LFS system.
+
+    In /etc/LiloBootInst/LBI.conf create a file readably only by root with
+    the following contents, adjusted for your configuration.
+
+----------------- CUT ALONG DOTTED LINE ------------------------------------
+#!/bin/bash
+
+DISKS=(a b d)		# CHANGE THIS to show bootable drives
+WD=$PWD			# Where we'll be working
+HDPFX=/dev/hd		# Change for scsi or devfs. Mixed? On your own!
+BDIR=/boot		# Default loc of boot components (non Win*)
+BOOTB=boot.b		# Default prototype boot block(s).
+CProto=lilo.conf-proto	# lilo.conf prototype file
+CONSOLE=/dev/tty	# For fd[0-2] I/O. Devfs? Change as needed.
+----------------- CUT ALONG DOTTED LINE ------------------------------------
+
+    The following shell script, /etc/LiloBootInst/LBI.sh helps get things
+    right during the grind of daily operations. It depends on being able to
+    find the prototype file, detailed above, and the configuration file just
+    displayed.
+
+    To run it, cd to /etc/LiloBootInst and run this command, with the
+    substitutions noted after.
+
+        ./LBI.sh {-t|-i} -d X -p N [ -D <default-image-label>
+
+    The "-t" means test only - don't actually install, but do everything
+    else. If you give it "-i", the boot blocks will be installed. The "X"
+    should be replaced with the drive this run is to affect: a for hda, b
+    for hdb, etc. The "N" is replaced by the partition number containing
+    the root file system.
+
+    If you provide the "-D" and the label of an image, it will be used as
+    the default boot image, overriding any "default=" within the file. If
+    there is no "default=" and no "-D ..." is provided, the system will
+    generate a "-D ..." for you and tell you that it is doing that. This
+    will be the same default as lilo would take.
+
+    For first runs, be sure to use the "-t" parameter, test. It will process
+    the prototype file and leave the results in a file named *-boot.conf.
+    This is the lilo.conf file that will be referenced by a shell script
+    that is also created, *-boot.sh. You can examine and adjust either of
+    these files as needed.
+
+    A file, *-boot.out will also be created, using a lilo debug level of v3,
+    showing the information lilo garnered and the decisions made. When this
+    looks good using the "-t" parameter, you can then remove the "-t" and
+    run the *-boot.sh script or rerun LBI.sh and give the "-i" parameter.
+
+    If you provide the "-i", install parameter, the shell will warn you
+    that you are going to install the boot blocks and ask if you want to do
+    it. Either way, both the "-t" and "-i" leave the *-boot.conf, *-boot.sh
+    and *-boot.out files there for you to examine.
+
+    The created shell has a "less" at the end that will page through the
+    corresponding *-boot.out file created when the *-boot.sh script is run.
+
+    The output log has a copy of the lilo command that runs.
+
+    Here is the shell script.
+
+----------------- CUT ALONG DOTTED LINE ------------------------------------
+#!/bin/bash
+
+source ./LBI.conf	# Load some config/customization vars.
+
+#######################################################################
+# stdusage: issue standard usage message
+#######################################################################
+stdusage() {		# Standard usage if an error found
+    echo "usage: lilo-boot-install.sh"
+    echo "  -{t|i}          --> runtype: Test or Install boot blocks"
+    echo "  -d [a|b|c|d]    --> Drive to *boot*"
+    echo "  [-D <def boot>] --> Default boot image lable (optional)"
+    echo "  -p partition    --> Partition containing ...$BDIR"
+} &> $CONSOLE <$CONSOLE
+
+#######################################################################
+# stdchecks: see if mount point is involved. Is a boot block found.
+#######################################################################
+stdchecks()		# Cks common to several drive/part. validations
+{   # $1=mount point preceding some *boot* directory name
+    # $2=some *boot* directory
+    # $3=the drive specified by the -d parameter
+    # $4=the drive partition specified by the -p parameter
+    # $5=a full path name of device that may have a *boot* directory
+    # $6=exit code if there is a failure
+
+    local BMP=$(mount | grep " on $1$2 " | sed -e 's/ on .*//')
+    if [ -n "$BMP" ] ; then			# Found mount point
+	test $BMP != ${HDPFX}$3$4 && {
+	    echo "-p $4 doesn't match $BMP on $2. Exit $6 a."
+	    stdusage
+	    exit $6
+	} 
+    fi
+    test ! -f $1$2/$BOOTB && {		# Assure boot blk exists
+	echo "$1$2/$BOOTB not found on $5. Exit $6 b."
+	stdusage
+	exit $6
+    }
+}
+
+#######################################################################
+# getopts process: - validate options and set up parameters
+#######################################################################
+RUN=bad			# To detect if they don't select test or install
+
+# Process all the options passed in - all are required
+while getopts "tid:p:D:" OPTLTR ; do
+    case $OPTLTR in
+	D ) test -n "$DBL" && {			# Default Boot Label seen?
+		echo "Multiple -D given. Default boot label already '$DBL'"
+		stdusage
+		echo "exit 13"
+		exit 13
+	    }
+	    DBL="$OPTARG"
+	    # We'll let lilo validate the default boot image and lable
+	    # so just leave the case right here.
+	    ;;
+        i | t )					# Do install or test?
+	    if [ bad = "$RUN" ] ; then		# Not seen before?
+		test $OPTLTR = i && unset RUN || RUN=-t
+	    else
+		echo "-t or -i duplicated or both were given"
+		stdusage
+		echo "exit 1"
+		exit 1
+	    fi;;
+	d ) test -n "$BOOTD" && {		# Seen boot dev before?
+		echo "Multiple -d given. Boot drive already '$BOOTD'"
+		stdusage
+		echo "exit 2"
+		exit 2
+	    }
+	    for N in ${DISKS[*]} ; do		# Drive given is valid?
+	       test $N = $OPTARG && { BOOTD=$OPTARG ; break ; }
+	    done
+	    test -z "$BOOTD" && {		# Invalid drive given
+	        echo "Bad boot drive given '-$OPTLTR $OPTARG'"
+		stdusage
+		echo "exit 3"
+		exit 3
+	    }
+	    ;;
+	p ) if BP=`expr "$OPTARG" : '.*[^0-9]'`	# Part has non-numeric?
+	    then
+		echo "Bad partition char at char $BP in '$OPTARG'"
+		stdusage
+		echo "exit 4"
+		exit 4
+	    else
+		BOOTP=$OPTARG
+	    fi
+	    ;;
+	* ) eval echo "Bad opt/param \$$((--OPTIND))/\'$OPTARG\' # $OPTIND"
+	    stdusage
+	    echo "exit 5"
+	    exit 5
+	    ;;
+    esac
+done
+
+#######################################################################
+# Missing parameters process:, if all needed not found, error out
+#######################################################################
+test "$RUN" = bad -o -z "$BOOTD" -o -z "$BOOTP" && {
+    echo -e "Missing a needed parameter: you provided\n    \c"
+    echo "'$*'"
+    stdusage
+    echo "exit 6"
+    exit 6
+}
+
+#######################################################################
+# check options vs. available components: set up variables and error
+#     out if discrepancies are detected
+#######################################################################
+# See if toboot-boot, partition containing boot-time components, is
+# available. Later we check to see if it has at least boot.b.
+TBBOOT=$(mount | \
+    sed -n "/hd$BOOTD$BOOTP/s/^\(.*\) on \([^ ][^ ]*\).*$/\1 \2/p")
+
+MPT='' ; MDV=''					# Mount point/device
+if [ -n "$TBBOOT" ] ; then			# Have something
+    set $TBBOOT ; test / != $2 && MPT=$2 ; MDV=$1
+fi
+
+if [ "x$MDV" != "x${HDPFX}$BOOTD$BOOTP" ] ; then
+    echo "-p $BOOTP (${HDPFX}$BOOTD${BOOTP}) not mounted. Exit 7."
+    exit 7
+fi
+
+# May have a wrong partition specified for boot-time components. This
+# might yield an empty mount point when there *is* a mount point that is
+# on another partition. This would give bad boot-time device. Check for
+# this condition so we don't get burned.
+
+if [ -z "$MPT" ] ; then				# No special mount found
+    if [ -d $BDIR ] ; then			# But we have a boot dir
+	stdchecks '' $BDIR $BOOTD $BOOTP $MDV 8
+	TBBOOT=${MPT}$BDIR			# Set boot-time dir
+    else
+	echo "No boot directory found on ${HDPFX}$BOOTD$BOOTP. Exit 8."
+	exit 8
+    fi
+elif [ "x/$(basename $MPT)" = "x$BDIR" ] ; then	# A mounted boot-time pt
+    test -f $MPT/$BOOTB && TBBOOT=$MPT ||	# Assure boot blk exists
+	{ echo "$MPT/$BOOTB not on $MDV. Exit 9." ; exit 9 ; }
+elif [ -d $MPT$BDIR ] ; then			# Boot dir in another FS
+    stdchecks $MPT $BDIR $BOOTD $BOOTP $MDV 10
+    TBBOOT=${MPT}$BDIR				# Set boot-time dir
+elif [ -d "$MPT/liloboot" ] ; then
+    stdchecks $MPT /liloboot $BOOTD $BOOTP $MDV 11
+    TBBOOT=${MPT}/liloboot			# Set boot-time dir
+else
+    echo "No boot directory found on ${HDPFX}$BOOTD$BOOTP. Exit 10."
+    exit 10
+fi
+
+#######################################################################
+# Set up the bios= variables to edit the CProto (lilo.conf-proto) file
+#######################################################################
+case $BOOTD in
+    a ) HDA=0x80;HDB=0x81;HDD=0x82
+	unset MD0 TD0 MD1 TD1
+	;;
+    b ) HDA=0x81;HDB=0x80;HDD=0x82
+	MD0=0x80 TD0=0x81 MD1=0x81 TD1=0x80
+	;;
+    d ) HDA=0x81;HDB=0x82;HDD=0x80
+	MD0=0x80 TD0=0x81 MD1=0x81 TD1=0x80
+	;;
+    * ) echo "Frank Barrone: Holy Crap! How'd we get here Marie? Exit 12"
+        exit 12 ;;
+esac
+
+# Eliminate hijacking potential
+rm -f hd$BOOTD${BOOTP}-boot.sh hd$BOOTD${BOOTP}-boot.out \
+    $WD/hd${BOOTD}$BOOTP-boot.conf
+PUM=$(umask);umask 077
+
+sed -e "s/=.HDA/=$HDA/" -e "s/=.HDB/=$HDB/" -e "s/=.HDD/=$HDD/" \
+    -e "s/\(.\).BOOTD/\1$BOOTD/" \
+    -e "s@=.TBBOOT@=$TBBOOT@" \
+    -e "/map-drive=/s/.MD0/$MD0/" -e "/to=/s/.TD0/$TD0/" \
+    -e "/map-drive=/s/.MD1/$MD1/" -e "/to=/s/.TD1/$TD1/" \
+    -e '/map-drive=$/d' -e '/to=$/d' \
+    $WD/$CProto \
+    > $WD/hd${BOOTD}$BOOTP-boot.conf
+
+> hd$BOOTD${BOOTP}-boot.out			# Empty log
+
+#######################################################################
+# default image process: -D overrides default= in prototype file. If
+# no -D given, gets default from prototype file and makes a -D for lilo
+# so it will be *visible* on $CONSOLE, in the script file and the log.
+#######################################################################
+test -z "$DBL" && {
+    DBL=$(grep default= $WD/hd${BOOTD}$BOOTP-boot.conf \
+	| head -1 | sed 's/.*default=//')
+    test -z "$DBL" && {
+	DBL=$(grep label= $WD/hd${BOOTD}$BOOTP-boot.conf \
+	    | head -1 | sed 's/.*label=//')
+    }
+    echo "Note: default boot is $DBL"
+    echo "# default boot is $DBL" >> hd$BOOTD${BOOTP}-boot.out
+}
+
+#######################################################################
+# make lilo script: combine variables and imperatives into shell file
+# WATCH OUT! Those are *not* leading spaces on the lines between the
+# "EOD" lines. Those lines use 1 leading tab and then enough spaces to
+# maintain the visual indent. The "-EOD" removes *only* leading tabs, not
+# leading spaces. In this case, it doesn't really matter though.
+#######################################################################
+cat > hd$BOOTD${BOOTP}-boot.sh <<-EOD
+	#!/bin/bash
+	lilo $RUN -v3 -b ${HDPFX}$BOOTD \\
+	    -m $TBBOOT/hd$BOOTD${BOOTP}map \\
+	    -C $WD/hd${BOOTD}$BOOTP-boot.conf \\
+	    -D $DBL \\
+	    >> hd$BOOTD${BOOTP}-boot.out 2>&1
+	less hd$BOOTD${BOOTP}-boot.out &> $CONSOLE
+EOD
+
+{
+    echo -e "\nInstall script to run is\n"
+    sed -e 's/^/    /'  hd$BOOTD${BOOTP}-boot.sh
+    echo
+    test -z "$RUN" && {
+	echo "=== INSTALLATION REQUESTED - WILL UPDATE BOOT BLOCKS ==="
+	echo -e "Run it? Y/[N] - \c" ; read A
+	test "x$A" != xY -a "x$A" != xy && {
+	    echo "Script available in $WD/hd$BOOTD${BOOTP}-boot.sh"
+	    exit 0
+	}
+    }
+} &> $CONSOLE < $CONSOLE
+
+cat hd$BOOTD${BOOTP}-boot.sh >> hd$BOOTD${BOOTP}-boot.out
+echo "--- ABOVE COMMAND PRODUCED THIS LOG ---" >>hd$BOOTD${BOOTP}-boot.out
+
+chmod u+x hd$BOOTD${BOOTP}-boot.sh
+./hd$BOOTD${BOOTP}-boot.sh
+----------------- CUT ALONG DOTTED LINE ------------------------------------
+
+IV. SUPPORT
+
+    If you post to blfs-support with the subject "boot any hd", I'll keep an
+    eye open and try to help. But I expect you will have read and understood
+    the boot_any_hd.txt hint and the documents it references. I also expect
+    that any scripting problems have been investigated before you post. This
+    si hard enough to debug when its right on my own machines, no telling how
+    hard it would be to help a remote user.

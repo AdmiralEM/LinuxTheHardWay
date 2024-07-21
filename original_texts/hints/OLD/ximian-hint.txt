@@ -1,0 +1,1541 @@
+TITLE:		Ximian
+LFS VERSION:	1.0.0
+AUTHOR:		Jonathan Lozinski	(j_lozinski@yahoo.co.uk)
+
+SYNOPSIS:
+	
+	LFS POST-INSTALL TO GET LOVELY XIMIAN DESKTOP
+	---------------------------------------------
+	
+HINT:
+
+
+INTRO
+-----
+This is a very simple hint into setting up a lfs system with the ximian desktop
+Some of this is not entirely needed for everyone, such as the wvdial, but I use
+them to get a working system up and running.  This doesn't cover installing X,
+just uses the binaries.  X is installed to get up and running with FTP and WWW
+in a graphical environment to make life a little easier, also the development
+stuff in X is needed to compile many gnome/Ximian files..
+
+ACKNOWLEDGEMENTS
+----------------
+some of this is taken out of the gnome hint, and maybe a couple of others, I
+wish to respect the authors of hints who's work I have borrowed from.. Sorry
+not to mention by name, but...
+
+
+PRE-INSTALL
+-----------
+Before we start installing Ximian files we need to get a few bits of software
+installed.  If you have already versions of this installed *newer or equal* 
+then happy days.
+
+
+Graphics Libraries
+------------------
+
+	zlib	[zlib-1.1.3]
+	----
+	Although not specifically a graphics library it's needed for png etc..
+
+./configure --prefix=/usr --shared &&
+make &&
+make install
+ldconfig
+
+
+
+	libpng	[libpng-1.0.8]
+	------
+
+cp scripts/makefile.linux Makefile
+make ZLIBINC=/usr ZLIBLIB=/usr prefix=/usr all install
+ldconfig
+
+	
+	libjpg	[jpeg-6b]
+	------
+	
+./configure \
+--prefix=/usr \
+--enable-shared
+make && make install
+ldconfig
+
+
+	libtiff	[tiff-v3.5.5]
+	-------
+
+./configure
+
+	you will need to tell manually to go to /usr instead of /usr/local/...
+
+make all install
+ldconfig
+rm -r /tiff.sw.tools
+
+
+
+	libungif	[libungif-4.1.0b1]
+	--------
+
+./configure \
+--prefix=/usr
+make all install
+ldconfig
+
+
+*******************************************************************************
+*********** THIS SECTION IS NOT COMPULSORY READ BELOW AND DECIDE **************
+*******************************************************************************
+
+This is only if you need to get your system up with X etc.. to down load source
+it's not necessary even then.  I just reckon that compiling in X with several
+xterms and having a browser and internet connection are handy when building in
+case you need something you didn't realise.  lynx would do, but opera and igloo
+run well..  and remember X is compulsary to install gnome!
+
+	Xfree4.20	(binary)
+	---------
+	for speed to get up I didn't compile X from scratch, could do at a later
+	date, but I didn't have the source.  You will of course need X to compile
+	most ximian packages however!
+
+	opera5	(static) 
+	------
+	downloaded from www.opera.com, static version as no libs installed as of yet
+	*does* require above gfx libs to display pics..
+
+./install.sh
+
+	set prefix=/opt/opera
+	
+ln /opt/opera/bin/opera /usr/bin/
+	
+
+	[SIDE NOTE ON OPERA]
+	Now with opera6 beta whatever you can use netscape plugins, so finaly flash
+	works with it.  The thing is, it needs motif, so you might want to install
+	that here:
+	
+	[openMotif]
+	-----------
+	download:
+	ftp://ftp.uk.linux.org/pub/linux/openmotif/2.2/src/openMotif-2.2.2.tar.gz
+	
+	install:
+	
+./configure --prefix=/usr
+make && make install
+ldconfig
+
+	The compile kicked out in doing demos/animate.  I just copied xmanimate.c
+	to animate.c and then make again...
+	Finally make .so.2 link
+
+ln -s /usr/lib/libXm.so /usr/lib/libXm.so.2
+
+
+
+	iglooFTP	(static)
+	--------
+	other FTP clients available, but this one here if static with GTK+ is pretty
+	efficient and downloads in a Q, including recursive dir's and spawning
+	sessions from clip-board..
+	
+	ppp	[ppp-2.4.1]
+	---
+	dialup daemon
+
+./configure --prefix=/usr
+make && make install
+
+	WVDIAL	[wvdial-1.42]
+	------
+	dialup wrapper, nice job..
+
+make &&
+make PREFIX=/usr install
+wvdialconf /etc/wvdial.conf
+cp wvdial.conf.5 /usr/man/man5/
+
+	Now edit /etc/wvdial.conf to isp details..
+
+*******************************************************************************
+******************************** END OF SECTION *******************************
+*******************************************************************************
+
+
+Ruin a Perfectly good Machine
+-----------------------------
+
+Yes, I know we're lfs-ing, but we know we need rpm for a number of reasons,
+some people for reasons known to themselves alone do not release in anything
+other than rpm format.
+
+The reason we need it in particular is because ximian source is actually source
+rpms anyway...
+
+	db1	[db.1.85.4]	{from rpm-glibc... hint}
+
+   In the file ./hash/hash.h change
+        errno
+   on the line 106 to
+        m_errno
+
+   After that, replace occurrences
+        ->errno
+   with
+        ->m_errno
+   for following lines of files :
+
+   ./hash/hash.c
+   lines 508 539 556 560 577 581 732
+
+   ./hash/ndbm.c
+   lines 183 193
+
+	Build and install the package
+
+cd PORT/linux
+make
+install -m644 libdb.a /usr/local/lib/libdb1.a
+mkdir /usr/local/include/db1
+install -m644 ../include/ndbm.h /usr/local/include/db1
+install -m644 ../../include/db.h /usr/local/include/db1
+install -m644 ../../include/mpool.h /usr/local/include/db1
+ldconfig
+
+
+
+	db3	[db-3.1.17]
+	---
+	used to get rpm running
+	
+cd build_unix/
+../dist/configure \
+--disable-nls \
+--enable-rpc \
+--enable-diagnostic \
+--enable-compat185 \
+--enable-cxx \
+--prefix=/usr/local \
+--includedir=/usr/local/include/db3
+make
+docdir=/usr/local/share/doc/BerkeleyDB.3.1.17 make -e install
+cd /usr/local/lib
+v -v libdb.a libdb-3.1.a
+ln -sv libdb-3.1.a libdb.a
+mv -v libdb_cxx.a libdb_cxx-3.1.a
+ln -sv libdb_cxx-3.1.a libdb_cxx.a
+
+	and again aparently
+
+cd build_unix/
+../dist/configure \
+--disable-nls \
+--enable-rpc \
+--enable-diagnostic \
+--enable-compat185 \
+--enable-cxx \
+--prefix=/usr/local \
+--includedir=/usr/local/include/db3 \
+--enable-shared
+make
+docdir=/usr/local/share/doc/BerkeleyDB.3.1.17 make -e install
+
+
+
+	rpm4	[rpm-4.0.2]
+	----
+vi lib/db3.c
+
+	at line 12 change to, then save and exit:
+	#include </usr/local/include/db3/db.h>
+
+./configure --prefix=/usr
+make
+make install
+rpm --initdb
+rpm --rebuilddb
+
+*******************************************************************************
+************** Important information about Ximian Sources *********************
+*******************************************************************************
+
+This hint covers information about installing ximian from sources.  The sources
+I downloaded was from mandrake 7.0's sources.  The reason I chose these was
+because I have a celeron system and optimized most compiles for i686, others
+may work, but who knows - I don't know of any reason why these wont work even
+if you're not using celeron system...
+
+As to compiling them..  I have made no attempt to identify dependencies, I just
+adopted the stratagy of finding what would compile in what order.  I compiled
+libs etc.. first.  Other things like what packages are needed and what you may
+not want to install, that's up to you.  I pretty much compiled in an order that
+I thought was needed, and skipped a few apps which maybe I wouldn't use until
+last...
+
+	Getting the source out of the rpm
+	---------------------------------
+	To get the source and it's patches from a src.rpm do the following:
+
+rpm -i ximian.source.file.src.rpm
+pushd /usr/src/redhat/SOURCES
+
+	Now you can untar the packages in and cd to the dir and then follow the 
+	instructions given on a per package basis in this hint.
+
+*******************************************************************************
+************* VERY IMPORTANT START STUFF FROM GNOME HINT! *********************
+*******************************************************************************
+
+	Pre-build instructions
+	----------------------
+	Setting up compile commands.
+	
+export GNOME_ROOT=/opt/gnome
+export PATH=$PATH:$GNOME_ROOT/bin
+echo $GNOME_ROOT/lib >> /etc/ld.so.conf
+
+export GNOME_OPTS="--prefix=$GNOME_ROOT --with-gnu-ld --disable-static"
+alias gcfg='./configure $GNOME_OPTS'
+
+
+	Pre-install dependancies
+	------------------------
+
+	openssl	[openssl-0.9.6]
+	-------
+	
+export OPENSSL_ROOT=/opt/OpenSSL
+./config \
+  --prefix=$OPENSSL_ROOT \
+  --openssldir=$OPENSSL_ROOT \
+  shared
+make && make install
+cd /usr/lib
+for file in lib{crypto,ssl}.{a,so.0.9.6}
+do
+	 ln -s $OPENSSL_ROOT/lib/$file
+done
+ln -s libcrypto.so.0.9.6 libcrypto.so.0
+ln -s libssl.so.0.9.6 libssl.so.0
+ln -s libcrypto.so.0 libcrypto.so
+ln -s libssl.so.0 libssl.so
+cd /usr/include &&
+ln -s $OPENSSL_ROOT/include/openssl
+unset OPENSSL_ROOT
+ldconfig
+
+
+
+	readline	[readline-4.2a]
+	--------
+
+./configure \
+  --prefix=/usr
+make all install
+cd shlib/
+make all install
+ldconfig
+
+
+	bc	[bc-1.06]
+	--
+
+./configure \
+  --prefix=/usr \
+  --with-readline
+sed 's|\(^_PR.*readline.*$\)|/* \1 */|' bc/scan.l > new-scan.l &&
+mv new-scan.l bc/scan.l
+make all install
+ldconfig
+
+	lcms	[lcms-1.07]
+	----
+
+sh ./install.gcc
+ldconfig
+
+	libmng
+	------
+./configure \
+	--prefix=/usr \
+	--with-zlib=/usr \
+	--with-jpeg=/usr \
+	--with-lcms=/usr
+make all install
+ldconfig
+
+
+	
+	gmp	[gmp-3.1.1]
+	---
+patch -i ../gmp-3.1.1.dif
+./configure --prefix=/usr
+make all install
+ldconfig
+
+	gdbm	[gdbm-1.8.0]
+	----
+	-REQUIRES A USER bin, try.. although userid and group no can change
+	bin:x:1:1:bin:/bin:/bin/bash
+
+gcfg
+make all install
+ldconfig
+
+	
+	liconv
+	------
+	*** I DID NOT INSTALL! ***
+	according to gnome hint liconv should be installed to correct errors of some
+	kind.  I don't know if that's from older lfs or what, but I know that the
+	first time I did ximian compiling the whole thing went mental when it came
+	to iconv and it did my head in, so I tried another time without - MUCH
+	BETTER!
+
+	It's up to you, maybe the version of libiconv I was trying to use was crap,
+	I don't know, but it all works without it, so ;)
+
+	
+	libxml2	[libxml2-2.4.12]
+	-------
+	not strictly needed, but many ximian apps need it, so good to put it in..
+
+./configure --prefix=/usr
+make && make install
+ldconfig
+
+
+*******************************************************************************
+************** OK We're finally into the ximian packages! *********************
+*******************************************************************************
+
+Intro
+-----
+In this section filenames are listed of the src.rpm's used to install,
+underneath is a list of what was done with the contents of the archive.
+The source and any patches were found by:
+
+cd /usr/src/redhat/SOURCES/
+
+In certain cases you're not to untar the main file, but the hint states it
+clearly.  Otherwise you're expected, as in LFS, to untar and cd into the dir
+before executing the commands listed.
+
+Follow the instructions under each file for how it was compiled, any unusual
+situations encountered will be mentiond also.  I have usually done an 'ldconfig'
+after every compile, just in case, it does no harm..  but make sure ldconfig
+will look in the new gnome dir, ie add:
+
+/opt/gnome/lib
+
+to your /etc/ld.so.conf [although this should have been done by the setup
+earlier.. so check..]
+
+Libraries first:
+----------------
+	Well, libraries are a good place to start to fulfil dependancies for other
+	apps:
+
+	glib-1.2.10-ximian.2.src.rpm
+	----------------------------
+
+gcfg
+make && make install
+ldconfig
+
+	
+	gtk+-1.2.10-ximian.21.src.rpm
+	-----------------------------
+
+patch -Np1 -i	../gtk+-filesel-navigation-buttons.patch
+patch -Np1 -i	../gtk+-filesel-move-fileops.patch
+patch -Np1 -i	../gtk+-filesel-save-dir.patch
+patch -Np1 -i	../gtk+-filesel-wmanager-realized-fix.patch
+patch -Np1 -i	../gtk+-filesel-dirchanged-fix.patch 
+patch -Np1 -i	../gtk+-fix-dnd-crash.patch
+patch -Np1 -i	../gtk+-focus.patch
+patch -Np1 -i	../gtk+-mac_ctree.patch 
+patch -Np1 -i	../gtk+-no-grab-env-var.patch 
+patch -Np1 -i	../gtk-style-default-theme-draw-on-pixmaps.patch 
+patch -Np1 -i	../gtkentry-blinky.patch 
+patch -Np1 -i	../gtkmenubar-noborder.patch 
+patch -Np1 -i	../gtkmenuitem-timeout.patch 
+patch -Np1 -i	../gtkrange-wide.patch
+gcfg
+make && make install
+ldconfig
+
+
+
+	imlib-1.9.10-ximian.2.src.rpm
+	-----------------------------
+
+./configure --prefix=/usr
+make 
+make install
+ldconfig
+
+
+	libghttp-1.0.9-ximian.5.src.rpm
+	-------------------------------
+
+gcfg
+make all install		
+ldconfig
+
+
+
+
+	libogg-1.0beta4-ximian.3.src.rpm
+	--------------------------------
+./configure --prefix=/usr
+make
+make install
+ldconfig
+
+
+	libole2-0.2.3-ximian.1.src.rpm
+	------------------------------
+./configure --prefix=/usr
+make
+make install
+ldconfig
+
+
+	librep-0.13.4-ximian.6.src.rpm
+	------------------------------
+./configure --prefix=/usr --with-gdbm-prefix=/opt/gnome
+make
+make install
+ldconfig
+
+
+	gdk-pixbuf-0.11.0-ximian.5.src.rpm
+	----------------------------------
+gcfg
+make
+make install
+ldconfig
+
+
+
+
+	libsigc++-1.0.3-ximian.3.src.rpm
+	--------------------------------
+./configure --prefix=/usr
+make
+make install
+ldconfig
+
+
+	libunicode-0.4.gnome-ximian.1.src.rpm
+	-------------------------------------
+./configure --prefix=/usr
+make
+make install
+ldconfig
+
+
+	libvorbis-1.0beta4-ximian.4.src.rpm
+	-----------------------------------
+./configure --prefix=/usr
+make
+make install
+ldconfig
+	
+	******* I HAD ERRORS HERE  ******
+	gcc: Internal compiler error: program cc1 got fatal signal 11
+
+	I never had these problems last time, so it could be related to the
+	version of LFS I am using this time around..
+
+	This has someting to do with compiler optimization, so if it does bomb out
+	then do the following to the configure file
+
+	line 1629:
+	change:
+	CFLAGS="-O20 -ffast-math -mno-ieee-fp -D_REENTRANT -fsigned-char"
+	to:
+	CFLAGS="-O2 -ffast-math -D_REENTRANT -fsigned-char"
+
+	and
+	line 1631:
+	change:
+	PROFILE="-Wall -W -pg -g -O20 -ffast-math -mno-ieee-fp -D_REENTRANT -fsigned-char -fno-inline -static"
+	to:
+	PROFILE="-Wall -W -pg -g -O2 -ffast-math -D_REENTRANT -fsigned-char -fno-inline"
+	
+
+*******************************************************************************
+****************** Now for the rest of the Gtk+ stuff  ************************
+*******************************************************************************
+
+
+	gtkmm-1.2.5-ximian.2.src.rpm
+	----------------------------
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+
+	gtk-engines-0.12-ximian.1.src.rpm
+	---------------------------------
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+
+	gtk-engines-thinice-1.0.4-ximian.1.src.rpm
+	------------------------------------------
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+
+	gtk-themes-0.1-ximian.2.src.rpm
+	-------------------------------
+	slightly diffrent, there are two files.. untar both then...
+
+patch -Np1 -i ../gtk-themes-makefile.patch &&
+prefix=/opt/gnome/ make install
+
+
+
+	ORBit-0.5.12-ximian.1.src.rpm
+	-----------------------------
+./configure --prefix=/opt/gnome/ &&
+make &&
+make install &&
+ldconfig
+
+
+	oaf-0.6.7-ximian.2.src.rpm
+	--------------------------
+	
+patch -Np1 -i ../oaf-michael-fixety.patch &&
+gcfg --enable-oaf-debug=no &&
+make &&
+make install &&
+ldconfig
+
+
+	GConf-1.0.4-ximian.1.src.rpm
+	----------------------------
+patch -Np1 -i ../gconf-no_schemas.patch &&
+gcfg --enable-debug=no &&
+make all install &&
+mv /opt/gnome/etc/gconf/1/path.example /opt/gnome/etc/gconf/1/path &&
+ldconfig
+
+
+	audiofile-0.2.1-ximian.2.src.rpm
+	--------------------------------
+./configure --prefix=/usr
+make &&
+make install &&
+ldconfig
+
+
+	esound-0.2.22-ximian.3.src.rpm
+	------------------------------
+./configure \
+	--prefix=/usr/X11R6 \
+	--disable-static &&
+make &&
+make install &&
+ldconfig
+
+
+	popt-1.5-ximian.2.src.rpm
+	-------------------------
+gcfg --enable-static &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+	gnome-libs-1.2.13-ximian.11.src.rpm
+	-----------------------------------
+
+patch -Np1 -i ../RH-gnome-libs-echok.patch &&
+patch -Np1 -i ../RH-gnome-libs-rhsnddefs.patch &&
+patch -Np1 -i ../gnome-libs-LZWStream.patch &&
+patch -Np1 -i ../gnome-libs-dont-install-some-docs.patch &&
+patch -Np1 -i ../gnome-libs-fhs-compliant-gtkrc.patch &&
+patch -Np1 -i ../gnome-libs-fix-score-path.patch &&
+patch -Np1 -i ../gnome-libs-monkeytalk.patch &&
+patch -Np1 -i ../gnome-libs-pixmap-load-ref-bug.patch &&
+patch -Np1 -i ../gnome-libs-zvt-underline.patch &&
+patch -Np1 -i ../gnome-moz-mozilla.patch
+	
+	Had problems in compile with __db185_open or something, so did configure:
+	
+gcfg --enable-prefer-db1 &&
+make &&
+make install
+
+
+
+
+	freetype2-2.0.1-ximian.1.src.rpm
+	--------------------------------
+make setup CFG="--prefix=/usr"
+make
+make install
+ldconfig
+
+
+	scrollkeeper-0.2-ximian.3.src.rpm
+	---------------------------------
+patch -Np1 -i ../scrollkeeper-correct-symlinks.patch  
+patch -Np1 -i ../scrollkeeper-mkdir.patch
+patch -Np1 -i ../scrollkeeper-no-update.patch
+sed 's|=lib/scrollkeeper|=scrollkeeper|g' configure > configure~
+cp configure~ configure
+gcfg
+make all install
+ldconfig
+
+	you may have minor issue with omf-install and # in automake, if so simply
+	edit omf-install/Makefile.am and move the #comments to the start of the line
+	and then cd .. and then make again.
+
+
+	gnome-print-0.34-ximian.1.src.rpm
+	---------------------------------
+gcfg --with-zlib=/usr
+make all install
+ldconfig
+
+
+
+	bonobo-1.0.17-ximian.1.src.rpm
+	------------------------------
+	ISSUES with libesd needed to link /usr/X11R6/lib/libesd... to /usr/local/lib
+
+gcfg
+make all install
+ldconfig
+
+	
+	guile-1.4-ximian.9.src.rpm
+	--------------------------
+patch -Np1 -i ../guile-glibc2.2-inet_aton.patch 
+gcfg --with-threads
+make all install		  
+ldconfig
+	
+	there are two other patches in this package which I could not get to work
+	but you might be able to, readline was mainly the error.
+		patch -Np1 -i ../guile-snarf-cflags.patch
+		patch -Np1 -i ../guile-readline-include.patch	
+
+
+	slib-2d1-ximian.6.src.rpm	[to do with scheme]
+	-------------------------
+patch -Np1 -i ../slib-install-target.patch
+make prefix=/opt/gnome
+make prefix=/opt/gnome install
+GUILE_LOAD_PATH=/opt/gnome/share/guile/slib \
+guile -c "(use-modules (ice-9 slib)) (require 'new-catalog)"
+
+
+	gnome-vfs-1.0.1-ximian.5.src.rpm
+	--------------------------------
+	There are two archive in this, note desktop-vfs-module-0.2 delayed until 
+	pkg-config avail**
+	
+	[gnome-vfs-1.0.1]
+patch -Np2 -i ../gnome-vfs-need-newlines-for-sed.patch
+patch -Np2 -i ../gnome-vfs-process-fix.patch
+patch -Np2 -i ../gnome-vfs-rh-segvfix.patch
+patch -Np2 -i ../gnome-vfs-rh-notrashscan.patch
+patch -Np2 -i ../gnome-vfs-rh-desktop-sniff.patch
+patch -Np2 -i ../gnome-vfs-rh-abiword_mime.patch
+patch -Np2 -i ../gnome-vfs-rh-gimpuris.patch
+gcfg
+make all install
+ldconfig
+
+
+	control-center-1.4.0.1-ximian.5.src.rpm
+	---------------------------------------
+
+patch -Np1 -i ../background-gradient.patch
+patch -Np1 -i ../control-center-1.0.5-limitedbgs.patch
+patch -Np1 -i ../control-center-1.0.5-numwallpapers.patch
+patch -Np1 -i ../control-center-esdrelease.patch
+patch -Np1 -i ../control-center-fsbgpath.patch
+patch -Np1 -i ../control-center-new-browser-capplet.patch
+patch -Np1 -i ../control-center-no-emboss.patch
+patch -Np1 -i ../control-center-nosound.patch
+patch -Np1 -i ../gnomecc-mac_ctree.patch
+gcfg
+make all install
+ldconfig
+
+
+	libglade-0.16-ximian.1.src.rpm
+	------------------------------
+gcfg --enable-bonobo --disable-bonobotest
+make all install		 
+ldconfig
+
+
+	gdk-pixbuf-0.11.0-ximian.5.src.rpm
+	----------------------------------
+gcfg
+make all install
+ldconfig
+
+	bug-buddy-2.0.8-ximian.1.src.rpm
+	--------------------------------
+gcfg
+make all install
+ldconfig
+
+	gal-0.19-ximian.1.src.rpm
+	-------------------------
+patch -Np1 -i ../gal-use-broken-iconv.patch
+gcfg
+make all install
+ldconfig
+
+	****************************************
+	********** SPECIAL NOTICE!!! ***********
+	****************************************
+
+	Evolution: If you want, as I did, to use the very latest version of
+	evolution rather than the one that comes from ximians release, then
+	you will need to download the latest version of gal and other support 
+	files with the source of evolution...  This is what I got..
+
+	gal-0.19.2.tar.gz
+	-----------------
+gcfg
+make all install
+ldconfig
+
+
+	gtkhtml-1.0.1-ximian.1.src.rpm
+	------------------------------
+gcfg \
+ --with-bonobo \
+ --without-gconf
+make all install
+ldconfig
+
+	****************************************
+	********** SPECIAL NOTICE!!! ***********
+	****************************************
+
+	Evolution: If you want, as I did, to use the very latest version of
+	evolution rather than the one that comes from ximians release, then
+	you will need to download the latest version of gtkhtml and other support 
+	files with the source of evolution...  This is what I got..
+
+	gtkhtml-1.0.2.tar.gz 
+	--------------------
+gcfg \
+ --with-bonobo \
+ --without-gconf
+make all install
+ldconfig
+  
+
+	libgtop-1.0.12-ximian.3.src.rpm
+	-------------------------------
+gcfg
+make all install
+ldconfig
+
+
+	rep-gtk-0.15-ximian.4.src.rpm
+	-----------------------------
+gcfg \
+ --with-libglade \
+ --with-gdk-pixbuf \
+ --with-gnome-canvas-pixbuf
+make all install
+ldconfig
+
+
+	gob-1.0.10-ximian.1.src.rpm
+	---------------------------
+gcfg
+make all install
+ldconfig
+
+
+	sawfish-0.38-ximian.4.src.rpm
+	-----------------------------
+patch -Np1 -i ../sawfish-always_install_wm-properties.patch 
+patch -Np1 -i ../sawfish-custom-defaults.patch 
+gcfg \
+ --with-gdk-pixbuf \
+ --disable-linguas
+make all install
+ldconfig
+
+
+	pilot-link-0.9.5-ximian.2.src.rpm
+	---------------------------------
+patch -Np1 -i ../pilot-link-deleted-record.patch 
+patch -Np1 -i ../pilot-link-sync-leak.patch 
+patch -Np1 -i ../pilot-link-util-leak.patch 
+./configure --prefix=/usr
+make 
+make install
+ldconfig
+
+
+	xml-i18n-tools-0.8.4-ximian.2.src.rpm
+	-------------------------------------
+patch -Np1 -i../xml-i18n-tools-add-strategic-brace.patch
+./configure --prefix=/usr
+make
+make install
+ldconfig
+
+
+	gnome-core-1.4.0.4-ximian.5.src.rpm
+	-----------------------------------
+
+	***************************************************
+	******************** NOTE *************************
+	***************************************************
+	uudecode needed for gnome-core...
+	
+	finally found this software, it's part of sharutils
+	ftp.gnu.org/gnu/sharutils/sharutils-4.2.1.tar.gz
+	
+	I had trouble compiling this, but whipped the binary out of another dist.
+	if you can't get it or compile, then e-mail me and I'll put them online.
+	
+patch -p1 -i ../ximian-logo-license.patch
+patch -p1 -i ../gnome-hint-ugly_blue.patch
+patch -p1 -i ../panel-saner_defaults.patch
+patch -p1 -i ../panel-no_menu_tooltips.patch
+patch -p1 -i ../panel-new_keybindings.patch
+patch -p1 -i ../gnome-terminal-sanefont.patch
+patch -p1 -i ../gnome-core-helix-pixmaps.patch
+patch -p1 -i ../gnome-core-suse-script.patch
+patch -p1 -i ../gnome-core-helix-splash.patch
+patch -p1 -i ../panel-deskguide-nothumbs.patch
+patch -p1 -i ../gnome-core-foobar-rounded-in-your-face.patch
+patch -p1 -i ../gnome-core-ximian-desktop-fixup.patch
+patch -p1 -i ../gnome-core-foobar-restructure.patch
+patch -p1 -i ../gnome-core-panel-no-menutitles.patch
+patch -p1 -i ../gnome-core-terminal-larger-scrollback-default.patch
+patch -p1 -i ../gnome-core-gsm-launch-doorman.patch
+patch -p1 -i ../gnome-core-tasklist-titles-in-menu.patch
+patch -p1 -i ../gnome-core-gsm-splash-use-speakernotes-icon.patch
+patch -p1 -i ../gnome-core-mdk-8-session.patch
+gcfg \
+ --with-window-manager=sawfish \
+ --enable-gtkhtml-help
+make all install
+cd pixmaps
+mkdir /opt/gnome/share/pixmaps/helix
+mv helix-splash.uue /opt/gnome/share/pixmaps/helix/a
+pushd /opt/gnome/share/pixmaps/helix
+uudecode helix-splash.uue
+rm helix-splash.uue
+chmod +r helix-splash.png
+popd
+mkdir /opt/gnome/share/pixmaps/ximian
+mv ximian*.uue /opt/gnome/share/pixmaps/ximian
+pushd /opt/gnome/share/pixmaps/ximian
+uudecode *.uue
+rm *.uue
+chmod +r *
+popd
+uudecode *.uue
+cp *.png /opt/gnome/share/pixmaps/
+ldconfig
+
+	******************
+	I had some errors here with msgfmt, not sure why, didn't on previous
+	lfs's.  However problem not major because these were in the translations,
+	perhaps my kernel was bad on locales or something.. any info here would be
+	nice, but a sufficient workaround is to copy po/en_GB.po to any .po file
+	which doesn't work and make again.  If the .po is one for your language,
+	then I dunno what to do - sucks to be you I guess ;)
+
+
+	gnome-applets-1.4.0.1-ximian.5.src.rpm
+	--------------------------------------
+patch -Np1 -i../screenshooter-save-as-png.patch 
+patch -Np1 -i../gweather-disable-radar-map.patch 
+gcfg
+make all install
+ldconfig
+
+
+	gnome-audio-1.4.0-ximian.1.src.rpm
+	----------------------------------
+patch -Np1 -i ../gnome-audio-destdir.patch
+make install
+	
+
+	gnome-games-1.4.0.1-ximian.12.src.rpm
+	-------------------------------------
+patch -Np1 -i ../gnome-games-fix-help-paths.patch
+patch -Np1 -i ../gnome-games-no-kill-bill.patch
+patch -Np1 -i ../gnome-games-stones-keys.patch
+patch -Np1 -i ../gnome-games-stones-make.patch
+patch -Np1 -i ../same-gnome-default-crashy.patch
+gcfg
+make all install
+ldconfig
+
+
+	gnome-media-1.2.3-ximian.1.src.rpm
+	----------------------------------
+gcfg
+make all install
+ldconfig
+
+
+	gnome-pim-1.4.0-ximian.7.src.rpm
+	--------------------------------
+patch -Np1 -i ../gnome-pim-gnomecard-sizing-and-file-loading-fixlets.patch 
+patch -Np1 -i ../gnome-pim-use-new-gnome-pilot.patch 
+gcfg
+make all install
+ldconfig
+
+
+	gnome-pilot-0.1.64-ximian.1.src.rpm
+	-----------------------------------
+patch -Np1 -i ../gnome-pilot-dont-clean-gob-files.patch 
+patch -Np1 -i ../gnome-pilot-jp-mods.patch 
+gcfg
+make && make install
+ldconfig
+
+
+	gnome-utils-1.4.0-ximian.8.src.rpm
+	----------------------------------
+patch -Np1 -i ../gnome-utils-1.0.1-sparkle.patch 
+patch -Np1 -i ../gnome-utils-1.0.12-fixdistr.patch 
+patch -Np1 -i ../gnome-utils-1.4.0-fat-default.patch 
+patch -Np1 -i ../gnome-utils-gshutdown-help.patch 
+patch -Np1 -i ../gnome-utils-gw-help.patch 
+gcfg --with-messages=/var/log/sys.log
+make all install
+ldconfig
+
+	
+	xscreensaver-3.32-ximian.8.src.rpm
+	----------------------------------
+patch -Np1 -i ../xscreensaver-no-confusing-dialogs.patch 
+patch -Np1 -i ../xscreensaver-no-yellow-text.patch 
+patch -Np1 -i ../xscreensaver-reenable-window-id.patch 
+patch -Np1 -i ../xscreensaver-sort-hacks-less-memory.patch 
+patch -Np1 -i ../xscreensaver-ximian-branding.patch 
+patch -Np1 -i ../xscreensaver-drop-bad-hacks.patch 
+gcfg \
+ --with-gtk \
+ --with-gnome \
+ --enable-subdir=xdemos
+make all install
+ldconfig
+
+
+	gnome-user-docs-1.4.1-ximian.2.src.rpm
+	--------------------------------------
+gcfg
+make all install
+ldconfig
+
+
+	gnomemm-1.2.0-ximian.2.src.rpm
+	------------------------------
+gcfg
+make all install
+ldconfig
+
+
+	panelmm-0.1-ximian.2.src.rpm
+	----------------------------
+gcfg
+make all install
+ldconfig
+
+
+	mc-4.5.54-ximian.6.src.rpm
+	--------------------------
+patch -Np1 -i ../mc-4.5.35-fixwarning.patch 
+patch -Np1 -i ../mc-4.5.35-xtermcolor.patch 
+patch -Np1 -i ../mc-4.5.36-mimekeys.patch   
+patch -Np1 -i ../mc-4.5.51-extention.patch 
+patch -Np1 -i ../mc-4.5.51-gnome-editor.patch 
+patch -Np1 -i ../mc-4.5.51-showagain.patch  
+patch -Np1 -i ../mc-4.5.51-stderr.patch    
+patch -Np1 -i ../mc-cons.saver-security.patch
+patch -Np1 -i ../mc-create-user-visible-desktop-symlink.patch 
+patch -Np1 -i ../mc-ctree_love.patch        
+patch -Np1 -i ../mc-fix-terminal-launch.patch 
+patch -Np1 -i ../mc-no-string-inlines.patch 
+gcfg
+make all install
+ldconfig
+
+
+	gdm-2.2.2.1-ximian.12.src.rpm
+	-----------------------------
+patch -Np1 -i ../gdm-conf.patch  
+patch -Np1 -i ../gdm-daemon-verify-deps.patch 
+patch -Np1 -i ../gdm-gnome-session.patch  
+patch -Np1 -i ../gdm-locale-alias.patch  
+patch -Np1 -i ../gdm-look-for-xsession.patch 
+patch -Np1 -i ../gdm-pam-config.patch     
+patch -Np1 -i ../gdm-sysconfdir-fix.patch 
+patch -Np1 -i ../gdm-ximian-logo.patch    
+patch -Np1 -i ../ximian-logo-license.patch 
+gcfg
+make all install
+ldconfig
+
+
+	ximian-wallpapers-0.2-ximian.1.src.rpm
+	--------------------------------------
+datadir=/opt/gnome/share ./install-wallpapers.sh 
+
+
+	ximian-menus-1.4-ximian.5.src.rpm
+	---------------------------------
+patch -Np1 -i ../ximian-menus-ximian-evolution.patch 
+gcfg
+make && make install
+ldconfig
+
+
+	ximian-utils-0.2-ximian.1.src.rpm
+	---------------------------------
+gcfg
+make && make install
+ldconfig
+
+
+	ximian-setup-tools-0.8.0-ximian.1.src.rpm
+	-----------------------------------------
+	*** THIS WOULD NOT WORK ON MY SYSTEM ***
+	Going on about Control Center, but some part called
+	config_archiver is what it wants.  dont know how needed these are.
+
+patch -p1 -i ../ximian-setup-tools-correct-directories.patch 
+gcfg
+make && make install
+ldconfig
+
+
+	ximian-faq-1.0-ximian.2.src.rpm
+	-------------------------------
+prefix=/opt/gnome ./install.sh
+
+
+	helix-sweetpill-1.0-ximian.2.src.rpm
+	------------------------------------
+	** DO NOT DECOMPRESS THESE ARCHIVES!! **
+
+patch -Np1 -i ./sawfish-themes-makefile.patch
+prefix=/opt/gnome make install
+
+
+	sawfish-themes-0.2-ximian.1.src.rpm
+	-----------------------------------
+	** DO NOT DECOMPRESS THESE ARCHIVES!! **
+
+patch -Np1 -i ./sawfish-themes-makefile.patch
+prefix=/opt/gnome make install
+
+
+
+	ximian-doorman-1.0.6-ximian.2.src.rpm
+	-------------------------------------
+	note there are patches in this package, but they wouldn't work for some
+	reason.
+gcfg
+make && make install
+ldconfig
+
+
+	librsvg-1.0.1-ximian.2.src.rpm
+	------------------------------
+patch -Np1 -i ../librsvg-rh-mb.patch 
+gcfg
+make
+make install
+ldconfig
+
+
+	bonobo-conf-0.14-ximian.1.src.rpm
+	---------------------------------
+	*** SPECIAL NOTE ***
+	if you are wanting to use a more up to date source for evolution you may
+	need to get a more up to date version of this.  In my case this source is
+	fine, but by the time you read this it may not be.
+	
+gcfg
+make
+make install
+ldconfig
+
+
+
+*******************************************************************************
+****************************** SETUP MOSTLY DONE! *****************************
+*******************************************************************************
+
+Ok here you've pretty much got a working system, from here on you can opt out
+of installing most things unless you want the specific app.  A few things need
+configuring to work, so I will detail them here.
+
+	CONFIGURING:gdm
+	===============
+	run gdmconfig
+
+	look at all the options, BASIC/EXPER/SYSTEM etc, some items are *RED* these
+	need your attention to enable the program to work properly.
+
+	on mine the following needed addressing:
+	
+	BASIC/Login.. -> Logo:
+		picture missing, isn't installed from gdm for some reason, can be
+		by applying patch as stated above, then
+		cd pixmaps
+		uudecode ximian-gdm-screen.uue 
+		mkdir /opt/gnome/share/pixmaps/ximian/
+		cp ximian-gdm-screen.png /opt/gnome/share/pixmaps/ximian/
+		chmod +r /opt/gnome/share/pixmaps/ximian/ximian-gdm-screen.png
+	BASIC/Face.. -> Global faces
+		you can just create the dir.
+	EXPERT/Login.. -> Session dir
+		remove /X11
+	EXPERT/X-server setup -> Server def
+		alter 0 /usr/bin/X11/X vt7 to be /usr/X11R6/bin/X vt7 (use Edit Server)
+	SYSTEM/Paths.. -> Display init
+		remove /X11
+	SYSTEM/Paths.. -> PRE session
+		remove /X11
+	SYSTEM/Paths.. -> POST session
+		remove /X11
+	SYSTEM/Chooser -> Dir host img
+		just create the dir if you want
+
+	finally you will need to add user & group gdm
+
+	/etc/passwd: gdm:x:10:12:::
+	/etc/group : gdm:x:12:root,gdm
+
+	change the ownership of /opt/gnome/var/gdm
+
+chown -R gdm /opt/gnome/var/gdm
+chgrp -R gdm /opt/gnome/var/gdm
+
+	** note no. 12 is changable depending on what users/groups you have already
+
+*******************************************************************************
+
+	gnet-1.0.4-ximian.2.src.rpm
+	---------------------------
+patch -p1 -i ../gnet-no-debdir.patch
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+
+	monkeytalk-1.0.2-ximian.1.src.rpm
+	---------------------------------
+gcfg &&
+make &&
+make install
+ldconfig
+
+	xchat-1.8.7-ximian.1.src.rpm
+	----------------------------
+gcfg &&
+make &&
+make install
+ldconfig
+
+
+	evo-openldap-2.0.11-ximian.7.src.rpm
+	------------------------------------
+patch -Np1 -i ../openldap-enable-config-cache.patch 
+./configure --prefix=/usr
+make depend
+make && make install
+ldconfig
+
+
+	evolution-1.0.1-ximian.2.src.rpm
+	--------------------------------
+	[THIS TOOK ABOUT 3 HOURS!!!]
+./configure --prefix=/opt/gnome
+make && make install
+
+	**************************************
+	****** SPECIAL NOTE ON NEWER *********
+
+	obviously note that if you want a new version of evolution you need to
+	get the source and compile ;)
+
+	evolution-1.0.5.tgz
+	-------------------
+gcfg --enable-pilot-conduits=yes \
+  --with-db3=/usr/local \
+  --with-db3-includes=/usr/local/include/db3 \
+  --with-db3-libs=/usr/local/lib &&
+make &&
+make install &&
+ldconfig
+
+
+	xmms-1.2.5-ximian.4.src.rpm
+	---------------------------
+gcfg
+make && make install
+
+
+	Mozila for Nautilus
+	*******************
+
+	Mozilla requires extra installs before compile
+
+	zip2.3 [zip23.tgz]
+	------
+	downloads from http://www.info-zip.org.  Note you may want to get both zip23
+	and unzip550.tgz for unzipping in general.
+
+make -f unix/Makefile generic
+make -f unix/Makefile install
+mv /usr/local/bin/zip* /usr/bin
+
+	unzip-5.50 [unzip550.tgz]
+	----------
+make -f unix/Makefile generic
+make -f unix/Makefile install
+mv /usr/local/bin/zip* /usr/bin
+mv /usr/local/bin/unzip* /usr/bin
+
+
+	mozilla-0.9.5-ximian.1.src.rpm
+	------------------------------
+	Note that at time of writing mozilla-1.0.rc1 is available, so this is what
+	is used for the compilation.
+./configure --prefix=/opt/mozilla \
+--with-x \
+--with-pthreads \
+--with-system-jpeg \
+--with-system-zlib \
+--with-system-mng \
+--enable-toolkit-gtk \
+--enable-toolkit-xlib \
+--enable-xft \
+--disable-debug \
+--enable-crypto \
+--enable-optimize='-O3 -march=i686 -mcpu=i686' \
+--enable-reorder \
+--enable-strip \
+--enable-xterm-updates \
+--enable-cpp-rtti \
+--enable-cpp-exceptions \
+--enable-default-toolkit=gtk
+export MOZILLA_OFFICIAL=1
+export BUILD_OFFICIAL=1
+make -f client.mk build
+cd xpinstaller/packager
+make
+	
+		You now have a 'distubution' of mozilla, which is in dist/ in the source
+		base.
+		You now untar that in /opt and bob's you uncle.
+
+
+cd /opt/
+tar xzf /location/of/source/dist/mozilla-i686-pc-linux-gnu.tar.gz
+
+
+
+******************************************************************************
+	
+	mozilla 1.0 [mozilla-source-1.0.rc1.tar.gz]
+	-----------
+	
+./configure --prefix=/usr \
+  --enable-toolkit-gtk \
+  --enable-toolkit-xlib \
+  --disable-mailnews \
+  --disable-accessibility \
+  --disable-debug \
+  --enable-strip &&
+make
+
+	This build doesn't install, so do this:
+	
+mkdir /opt/mozilla
+cp -RL dist/* /opt/mozilla
+
+*******************************************************************************
+
+	Add the following to /etc/ld.so.conf
+
+	/opt/mozilla/bin
+	/opt/mozilla/lib
+	
+	And add the following to your .bashrc and other places and PATHS:
+	
+	export MOZILLA_FIVE_HOME=/opt/mozilla/bin
+	export LD_LIBRARY_PATH=/opt/mozilla/bin:$LD_LIBRARY_PATH
+
+
+HERE HERE HERE HERE!!!!
+
+	eel-1.0.1-ximian.4.src.rpm
+	--------------------------
+patch -p1 -i ../eel-dont-remove-built-headers.patch
+patch -p1 -i ../eel-rh-defaultfont.patch
+patch -p1 -i ../eel-rh-cvs.patch
+patch -p1 -i ../eel-rh-labelflash.patch
+patch -p1 -i ../eel-rh-styles.patch
+patch -p1 -i ../eel-rh-font-misc.patch
+patch -p1 -i ../eel-rh-maketrash.patch
+patch -p1 -i ../eel-rh-mbellipsize.patch
+patch -p1 -i ../eel-rh-mbiconlabels.patch
+patch -p1 -i ../eel-rh-header_mb.patch
+patch -p1 -i ../eel-rh-bghack.patch
+gcfg
+make
+make install
+
+
+
+	nautilus-1.0.4-ximian.10.src.rpm
+	--------------------------------
+
+patch -p1 -i ../nautilus-change-default-background-color.patch
+patch -p1 -i ../nautilus-no-trash-folders-dialog.patch
+patch -p1 -i ../nautilus-find-nspr.patch
+patch -p1 -i ../nautilus-add-ximian-bookmark.patch
+patch -p1 -i ../nautilus-disable-sound-preview-by-default.patch
+patch -p1 -i ../nautilus-noflash.patch
+patch -p1 -i ../nautilus-mozilla-0.9.5.patch
+patch -p1 -i ../nautilus-bghack.patch
+patch -p1 -i ../nautilus-norootwarning.patch
+patch -p1 -i ../nautilus-removeicons.patch
+patch -p1 -i ../nautilus-desktop-file-sources.patch
+patch -p1 -i ../nautilus-monitor-includes.patch
+patch -p1 -i ../nautilus-iconv-fix.patch
+gcfg --with-mozilla-lib-place=/foo/bar/mozilla/dist/bin \
+  --with-mozilla-include-place=/foo/bar/mozilla/dist/include
+
+
+	gimp-1.2.2-ximian.2.src.rpm
+	---------------------------
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+	pan-0.9.7-ximian.6.src.rpm
+	--------------------------
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+	ggv-1.0.1-ximian.1.src.rpm
+	--------------------------
+patch -p1 ../ggv-bonobo-cflags.patch  
+gcfg &&
+make &&
+make install
+ldconfig
+
+
+--TODO--
+
+
+
+
+---------
+
+-NOT DONE YET-
+libnspr4-4.1-ximian.3.src.rpm	[something to do with mozilla]
+-NOT DONE YET-
+
+
+glade-0.6.2-ximian.2.src.rpm
+	
+
+pygtk-0.6.8-ximian.1.src.rpm	[NEED PYTHON !]
+	./configure --prefix=/usr
+	make all install
+
+
+
+
+--NOT DONE YET!--
+abisuite-0.9.4.1-ximian.3.src.rpm
+dia-0.88.1-ximian.1.src.rpm
+gaim-0.11.0pre9-ximian.3.src.rpm
+gftp-2.0.8-ximian.2.src.rpm
+gnapster-1.4.2-ximian.3.src.rpm
+gnumeric-0.71-ximian.1.src.rpm
+
+ammonite-1.0.0-ximian.1.src.rpm
+battstat_applet-2.0.9-ximian.5.src.rpm
+eog-0.6-ximian.8.src.rpm
+g-wrap-0.9.12-ximian.3.src.rpm
+gedit-0.9.7-ximian.1.src.rpm
+ghex-1.2.1-ximian.1.src.rpm
+glimmer-1.0.1-ximian.3.src.rpm
+gnomeicu-0.96.1-ximian.2.src.rpm
+gnucash-1.4.11-ximian.5.src.rpm
+gphoto-0.4.3-ximian.4.src.rpm
+gqview-0.10.1-ximian.3.src.rpm
+grdb-0.2.4-ximian.3.src.rpm
+grip-2.95-ximian.3.src.rpm
+gtop-1.0.13-ximian.1.src.rpm
+memprof-0.4.0-ximian.1.src.rpm
+perl-GTK70-0.7008-ximian.1.src.rpm
+pygnome-1.4.1-ximian.1.src.rpm
+red-carpet-1.2.1-ximian.2.src.rpm
+sane-1.0.3-ximian.3.src.rpm
+swig-1.1p5-ximian.2.src.rpm
+
+
+xsane-0.75-ximian.4.src.rpm
+
+
+** DIDNT WORK, SO ITS HERE, NOT SURE WHERE IT'S NEEDED **
+gnome-guile-0.20-ximian.3.src.rpm
+	gcfg
+   make all install
+
+usermode-1.36-ximian.4.src.rpm	[NEEDS PAM!]
+	PATCHED:
+	usermode-makefile-fixups.patch 
+	make && make install
+
+
+
+ximian-south-1.2-ximian.1.src.rpm	[SKIN OR SOMETHING FOR NAUT?]
+ximian-south-meta-0.1.0-ximian.2.src.rpm
+
+evo-db3-3.1.17-ximian.2.src.rpm [NO NEED AS HIGHER DB3 DONE]

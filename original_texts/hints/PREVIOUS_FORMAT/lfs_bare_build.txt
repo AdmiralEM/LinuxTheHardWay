@@ -1,0 +1,667 @@
+TITLE:		LFS-BARE-BUILD hint
+LFS VERSION:	Any recent LFS with kernel > 2.2 glibc-2.2 gcc 2.95.3
+AUTHOR:		Frank Schafer <frank.schafer@setuza.cz>
+
+SYNOPSIS:	This hint is a collection of the experience I made during the
+		build of a LFS system on a machine with no OS installed and
+		some information from different INSTALL-HOWTOs with some
+		further suggeetions.
+
+VERSION:	17-10-2001
+
+============
+Introduction
+============
+Most of the recent Linux distributions provide an easy way to make a machine
+running this wonderful OS -- but there are some disadvantages:
+1'st: Nearly all ( all ) distributors package things together, so one has the
+      possibility to choose, which of the ( distribution ) packages to install,
+      but probably ( mostly ) get things installed she don't wamt to.
+2'nd: Using a lane and plain distribution install-CD one will never understand
+      in deep, how things work under *NIX.
+3'rd: Using a binary distribution one doesn't know, how the single packages
+      were configured.
+4'th: Binary distributions have to ensure, that they can be installed on every
+      machine ( assuming INTEL ). So they build their packages without any
+      subtarget options applied to the compiler, and end up with i386 code.
+      Of course, a PENTIUM IV is able to run this code, but it'll run it faster,
+      if the compiler made real PENTIUM-IV-instructons.
+Thanks to Gerard and friends - LFS came in turn. The LFS people did a great
+work, supplying the knowledge of how to build a custom Linux "distribution" to
+almost everybody. Such a custom build has the advantages, that one can choose
+fine grained what will run on her machine, that we know how the packages
+are configured ( we configure ourselves ;-), adding the -march switch to our
+Makefiles can be used, to create code for the processor one has on her
+machine instead if the default i386 code, and last but not least one will
+win a lot of knowledge doing this all.
+The only disadvantage of LFS as-is is, that it is build on a machine with Linux
+already installed into a seperate partition on the harddisk. Mostly there won't
+be so much unused disk space, to create a new partition which is sufficient for
+the task of building a whole system. Furthermore this way we can't plan a
+layout for the filesystem ( we simply have everything in one large partition ).
+Using a PC with only the BIOS installed, to build the LFS system can solve this.
+In fact, as the time of this writing I've dropped all binary distributions and
+use the LFS style to install ( or better build ? ) new hosts.
+
+===========
+So let's go
+===========
+You cannot build an operating system using only the BIOS of a PC - of course. So
+we will need a machine, where all the nesessary tools are available. You can use
+every PC with linux installed for this task. In my first case I used a Slackware7.1 distribution with glibc-2.1.3, kernel 2.2.16 and gcc-2.91.66. I'll call this
+machine the MOTHER further on.
+I intended to build an LFS system with glibc-2.2.3, kernel 2.4.8 and gcc-2.95.3.
+I'll call this machine the CHILD further on.
+The first trouble, I ran into was the upgrades of glibc and of the kernel, so be
+aware if this.
+
+First preparation steps ( MOTHER )
+We need the tools we need to build the system, and what we are using the MOTHER
+for, on the CHILD too. First we use the MOTHER, to build them.
+You will have to look for a filesystem, which has enough free space to build.
+Let's say, a:
+
+	# df -k
+
+gives you this output:
+
+	Filesystem           1k-blocks      Used    Available Use% Mounted on
+	/dev/hda1            101089         20516   75354     22%  /
+	/dev/hdb1            1035692        731688  251392    75%  /usr
+	/dev/hdb3            101089         17      95853     1%   /tmp
+	/dev/hdb5            101089         2931    92939     4%   /var/spool
+	/dev/hdb6            497829         260506  211621    56%  /opt
+	/dev/hdb7            2158384        1110060 1048324   51%  /v_dsk
+
+Then you have enough space in /v_dsk.
+
+Note: If You plan ( like I did ) to reuse the static part of the build, you
+      should NOT add any -march switches to your Makefiles. So you ensure to
+      have code, which runs on every machine.
+
+If you want to reuse the static build for further LFS builds I suggest you to
+create a "private" version of glibc and ncurses ( the only libs we need for
+this ). First make a backup of the static libs in /usr/lib and /lib. We could
+of course use the -nostdlib switch to cc and to add all the libs manually, but
+we'd have to do this for every package from chapter 5. That's why I've choosen
+this way.
+The following is "stolen" from the lfs-3.0pre3-upgrade hint.
+glibc:
+  You will need to unpack glibc and glibc-linuxthreads, and create the
+  glibc-build directory in your source directory. Then change into glibc-build
+  and do:
+        # ../glibc-2.2.1/configure \
+          --prefix=/usr \
+          --disable-shared \
+          --disable-profile \
+          --enable-add-ons \
+          --omit-fp
+        # make
+        # make install_root=/v_dsk/static-libs install
+        # cd /v_dsk/static-libs/usr/lib
+	# cp -a * /usr/lib
+  Doing this and following my note above, you will end up with i386 code, which
+  don't use a hardware FPU.
+ncurses:
+  Unpack the ncurses package you want to use, change into the ncurses directory
+  and do:
+	# ./configure \
+	  --with-install-prefix=/v_dsk/static-libs \
+	  --prefix=/usr \
+	  --libdir=/lib \
+	  --without-shared \
+	  --without-profile \
+	  --without-debug \
+	  --disable-termcap
+	# make
+	# make install
+	# cd /v_dsk/static-libs/lib
+	# cp -a *.a /lib
+  This links the ncurses libs against the glibc without FPU usage.
+
+Now we can create a directory for the LFS static build in /v_dsk.
+
+	# mkdir /v_dsk/lfs
+
+If you now do an:
+
+	# export LFS=/v_dsk/lfs
+
+you can follow exactly the instructions of chapter 5 of the LFS-BOOK, to build
+all necessary tools for the build of the final LFS system.
+There is one exception: You don't need the kernel header files ( in $LFS ) for 
+this build, so leave this step alown.
+Too, at this point, you shouldn't do the steps after ''Installing Textutils''.
+Once you finished with chapter 5 of the book, you should burn out 
+$LFS/usr/include.
+
+	# rm -rf $LFS/usr/include
+
+Everything we need is now in $LFS. 
+
+If you have made the "private" build for the libs above, you now should restore
+them from the backup you made.
+
+At this point we have all we need to make the final build, but we have it on the
+MOTHER, which is definitively the wrong machine.
+So we'll now need to bring the CHILD to life. Again we use the MOTHER. Now we
+will make a set of floppy disks, which we will boot the CHILD with. This is
+taken from the Bootdisk-HOWTO. So if something I describe here remains unclear,
+use this as a reference.
+There are still some things, we still havent built, which are nesessary for a
+system boot. We'll need a kernel, of course, init and login must be available
+on a rootdisk, we will need to mount filesystems, we will need to partition the
+disk on the CHILD ( fdisk ) and we will need to create filesystems ( mke2fs )
+and, because we won't be able to build without, we need to create and turn on
+swap on the CHILD ( mkswap, swapon ). Because we'll use NFS during the build
+we'll need to configure our NIC ( ifconfig, route ).
+
+Let's now populate the filesystem for our root-disk. We'll create first a
+directory for this.
+
+	# mkdir /v_dsk/rootfs
+
+The root filesystem will have all programs in /bin or /sbin and all libraries in
+/lib for simplicity. So:
+
+	# mkdir /v_dsk/rootfs/{bin,dev,etc,lib,mnt,proc,sbin,var,MOTHER}
+
+is sufficient.
+The /MOTHER directory will be used later on the CHILD, to mount the directory,
+which contains the static binaries via NFS from the MOTHER.
+
+And we have to do:
+
+	# mkdir /v_dsk/rootfs/var/{log,run}
+	# touch /v_dsk/rootfs/var/run/utmp
+
+Because these directoties/files are needed by login.
+
+Next we'll create the devices ( in /dev of course ). I'll use the traditional
+``mknod'' here.
+
+	# cd /v_dsk/rootfs/dev
+
+You could copy all the devices from /dev to here of course, and delete, what you
+don't need, but on the rootdisk we need only a few, so we do:
+
+	# mknod -m 660 console c 5 1
+	# mknod -m 660 fd0 b 2 0
+	# mknod -m 660 hda b 3 0
+	# mknod -m 660 hda1 b 3 1
+	...
+
+Which HD devices you want to create depends on, how many partitions you plan to
+create on your HDs and what disk(s) you have. More information on the commands
+above you find in the manual for mknod, and in the devices.txt file, which is
+part of the kernel distribution.
+
+	# mknod -m 660 initrd b 1 250
+	# mknod -m 660 kmem c 1 2
+	# mknod -m 666 null c 1 3
+	# mkdir pts
+	# chmod 755 pts
+	# mknod -m 660 ram0 b 1 0
+	# mknod -m 644 random b 1 8
+	# mknod -m 666 tty c 5 0
+	# mknod -m 600 tty0 c 4 0
+	# mknod -m 600 tty1 c 4 1	# 2 virtual consoles are enough
+	# mknod -m 600 tty2 c 4 2	# for a rootdisk floppy
+	# mknod -m 644 urandom c 1 9
+	# mknod -m 666 zero c 1 5
+
+The next diectory we'll have to populate is /etc. So let's go there;
+
+	# cd /v_dsk/rootfs/etc
+
+First, we need an rc-script. The one we use is fairly simple.
+
+	# cat > rc
+	#!/bin/sh
+	/bin/mount -av
+	/sbin/ifconfig lo 127.0.0.1
+	/sbin/route add -net 127.0.0.0 netmask 255.0.0.0 lo
+	/sbin/ifconfig eth0 IP.OF.THE.CLD broadcast BROADCAST \
+					      netmask NETMASK
+	/bin/mount -t nfs IP.OF.THE.MTR:/v_dsk/lfs /MOTHER
+	^D
+	# chmod 755 rc
+
+Replace ``IP.OF.THE.CLD'' with the IP-address, you have choosen for the CHILD,
+and BROADCAST and NETMASK with the broadcast address and netmask of your site
+respectively.
+The same way replace ``IP.OF.THE.MTR'' with the IP-address of the MOTHER.
+
+Now we'll create the fstab file.
+
+	# cat > fstab
+	/dev/ram0       /               ext2    defaults
+	/dev/fd0        /               ext2    defaults
+	/proc           /proc           proc    defaults
+	^D
+
+Here is the inittab file for our rootdisk.
+
+	# cat > inittab
+	id:2:initdefault:
+	si::sysinit:/etc/rc
+	1:12:respawn:/sbin/agetty tty1 9600
+	2:2:respawn:/sbin/agetty tty2 9600
+	^D
+
+All services on our boot/rootdisk booted CHILD are provided by local files. So
+the creation of the nsswitch.conf looks like this:
+
+	# cat > nsswitch.conf
+	passwd:     files
+	shadow:     files
+	group:      files
+	hosts:      files
+	services:   files
+	networks:   files
+	protocols:  files
+	rpc:        files
+	ethers:     files
+	netmasks:   files
+	bootparams: files
+	automount:  files
+	aliases:    files
+	netgroup:   files
+	publickey:  files
+	^D
+
+Oh, and somebody needs to be able to log into the CHILD. This should be the
+person who builds it, what is done by the administrator ( of course ). So we'll
+create passwd and group this way:
+
+	# cat > passwd
+	root::0:0:The cruely admin:/:bin/sh
+	^D
+	# cat > group
+	root::0:root
+	^D
+
+Be aware, that root doesn't have a password this way, so have the floppies on a
+secure place.
+
+We'll use bash, so the profile could have the following form:
+
+	# cat > profile
+	PS1='LFS-BUILD : \w \$ '
+	PS2='>'
+	PATH=/MOTHER/sbin:/MOTHER/bin:/MOTHER/usr/bin:/bin:/sbin
+	export PS1 PS2 PATH
+	^D
+
+The floppy system will be dynamically linked, that's why we'll need ld.so.conf
+and ld.so.cache too.
+
+	# cat > ld.so.conf
+	/lib
+	^D
+	# touch ld.so.cache	# ( this is needed by ldconfig )
+
+In the case, the MOTHER uses ``termcap'' one will have to copy the termcap file.
+
+	# cp /etc/termcap .
+
+In this case I advise, to delete all but the linux entry in this file.
+
+In the case the MOTHER uses terminfo, one will have to copy the terminfo
+database ( and create the appropriate directories ). For that case it should be
+sufficient, to do a:
+
+	# mkdir -p /v_dsk/rootfs/usr/lib/terminfo/l
+	# cp /usr/lib/terminfo/l/linux /v_dsk/rootfs/usr/lib/terminfo/l
+
+The location on the MOTHER obove is only an example.
+
+This is all we need in /etc, and next we'll provide the programs in /bin and
+/sbin. We'll "borrow" all the programs, which we need to boot and which are not
+available from the static build, from the mother. I've already mentioned theese
+above.
+
+	# cd /v_dsk/rootfs/sbin
+	# cp /sbin/agetty .
+	# cp /sbin/fdisk .
+	# cp /sbin/ifconfig .
+	# cp /sbin/init .
+	# cp /sbin/ldconfig .
+	# cp /sbin/mke2fs .
+	# cp /sbin/mkfs .
+	# cp /sbin/mkfs.ext2 .
+	# cp /sbin/mkswap .
+	# cp /sbin/modprobe .
+	# cp /sbin/route .
+	# cp /sbin/swapon .
+
+	# cd /v_dsk/rootfs/bin
+	# cp /bin/bash .
+	# ln bash sh
+	# cp /bin/login .
+	# cp /bin/mount .
+	# cp /bin/umount .
+
+More we don't need to boot. Some of the utils above could be located in other
+directories on YOUR MOTHER. You should use ``which'' to see where they are and
+copy them to the appropriate location in /v_dsk/rootfs.
+Note, that THIS part of your floppy system is dynamically linked, so we have
+to provide /lib too.
+
+	# cd /v_dsk/rootfs/lib
+	
+To see, which libs we need, we will have a look at every of the above programs
+using ldd. Here is an example:
+
+	# ldd /sbin/agetty
+	libc.so.6 => /lib/libc.so.6 (0x4001d000)
+	/lib/ld-linux.so.2 => /lib/ld-linux.so.2 (0x40000000)
+	# ls -l /lib/libc.so.6
+	lrwxrwxrwx 1 root root  13 Jul 13 16:15 /lib/libc.so.6 -> libc-2.2.3.so
+	# ls -l /lib/libc-2.2.3.so
+	-rwxr-xr-x 1 root root   1191848 Jul 13 10:59 /lib/libc-2.2.3.so
+	# cp /lib/libc-2.2.3.so .
+	# ln libc-2.2.3.so libc.so.6
+	# ls -l /lib/ld-linux.so.2
+	lrwxrwxrwx 1 root root 11 Jul 13 16:15 /lib/ld-linux.so.2 -> ld-2.2.3.so
+	# ls -l /lib/ld-2.2.3.so
+	-rwxr-xr-x 1 root root  94888 Jul 13 10:59 /lib/ld-2.2.3.so
+	# cp /lib/ld-2.2.3.so .
+	# ln ld-2.2.3.so ld-linux.so.2
+
+This must be done for all the programs in /bin and /sbin. One don't need to copy
+libs already copied of course. In the example above, I used ``ls -l'' to see, if
+this is a link or the lib itself. For the latter case I've copied it, in the
+former case, I created a link too. Note that I use hardlinks. This saves a lot
+of inodes on the floppy ( BTW: on a production system this speeds up library
+loading ).
+Don't forget to do the ``ldd''s for the libs too.
+This part of the population of the filesystem is ( due to my experiences ) most
+error prone. So be careful to not forget anything.
+One library needed we probably won't find using the technique above: the NSS
+library. We put ``files'' for everything into nsswitch.conf. So we need only:
+
+	# cp /lib/libnss_files-2.2.3.so .
+	# ln libnss_files-2.2.3.so libnss_files.so.2
+
+One cuold have another version, so the name of the files is - again - only an
+example.
+
+On MY example - MOTHER the content of /lib looks like this:
+
+	# ls -i
+	 210671 ld-2.2.3.so         210672 libext2fs.so.2
+	 210671 ld-linux.so.2       210672 libext2fs.so.2.4
+	 210670 libc-2.2.3.so       210676 libncurses.so
+	 210670 libc.so.6           210676 libncurses.so.5
+	 210673 libcom_err.so.2     210676 libncurses.so.5.2
+	 210673 libcom_err.so.2.0   210680 libnss_files-2.2.3.so
+	 210679 libcrypt-2.2.3.so   210680 libnss_files.so.2
+	 210679 libcrypt.so.1       210678 libshadow.so.0
+	 210677 libdl-2.2.3.so      210678 libshadow.so.0.0.0
+	 210677 libdl.so.2          210675 libuuid.so.1
+	 210674 libe2p.so.2         210675 libuuid.so.1.2
+	 210674 libe2p.so.2.3
+
+At this point we could provide kernel modules. I don't do this, because I'll
+build a special kernel for the bootdisk, which everything needed has directly
+built in, and everything not needed ( FOR THE BOOTDISK ) disabled.
+
+At this point we are done with the population of the directory structure for
+the root filesystem. So let's make it a real filesystem. First we'll create a 
+file for it.
+
+	# dd if=/dev/zero of=/v_dsk/FSFILE bs=1k count=4096
+
+The initial ram-disk of the kernel is 4 MB, so I've created a file of this size.
+
+	# mke2fs -m 0 /v_dsk/FSFILE
+
+Here we'll get a warning about the fact, that we create a filesystem not using
+a special block device, but that's exactly what we intend to do, and we can
+ignore this ( say Y to the question mke2fs asks ).
+
+	# mount -t ext2 -o loop /v_dsk/FSFILE /mnt
+
+Possibly the kernel of your MOTHER doesn't provide loopdevice support. In this
+case you'll have to rebuild your kernel before running the last command.
+
+	# cd /v_dsk/rootfs
+	# cp -a * /mnt
+	# cd /mnt
+	# chroot /mnt /sbin/ldconfig
+	# cd /v_dsk
+	# umount /mnt
+
+Now put a newly formatted floppy disk into your mechanic and do:
+
+	# dd if=FSFILE bs=1k | gzip -v9 > rootfs.gz
+	# dd if=rootfs.gz of=/dev/fd0 bs=1k		# ... and
+
+umpf, we have our rootdisk.
+
+Next we make the bootdisk. This contains only the kernel. I've coosen this way
+for simplicity again. We could make a combined boot/rootdisk but we'd have to
+take care for more aspects.
+Making the kernel, we do the same procedure as with every kernel rebuild. The
+kernel MUST support RAM-Disk, INITRD and MUST have support for the NIC built
+in. Due to the fact, that we will mount the MOTHER via NFS, we need NFS support
+of course. It MUST NOT have devfs support, and it SHOULD NOT support things not
+necessary for a bootdisk ( sound, isdn, NLS, ... ).
+
+Next we make a bare bootdisk without LILO. Again, put a newly formatted floppy
+into your drive. From your kernel source directory do:
+
+	# cd arch/i386/boot
+	# dd if=bzImage of=/dev/fd0 bs=1k
+
+The kernel make built a kernel set up for your harddisk. We have to change
+this to have a kernel for the floppy.
+
+	# rdev /dev/fd0 /dev/fd0
+	# rdev -R /dev/fd0 0
+
+The last step for the bootdisk is to set up the ramdisk word. Bit 14 indicates
+the kernel, that a ramdisk is to be load. Bit 15 indicates, that the kernel
+should prompt for the insertion of the root floppy disk.
+
+	# echo $(( 2 ** 14 + 2 ** 15 ))
+	49152
+	# rdev -r /dev/fd0 49152
+
+At this point we have nearly everything prepared for our CHILD. The last we do
+sitting on the MOTHER is to share /v_dsk/lfs to the child.
+If your MOTHER doesn't support NFS server, you'll have to recompile the kernel
+again.
+Now make sure, that the portmapper is started before inetd, and that rpc.nfsd
+and rpc.mountd is started after inetd.
+We have to edit /etc/exports now, to enable the export we want. Evtl. we have to
+create this file.
+
+	# cat > /etc/exports
+	/v_dsk/lfs	ADR.OF.THE.CLD(ro,insecure,no_root_squash)
+	^D
+
+Change ``ADR.OF.THE.CLD'' with the IP address, you have choosen for the CHILD.
+Now we apply the changes in /etc/exports.
+
+	# ps ax | grep mountd
+	132 ?        S      0:00 rpc.mountd
+	# ps ax | grep nfsd
+	135 ?        S      0:00 rpc.nfsd
+	# kill -1 132 135
+
+O.K., I know ... I could use some killall* or pidof here, but THIS works too
+and everywhere.
+
+The packages needed to build the system are naturally stored on the disks of
+the MOTHER. It should be a good choice, to copy these to a location, the CHILD
+will see later. On the example MOTHER these were in /usr/src/pkgs.
+
+	# cd /usr/src
+	# cp -a pkgs /v_dsk/lfs
+
+This way, the CHILD will see the packages in /MOTHER/pkgs.
+
+Finally we've reached the point, we can lift our ass from the chair in front of
+the MOTHER.
+
+Before you sit down again ( this time in front of the CHILD ), you should have
+a cup or glass or bottle of some drink you prefer.
+
+NOTE: If you choose bottle and your preferred drink is Whisky, I suggest you
+      NOT to continue before next day afternoon.
+
+Welcome back to the server - center. Take now the floppies made above and sit
+down in front of the CHILD.
+Put the boo .... I think we know how to start a Linux box from floppies.
+
+We see:
+
+	( none ) login: 
+
+That's o.k., we don't have a hostname yet. If login as ``root'' you should get
+a prompt without supplying a password.
+
+	LFS-BUILD : / #
+
+There is still one thing, what could be wrong at this point -- the connection to
+the MOTHER.
+
+	LFS-BUILD : / # mount
+	/	/dev/ram0
+	proc	/proc
+	/MOTHER IP.OF.THE.MTR/v_dsk/lfs
+
+If you see something like this, everything is fine.
+
+We still don't have any space, to make the final build of the LFS to. So we 
+have to plan our filesystem layout now.
+How this layout looks like, depends of course heavily from the main tasks the
+machine is planned for.
+A size of the ``/'' filesystem of about 100MB is more than sufficient for Linux.
+With about 1GB for /usr we can build the whole system including X there, and
+will still have some reserve. How much ``/tmp'' you plan is server dependent. I
+suggest NOT to leave it on ``/''. This directory is word writeable, and having
+something world writeable on ``/'' could lead to some kind of ``ROOT FILESYSTEM
+FULL''. I usually plan about 500MB for ``/opt'' ( There I use to have things
+like Netscape, GNOME, Windowmanagers etc. ). If there shall run something with
+heavy logging or spooling, it's not a bad choice, to plan en extra fs for
+``/var''. One could plan some space for ``/usr/local''. I do so, because I
+configure all subsystems special for a host ( proxy, webserver, dhcp, dns ... )
+to live there.
+I'll give the fs-layout which I use to set up for an experimantal server as an
+example:
+
+	hda1	/		 100 MB
+	hdb1	/usr		1000 MB
+	hdb2	/usr/local	 500 MB
+	hdb3	/tmp		 200 MB
+	hdb5	/var		 200 MB
+	hdb6	/opt		 500 MB
+	hdb7	/v_dsk		what remains on the HD I have
+
+I use to use a 100MB disk ( I have a couple of them ) as root-disks. hdb4 is
+an extended partition, and the swap is on hdb8.
+If you say: "I don't wanna wonder about this. So I'll place everything into one
+large partition." however, nobody will bite you.
+Don't forget to plan some swap space and to create a partition for it.
+
+Having the fiilesystem layout planned, we create the partitions with ``fdisk''
+and the filesystems and swap on them with ``mke2fs'' and ``mkswap''. Last we 
+can ( and should ) activate the swap space.
+
+Onesmore we populate a filesystem, but this time the FINAL for the LFS system.
+I'll do this due to the example above, thus this could differ for you.
+
+	# mount /dev/hda1 /mnt
+	# mkdir /mnt/{usr,tmp,var,opt,root,v_dsk}
+	# mount /dev/hdb1 /mnt/usr
+	# mkdir /mnt/usr/local
+	# mount /dev/hdb2 /mnt/usr/local
+	# mount /dev/hdb3 /mnt/tmp
+	# mount /dev/hdb5 /mnt/var
+	# mount /dev/hdb6 /mnt/opt
+	# mount /dev/hdb7 /mnt/v_dsk
+
+	# mkswap /dev/hda8
+	# swapon /dev/hdb8	# if not already done
+
+Now set the LFS environment variable for the CHILD.
+
+	# export LFS=/mnt
+	# mkdir $LFS/usr/include
+
+I've choosen this point to install the kernel header files ( from chapter 5 ).
+This way we have only things NEEDED in $LFS, and we can SECURE say, that the
+base system and the new system aren't wired in any kind.
+
+	# mkdir $LFS{etc,lib}
+
+Here You should complete chapter 5. Remember, we still didn't the points
+``Creating passwd and group files'' to the end of this chapter.
+
+The ``.profile'' ( or bash_profile due to the book ) remains in $LFS/root and
+should contain:
+
+	# cat > $LFS/root/.profile
+	PS1='LFS-BUILD : \w \$ '
+	PS2='> '
+	PATH=/MOTHER/sbin:/MOTHER/bin:/MOTHER/usr/bin
+	export PS1 PS2 PATH
+	^D
+
+Here we are in a pinch a bit. We need ``chroot'', which is amongst the tools
+imported from the MOTHER, but inside the chroot'ed environment we'll loose all
+these tools.
+
+	# cd $LFS
+	# mkdir /mnt/MOTHER
+	# cp /MOTHER/usr/bin/chroot /bin
+	# umount /MOTHER
+	# mount -t nfs ADR.OF.THE.MTR:/v_dsk/lfs /mnt/MOTHER
+	# chroot $LFS /MOTHER/usr/bin/env -i HOME=/root TERM=$TERM \
+		/MOTHER/bin/bash --login
+
+... will solve this problem.
+
+>From here on You can follow the instructions of the LFS-BOOK chapter 4 ( except
+the things already done ) and the remainder of chapter 6 to The End ...
+
+... and You are done.
+
+Some final suggestion:
+	I broke the instructions of chapter 4 a bit. I didn't make the link
+	between ``/usr/doc'' and ``/usr/share/doc''. Instead I've created
+	both directories. In ``/usr/doc'' I create for every package I install
+	a directory ``package-ver.s.ion'', and in these directory 2 files,
+	NOTES and URL. URL should be clear, and in NOTES I remember, how I've
+	configured the package. O.K., one could say: "Leave the source tree
+	intact, and use config.status!", but I don't have the TB disk, required
+	for this, at hand just now :o(. One can choose another location for this
+	of course, but doing this at all will ease your administration later.
+	Sure you know situations, when you read in a manpage: "... If thisprog
+	is configured with superfeature enabled, you can use the --sf switch
+	to do superious things". Or one plans to build and install newprog, and
+	the INSTALL instructions say, that dependprog with neededfeature
+	enabled has to be installed first. In these cases this helps a lot.
+	All the real doc goes to ``/usr/share/doc''.
+	If you add --with-info-dir=/usr/share/info to every package you install,
+	you'll get probably the most complete info directory you have ever 
+	seen.
+	If You'd choose this way to build Your LFS system, it's not a bad choice
+	to have a hardcopy of the LFS-BOOK at hand.
+
+	You don't need to use NFS. Of course it is possible, to use floppies to
+	transfer the statics from the MOTHER to the CHILD. In this case you will
+	need some more tools on your rootdisk.
+	Once ( To say the truth, I did it twice. ) done this I changed NFS to
+	CD-ROM, having the static part on a CD and only the kernel on a combined
+	boot/rootdisk.
+	It's - too - possible to make a complete system upgrade this way.
+	Simply replace the NFS mount with a mount of the partiton containing
+	the lfs directory, and change the paths in the profile on the rootdisk
+	and in the chroot'ed environment accordingly. Then burn out all other
+	partitions and build.
+
+END OF LFS-BARE-BUILD hint

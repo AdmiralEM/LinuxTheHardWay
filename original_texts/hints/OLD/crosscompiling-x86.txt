@@ -1,0 +1,448 @@
+TITLE:		Crosscompiling on IA-32 (x86) platforms
+LFS VERSION:	All (fixes for 4.1)
+AUTHOR:		Daniel Baumann <danielbaumann@linuxmail.org>
+
+SYNOPSIS:
+	How to compile a LFS system on a fast machine and use it on your old box
+
+HINT:
+
+CHANGELOG
+=========
+
+	* 2003-07-23	Initial revision
+
+
+DISCLAIMER
+==========
+
+You use this LFS-Hint at your own risk.
+
+Neither the author, nor the Linux From Scratch project accepts any reponsibility
+for anything that happens when using this document or associated files.
+
+This hint is originally written by Nicholas Dille <webmaster@rakshas.de>, now
+updated and maintained by Daniel Baumann <danielbaumann@linuxmail.org>.
+
+I would like to thank Nicholas for allowing to continue his good work.
+
+
+INTRODUCTION
+============
+
+Alright, we have gathered here to mourn our failing in compiling our favourite
+LFS system for our beloved outdated hardware and have either dived right into it
+being stopped by unforseen difficulties or been hinted at this document to
+circumvent some known problems.
+
+Lets say you call an old i486 your own but moved on to some i686 based box some
+time ago. Now you decided that the i486 might serve wonderfully as your personal
+file/printer server, internet gateway, Ogg player, a combination or some
+entirely different purpose.
+
+Without even trying you can imagine that it will probably take quite some time
+to compile a LFS system caused by the lack of memory, harddisk space and mere
+performance. Wouldn't it be nice to have your, by comparison, blindingly fast
+i686 compile LFS and then use the resulting system on your i486?
+
+I can assure you that several people had the same idea and tried solving the
+difficulties encountered. I hope to compile most of those experiences here to
+help you find the least time consuming path from a bare i486 to a lovely lfs'd
+linux box.
+
+To give you a rough outline how I organized the hint let me elaborate shortly:
+We will learn what problems you may encounter, under what conditions, why they
+exist AFAIK and then at last come to the part where you can actively profit from
+this by giving it a try.
+
+In any case if you feel the hint missing something important, doesn't explain
+something to your convenience, completely missed some point or if you'd just
+like to give me a big hug, I'd be honestly happy to hear you out.
+
+Nicholas like to thank:
+
+	* Gerard Beekmans, for this wonderful project
+        * Tommy Wareing, for the uname hack
+        * Arthur H. Johnson II, for bullying me into rewriting this hint and
+	  helping collecting new material
+        * Christophe Devine, for the kernel module uname hack
+        * Yann Guidon, for extending the kernel module uname hack
+
+
+PREPARATION
+===========
+
+Why the naive approach fails
+----------------------------
+
+In case you only paste the commands provided by the LFS book to your console,
+wait some time and come back for the next package you might want to read through
+this to understand what really happens.
+
+Let us devide the package which you are about to compile into two destinct
+categories: the friendly and the painful packages.
+
+Friendly packages are configured using GNU autoconf (./configure [...]) which
+usually check for a sane environment and also try to determine which system it
+will be compiled on. This information is then passed on to gcc which then knows
+which architecture specific features it is allows to use. These packages are
+easily persuaded to believe they are being compiled on a weaker platform.
+
+In contrast, the painful packages do not provide any automatic check whether
+their prerequisites are satisfied and trust the user to know what he is doing.
+In this case the decision which platform is present is left to gcc which uses
+uname and CFLAGS/CXXFLAGS to guess it. Unfortunately these packages are harder
+to force to compile for a weaker platform.
+
+So, if you leave any of those packages alone they will compile for the platform
+they detect either by the configure script or by means of gcc. We need to make
+autoconf and gcc think that the underlying architecture is of a different type.
+
+
+$CHOST
+------
+
+Autoconf normally tries to guess the type of machine we are compiling on.
+Because we use our new computer instead of the old, we have to fake this value
+manually.
+
+You can get the correct value with
+
+	# uname -m
+
+from your target computer.
+
+If you haven't already a running Linux system on the target machine, use a
+corresponding value from this list instead:
+
+        Intel 386:                              i386
+        Intel 486:                              i486
+        Intel Pentium 1 and MMX:                i586
+        Intel Pentium Pro, 2, 3 and 4:          i686
+
+        AMD K6-1, K6-2 and K6-3:                i586
+        AMD Athlon (all versions):              i686
+
+Export this to the build machine with:
+
+        # export CHOST=$VALUE-pc-linux-gnu
+
+or
+
+        # export CHOST=i586-pc-linux-gnu
+
+as an example for an Intel Pentium 1.
+
+
+$CFLAGS/$CXXFLAGS
+-----------------
+
+CFLAGS is an environment variable which is used by any honourable package to
+pass user flags on to gcc. It is often used to set the optimization level (-On
+where n is a number). For details please refer to the optimization hint. In our
+case we additionally try to force gcc to compile for the desired architecture by
+setting CFLAGS.
+
+Choose from this list:
+
+        Intel 386:                      i386
+        Intel 486:                      i486
+        Intel Pentium 1:                pentium
+        Intel Pentium MMX:              pentium-mmx
+        Intel Pentium Pro:              pentiumpro
+        Intel Pentium 2:                pentium2
+        Intel Pentium 3:                pentium3
+        Intel Pentium 4:                pentium4
+
+        AMD K6-1:                       k6
+        AMD K6-2:                       k6-2
+        AMD K6-3:                       k6-3
+        AMD Athlon 1 (Classic):         athlon
+        AMD Athlon 2 (Thunderbird):     athlon-tbird
+        AMD Athlon 3 (XP):              athlon-xp
+        AMD Athlon 4 (Palomino):        athlon-4
+        AMD Athlon 5 (MP):              athlon-mp
+
+Set it to the system with
+
+        # export CFLAGS=-march=$VALUE
+        # export CXXFLAGS=-march=$VALUE
+
+or
+
+        # export CFLAGS=-march=pentium
+        # export CXXFLAGS=-march=pentium
+
+as an example for Intel Pentium 1. Consult the gcc online-manual on
+http://gcc.gnu.org/ for other values. If you know what you do, you can also
+set some optimization flags, see the optimization hint for that.
+
+
+Installing friendly packages
+============================
+
+As I have stated before configure scripts are specially easy to persuade into
+believing to be running on a different architecture.
+
+You will have to add
+
+	"--host=$CHOST --target=$CHOST"
+
+to the configure scripts' arguments.
+
+As an example, for Bash in Chapter 5, you have to use
+
+	# ./configure --host=$CHOST --target=$CHOST \
+	  --enable-static-link --prefix=$LFS/static --with-curses
+
+
+Installing painful packages
+===========================
+
+This chapter will provide you with a list of packages which do not come with a
+configure script or which come with one that does not honour '--host' and
+'--target' options. Use the following fixes to proper install the packages.
+
+
+Bin86 0.16.3
+------------
+
+Use the following commands to write your CFLAGS variable into bin86's Makefile.
+
+	# make CFLAGS="-D_POSIX_SOURCE $CFLAGS"
+
+
+Bzip2 1.0.2
+-----------
+
+Use the following commands to patch bzip2:
+
+        # cp Makefile Makefile.backup
+        # sed -e 's%$(BIGFILES)%$(BIGFILES) $(OPT)%' \
+                Makefile.backup > Makefile
+        # cp Makefile-libbz2_so Makefile-libbz2_so.backup
+        # sed -e 's%$(BIGFILES)%$(BIGFILES) $(OPT)%' \
+                Makefile-libbz2_so.backup > Makefile-libbz2_so
+
+Add 'OPT="$CFLAGS"' to the make commands:
+
+        For chapter 5:
+        # make CC="gcc -static" OPT="$CFLAGS"
+
+        For chapter 6:
+        # make -f Makefile-libbz2_so OPT="$CFLAGS"
+        # make OPT="$CFLAGS"
+
+
+Gcc 3.1.2
+---------
+
+Gcc compilation is devided into three parts. Stage1 is the first run, where
+CFLAGS/CXXFLAGS are respected well. In stage2, gcc compiles itselfs. To make
+use of our flags, we use BOOT_CFLAGS to pass through our settings. Stage3 is
+just a check-run to verify a working gcc.
+
+	For chapter 5:
+	# make BOOT_CFLAGS=$CFLAGS BOOT_LDFLAGS="-static" bootstrap
+
+	For chapter 6:
+	# make BOOT_CFLAGS=$CFLAGS bootstrap
+
+
+Kbd 1.08
+--------
+
+Use the following commands to write your CFLAGS variable into kbd's Makefile.
+
+        # make CFLAGS="$CFLAGS"
+
+
+Lilo 22.2
+---------
+
+Use the following make commands:
+
+        # make OPT="$CFLAGS"
+
+
+Man 1.5k
+--------
+
+Use the following commands to add your CFLAGS variable to man2html's Makefile:
+
+        # cp man2html/Makefile.in man2html/Makefile.in.backup
+        # sed -e "s/CFLAGS = /CFLAGS = $CFLAGS /" \
+                man2html/Makefile.in.backup > man2html/Makefile.in
+
+
+Net-tools 1.60
+--------------
+
+Use the following make command:
+
+        # make COPTS="-D_GNU_SOURCE -Wall $CFLAGS"
+
+
+Netkit-base 0.17
+----------------
+
+This package does not need any changes to the book's commands. It will pick the
+value of the CFLAGS variable and apply it correctly.
+
+
+Perl 5.8.0
+----------
+
+The configure scripts shipped with perl are not autoconf-scripts. They use
+diffrent flags for the same meaning:
+
+	# ./configure.gnu -Dhost=$CHOST -Dtarget=$CHOST -Darchname=$CHOST \
+	  --prefix=/usr
+
+
+Procinfo 18
+-----------
+
+Add 'CFLAGS="$CFLAGS"' to the make command:
+
+        # make LDLIBS=-lncurses CFLAGS="$CFLAGS"
+
+
+Procps 3.1.5
+------------
+
+Add 'OPT="$CFLAGS"' to the make command:
+
+        # make OPT="$CFLAGS"
+
+Please note that the build process will fail with top.c if your CFLAGS variable
+did not contain the -On switch. If that is the case please use the following
+line:
+
+        # make OPT="$CFLAGS -O2"
+
+This switch will not add any additional kind of optimization to your build pro-
+cess because -O2 is usually assumed by gcc in case it is not told otherwise.
+I will contact the author about this behaviour of procps and update the hint
+accordingly.
+
+
+Psmisc 21.2
+-----------
+
+Add 'AM_CFLAGS="$CFLAGS"' to the make command:
+
+        # make AM_CFLAGS="$CFLAGS"
+
+
+Sysklogd 1.4.1
+--------------
+
+Add 'RPM_OPT_FLAGS="$CFLAGS"' to the make command:
+
+        # make RPM_OPT_FLAGS="$CFLAGS"
+
+
+Sysvinit 2.84
+-------------
+
+Add 'CFLAGS="-Wall -D_GNU_SOURCE $CFLAGS"' to the make command:
+
+        # make -C src CFLAGS="-Wall -D_GNU_SOURCE $CFLAGS"
+
+
+APPENDIX
+========
+
+The uname hack
+--------------
+
+Generally spoken the uname hack will fool the system. It pretends that linux is
+running on different hardware.
+
+For example, you are using an i686 based system to compile a lfs for an old
+i486. Then the uname hack would force uname to lie about the underlying
+hardware - not reporting i686 but i486.
+
+. Traditional
+
+  Save the original uname program with:
+
+	# mv /bin/uname /bin/uname.backup
+
+  Create the new uname with:
+
+	cat > /bin/uname < "EOF"
+	#!/bin/sh
+
+	/bin/uname.backup "$@" | sed "s/i[456]86/$ARCH/"
+	EOF
+
+  And give it the correct permissions:
+
+  	# chmod 755 /bin/uname
+
+  The traditional uname hack will have to be installed three times:
+  once before you start your lfs compilation to replace the uname binary of your
+  host system, then when you enter chroot to force your statically linked
+  environment into assuming a different architecture and last after installing
+  sh-utils in chapter 6 because they will replace the uname binary.
+
+. Kernel module
+
+  Please check out the niftiness of this version of the uname hack!
+
+  Put the code below into the file uname_i586.c and compile with the following
+  command:
+
+	# gcc -I/usr/src/linux/include -c -DMODULE \
+	  -DUNAME_DUMB_STEPPING=\'4\' uname_i586.c
+
+  By adjusting the '4' in the compilation command you will be able to specify
+  the desired platform at compile time without changing the code :)
+
+  Listing of uname_i586.c:
+  /*
+	This simple piece of code simply turns your ix86 into a i586 -
+	useful if you're cross-compiling for a weaker platform.
+
+	Compile with: gcc -I/usr/src/linux/include -c -DMODULE uname_i586.c
+	and then: insmod ./uname_i586.o
+
+	Revision : whygee@f-cpu.org, Wed Apr 10 07:45:11 CEST 2002 :
+	added the UNAME_DUMB_STEPPING parameter/ifdef so the user can
+	modify it at compile time. it's just a quick hack.
+	your command line for simulating a 486 will look like :
+		gcc -I/usr/src/linux/include -c -DMODULE \
+			-DUNAME_DUMB_STEPPING=\'4\' uname_i586.c
+  */
+
+  #include <linux/module.h>
+  #include <linux/utsname.h>
+
+  #ifndef UNAME_DUMB_STEPPING
+  #define UNAME_DUMB_STEPPING '5';
+  /* #error "no stepping specified." */
+  #endif
+
+  char save;
+
+  int init_module( void )
+  {
+  	save = system_utsname.machine[1];
+	system_utsname.machine[1] = UNAME_DUMB_STEPPING;
+	return( 0 );
+  }
+
+  void cleanup_module( void )
+  {
+  	system_utsname.machine[1] = save;
+  }
+
+Notes
+-----
+
+. Compiling Glibc without optimization fails (need at leas -O1)
+
+
+END OF CROSSCOMPILING-X86-HINT

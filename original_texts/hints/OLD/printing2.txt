@@ -1,0 +1,180 @@
+TITLE:          Printing
+LFS VERSION:    Any
+AUTHOR:         Wolfgang Arendt <Wolfgang.Arendt@gmx.de>
+
+SYNOPSIS:
+                Installing printing software on an LFS system
+
+HINT:
+
+Table of contents
+
+     * Introduction
+     * Packages
+     * Users and groups
+     * Building gdbm
+     * Building LPRNG
+     * Installing Ghostscript
+     * Installing psutils
+     * Installing a2ps
+     * Installing apsfilter
+
+Introduction
+
+   This document describes all steps, that have to be taken, in order to
+   make an LFS system print. It is based on the printing hint by Fabio
+   Fracassi and on the ghostscript hint written by myself.
+
+Packages
+
+   The basic printing system consists of the following packages:
+     * gdbm-1.8.0.tar.gz: ftp://ftp.gnu.org/gnu/gdbm/
+     * LPRng-3.8.4.tgz: ftp://ftp.lprng.com/pub/LPRng/LPRng/
+     * psutils-p17.tar.gz: ftp://ftp.dcs.ed.ac.uk/pub/ajcd/
+     * a2ps-4.13:a2ps-4.13: ftp://ftp.enst.fr/pub/unix/a2ps/
+     * apsfilter-7.1.1.tar.gz: http://www.apsfilter.org/download/
+     * ghostscript-7.00.tar.gz:
+       http://download.sourceforge.net/ghostscript/
+
+   We will build LPRNG with gdbm support. It will run as user lp, member
+   of the daemon group. In this example, the GID of the group daemon is 5
+   and so is the UID of the user lp. Please modify all commands to fit
+   your environment. All components will install their configuration into
+   the /etc directory.
+
+Users and groups
+
+   First, check, whether you have a user named lp, that is member of
+   group daemon. If so, then skip the rest of this section.
+
+   All others create the user with the following commands:
+groupadd -g 5 daemon
+useradd -u 5 -d /var/spool/lp -s /bin/sh -g daemon lp
+
+Building gdbm
+
+   The configure script does not seem to recognize the --prefix=...
+   option correctly, so we will manually make an adjustment to the
+   Makefile.
+
+   Enter:
+./configure &&
+ed Makefile <<EOF
+/^prefix/s#/local##
+.
+w
+EOF
+make &&
+make install
+
+Building LPRNG
+
+   LPRNG seems to behave a little nasty, if you use optimization higher
+   than O2. You may try to compile it with your usual compiler flags. But
+   if this fails, try "-O2"
+
+   Build LPRNG with the following commands:
+./configure --prefix=/usr \
+  --sysconfdir=/etc \
+  --with-userid=lp \
+  --with-groupid=daemon &&
+make &&
+make install
+
+   Instead of using the start stop script, that comes with LPRng, create
+   such a file from the template.
+
+Installing Ghostscript
+
+   Extract ghostscript and change to the top-level-directory of the
+   distribution. If you use version 5.10 you will find all the source
+   files in that directory. Users of version 6.5 and higher will find
+   subdirectories there, containing the sources, libraries etc.
+
+   If you can not find a file named unix-gcc.mak in your present
+   directory (which should be gs<VERSION>), then copy it there from the
+   src subdirectory.
+
+   Stay in the same directory and extract the zlib-package. This creates
+   a directory named zlib-1.1.3. Rename this directory to zlib (or make a
+   symlink).
+
+   Extract jpegsrc.v6b.tar.gz and rename the jpeg-6b directory to jpeg
+   (or make a symlink).
+
+   Extract libpng-1.2.1.tar.gz and move the libpng-1.2.1-directory to
+   libpng (or - guess, what - make a symlink).
+
+   Create the file changes.sed, containing the following lines:
+s|XINCLUDE=-I/usr/local/X/include|XINCLUDE=-I/usr/X11R6/include|
+s|XLIBDIRS=-L/usr/X11/lib|XLIBDIRS=-L/usr/X11R6/lib|
+s|jpeg-6a|jpeg|
+s|prefix = /usr/local|prefix = /usr|
+w Makefile
+
+   Now create the Makefile, by running the following command:
+sed -n -f changes.sed unix-gcc.mak
+
+   Now, you should be ready to compile the whole thing. Just run:
+make &&
+make install
+
+   If the compilation fails with error messages, containing something
+   about zdevcal.c, then append the line
+#include <time.h>
+
+   to the file src/time_.h and try again. (This might have to do with
+   glibc-2.2.... but I am not sure about it).
+
+   Finally extract the fonts to the /usr/share/ghostscript directory. The
+   directory structure should look somewhat like this:
+/usr/share/ghostscript
+/usr/share/ghostscript/gs7.00
+/usr/share/ghostscript/fonts
+
+Installing psutils
+
+   The following command will install psutils. It is configured for paper
+   size a4. If you need another media type, then you need to change the
+   line beginning with PAPER= in the Makefile.
+cp Makefile.unix Makefile &&
+ed Makefile <<EOF
+/^BINDIR/s#/local##
+/^INCLUDEDIR/s#/local##
+/^PERL/s#/local##
+/^MANDIR/s#/local##
+.
+w
+EOF
+make &&
+make install
+
+Installing a2ps
+
+   Compile a2ps by entering:
+./configure --prefix=/usr \
+  --sysconfdir=/etc \
+  --enable-shared &&
+make &&
+make install
+
+Installing apsfilter
+
+   First of all, it has to be said, that apsfilter does not build, if you
+   do not have a mail transfer agent installed, whose binary is linked to
+   /usr/bin/sendmail. If you (like me) have a machine, whithout such
+   program, you can still get apsfilter to compile if you just create a
+   fake sendmail by touching the file named /usr/bin/sendmail and making
+   it executable:
+touch /usr/bin/sendmail &&
+chmod 750 /usr/bin/sendmail
+
+   Then, compile apsfilter by entering
+./configure --prefix=/usr \
+  --sysconfdir=/etc &&
+make &&
+make install
+
+   Last thing, that you have to do is, to configure apsfilter using
+   /usr/share/apsfilter/SETUP.
+

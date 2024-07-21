@@ -1,0 +1,186 @@
+AUTHOR: Wee Teck <weeteck at en.com.sg>
+
+DATE: 2006-09-24
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: Logical Volume Manager (LVM 2) on LFS
+
+DESCRIPTION:
+  
+  Simple hint for setting up LVM on LFS. For more complete information on
+  using LVM, please visit http://www.tldp.org/HOWTO/LVM-HOWTO/
+  
+  Only simple HOW-TO is covered in this hints.
+  
+  Comments are prefixed with <--
+
+ATTACHMENTS:
+
+  ftp://sources.redhat.com/pub/dm/device-mapper.1.02.10.tgz
+  ftp://sources.redhat.com/pub/lvm2/LVM2.2.02.10.tgz
+
+PREREQUISITES:
+  
+  - Filesystem supporting programs.
+      Eg. e2fsprogs, xfsprogs etc..
+  - Understanding of LVM
+
+HINT:
+
+Setting Up
+----------
+
+-> Installing device-mapper (dm) (Required for LVM 2)
+	Get the latest device-mapper from redhat, latest as of writing is 1.02.10 
+	tar zxf device-mapper.1.02.10.tgz
+	cd device-mapper.1.02.10
+	./configure --prefix=/usr --sbindir=/sbin --libdir=/lib && make && make install
+       
+-> Installing LVM 2
+	Get the latest LVM2 from redhat, latest as of writing is 2.02.10
+	tar zxf LVM2.2.02.10.tgz
+	cd LVM2.2.02.10
+	./configure --prefix=/usr --sysconfdir=/etc && make && make install
+     
+       
+-> Kernel Options
+	[*] Multiple devices driver support (RAID and LVM)
+	<*>   Device mapper support 
+ 
+	** Rebuild kernel **
+
+Simple User Guide
+-----------------
+
+-> For full complete guide please refer to http://www.tldp.org/HOWTO/LVM-HOWTO/
+
+-> Preparing disk for LVM  (PV)
+	There is 2 ways to activate LVM; by parition, by drive. 
+	Example quoted using diskname hdc
+	
+	By partition:
+		set partition's system id to 8e
+		eg.  /dev/hdc3            1014       77545    38572128   8e  Linux LVM
+		Activate the partition for LVM use.
+		
+		# pvcreate /dev/hdc3
+		# Physical volume "/dev/hdc3" successfully created
+	
+	By drive:
+		You will need to remove partition table on the drive
+		
+		** WARNING**
+		
+		The following commands will destroy the partition table on the disk being 
+		operated on. Be very sure it is the correct disk. 
+		
+		# dd if=/dev/zero of=/dev/hdc bs=1k count=1
+		# blockdev --rereadpt /dev/hdc
+		
+		Activate the partition for LVM use.
+		
+		# pvcreate /dev/hdc
+		# Physical volume "/dev/hdc" successfully created
+ 
+-> managing Volume Group (VG)
+	Assuming to have LVM partition on hdc
+	Example using volume group name "vg0"
+	
+	# vgcreate vg0 /dev/hdc
+	# Volume group "vg0" successfully created
+	
+	You can extend (aka Add) the volume group with more disk/partition
+	
+	# vgextend vg0 /dev/hdb1
+	# Volume group "vg0" successfully extended
+
+
+-> managing Logical Volume (LV)
+
+	Creating a 10GB LV named "database" with VG "vg0"
+	
+	# lvcreate -L10G -ndatabase vg0
+	# Logical volume "database" created
+	
+	
+-> creating filesystem on top of Logical Volume (LV)
+
+	You have successfully created a 'partition' with the addressing
+	
+	/dev/vg0/database
+	
+	Create your favourite filesystem on top of it. In this case,
+	I shall use Reiser4 (Please refer to LFS Hints on Reiser4 by myself)
+	
+	# mkfs.reiser4 /dev/vg0/database
+	
+	Mounting it to the location needed
+	
+	# mount /dev/vg0/database /mnt
+
+	You should see something like this
+	
+	/dev/mapper/vg0-home
+           reiser4     37G  1.4M   37G   1% /mnt
+
+	
+-> System changes
+	
+	Some changes are required for your bootscript
+	
+	To de-activate your LVM BEFORE shutting down your system
+	# vgchange -a n
+	# 0 logical volume(s) in volume group "vg0" now active
+	
+	To re-activate your LVM AFTER rebooting your system
+	# vgchange -a y
+	# 1 logical volume(s) in volume group "vg0" now active
+	
+	
+	
+FAQ:
+
+Q: How do I display information about VG, LV and PV
+A: Commands are "vgdisplay" "lvdisplay" "pvdisplay". 
+   Please read up on the LVM Documentation instead.
+   
+Q: How do I use Reiser4.
+A: http://www.linuxfromscratch.org/hints/downloads/files/reiser4-on-2.6.txt
+   
+Q: Where should I de/re-activate the LVM?
+A: I believe each LFS comes in their own variant and preferences, therefore,
+   it is almost impossible for me to know where.
+   
+   For those using BSD-style bootscript, here's my setup.
+   
+   activate LVM after remounting root rw 
+   
+   File: rc.sysinit
+   
+   "/bin/mount -n -v -o remount,rw /"
+   "vgchange -a y"
+   .... mount your LV after here ....
+   
+   deactivate LVM before remounting root ro
+   
+   File: rc.0
+   
+   "vgchange -a n"
+   .... unmount all LV .....
+   "/bin/mount -n -o remount,ro /"
+
+Q: Can you help me setup LVM on my LFS system?
+A: No/Yes, personally I have no time for that. 
+   But i'm available for outsource, my contact is above.
+   
+   
+ACKNOWLEDGEMENTS:
+  * TLDP - LVM HOWTO  http://www.tldp.org/HOWTO/LVM-HOWTO/
+
+
+CHANGELOG:
+[2006-09-27]
+  * Version 1
+[2006-09-24]
+  * Initial draft

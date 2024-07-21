@@ -1,0 +1,169 @@
+TITLE:		The RedHat-Style Logon Prompt Hint
+LFS VERSION:	All
+AUTHOR:		Chris Baker <chris@aoe.vt.edu>
+
+SYNOPSIS:
+	RedHat Linux presents the user with a customized login prompt immediately 
+after booting and whenever you logout.  This prompt neatly clears the screen 
+and displays the version of RedHat and the Linux kernel in use just above the 
+login prompt.  The following hint describes how to achieve a similar effect 
+with your Linux From Scratch system.
+
+HINT:
+
+
+Background
+------------------------------
+Anyone familiar with RedHat Linux has seen its attractive login prompt:
+
+	RedHat Linux 7.1 (Seawolf)
+	Kernel 2.4.8 on an i686
+
+	localhost login:
+
+After you terminate your session, the screen clears, and the prompt is again 
+displayed.  You'll notice that your new LFS system will instead leave you 
+dangling after you logout:
+
+	[root@localhost:~]# logout
+
+	localhost login:
+
+Functional, yes, but polished, no.
+
+What's Really Happening?
+------------------------------
+The local login process is really a two-step affair.  By default, LFS calls the 
+program /sbin/agetty, which opens a tty port, prompts for a login name, and 
+invokes the /bin/login command.  The login executable verifies your password 
+and completes the housekeeping necessary to drop you off in a shell.
+
+(By contrast, RedHat uses mingetty, and both agetty and mingetty are 
+descendents of the original getty.  I believe it's the differences between 
+mingetty and agetty that allows for the screen to be cleared without a 
+complicated workaround in RedHat Linux, but I'm getting ahead of myself.)
+
+In reality, agetty is actually configured from within the /etc/inittab file by 
+a series of six lines similar to
+
+	1:2345:respawn:/sbin/agetty tty1 9600
+	...
+	6:2345:respawn:/sbin/agetty tty6 9600
+
+which basically define six "virtual consoles" (on devices tty1 through tty6) to 
+be invoked during runlevels 2-5 (basically everything but halt, single-user, 
+and reboot modes), and set to "respawn" continuously.  In other words, while 
+the system is in multi-user mode, whenever a virtual console session 
+terminates, another login is immediately displayed courtesy of agetty.
+
+Customizing the Logon Message
+------------------------------
+The first step, integrating a customized message to display before the login 
+prompt, is extremely straightforward.  Simply create the file /etc/issue:
+
+	cat > /etc/issue << "EOF"
+	Linux From Scratch 3.0-rc2
+	Kernel 2.4.8 on an i686
+
+	EOF
+
+Now, after you login and logout again, you'll see the following:
+
+	Linux From Scratch 3.0-rc2
+	Kernel 2.4.8 on an i686
+
+	localhost login: 
+
+We're halfway there, but we still haven't got the screen clearing before our 
+message is displayed, which means that whatever leftovers are there from our 
+previous session are still visible above the prompt.
+
+Clearing the Screen
+------------------------------
+One way to solve this problem is to create a .bash_logout file in your home 
+directory containing the command "clear".  This will clear the screen after you 
+log out, but it won't clear the screen right after the system boots, and you'll 
+have to set one up for each individual user.  That's not very elegant.
+
+Instead, we'll take advantage of a feature built into agetty for the purpose of 
+initializing modems and other serial devices through which one might connect in 
+addition to the more common tty interface.  By adding the "-I <initstring>" 
+option to agetty in the /etc/inittab file, we can pass raw characters to the 
+tty interface.
+
+In order to clear the screen and position the cursor at the upper-left corner, 
+we need to take advantage of two ANSI escape sequences.  The first, "ESC[2J", 
+clears the screen, while the second, "ESC[f", positions the cursor.  Since the 
+ESC key is a special non-printing character, we have to use alternate means to 
+inject it into the data stream.
+
+ESC has an ASCII value of 27, which corresponds to an octal value of 033.  
+According to the man page for agetty, we can pass non-printing characters via 
+the -I option by prepending them with a backslash followed by their octal 
+value, so in this case ESC = \033.  (Octal numbers always have a leading zero 
+to differentiate them from decimal numbers.)
+
+Putting it all together, we have the sequence '\033[2J\033[f' which will clear 
+the screen and reposition the cursor to the upper-left corner.  All that's left 
+to do is to modify /etc/inittab so that the above-mentioned agetty lines now 
+read like so:
+
+	1:2345:respawn:/sbin/agetty -I '\033[2J\033[f' tty1 9600
+	...
+	6:2345:respawn:/sbin/agetty -I '\033[2J\033[f' tty6 9600
+
+Now all that remains is to bring the new /etc/inittab file into play.  To do 
+so, simply issue the command:
+
+	telinit q
+
+(Thanks to Randy Hron for pointing this out to me, and to Edward Ellis for 
+suggesting the equivalent command "init q".  Luis Miguel Lourenco also wrote 
+to me mentioning "kill -HUP 1" as another way to restart the init process 
+without rebooting.)
+	
+Conclusion
+------------------------------
+Now you should have a fully-functional, clear screen, custom login prompt.  As 
+an aside, check the man page for agetty for some nifty backslash codes that can 
+be inserted into /etc/issue to pull values out automatically.  For instance \r 
+will spit out the current kernel revision, and \d inserts the date.
+
+I've modified mine to read
+
+	Linux From Scratch 3.0-rc2
+	Kernel \r on an \m (\l)
+
+which expands to
+
+	Linux From Scratch 3.0-rc2
+	Kernel 2.4.8 on an i686 (tty1)
+
+	localhost login: 
+
+Good luck!
+
+Update
+------------------------------
+
+Shaun O'Neil has figured out a way to implement the screen clearing codes in the 
+manner I had originally intended--by including them in /etc/issue, instead of 
+passing them via agetty as configured in /etc/inittab.  I had originally tried 
+putting the sequence "\033[2J\033[f" at the beginning of /etc/issue, however, I
+quickly learned that it was just printed verbatim.
+
+Instead, Shaun used vim to insert the escape character thusly: while editing the 
+/etc/issue file in vim, use the sequence CTRL-V CTRL-ESC to insert a literal 
+escape character.  Follow this with [2J and repeat for the second code.  (Note 
+that the escape character will print as "^[" on the screen, and you must put in
+the left bracket again after it.  In other words, the final sequence will 
+display as
+
+	^[[2J^[[f
+
+on the screen in vim.  Put this sequence before your logon message, and you're 
+all set.
+
+Once you've modified /etc/issue in this manner, there is no need to pass codes 
+to the terminal through agetty, so there is no need to edit /etc/inittab at all 
+as detailed in this hint.  Shaun's proves to be a much cleaner and easier method!

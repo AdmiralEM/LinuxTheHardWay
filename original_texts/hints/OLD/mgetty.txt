@@ -1,0 +1,166 @@
+TITLE:		How to install mgetty+sendfax from sources
+
+LFS-VERSION:	All
+
+AUTHOR:		Edgar Alwers  <edgaralwers@gmx.de>
+
+SYNOPSIS:
+
+	Compilation and Installation of mgetty+sendfax from the sources. 
+	Faxes may be sent direct from the PC running "faxspool" and then  "faxrunq". 	
+	Documents may be queed  from the editor (e.g. StarOffice ) to the fax-queue
+	and then sent with "faxrunq"
+
+
+HINT:
+	Download:
+	
+	mgetty1.1.28-Jan10.tar.gz
+	ftp://alpha.greenie.net/pub/mgetty/source/1.1
+
+	Netpbm (image manipulation/conversion graphics utilities ) netpbm-10.8.tgz 	
+	August 16th 2002
+	http://download.sourceforge.net/netpbm
+
+	ESPG Ghostscript  espgs-7.05.5-source.tar.bz2
+	ftp://ftp.easysw.com/pub/ghostscript
+
+Installing espgs:
+	
+	Untar 
+
+		tar xvjf espgs-7.05.5-source.tar.bz2
+	and change to the espgs-7.05.5 directory
+		cd espgs-7.05.5
+Read the INSTALL file and run configure accordingly:	
+	./configure --disable-OMNI
+Then run 
+	make 
+	make install. 
+
+You  may also need to download the ghostscript fonts. Get them from
+	http://download.sourceforge.net/gs-fonts
+and download ghostscript-fonts-std-6.0.tar.gz to the directory  	
+/usr/X11R6/lib/X11/fonts/ghostscript
+	Untar 
+		tar xvzf ghostscript-fonts-std-6.0.tar.gz
+
+Installing netpbm:
+
+Although faxspool will only need the text to pixel converter pbmtext, we need to 
+
+
+compile and install netpbm. We do it in a shorter form, using static linked 
+libraries 
+	
+Untar the file with
+		tar xvzf netpbm-10.8.tgz
+	and change to the netpbm-10.8 directory
+		cd netpbm-10.8
+
+run the configure file:
+	./configure
+and answer the questions as follows:
+		platform:			gnu
+		regular or merge build	merge
+		libnetpbm			static
+		TIFF library			libtiff.so
+		TIFF header directory	/usr/local/include
+		JPEG library			libjpeg.a
+		JPEG header directory	/usr/local/include
+		PNG library			libpng.so
+		PNG header directory	/usr/local/include
+
+		Z library			libz.so
+		Z header directory		/usr/include
+You may change the resulting Makefile.config, if necessary. Now run 
+	make 
+	make package
+Make package installs the netpbm package in /tmp/netpbm. Run
+	./installnetpbm
+and answer the questions as follows:
+		package directory		/tmp/netpbm
+		install prefix			/usr/local/netpbm
+		program directory		/usr/local/netpbm/bin
+		static library directory	/usr/local/netpbm/lib
+		header directory		/usr/local/netpbm/include
+		man pages			/usr/local/netpbm/man
+Accept the creation of the Symlink /usr/man/web -> /usr/local/netpbm/man/web
+	ln -s /usr/local/netpbm/man/web/netpbm.url /usr/man/web/netpbm.url
+
+You will need to include the new directory /usr/local/netpbm/bin in your path:
+(e.g. /.bash_profile )
+	export PATH=$PATH:/usr/local/netpbm/bin
+
+Installing mgetty:
+
+	Untar
+		tar xvzf mgetty1.1.28-Jan10.tar.gz
+	and change to the directory  mgetty-1.1.28:
+		cd mgetty-1.1.28
+Copy the file „policy.h-dist“ to „policy.h“:
+		cp policy.h.dist policy.h
+Edit the Makefile and change line 172 from 
+		INSTALL=install -c -o bin -g bin
+to
+		INSTALL=install -c -o root -g root
+edit the next lines according to your needs or accept the Makefile propositions 
+and then run make and make install.
+Change to the directory  /usr/local/etc/mgetty+sendfax:
+		cd /usr/local/etc/mgetty+sendfax
+and edit the file sendfax.config. Change the line 'which devices to use for 
+outgoing faxes' from 
+'fax-devices tty4c:tty4d' to 
+'fax-devices ttyS0:ttyS2' 
+and the line 'which fax number to transmit to the receiving station' from
+'fax-id 49 115 xxxxxxxx' into your own fax line number. Edit the Dial-prefix 
+line  e.g. in
+		dial-prefix ATDT. 
+
+Uncomment the line 'port ttyS0', if this is the port of your modem.
+You might need also a modem initialisation string. I inserted
+		modem-init ATS7=255
+You might edit the file „faxheader“ in the same directory.
+Finally, you should create and edit a file „fax.allow“ or „fax.deny“ in the same 
+
+
+directory, in order to allow access control to other users than root.
+ 
+Testing faxspool:
+
+You are now ready to run a first test with faxspool. Write with your prefered 
+editor ( vi ?) a file 'test.txt' and then run ( as user )
+
+
+	faxspool    123456 /your/directory/test.txt
+
+where „123456“ stands for the telefon number of a fax receiver.
+You can have a look at the fax file in the converted g3 format with the fax 
+viewer 
+Kfax of the kde system. The fax image is stored in /var/spool/fax/outgoing
+
+Fax spooling from StarOffice:
+
+Open 'printer setup' in StarOffice's main frame, choose 'generic printer' from 
+the printer drivers list and add it as a new printer. Rename it to 'fax printer' 
+
+
+and connect it to the fax_queue=FAX, which is one of the StarOffice existing 
+queues  
+
+You don't need to configure, as the fax command format is exactly the one needed 
+
+
+by faxspool. Print a job to the fax printer, and a pop window will come up, 
+asking for the fax number. Thats all.
+
+Sending Faxes:
+
+run -as root - „faxrunq“
+
+
+Literature:
+
+Gert Doering: mgetty+sendfax manual 
+
+

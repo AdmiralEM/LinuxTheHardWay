@@ -1,0 +1,74 @@
+GENERAL OUTLINE
+===============
+
+TITLE:		LFS 3.0-pre3 upgrade.
+LFS VERSION:	3.0-pre3
+AUTHOR:		J. Jones <jjones(at)darkside(dot)dynup(dot)net>
+
+SYNOPSIS:
+	This hint should solve your static compile issues on LFS 3.0-pre3.
+
+HINT:
+
+Why this?
+=========
+
+  Long story short:  --strip-unneeded destroys static libraries.
+
+  I told Gerard the above was library safe, which it is for shared objects (at
+least those not in use by the strip command), without testing the effects of
+it on static libraries.  It unfortunately leaves them in a completely unusable
+state.
+
+
+Well, what do I have to do?
+===========================
+
+  So far it appears you can get by with only rebuilding glibc and ncurses
+statically.  Your milage may vary, but it has corrected the problem on the
+only two pre3 systems available.
+
+IMPORTANT:  If you don't execute the following, you are asking for trouble
+during the glibc compile.
+
+  export CFLAGS="" && export CXXFLAGS=""
+
+glibc-2.2.1 rebuild:
+
+  You will need to extract both tarballs as you did in the LFS instructions.
+Create the glibc-build directory and cd into it.  Use the following:
+
+../glibc-2.2.1/configure \
+  --prefix=/usr \
+  --disable-shared \
+  --disable-profile \
+  --enable-add-ons
+make
+make install_root=/tmp/glibc-static install
+cd /tmp/glibc-static/usr/lib
+cp -a * /usr/lib
+
+ncurses-5.2 rebuild:
+
+./configure \
+  --with-install-prefix=/tmp/ncurses-static \
+  --prefix=/usr \
+  --libdir=/lib \
+  --without-shared \
+  --without-profile \
+  --without-debug \
+  --disable-termcap
+make
+make install
+cd /tmp/ncurses-static/lib
+cp -a *.a /lib
+
+You should now have the required (functional) static libraries required to
+complete chapter 5 of the LFS book.
+
+Please report success and failure of this to me.  This is my fault, and
+therefore my responsibility to fix.  Sorry.  ;)
+
+====
+End.
+

@@ -1,0 +1,227 @@
+TITLE:		Using chrony to maintain system time
+
+LFS VERSION:	3.1 (should apply to all)
+
+AUTHOR:		David Ayers <fogey@mindspring.com>
+
+SYNOPSIS:
+
+Chrony is a software package for maintaining the accuracy of computer
+system clocks. It consists of a pair of programs: chronyd is a daemon
+running in the background and chronyc is a command line control and
+monitoring program.
+
+This hint describes the use of chrony to keep the system clock on a
+single computer in step with NTP time over an Internet dial-up
+connection. The chrony.txt file referenced below also describes how to
+use chrony on systems with a full-time Internet connection or even no
+connection at all.
+
+HINT:
+
+Changelog
+---------
+
+Information sources
+-------------------
+
+chrony.txt located in the chrony-1.17 source tree provides very
+complete documentation on the installation and use of chrony.
+
+The man page for 'hwclock' tells how to query and set the hardware
+clock (RTC).
+
+My LFS system
+-------------
+
+    LFS Version CVS-20020131
+    Linux 2.4.17 
+
+The chrony source
+-----------------
+
+ftp://chrony.sunsite.dk/projects/chrony/chrony-1.18.tar.gz
+
+Building and installing chrony
+------------------------------
+
+Unpack the source code tarball, cd into the source directory and type:
+
+    $ ./configure --prefix=/usr 
+    $ make
+    $ make docs
+    $ su
+    # make install
+    # make install-docs
+
+Choose your NTP server
+----------------------
+
+The names and IP addresses for public NTP time servers, along with the
+"Rules for Engagement" for their use, can be found at:
+
+http://www.eecis.udel.edu/~mills/ntp/servers.htm
+
+Unless you are configuring a computer for use as a time server for a
+large network, choose your NTP servers from the list of secondary
+(Stratum 2) servers. Because I live in Illinois, I chose two servers
+located at the University of Illinois in Champaign, IL. You will need
+both the name and IP of the server(s) you select.
+
+Configuring chrony
+------------------
+
+Create the configuration file /etc/chrony.conf. 
+
+    * # /etc/chrony.conf for LFS
+    * # Server names and IPs in /etc/hosts.
+    server [hostname] offline
+    server [hostname] offline
+    logdir /var/log/chrony
+    driftfile /etc/chrony.drift
+    keyfile /etc/chrony.keys
+    commandkey 1
+    dumponexit
+    dumpdir /var/log/chrony
+    rtcfile /etc/chrony.rtc
+
+Create a one-line keyfile /etc/chrony.keys. Pick an arbitrary
+keyword. (The combination of a numeral and a keyword allows systems to
+offer varying levels of access to users as explained in chrony.txt.)
+
+    1 [keyword]
+
+Create the log directory and rtc file.
+
+    # mkdir /var/log/chrony/
+    # touch /etc/chrony.rtc
+
+/etc/hosts
+----------
+
+Add the IP address and host name of the NTP server or servers selected
+to your /etc/hosts file. This is necessary for dial-up connections,
+because DNS isn't available to resolve the server names until after
+the online connection is established. Name resolution is provided
+by the hosts file.
+
+Starting chronyd
+----------------
+
+The start command for the chrony daemon is:
+
+# /usr/bin/chronyd -r -s
+
+The '-r' causes chronyd to reload the sample histories stored by the
+'dumponexit' and 'dump' commands.
+
+'-s' causes chronyd to set the system clock from the RTC. When used
+with '-r' chronyd will attempt to preserve the old samples after
+setting the system clock from the RTC. This allows chronyd to perform
+long term averaging of the gain or loss rate across system reboots
+and is useful for dial-up systems that are shut down when not in use
+or when dual booting several OSs.
+
+To start chrony on boot, create an appropriate boot script. I use the
+'simple-init' boot system. My boot script:
+
+
+    #!/bin/sh
+    #
+    # start chrony service
+    #
+    #locate and source functions script
+    source `PATH=$INIT_D/:/sbin/init.d:/etc/init.d:/etc/rc.d \
+    type -p functions`
+ 
+    case "$1" in
+      start)
+         need $mounted_filesystems || exit_if_any_error
+ 
+         echo 'Starting chronyd daemon...'
+         loadproc chronyd -r -s || exit_if_any_error
+         ;;
+      stop)
+         echo 'Stopping chronyd daemon...'
+         killproc chronyd
+         ;;
+      *)
+         exit 1
+         ;;
+    esac
+ 
+exit 0
+
+Using the chronyc control and monitoring program
+------------------------------------------------
+
+Type 'chronyc <command>' to monitor the operation of chronyd. The
+monitoring commands are:
+
+    rtcdata
+    sources
+    sourcestats
+    tracking
+
+For help in interpreting the output of these commands, see chrony.txt.
+
+Internet dial-up configuration
+------------------------------
+
+The "offline" flag in chrony.conf prevents chronyd from trying to
+query the time service when the computer is not connected to the
+Internet. To switch to 'online' when connected, add these lines to
+/etc/ppp/ip-up or whatever script takes you online:
+
+    /usr/bin/chronyc << EOF
+    password [keyword]
+    online
+    EOF
+
+To return to the offline state when disconnecting, add these lines to
+/etc/ppp/ip-down (or equivalent script):
+
+    /usr/bin/chronyc << EOF
+    password [keyword]
+    dump
+    writertc
+    offline
+    EOF
+
+The driftfile
+-------------
+
+One of the main activities of the 'chronyd' program is to work out the
+rate at which the system clock gains or loses relative to real
+time. Every time this rate information is computed, it is recorded in
+the driftfile /etc/chrony.drift. Data in the driftfile looks
+something like:
+
+    $ cat /etc/chrony.drift
+           14.6433               1.2223
+
+The first number is the rate at which the system clock gains or loses
+time in parts-per-million. The second rate is an estimate of the error
+bound around the first value in which the true rate actually lies.
+
+Synchronizing the hardware clock (RTC)
+--------------------------------------
+
+The computer relies on the real-time clock (RTC) to maintain the
+correct time during shutdown and offline periods. At boot up, chronyd
+sets the system time to RTC time. When the Internet connection is
+made, chronyd starts measuring the error and drift rate between system
+and RTC time, gradually bring both times into sync with the NTP
+time signal. After a number of hours online, both system time and RTC time
+will equal true time.
+
+My LFS system used a 'setclock' boot script to set system time to the
+resl-time clock. Since chronyd now fulfills this function, I removed
+'setclock' from the boot process. Any program other than chronyd that
+adjusts the real-time clock can confuse the time synchronization
+process.
+
+---
+
+ 
+

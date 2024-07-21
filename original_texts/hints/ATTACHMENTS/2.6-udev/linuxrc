@@ -1,0 +1,18 @@
+#!/bin/sh
+mount -n -t sysfs none /sys
+mount -n -t @fstype@ @root-dev@ /new_root
+mount -n -o size=100k -t tmpfs udev /new_root/dev
+/sbin/udevstart
+ln -snf /proc/self/fd /new_root/dev/fd
+ln -snf /proc/self/fd/0 /new_root/dev/stdin
+ln -snf /proc/self/fd/1 /new_root/dev/stdout
+ln -snf /proc/self/fd/2 /new_root/dev/stderr
+ln -snf /proc/kcore /new_root/dev/core
+mkdir /new_root/dev/pts
+mkdir /new_root/dev/shm
+umount /sys 2>/dev/null
+cd new_root
+pivot_root . initrd
+exec chroot . /sbin/init <dev/console >dev/console 2>&1
+umount /initrd
+freeramdisk /dev/ram0

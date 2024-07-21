@@ -1,0 +1,442 @@
+AUTHOR: Lars Bamberger <Lars.Bamberger at gmx dot de>
+
+DATE: 2009-12-30
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: How to setup an encrypted file system including the rootfs.
+
+DESCRIPTION:
+This describes one possible way of encrypting your hard drive, including the
+root file system. It is intended for experienced users and tries to
+circumnavigate the pitfalls of encrypting your root file system in a
+straightforward way. 
+
+
+PREREQUISITES:
+This hint requires that you have sufficient knowledge of BeyondLinuxFromScratch
+and reasonably up to date software. You must be comfortable building software,
+finding, reading and understanding other pertinent documentation.
+You must know how to set up an initramfs. (See
+'filesystems/ramfs-rootfs-initramfs.txt' in the kernel's documentation.)
+You must be aware why you'd want an encrypted file system and you must
+understand the nature of the threat you're trying to protect yourself against.
+You must also understand shortcomings and security issues if you follow the
+instructions contained in this hint.
+
+You must have a complete backup of you system somewhere safe! That includes an
+alternative boot device.
+
+You ABSOLUTELY MUST READ AND UNDERSTAND THIS HINT BEFORE YOU MODIFY YOUR SYSTEM!
+
+
+HINT:
+
+1. What is this about?
+======================
+
+This is about encrypting all but one of your hard drive partitions using LUKS
+for dm-crypt. We'll boot from one small unencrypted partition using initramfs in
+order to decrypt the rootfs.
+This hint assumes that a small partition from where to boot from is already set
+up. This partition should be 10 to 15 MB in size in order to store more than
+one kernel and more than one initramfs image for testing and upgrading
+purposes. Avoid any larger partition because during every boot we'll calculate
+a checksum for this partition, a time consuming process.
+
+
+2. Required software and dependencies
+=====================================
+
+2.1 Software in the BLFS book
+
+You need to install 'Popt' as 'cryptsetup' depends on this.
+Furthermore you need 'uuencode' to create key files. 'uuencode' is included in
+'sharutils' and 'GMime' which has further dependencies mentioned in the BLFS
+book. To create the initramfs, you need 'Cpio'.
+
+2.2 Software not in the BLFS book
+
+2.2.1 devmapper
+
+Get it from http://packages.debian.org/stable/source/devmapper
+Compile and install it. Required for 'cryptsetup'.
+
+
+2.2.2 cryptsetup with LUKS extension
+
+Get it from http://code.google.com/p/cryptsetup/
+Compile and install it. Required to handle encrypted partitions.
+
+
+2.2.3 busybox
+
+Get it from http://www.busybox.net/
+The minimum required configuration includes:
+* cp
+* hush (interactive shell not required)
+* mount (with support for lots of -o flags) and
+* switch_root.
+
+Compile it, but DO NOT install it. Keep the binary and name it
+'busybox-minimum'. Next, reconfigure busybox for a full-blown desktop system.
+You will need all the standard tools and utilities for the purpose of initially
+encrypting your root partition and for troubleshooting. (Don't forget 'mkefs'.)
+Name this binary 'busybox-large' or something similar. Again, it is not
+required to install it.
+
+
+3. Recompiling the kernel
+=========================
+
+Decide what algorithm you would like to use to encrypt your hard drive
+with. Note that this is a crucial decision and you should read more background
+information on this. (See ACKNOWLEDGMENTS below.)
+The appropriate modules need to be compiled (hard-coded, not as modules) into
+the kernel.
+As an example you could use the "twofish-cbc-essiv:sha256" method.
+
+Also, from the 'Device Drivers' -> 'Multiple devices driver support' menu in
+the kernel configuration, select the 'Device mapper support' and the 'Crypt
+target support' as well.
+
+Under 'Device Drivers' -> 'Block devices', select 'RAM block device support'
+and from 'General setup', select 'Initial RAM filesystem and RAM disk'.
+
+NOTE: You must boot this new kernel before proceeding.
+
+
+4. Encrypting partitions partitions other than rootfs and other than swap
+=========================================================================
+
+You need to modify your system in order for it to be able to handle encrypted
+partitions. In the first step, we modify the system so that it can handle
+encrypted partitions OTHER than the rootfs. It is strongly suggested that you
+keep a backup of all files you modify in the process.
+
+4.1 Encrypting the partitions
+
+NOTE: This document describes how to encrypt every partition separately. If you
+      have more than one HDD in your system, you might consider encrypting the
+      whole device including the partition table. Using the method described in
+      this document leaves the partition table unencrypted and thus may be
+      exposed to an attack. Consider this a potential security risk.
+
+*** PITFALL ***
+If /usr is a separate partition, cryptsetup and all libraries needed to run
+cryptsetup must be on the root partition. Use 'ldd cryptsetup' to find out.
+It may be necessary to switch to runlevel 1 because you need to be able to
+unmount /usr. Also, make sure that root's shell does not use any libs on that
+partition. If required, compile a statically linked shell for root's use.
+
+The process is as follows for every partition:
+
+1) Create as many keys as you like for the partition, for example:
+   head -c 2880 /dev/urandom | uuencode -m - | head -n-1 | tail -n+2 > keyfile
+   or use an easy to remember passphrase.
+
+2) Make a secure backup of your keys and secure the keyfile by 'chmod 0400' or
+   so. Your backup keys must be absolutely secure (i.e. not on your computer).
+   Remember: If you lose your key, you will absolutely, definitely NOT be able
+   to access you data!
+
+3) Make a backup of the data on the partition.
+
+4) Un-mount the partition.
+
+5) Create an encrypted partition. (All data will be lost on that partition.)
+   Do a
+   cryptsetup -c $cipher-algorithm luksFormat /dev/sd?? $keyfile
+   Replace '$cipher-algorithm', '/dev/sd??' and '$keyfile' with the
+   corresponding values.
+   
+6) Optionally, add more keys to the partition. Do a
+   cryptsetup -y -d $keyfile luksAddKey /dev/sd??
+   Replace '$keyfile' with the same as above and '/dev/sd??' with the
+   corresponding partition.
+
+7) Open the encrypted partition. Do a
+   cryptsetup -d $keyfile luksOpen /dev/sd?? sd??
+   Replace '$keyfile' and '/dev/sd??' with the corresponding values. Replace
+   'sd??' with a meaningful name. If everything worked out, the unencrypted
+   partition will appear as '/dev/mapper/sd??' with sd?? being the name you
+   chose.
+
+8) Create a filesystem on the partition. Do a
+   mkefs.$WHATEVER /dev/mapper/sd??
+   Replace '$WHATEVER' with the type of filesystem you would like to use
+   (e.g. ext2) and '/dev/mapper/sd??' with the corresponding partition.
+
+9) Adjust /etc/fstab
+   Because the device for the partition has changed, you need to
+   tell the system where to find it. Change the device by inserting
+   "mapper/" in the device field.
+
+   Example:
+   /dev/sda4         /home ext2 defaults 1 2
+   becomes
+   /dev/mapper/sda4  /home ext2 defaults 1 2
+
+10) Mount the filesystem by 'mount /dev/mapper/sd??'
+    
+11) Copy the data back to the partition.
+
+
+4.2 Making the system automatically decrypt and mount the partition(s)
+
+Create a bootscript that will decrypt your encrypted partition. It is assumed
+that the passphrases are stored in /etc/crypt for example. Note that storing the
+passphrases on disk might pose a security problem! Use the template for
+bootscripts included with BLFS and make it do:
+
+/sbin/cryptsetup -d /etc/crypt/$PARTITION.key luksOpen \
+   /dev/$PARTITION $PARTITION
+
+for every encrypted partition other than the root partition and the swap
+partition(s).
+
+Example:
+
+#!/bin/sh
+########################################################################
+# Begin $rc_base/init.d/cryptsetup
+#
+# Description : Make encrypted filesystems available for mounting
+#               And clean up afterwards
+#
+# Authors     : Lars Bamberger
+#
+# Version     : 00.01
+#
+# Notes       : This should never be automatically called with any
+#               argument other than "start". During shutdown and reboot,
+#               it is sufficient to umount the filesystems. /dev/mapper/*
+#               will be gone when the kernel stops or reboots.
+#
+########################################################################
+
+. /etc/sysconfig/rc
+. ${rc_functions}
+PROC=/sbin/cryptsetup
+
+case "${1}" in
+	start)
+		boot_mesg "luksOpen Home..."
+		$PROC -d /etc/crypt/home.key luksOpen /dev/sda4 sda4
+		evaluate_retval
+	stop)
+		boot_mesg "luksClose Home..."
+		$PROC luksClose sda4
+		evaluate_retval
+		;;
+	reload)
+		boot_mesg "Reloading home..."
+		$PROC reload sda4
+		evaluate_retval
+		;;
+	restart)
+		${0} stop
+		sleep 1
+		${0} start
+		;;
+	status)
+		$PROC status sda4
+		;;
+	*)
+		echo "Usage: ${0} {start|stop|reload|restart|status}"
+		exit 1
+		;;
+esac
+# End $rc_base/init.d/cryptsetup
+
+Now, before proceeding, make sure everything works as expected up until now.
+Become familiar with encrypting your partitions this way.
+Make an appropriate softlink so that this script is called at boottime:
+
+# cd /etc/rc.d/rcsysinit.d
+# ln -s ../init.d/cryptsetup S19cryptsetup
+
+Double-check everything so that booting, rebooting, shutting down etc. works as
+expected. 
+
+
+5. A word about encrypting the swap partition(s)
+================================================
+
+Do not omit encrypting your swap partitions. Lot's of interesting data can be
+found on swap spaces. Do not consider you data safe if you don't use encrypted
+swap spaces. 
+In theory, the data on the swap partition(s) does not need to be consistent
+between reboots. This means we could create a swap space anew during boottime,
+using a random (and thus different) cryptokey every time the system boots. This
+way you don't have to bother with managing swap's cryptokeys and you won't have
+to store them anywhere (except in memory). This can be considered an additional
+security feature.
+However, if you suspend your system (either to RAM or to disk), data in
+swap space must remain consistent. Therefore you have to treat the swap
+partition(s) just as if they were a regular partition, meaning you should
+encrypt them like explained above.
+
+
+6. Encrypting rootfs 
+====================
+
+You can't just encrypt the rootfs the way the other partitions were encrypted
+because the system is running on it. The idea is to create an initramfs
+containing everything you need to encrypt (and decrypt) the rootfs. (Details can
+be found in the kernel's documentation:
+'filesystems/ramfs-rootfs-initramfs.txt'.)
+
+You'll need the standard directories (bin, sbin, usr/{bin,sbin}, proc, sys,
+dev, lib). In bin we put our busybox-large (rename to busybox) and a softlink to
+busybox named hush. Copy cryptsetup to sbin.
+In dev put some useful devices: console, null, urandom, sd?? and a directory
+'mapper' containing 'control'. Then make a copy of dev:
+cp -a dev init-dev
+In lib (and dev) put everything needed to run busybox and cryptsetup.
+
+The init script is like this:
+#!/bin/hush
+/bin/busybox mount -t proc proc /proc
+/bin/busybox mount -t sysfs sysfs /sys
+/bin/busybox mount -t tmpfs tmpfs /dev
+/bin/busybox cp -a /init-dev/* /dev
+/bin/busybox --install -s
+exec /bin/busybox hush
+
+Put all this into one directory (init goes there as well and not into sbin). Cd
+into this directory and create the image using
+find . | cpio --quiet -H newc -o | gzip -9 -n > /boot/initramfs.img
+Pass the appropriate initrd argument (e.g. initrd (hd0,0)/initramfs.img) to the
+kernel when booting and this will drop you into the hush shell after system
+boot.
+
+*** PITFALL ***
+Cryptsetup needs /proc and /sys mounted. It also requires the /dev directory.
+As we want to save /dev when we switch_root later, we mount it as tmpfs. This
+means that the devices in /dev will be gone, so copy them back into /dev. Be
+aware that you need at least 'null' and 'console' in /dev before mounting
+tmpfs on /dev.
+
+Once in the shell, encrypt your rootfs like any other partition as described
+above. Don't forget the backup! ABSOLUTELY, POSITIVELY make certain that you are
+able to mount and access the unencrypted backup of the rootfs from within the
+hush shell!
+
+Next, create the encrypted root partition. Note that the passphrase won't be
+stored anywhere on disk, so do:
+cryptsetup -y -c $cipher-algorithm luksFormat /dev/sd??
+to create the encrypted rootfs. Replace '$cipher-algorithm' and '/dev/sd??' with
+the respective values. Next, open the partition, format it and recover the
+backup:
+
+cryptsetup luksOpen /dev/sd?? sd??
+$BACKUPROOTFS/mkefs.$TYPE /dev/mapper/sd??
+mkdir /new-root
+mount -t $FSTYPE /dev/mapper/sd?? /new-root
+cp -a $BACKUPROOTFS /new-root
+
+*** PITFALL ***
+Since your old rootfs isn't mounted, you might not be able to to run 'mkefs' do
+to missing libraries. Either copy everything needed to where the linker can
+find it, or use the 'mkefs' from busybox. Be sure to configure busybox
+accordingly.
+
+Next, modify /etc/fstab (on /new-root) to reflect the new device for the rootfs.
+Also modify the cryptsetup script as described below (7. PITFALL).
+
+
+7. Decrypting the rootfs on subsequent boots
+============================================
+
+Like in 6., create an initramfs. The difference is that now the
+"busybox-minimum" binary is used and you'll need an additional directory
+new-root. Don't forget the 'hush' softlink.
+The init is like this: (Replace 'sd??' with your root-device and adjust for the
+fstype.)
+
+#!/bin/hush
+/bin/busybox mount -t proc proc /proc
+/bin/busybox mount -t sysfs sysfs /sys
+/bin/busybox mount -t tmpfs tmpfs /dev
+/bin/busybox cp -a /init-dev/* /dev
+/sbin/cryptsetup luksOpen /dev/sd?? sd??
+/bin/busybox mount -r -t ext2 /dev/mapper/sd?? /new-root
+/bin/busybox mount --move /proc /new-root/proc
+/bin/busybox mount --move /sys /new-root/sys
+/bin/busybox mount --move /dev /new-root/dev 
+exec /bin/busybox switch_root /new-root /sbin/init $@
+
+*** PITFALL ***
+You want to keep /proc, /sys and /dev after switch_root because cryptsetup uses
+them. Hence the 'mount --move' commands. Note that /dev/mapper/sd?? (the root
+device) will be gone once you mount the true root partition, switch_root and the
+rootfs proper starts udev. That's the reason why this device needs to be
+recreated. So, modify the cryptsetup bootscript to include 
+
+		if [[ ! -b /dev/mapper/sd?? ]];
+		then
+			boot_mesg "Making device for rootfs..."
+			/bin/mknod -m 0600 /dev/mapper/sd?? b 254 0
+			evaluate_retval;
+		fi
+
+in the start section of the script.
+
+
+8. Making sure security is not compromised
+==========================================
+
+Once everything works as it should, remove the unencrypted backup of your
+rootfs. Protect your bootloader (and possibly the BIOS) with a password to
+disable unauthorized fiddling with the boot parameters.
+Create a bootscript (checkbootfs) that makes sure that the unencrypted partition
+we booted from was not compromised. Use something like:
+
+		boot_mesg "Checking integrity of boot FS..."
+		if
+		[[ $(/bin/md5sum -b /dev/sd??) == \
+		"$whatevermd5sum */dev/sd??" ]] \
+			&& \
+		[[ $(/bin/sha1sum -b /dev/sd??) == \
+		"$whatevensha1sum */dev/sd??" ]];
+		then
+			echo_ok;
+		else
+			echo_failure
+boot_mesg -n "FAILURE:\n\nThe boot file system seems to have been
+altered!\n\n" ${FAILURE}
+        boot_mesg -n " DO NOT TRUST THIS SYSTEM!\n\n"
+        boot_mesg_flush
+
+*** PITFALL ***
+Make sure this is the very last thing you implement, as the hashsums will
+change as we go on. The hashsums will also change if you run a fsck on the boot
+partition.
+
+
+ACKNOWLEDGMENTS:
+  * Emmanuel Trillaud for some suggestions and pointers.
+  * Various for the Gentoo-Wiki at
+    http://en.gentoo-wiki.com/wiki/DM-Crypt_with_LUKS
+  * Clemens Fruhwirth (http://clemens.endorphin.org/) for LUKS for dm-crypt:
+    http://code.google.com/p/cryptsetup
+
+
+CHANGELOG:
+[2009-12-30]
+  * Merged suggestions (typos, format and others) from Emmanuel Trillaud
+  * More verbosity on the boot partition size
+  * Some reformatting
+[2009-11-23]
+  * list dependencies in the BLFS book
+[2009-11-20]
+  * cryptsetup needs /dev/urandom
+  * mkefs might not work from initramfs
+  * update some URLs
+  * some minor touchups
+[2009-02-15]
+  * Basic rewrite.
+[2008-02-17]
+  * Initial hint.
+

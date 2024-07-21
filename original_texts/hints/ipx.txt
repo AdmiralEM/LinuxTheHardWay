@@ -1,0 +1,206 @@
+AUTHOR: Leslie Polzer <leslie.polzer@gmx.net>
+
+DATE: 2003-09-14
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: Making IPX work with LinuxFromScratch
+
+DESCRIPTION:
+This guide aids the user in setting up kernel- and userspace for the
+IPX network protocol and its interfaces. 
+
+PREREQUISITES:
+None.
+
+HINT:
+
+Contents
+--------
+1 Overview
+	1.1 What is IPX?
+	1.2 Why IPX?
+	1.3 Notes
+
+2 Kernel matters
+	2.1 Configuration
+	2.2 Files in /proc/net
+
+3 Software requirements and build process
+	3.1 Fixing ipx.h
+	3.2 Downloading, unpacking and building
+	3.3 Installing
+		3.3.1 For SysVInit boot scripts
+		3.3.2 For BSD boot scripts
+
+4 References and pointers
+
+
+
+1 Overview
+==========
+
+1.1 What is IPX?
+----------------
+IPX is a networking protocol, much like TCP/IP, introduced by Novell and used
+in their Netware products.
+
+
+1.2 Why IPX?
+------------
+IPX is still very common with games - and, of course, Netware boxes.
+
+
+1.3 Notes
+---------
+I make the following assumptions:
+
+	- you have only one ethernet interface by the name of 'eth0'
+	- this interface is configured for TCP/IP and up
+	- you want the standard frame type 802.2
+	- you are able to consult the IPX-Howto (see section 4 for a link)
+		if you want to know more
+
+You should meet these requirements if you followed the LFS installation.
+Please note also that I won't cover the installation of ncpfs.
+
+
+2 Kernel matters
+================
+
+2.1 Configuration
+-----------------
+Enable 'Networking options' -> 'The IPX protocol' (CONFIG_IPX, that is),
+then compile and install your kernel.
+
+
+2.2 Files in /proc/net
+----------------------
+Now you got three new files in /proc/net, all starting with 'ipx':
+
+- ipx
+	The list of open IPX sockets.
+
+- ipx_route
+	The list of routing table entries.
+
+- ipx_interface
+	The list of configured IPX interfaces.
+
+
+3 Software requirements and build process
+=========================================
+
+3.1 Fixing ipx.h
+----------------
+We must fix the header file ipx.h.
+There are two patches for it, an old one and a new one. For LFS 4.0 and up
+use the new one.
+
+	Old Patch: http://www.fmi.uni-passau.de/~polzer/patches/linux_ipx_h_old.patch
+	New Patch: http://www.fmi.uni-passau.de/~polzer/patches/linux_ipx_h_new.patch
+
+Apply it with (I assume the patch file is also in /usr/include/linux):
+
+	cd /usr/include/linux &&
+	patch < linux_ipx_h.patch
+
+
+3.2 Downloading, unpacking and building
+---------------------------------------
+Now we can build the IPX tools. Get the tarball from:
+
+	ftp://sunsite.unc.edu/pub/Linux/system/filesystems/ncpfs/ipx.tgz
+
+And unpack the archive:
+
+	tar xvfz ipx.tgz
+	cd ipx-1.0/
+
+Compile the package by typing
+
+	make CFLAGS="-O2 -w"
+
+You shouldn't get any errors.
+
+
+3.3 Installing
+--------------
+
+3.3.1 For SysVInit boot scripts
+-------------------------------
+The makefile will install sysvinit bootscripts, yet be careful:
+If you have an LFS-system before 3.2-RC1 (3.1 or earlier, that is), you
+got no /etc/rc.d directory but all the sysvinit-bootcrap in /etc.
+Either make a symlink in /etc:
+
+	cd /etc &&
+	ln -sf . rc.d
+
+-or- adjust the Makefile in the top-level source dir:
+
+	cat Makefile | sed -e "s/\/etc\/rc.d\//\/etc\//g" > Makefile
+
+Then adjust the man path in the Makefile:
+
+	cat Makefile | sed -e "s/\/usr\/man\//\/usr\/share\/man\//" > Makefile
+
+and type
+
+	su -c "make install"
+
+to install the binaries, the man pages and the bootscripts.
+
+The last step is to activate the configuration in /etc/sysconfig/ipx:
+
+	su -c 'cat /etc/sysconfig/ipx | sed -e "s/IPX_CONFIGURED=no/IPX_CONFIGURED=yes/" > /etc/sysconfig/ipx'
+
+
+3.3.2 For BSD boot scripts
+--------------------------
+Install the binaries and man pages with:
+
+	for i in 'ipx_configure ipx_interface ipx_internal_net ipx_route'
+    do
+		install --strip $i /sbin
+		install $i.8 /usr/share/man/man8
+	done
+
+Then adjust your network init script(s).
+If you followed the BSD-init hint, these are:
+
+	/etc/rc.d/rc.2
+	/etc/rc.d/rc.3
+
+Find the line where eth0 is configured ('ifconfig eth0 [...]') and
+write below it:
+
+	/sbin/ipx_interface add -p eth0 802.2 0x00000001
+
+This assumes you want frame type 802.2 and IPX network address 1.
+Note that Microsoft Windows boxes use 0 as the default, which is an
+invalid address. If you want these computers to talk to your Linux box,
+you must manually adjust the properties of the IPX/SPX protocol in the
+network properties dialog.
+
+
+4 References and pointers
+=========================
+[1] The IPX-HowTo - http://www.tldp.org/HOWTO/IPX-HOWTO.html
+
+
+ACKNOWLEDGEMENTS:
+ * Izzy Blacklock <izzyb@ecn.ab.ca> for patch for kernel 2.4.18 headers
+ * Richard Jenniss <Richard.Jenniss@Sympatico.ca> for notifying me about
+ 	a mistake (frame type 802.2 isn't obsolete)
+
+CHANGELOG:
+[2003-07-24]
+ * Added patch for kernel 2.4.18 headers as suggested by Izzy Blacklock
+ 
+[2003-09-14]
+ * Initial release
+ 
+[2003-10-27]
+ * removed 'obsolete' regarding frame type 802.2 - it isn't
+ 

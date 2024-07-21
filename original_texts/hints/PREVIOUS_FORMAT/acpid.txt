@@ -1,0 +1,208 @@
+TITLE:		ACPID hint
+LFS VERSION:	3.3 - 4
+Author:		Paul Warren <u3292467@student.anu.edu.au>
+
+SYNOPSIS:
+	How to get your shiny LFS box to shutdown when you press the
+	power button.
+
+
+HINT:
+
+ACPI [1] is the advanced Configuration and Power interface.  It
+basically is an upgrade of the old Advanced Power Management
+interface, and allows for much more flexibility in configuring actions
+to certain events.
+
+The ACPI Daemon is a user space daemon that reacts to these events
+through the /proc interface.
+
+To get the package fire this link up in your browser and choose your
+favourite sourceforge mirror.
+
+http://prdownloads.sourceforge.net/acpid/acpid-1.0.1.tar.gz?download
+
+Or use wget on :
+
+http://umn.dl.sourceforge.net/sourceforge/acpid/acpid-1.0.1.tar.gz
+
+
+First of all you need to ensure your motherboard and power supply
+supports the ACPI standard.  Most models post 2000 should be Ok, as
+well as a few before that, check your manufacturers documentation though.
+
+ACPID should be used in conjunction with kernels greater than 2.4.8,
+but versions before that can be patched with the latest ACPI drivers.
+This shouldn't be a concern for LFS people, with linux-2.4.19 as
+standard.
+
+Next step is to ensure that your kernel has the drivers loaded, either
+in the kernel proper or as modules. 
+[*] Power Management support
+[*]   ACPI support (NEW)
+[ ]     ACPI Debug Statements (NEW)
+<M>     ACPI Bus Manager (NEW)
+<M>       System
+<M>       Processor
+<M>       Button
+< >       AC Adapter
+< >       Embedded Controller              
+
+If  you're on a laptop you can add in AC Adaptor and Embedded
+Controller. 
+
+The usual procedures apply for installing your new kernel and
+modules.  The modules are called:
+ospm_busmgr
+ospm_system
+ospm_processor
+ospm_button
+
+I'm not sure about the AC adaptor and Embedded Controller, because
+I don't have a laptop to test it on.
+
+So do something like the following if you are using BSD style init. 
+
+cat >> /etc/rc.d/rc.modules << "EOF"
+modprobe ospm_busmgr
+modprobe ospm_system
+modprobe ospm_processor
+modprobe ospm_button
+EOF
+
+and this for sysvinit.  Thanks to Dênis Volpato Martins
+
+cat > $rc_base/init.d/acpid << "EOF"
+#!/bin/bash
+# Begin $rc_base/init.d/acpid
+
+# Based on sysklogd script from LFS-3.1 and earlier.
+# Rewritten by Dênis Volpato Martins  - dvm@linux-sc.org
+# based on acpid hint
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+case "$1" in
+	start)
+		echo "Starting acpid..."
+		modprobe ospm_busmgr
+		modprobe ospm_system
+		modprobe ospm_processor
+		modprobe ospm_button
+
+		loadproc acpid
+		;;
+
+	stop)
+		echo "Stopping acpid..."
+		killproc acpid
+		;;
+
+	reload)
+		echo "Reloading acpid..."
+		reloadproc acpid 1
+		;;
+
+	restart)
+		$0 stop
+		sleep 1
+		$0 start
+		;;
+
+	status)
+		statusproc acpid
+		;;
+
+	*)
+		echo "Usage: $0 {start|stop|reload|restart|status}"
+		exit 1
+		;;
+esac
+
+# End $rc_base/init.d/acpid
+EOF
+
+there is some symlinking to do here, but I'm not sure how that works
+either. Will research it one day.
+
+
+Next, on to the ACPI Daemon.  The source requires no ./configure, as
+it only depends on the kernel, so do a 
+
+make &&  make install
+
+as root.
+
+Now for the configuring.
+
+We need to make an acpi directory under /etc, and an events directory
+under that.
+
+mkdir -p /etc/acpi/events
+
+First of all is the event Handler.
+
+cat > /etc/acpi/acpi_handler.sh << "EOF"
+#!/bin/sh
+# Default acpi script that takes an entry for all actions
+
+set $*
+
+case "$1" in
+  button)
+    case "$2" in
+   power)  /sbin/init 0
+        ;;
+       *)      logger "ACPI action $2 is not defined"
+        ;;
+    esac
+        ;;
+       *)      logger "ACPI group $1 / action $2 is not defined"
+        ;;
+esac
+EOF
+chmod 755 /etc/acpi/event_handler.sh
+
+
+next, an events file
+
+cat > /etc/acpi/events/default << "EOF"
+# This is the ACPID default configuration, it takes all
+# events and passes them to /etc/acpi/default.sh for further
+# processing.
+
+# event keeps a regular expression matching the event. To get
+# power events only, just use something like "event=button power.*"
+# to catch it.
+# action keeps the command to be executed after an event occurs
+#This halts the computer when the Power button is pressed.
+
+event=button power.*
+action=/sbin/shutdown -h now
+
+# Optionally you can specify the placeholder %e. It will pass
+# through the whole kernel event message to the program you've
+# specified.
+
+event=.*
+action=/etc/acpi/acpi_handler.sh %e
+EOF
+chmod 755 /etc/acpi/events/default
+
+
+you can add actions for other events.
+
+And now you can run, as root
+# acpid
+
+To get acpid to run on boot, add /usr/sbin/acpid into your rc.local
+file. Or use the above rc.acpid for sysvinit.
+
+Test if it works by pressing your power button.  I've never
+experienced any problems with doing this. But email me if you get into
+trouble.
+
+
+
+[1] http://www.acpi.info/index.html

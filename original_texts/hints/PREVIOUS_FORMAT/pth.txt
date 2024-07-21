@@ -1,0 +1,108 @@
+TITLE:		pth library
+LFS VERSION:	any
+AUTHOR:		Randy Hron <rwhron (at) earthlink.net>
+
+SYNOPSIS:
+	How to build pth library
+
+HINT:
+
+pth is a portable threading library from GNU.  It is an alternative to
+glibc-linuxthreads.
+
+
+Configure
+---------
+
+This is the meat of the hint.   Here is what worked for me:
+
+/configure --disable-nls --with-mctx-mth=sjlj --with-mctx-dsp=ssjlj --with-mctx-stk=sas
+
+--disable-nls is up to you.  May not make any difference at all for pth.  I use it 
+because I'm happy with the Common locale.
+
+Make
+----
+
+make && make test && make install
+
+
+Why pth?
+--------
+
+Before:
+
+ldd /usr/local/bin/mp3blaster
+
+	libvorbisfile.so.0 => /usr/local/lib/libvorbisfile.so.0 (0x4001f000)
+	libvorbis.so.0 => /usr/local/lib/libvorbis.so.0 (0x40024000)
+	libncurses.so.5 => /lib/libncurses.so.5 (0x4003a000)
+	libpthread.so.0 => /lib/libpthread.so.0 (0x4007d000)
+	libstdc++-libc6.2-2.so.3 => /usr/lib/libstdc++-libc6.2-2.so.3 (0x40091000)
+	libm.so.6 => /lib/libm.so.6 (0x400dc000)
+	libc.so.6 => /lib/libc.so.6 (0x400ff000)
+	libogg.so.0 => /usr/local/lib/libogg.so.0 (0x40222000)
+	/lib/ld-linux.so.2 => /lib/ld-linux.so.2 (0x40000000)
+
+root@rushmore:/usr/src/sources/m# ps aux|egrep 'mp3|VSZ'
+USER       PID %CPU %MEM   VSZ  RSS TTY      STAT START   TIME COMMAND
+hrandoz  28961  0.1  0.2 10976 1508 tty5     S    19:09   0:00 mp3blaster
+hrandoz  28962  0.0  0.2 10976 1508 tty5     S    19:09   0:00 mp3blaster
+hrandoz  28963  0.0  0.2 10976 1508 tty5     S    19:09   0:00 mp3blaster
+
+That's mp3blaster at startup.
+
+Play a few big mp3's:
+
+ps aux|egrep 'mp3|VSZ'
+USER       PID %CPU %MEM   VSZ  RSS TTY      STAT START   TIME COMMAND
+hrandoz  28961  0.0  0.8 46356 4320 tty5     S    19:09   0:00 mp3blaster
+hrandoz  28962  0.0  0.8 46356 4320 tty5     S    19:09   0:00 mp3blaster
+hrandoz  28963  3.4  0.8 46356 4320 tty5     S    19:09   0:04 mp3blaster
+hrandoz  28977  0.3  0.8 46356 4320 tty5     S    19:11   0:00 mp3blaster
+
+
+See how the VSZ got big?
+
+After:
+------
+
+Recompile mp3blaster:
+
+/configure --disable-nls --with-pthreads=no --with-pth=yes
+
+
+ldd /usr/local/bin/mp3blaster
+
+	libvorbisfile.so.0 => /usr/local/lib/libvorbisfile.so.0 (0x4001f000)
+	libvorbis.so.0 => /usr/local/lib/libvorbis.so.0 (0x40024000)
+	libncurses.so.5 => /lib/libncurses.so.5 (0x4003a000)
+	libpth.so.14 => /usr/lib/libpth.so.14 (0x4007d000)
+	libstdc++-libc6.2-2.so.3 => /usr/lib/libstdc++-libc6.2-2.so.3 (0x4008f000)
+	libm.so.6 => /lib/libm.so.6 (0x400da000)
+	libc.so.6 => /lib/libc.so.6 (0x400fd000)
+	libogg.so.0 => /usr/local/lib/libogg.so.0 (0x40220000)
+	/lib/ld-linux.so.2 => /lib/ld-linux.so.2 (0x40000000)
+
+
+Before playing anything:
+
+USER       PID %CPU %MEM   VSZ  RSS TTY      STAT START   TIME COMMAND
+hrandoz  30442  0.0  0.2  2940 1504 tty5     S    19:16   0:00 mp3blaster
+
+
+Note, there is only one thread.
+
+After playing a bunch of songs:
+
+root@rushmore:/usr/src/sources/m/mp3blaster-3.0# ps aux|egrep 'VSZ|mp3'
+USER       PID %CPU %MEM   VSZ  RSS TTY      STAT START   TIME COMMAND
+hrandoz  30442  4.1  0.3  3004 1744 tty5     S    19:16   0:05 mp3blaster
+
+Hey, it's much smaller.  :)
+
+
+Note that under extreme load, mp3blaster skips more with pth than
+glibc-linuxthreads.
+
+Thu Jan  3 00:29:50 EST 2002

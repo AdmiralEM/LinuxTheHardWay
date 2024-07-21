@@ -1,0 +1,281 @@
+AUTHOR: Randy McMurchy <randy_at_linuxfromscratch_dot_org>
+
+DATE: 2005-03-14
+
+LICENSE: Creative Commons Attribution-NonCommercial-ShareAlike License
+         http://creativecommons.org/licenses/by-nc-sa/1.0/
+
+SYNOPSIS: Installing the GCC Ada compiler while building LFS
+
+DESCRIPTION: This hint will guide you through the installation of the GCC 
+Ada compiler while building an LFS system. Though these instructions target 
+the 3.4.x series of GCC, they should work with any LFS build.
+
+ATTACHMENTS: None
+
+ADDITIONAL DOWNLOADS: 
+
+1. The gcc-ada tarball for whatever version of GCC called for in LFS
+(alternatively, download the complete tarball with all the compilers, if
+you plan on installing more than just c, c++ and ada.
+
+2. ftp://cs.nyu.edu/pub/gnat/3.15p/gnat-3.15p-i686-pc-redhat71-gnu-bin.tar.gz
+(not required if your host system has an existing Ada compiler)
+
+PREREQUISITES:
+
+You must have a csh shell installed on the host system. Instructions for 
+installing the Tcsh package can be found at:
+http://www.linuxfromscratch.org/blfs/view/svn/postlfs/tcsh.html
+
+You won't need the csh shell if you already have an existing Ada compiler 
+on the host system.
+
+HINT:
+
+=========
+CONTENTS:
+=========
+
+        1. Introduction
+        2. Package Dependencies
+            csh shell installation
+        3. Installing the GNAT Ada compiler
+        4. Configuring the PATH variable
+        5. Chapter 5 GCC-Pass1 Modifications
+        6. Reconfiguring the PATH variable
+        7. Chapter 5 GCC-Pass2 Modifications
+        8. Chapter 6 GCC Modifications
+        9. Closing
+
+================
+1. INTRODUCTION:
+================
+
+The GCC installation instructions in Chapter 6 of the LFS book says this:
+
+"Unpack both the gcc-core and the gcc-g++ tarballs - they will unpack into 
+the same directory. Likewise, extract the gcc-testsuite package. The full 
+GCC package contains additional compilers. Instructions for building these 
+can be found at 
+http://www.linuxfromscratch.org/blfs/view/svn/general/gcc.html."
+
+Though everything said is true, it is misleading. At this point of Chapter
+6, you are in a chroot environment working with whatever is installed in the 
+/tools directory you created in Chapter 5.
+
+In order to install the GCC Ada compiler, you must have an existing Ada 
+compiler available so GCC can boostrap its version of Ada. If your host has 
+an existing Ada compiler, you can omit some of this hint and simply use the 
+updated Chapter 5 and Chapter 6 GCC installation instructions. More on this 
+in the appropriate sections later in the hint.
+
+========================
+2. PACKAGE DEPENDENCIES:
+========================
+
+If you already have an existing Ada compiler on the host system, you won't 
+need to install the GNAT binary Ada compiler. You can skip to step 4 and
+configure your path.
+
+If you don't have an existing Ada compiler, you'll need to install the GNAT 
+binary version available from the URL shown in the "ATTACHMENTS" section at 
+the beginning of the hint.
+
+The GNAT binary version installation requires a csh shell to run the 
+configuration script.
+
+----------------------
+csh shell installation
+----------------------
+
+If you don't have a csh shell available on the host system, follow the 
+instructions found at: 
+http://www.linuxfromscratch.org/blfs/view/svn/postlfs/tcsh.html
+
+This must be done before starting your LFS build, or from another terminal 
+before continuing.
+
+====================================
+3. INSTALLING THE GNAT ADA COMPILER:
+====================================
+
+You'll need to install the GNAT Ada compiler before starting the Chapter 5 
+GCC-Pass1 instructions in the LFS book. This is right after the Binutils-Pass1 
+installation.
+
+Here's the simple installation procedure for the GNAT Ada compiler:
+
+1. Download the tarball:
+
+ftp://cs.nyu.edu/pub/gnat/3.15p/gnat-3.15p-i686-pc-redhat71-gnu-bin.tar.gz
+
+2. Issue the following commands to unpack the tarball and configure the
+installation:
+
+tar zxf gnat-3.15p-i686-pc-redhat71-gnu-bin.tar.gz
+cd gnat-3.15p-i686-pc-linux-gnu-bin
+./doconfig
+
+(answer "3" at the first prompt asking what type of installation you desire, 
+and answer "/tools/gnat" when prompted for an installation path)
+
+3. Issue the following command to install the GNAT compiler:
+
+./doinstall
+
+You should check and ensure that the /tools/gnat directory was created and
+populated with files.
+
+=================================
+4. CONFIGURING THE PATH VARIABLE:
+=================================
+
+You'll need to modify the PATH variable so that the newly installed GNAT 
+compiler is used to bootstrap GCC. Issue the following commands:
+
+PATH_HOLD=$PATH
+export PATH=/tools/gnat/bin:$PATH
+
+Ensure your PATH variable was changed properly:
+
+echo $PATH
+
+And if you have the 'which' command installed on your host:
+
+which gcc
+
+NOTE: if you're using an existing Ada compiler from your host, make the 
+appropriate substitutions above so this compiler is invoked by the 'gcc'
+command.
+
+=====================================
+5. CHAPTER 5 GCC-PASS1 MODIFICATIONS:
+=====================================
+
+There's three changes required to the Chapter 5 installation of GCC-Pass1.
+
+1. You'll need to unpack the gcc-ada tarball along with the gcc-core tarball
+so the GCC Ada sources are available. Alternatively, just unpack the combined
+GCC tarball which contains all the compilers.
+
+2. Modify the ./configure command to pass --enable-languages=c,ada
+(Note the addition of ",ada")
+
+3. After the "make bootstrap" step, issue the 
+following two commands:
+
+make -C gcc gnatlib
+make -C gcc gnattools
+
+Except for the three changes shown above, follow the commands as outlined in 
+the Chapter 5 GCC-Pass1 instructions in LFS.
+
+If desired, remove the /tools/gnat directory at the conclusion of the 
+Chapter 5 GCC-Pass1 instructions, as the GNAT compiler isn't required any 
+longer. All remaining GCC installations are done using the now existing GCC 
+version of Ada.
+
+===================================
+6. RECONFIGURING THE PATH VARIABLE:
+===================================
+
+Now that you are done with GNAT compiler, put your PATH variable back like
+it was using the following commands:
+
+export PATH=$PATH_HOLD
+unset PATH_HOLD
+
+Ensure your PATH variable was changed properly:
+
+echo $PATH
+
+And if you have the 'which' command installed on your host:
+
+which gcc
+which gnat
+
+=====================================
+7. CHAPTER 5 GCC-PASS2 MODIFICATIONS:
+=====================================
+
+There's three changes required to the Chapter 5 installation of GCC-Pass2.
+
+1. You'll need to unpack the gcc-ada tarball along with the gcc-core and 
+gcc-g++ tarballs so the GCC Ada sources are available. Alternatively, just 
+unpack the combined GCC tarball which contains all the compilers.
+
+2. Modify the ./configure command to pass --enable-languages=c,c++,ada
+(Note the addition of ",ada")
+
+3. After the "make" step, issue the following two commands:
+
+make -C gcc gnatlib-shared
+make -C gcc gnattools
+
+Except for the three changes shown above, follow the commands as outlined in
+the Chapter 5 GCC-Pass1 instructions in LFS.
+
+===============================
+8. CHAPTER 6 GCC MODIFICATIONS:
+===============================
+
+There's four changes required to the Chapter 6 installation of GCC.
+
+1. You'll need to unpack the gcc-ada tarball along with the gcc-core and 
+gcc-g++ tarballs so the GCC Ada sources are available. Alternatively, just 
+unpack the combined GCC tarball which contains all the compilers. At this
+point also decide if you'd like to install additional (or all) compilers.
+There's nothing keeping you from installing all of the compilers included
+in the GCC source tarball. Do remember to also unpack the testsuite tarball.
+
+2. Modify the ./configure command to pass --enable-languages=c,c++,ada
+(Note the addition of ",ada")
+
+***** Alternatively, use --enable-languages=all, or add any other additional
+***** compilers on the --enable-languages= parameter.
+
+3. After the "make" step, issue the following two commands:
+
+make -C gcc gnatlib-shared
+make -C gcc gnattools
+
+4. After the "make install" step, issue the following two commands:
+
+chown -v -R root:root /usr/lib/ada/adainclude
+chown -v -R root:root /usr/lib/gcc/i686-pc-linux-gnu/3.4.3/adainclude
+
+Except for the four changes shown above, follow the commands as outlined in
+the Chapter 6 GCC instructions in LFS.
+
+===========
+9. CLOSING:
+===========
+
+There's really not much to this hint. However, because the LFS book is 
+somewhat misleading in that at the point it mentions referring to BLFS to 
+install additional compilers, it's really too late to do it (for Ada anyway).
+
+Following these easy instructions allows you to install the full suite of
+GCC compilers during your LFS build, eliminating the time-consuming and 
+perhaps risky process of reinstalling c and c++ later on during your BLFS
+adventure.
+
+ACKNOWLEDGEMENTS:
+
+Bruce Dubbs <bdubbs_at_linuxfromscratch_dot_org> for figuring out the
+Ada build process with the new GCC-3.4.x series of compilers.
+
+CHANGELOG:
+
+[2005-03-12]
+    * Original draft
+
+[2005-03-13]
+    * Added instructions to change the ownership of the Ada interface header 
+      include files to root
+
+[2005-03-14]
+    * Fixed typo
+    * Modified the Chapter 5 instructions to not use forced static build
+

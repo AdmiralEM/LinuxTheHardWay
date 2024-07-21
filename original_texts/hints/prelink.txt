@@ -1,0 +1,154 @@
+AUTHOR:	Robert Connolly <robert@linuxfromscratch.org>
+	Tushar Teredesai <Tushar@LinuxFromScratch.Org>
+
+DATE: 2005-06-19
+
+LICENSE: GNU Free Documentation License version 1.2
+
+SYNOPSIS: ELF shared library prelinking.
+
+DESCRIPTION:
+>From 'man 8 prelink':
+Prelink is a program which modifies ELF shared libraries and ELF dynamically
+linked binaries, so that the time which dynamic linker needs for their
+relocation at startup significantly decreases and also due to fewer relocations
+the run-time memory consumption decreases too (especially number of unshareable
+pages). Such prelinking information is only used if all its dependant libraries
+have not changed since prelinking, otherwise programs are relocated normally.
+
+PREREQUISITES: Glibc-2.3.2 and newer
+
+HINT:
+
+Homepage: http://freshmeat.net/projects/prelink/
+
+- First of all, never strip (or otherwise modify) programs or libraries after
+they are prelinked. If you strip a prelinked program, the prelink application
+will not undo it because it has been modified. Even if a program is already
+stripped and you strip it again this will change the timestamp on the ELF header
+sections. If you want to strip all your programs after they are prelinked, first
+undo the prelinking with 'prelink -amu'.
+
+- Secondly you need at least 50 megabytes of free space to prelink the whole
+system; up to 200 megabytes of free space is needed if you have a lot installed.
+If you do not have that much free space then only prelink a few programs at a
+time.
+
+- Thirdly, if you plan to use the X11 windowing system with prelinking you
+should install a position independent version of libGL.so. By default the
+libGL.so library that is included with X11 is not a true shared object, it does
+not use shared memory, and can not be prelinked (so nothing linked to it can be
+be prelinked). It is suggested that you install a patch to make libGL.so use
+use position independent assembly code:
+
+http://www.linuxfromscratch.org/patches/downloads/xorg/\
+	xorg-6.8.2-libGL_PIC-1.patch
+
+And use these command in the xc/ directory to use -fPIC on libGL.so:
+
+echo "#undef BuildLibGlxWithoutPIC" >> config/cf/linux.cf &&
+echo "#define BuildLibGlxWithoutPIC NO" >> config/cf/linux.cf
+
+libOSMesa.so is also not position independent, but there is no strait forward
+way to remedy this. Nothing I know of links to this library, so it should not
+cause a problem.
+
+If you use a binary version of libGL.so, like the ones shipped by ATI for their
+3D drivers, then you are screwed. You can however still use prelink for
+everything else.
+
+- Finally install the software. Prelink depends on libelf, so fetch:
+
+http://dev.gentoo.org/~azarah/prelink/prelink-20050314.tar.bz2
+http://mirror.hamakor.org.il/pub/mirrors/gentoo-portage/sys-devel/prelink/files/\
+	prelink-20040707-init.patch
+	prelink-20050314-amd64-gcc4.patch
+and
+http://www.mr511.de/software/libelf-0.8.5.tar.gz
+
+Install libelf like this:
+
+./configure --prefix=/usr --enable-shared &&
+make &&
+make install
+
+Install prelink like this:
+
+patch -Np1 -i ../prelink-20040707-init.patch &&
+patch -Np1 -i ../prelink-20050314-amd64-gcc4.patch &&
+./configure --prefix=/usr --sysconfdir=/etc &&
+make &&
+make install &&
+install -m644 doc/prelink.conf /etc/prelink.conf
+
+If you use /opt you should add it to the config file like this:
+
+echo "-l /opt/bin" >> /etc/prelink.conf
+
+You might want to edit the /etc/prelink.conf file.
+
+Prelink has an undo option to revert the system back to a pre-prelink stage. But
+if you are paranoid, make a backup of the files that will be modified by prelink
+by performing a dry run. For the record, I don't :-)
+	cd /var/tmp
+	prelink -vnamRf 2>/dev/null > dry-run
+	cat dry-run | grep "Would prelink" | sed -e "s:Would prelink ::" > bkup
+	for f in `cat bkup`
+	do
+		d=`dirname ${f}`
+		install -d /var/tmp${d}
+		cp -Lv $f /var/tmp${f}
+	done
+
+Then actually prelink everything. The -R switch randomizes load addresses,
+making the system slightly more secure:
+
+prelink -amR
+
+With Mozilla installed use:
+
+prelink -amR --ld-library-path=/usr/lib/mozilla
+
+If you get errors about libz.so make sure to use -fPIC in your CFLAGS and
+install zlib again (just like the LFS book says). Then rerun 'prelink -amR'.
+
+KDE knows about prelinking and it will start faster if you tell it you have it.
+It is best to stick this in where all the users can use it. X.sh is a good place
+if you use the BLFS shell scripts, or else use /etc/profile or something:
+
+echo "export KDE_IS_PRELINKED=1" >> /etc/profile.d/X.sh
+
+You should read 'man 8 prelink' too.
+
+If you want to read the Gentoo stuff go here:
+
+http://www.gentoo.org/doc/en/prelink-howto.xml
+
+- Previous prelinking efforts:
+http://objprelink.sourceforge.net/
+
+Many people confuse prelink with a previous (and now obsolete) technique
+objprelink. Objprelink1 was first used as an optimization technique for KDE, but
+is now obsolete with the newer version of Binutils that use combreloc. Combreloc
+is now enabled by default in the newer Binutils. There is a newer version of
+objprelink (objprelink2) but according to the authors of objprelink, the
+technique does not provide any significant speed improvements over combreloc.
+Also objprelink2 does not work with gcc-3.x based compilers.
+
+ACKNOWLEDGMENTS:
+  * Thanks to Tushar Teredesai for the original prelink hint.
+  * Thanks to Jakub Jelinek for making the prelink(8) program.
+  * Thanks to Google and Debian for helping me figure out how to fix X11.
+  * Thanks to Gentoo for pointers on setting up prelink.
+
+CHANGELOG:
+[2005-03-23]
+  * Initial hint.
+[2005-03-26]
+  * Adopted prelink.txt from Tushar, merged the two.
+[2005-04-02]
+  * Added --ld-library-path=/usr/lib/mozilla and raised the suggested
+    free space. Fixed doccument width. Added -R to suggested prelink command.
+[2005-06-19]
+  * Updated for gcc4 (patch).
+  * Using newest version possible (20050314).

@@ -1,0 +1,175 @@
+TITLE:		Apache2+PHP4+Htdig
+LFS VERSION:	3.1 and up
+AUTHOR:		Marcos Zapata <zeta11@yahoo.com>
+
+SINOPSIS:
+    How to setup PHP4 with Apache2 and ht://Dig.
+
+HINT:
+When I first try to compile PHP4 for Apache 2, I couldn't because of the new
+layered I/O support implemented. I read the README in sapi/apache2filter, but
+it didn't help and didn't want to go back to apache-1.3.x, so this is how I had
+to do it:
+
+You can download apache from http://httpd.apache.org and PHP from
+http://www.php.net. I'm going to use httpd-2.0.39.tar.gz and php-4.2.1.tar.bz2.
+
+
+httpd-2.0.39:
+
+#Remember to change '--prefix=' to reflect the layout in your system, I prefer
+#to use a non-standard location for these packages. If you built LFS, you should
+#have installed openssl and perl, if not remove these options from configure.
+
+tar -zxvf httpd-2.0.39.tar.gz
+cd httpd-2.0.39
+./configure --prefix=/opt/httpd-2.0.39 --enable-ssl --enable-cgi --enable-so \
+--enable-modules=all --with-perl --enable-shared=max
+make
+make install
+
+Check if you have a nobody user defined, if not add it with useradd, something
+like: 'useradd nobody' should suffice. Now let see if everything went fine:
+
+/opt/httpd-2.0.39/bin/apachectl start
+
+Use lynx, nmap, netstat or whatever tool you use to see if the server is
+running. If you have lynx: 'lynx http://localhost/' will give you a page that
+shows a successfully installation of apache. If you don't have it you could
+use 'netstat -l | grep www', will show a line similar to this one:
+'tcp	0	0 *:www		*.*	LISTEN'
+
+Now, that we are sure:
+
+/opt/httpd-2.0.39/bin/apachectl stop
+
+,just for a while to install PHP.
+
+
+php-4.2.1:
+
+tar -jxvf php-4.2.1.tar.bz2
+cd  php-4.2.1
+
+#PHP gives you tons of options, use the ones that you need. Check them with
+#'./configure --help'. If you don't have mysql installed, php will build a
+#built-in module for it. I use the following options:
+
+./configure --prefix=/opt/httpd-2.0.39  \
+--with-config-file-path=/opt/httpd-2.0.39/conf --without-pear --with-openssl  \
+--with-zlib --with-bz2 --enable-calendar --with-gdbm --with-db3 --with-gmp  \
+--with-mysql --with-ncurses --with-pgsql
+make
+make install
+
+OK, we have to add some options to /opt/httpd-2.0.39/conf/httpd.conf:
+
+echo "ScriptAlias /php/ \"/opt/httpd-2.0.39/bin/\"" >>  \
+/opt/httpd-2.0.39/conf/httpd.conf
+echo "Action application/x-httpd-php \"/php/php\"" >> \
+/opt/httpd-2.0.39/conf/httpd.conf
+echo "AddType application/x-httpd-php .php" >>
+/opt/httpd-2.0.39/conf/httpd.conf
+
+This is vital. Make sure you change /php/ to point to where you installed these
+packages.
+Create a test file:
+
+echo "<? phpinfo(); ?>" > /opt/httpd-2.0.39/htdocs/test.php
+
+It's time to see if everything went fine, restart the server with:
+
+/opt/httpd-2.0.39/bin/apachectl start
+
+You'l need lynx or another web browser now, with lynx do:
+
+lynx http://localhost/test.php
+
+This page will show you information about PHP and your system. If you were able
+to see it, the instalation was successful. You can delete test.php now.
+
+Following the LFS style we...:
+
+ln -s /opt/httpd-2.0.39 /opt/apache2
+
+OK, now we need a boot script, create it with:
+
+cat > /etc/rc.d/init.d/apache << "EOF"
+#!/bin/sh
+
+source /etc/rc.d/init.d/functions
+
+case "$1" in
+    start)
+	echo "Starting web server..."
+	loadproc /opt/apache2/bin/httpd
+	;;
+    stop)
+	echo "Stopping web server..."
+	killproc /opt/apache2/bin/httpd
+	;;
+    restart)
+	$0 stop
+	sleep 1
+	$0 start
+	;;
+    status)
+	statusproc /opt/apache2/bin/httpd
+	;;
+    *)
+	echo "Usage: $0 {start|stop|restart|status}"
+	exit 1
+	;;
+esac
+
+EOF
+chmod a+x /etc/rc.d/init.d/apache
+
+Remember to make the symlinks in /etc/rc.d/rc*.d.
+
+
+htdig-3.1.6:
+
+An interesting package to be used in a web server is htdig, but it was very
+tricky to install in my LFS. You can download it from http://www.htdig.org.
+
+tar -zxvf htdig-3.1.6.tar.gz
+cd htdig-3.1.6
+
+cp configure configure.bak
+sed -e "s/ofstream=1/ofstream=0/" configure.bak > configure
+
+I had to do this because it didn't recognize my gcc instalation.
+Edit htlib/htString.h to force it to use iostream.h, comment it like this:
+...
+// #ifdef HAVE_OSTREAM_H
+// #include <ostream.h>
+// #endif
+// #ifdef HAVE_IOSTREAM_H
+#include <iostream.h>
+// #endif
+...
+
+Only leave '#include <iostream.h>' uncommented. Now we won't have any trouble
+doing:
+
+./configure --prefix=/opt/httpd-2.0.39  \
+--with-config-dir=/opt/httpd-2.0.39/conf  \
+--with-common=/opt/httpd-2.0.39/common  \
+--with-database-dir=/opt/httpd-2.0.39/db  \
+--with-cgi-bin-dir=/opt/httpd-2.0.39/cgi-bin  \
+--with-image-dir=/opt/httpd-2.0.39/htdocs/htdig  \
+--with-search-dir=/opt/httpd-2.0.39/htdocs/htdig
+make
+make install
+
+To start using it, you have to edit /opt/apache2/conf/htdig.conf. As an
+example change 'start_url:' to 'http://localhost/' and run:
+'/opt/apache2/bin/rundig'.
+It will take a while to build the search database, you can safely ignore any
+warning message. To give it a try: 'lynx http://localhost/htdig/search.html'.
+
+Voila! We're done. Remember to change all configuration files to reflect your
+system layout and run 'rundig' again, also to read all documentation. Good luck.
+
+Zeta

@@ -1,0 +1,328 @@
+
+AUTHOR: youbest <youbest at sina dot com>
+
+TRANSLATOR: d00m3d <d00m3d at sina dot com>
+
+DATE: 2006-02-16
+
+LICENSE: GNU Free Documentation License Version 2
+
+SYNOPSIS: How to resume your work after a break at different LFS stages.
+
+DESCRIPTION: This hint helps you setting up your building environment at 
+different stages. LFS LiveCD is used as the host system.
+
+PRIMARY URI: http://www.linuxsir.org/bbs/showthread.php?t=242880
+
+PREREQUISITES: LFS LiveCD-6.1.1-3
+
+HINT:
+
+Foreword
+========
+For those who have built their own LFS systems more than once, they must 
+be very "impressed" with the extremely long building time. In 
+particular, if the computer is not a powerful one. It is quite scary to 
+learn about such lengthy building time.
+
+Sometimes, you may be forced to shutdown or reboot the computer, which 
+you have to resume your previous working conditions before continuing 
+the job. However, this process would be quite confusing to those who are 
+not familiar with the principles of LFS and they are likely to have 
+difficulties in resuming their previous building environment. To avoid 
+this from happening, they often keep the computer running for several 
+days until the whole LFS is finished.
+
+Thus it is very useful to know how to have a smooth connection after a 
+reboot/shutdown. Based on my own experiences I did a research on this 
+topic and would like to share my results. Every steps are carefully 
+verified and should be correct. Hope this hint may assist those who are 
+building their own LFS system and relief some of their "pains".
+
+Throughout the article, sda is block device being used. sda1 is being 
+used as swap and sda2 is the partition for building LFS.
+
+The following procedures are based on LFS6.1.1-3. If a different book 
+version is used, the section number may be different as well, please 
+refer to the sub-heading of each section in such case.
+
+ From beginning to Section 4.4 Setting up the Environment
+========================================================
+You may simply restart the process from the very beginning.
+
+ From section 4.5 About SBUs to section 5.33 Stripping
+=====================================================
+Following are the steps you need if you stop in any section from 
+4.5(About SBUs) and 5.33 (Stripping).
+1. Restart computer and boot from LiveCD
+2. Mount your lfs partition
+        export LFS=/mnt/lfs
+        mkdir -pv $LFS
+        mount /dev/sda2 $LFS
+3. Mount your swap partition (skip this step if you do not use any swap 
+partitions)
+        swapon /dev/sda1
+4. Establish symbolic link for toolchain
+        ln -sv $LFS/tools /
+5. Create lfs account
+        groupadd lfs
+        useradd -s /bin/bash -g lfs -m -k /dev/null lfs
+        passwd lfs
+        chown -v lfs $LFS/tools
+        chown -v lfs $LFS/sources
+        su - lfs
+6. Define the lfs user profile
+        cat > ~/.bash_profile << "EOF"
+        exec env -i HOME=$HOME TERM=$TERM PS1='\u:\w\$ ' /bin/bash
+        EOF
+
+        cat > ~/.bashrc << "EOF"
+        set +h
+        umask 022
+        LFS=/mnt/lfs
+        LC_ALL=POSIX
+        PATH=/tools/bin:/bin:/usr/bin
+        export LFS LC_ALL PATH
+        EOF
+
+        source ~/.bash_profile
+7. Verify the environment variables
+        export //the export command should output the following:
+        declare -x HOME="/home/lfs"
+        declare -x LC_ALL="POSIX"
+        declare -x LFS="/mnt/lfs"
+        declare -x OLDPWD
+        declare -x PATH="/tools/bin:/bin:/usr/bin"
+        declare -x PS1="\\u:\\w\\\$ "
+        declare -x PWD="/home/lfs"
+        declare -x SHLVL="1"
+        declare -x TERM="linux"
+If you get these variables correct, then you have already resumed your 
+building environment.
+
+Section 6.1 Introduction
+========================
+At this point, you are probably tired and prefer to shutdown your 
+computer for a rest. Steps to resume the building environment are:
+1. Restart computer and boot from LiveCD
+2. Mount your lfs partition
+        export LFS=/mnt/lfs
+        mkdir -pv $LFS
+        mount /dev/sda2 $LFS
+3. Mount your swap partition (skip this step if you do not use any swap 
+partitions)
+        swapon /dev/sda1
+Note:
+At this point, the toolchain is ready and existed in /tools, thus there 
+is no need to create a symbolic link for the /tools directory again.
+
+ From section 6.2. Mounting Virtual Kernel File Systems to section 6.8. 
+Populating /dev
+======================================================================================
+At this point, if you reboot or shutdown your computer. Steps to resume 
+the building environment are:
+1. Restart computer and boot from LiveCD
+2. Mount your lfs partition
+        export LFS=/mnt/lfs
+        mkdir -pv $LFS
+        mount /dev/sda2 $LFS
+3. Mount your swap partition (skip this step if you do not use any swap 
+partitions)
+        swapon /dev/sda1
+4. Mount the virtual kernel filesystems
+        mount -vt proc proc $LFS/proc
+        mount -vt sysfs sysfs $LFS/sys
+5. Entering the chroot environment
+        chroot "$LFS" /tools/bin/env -i \
+        HOME=/root TERM="$TERM" PS1='\u:\w\$ ' \
+         PATH=/bin:/usr/bin:/sbin:/usr/sbin:/tools/bin \
+        /tools/bin/bash --login +h
+
+ From section 6.9. Linux-Libc-Headers-2.6.11.2 to section 6.37. Bash-3.0
+=======================================================================
+Following are the commands you need if you stop at any sections between 
+6.9 (Linux-Libc-Headers) and 6.37 (Bash-3.0).
+1. Restart computer and boot from LiveCD
+2. Mount your lfs partition
+        export LFS=/mnt/lfs
+        mkdir -pv $LFS
+        mount /dev/sda2 $LFS
+3. Mount your swap partition (skip this step if you do not use any swap 
+partitions)
+        swapon /dev/sda1
+4. Mount the virtual kernel filesystems
+        mount -vt proc proc $LFS/proc
+        mount -vt sysfs sysfs $LFS/sys
+5. Entering the chroot environment
+        chroot "$LFS" /tools/bin/env -i \
+        HOME=/root TERM="$TERM" PS1='\u:\w\$ ' \
+         PATH=/bin:/usr/bin:/sbin:/usr/sbin:/tools/bin \
+        /tools/bin/bash --login +h
+6. Populating /dev
+        mount -nvt tmpfs none /dev
+        mknod -m 622 /dev/console c 5 1
+        mknod -m 666 /dev/null c 1 3
+        mknod -m 666 /dev/zero c 1 5
+        mknod -m 666 /dev/ptmx c 5 2
+        mknod -m 666 /dev/tty c 5 0
+        mknod -m 444 /dev/random c 1 8
+        mknod -m 444 /dev/urandom c 1 9
+        chown -v root:tty /dev/{console,ptmx,tty}
+        ln -sv /proc/self/fd /dev/fd
+        ln -sv /proc/self/fd/0 /dev/stdin
+        ln -sv /proc/self/fd/1 /dev/stdout
+        ln -sv /proc/self/fd/2 /dev/stderr
+        ln -sv /proc/kcore /dev/core
+        mkdir -v /dev/pts
+        mkdir -v /dev/shm
+        mount -vt devpts -o gid=4,mode=620 none /dev/pts
+        mount -vt tmpfs none /dev/shm
+7. Entering your working directory
+        cd /sources
+
+ From 6.38. File-4.13 to section 6.58. Udev-056
+==============================================
+Following are the commands you need if you stop at any sections between 
+6.37 (Bash-3.0) and 6.58 (Udev-056)
+1. Restart computer and boot from LiveCD
+2. Mount your lfs partition
+        export LFS=/mnt/lfs
+        mkdir -pv $LFS
+        mount /dev/sda2 $LFS
+3. Mount your swap partition (skip this step if you do not use any swap 
+partitions)
+        swapon /dev/sda1
+4. Mount the virtual kernel filesystems
+        mount -vt proc proc $LFS/proc
+        mount -vt sysfs sysfs $LFS/sys
+5. Entering the chroot environment
+        chroot "$LFS" /tools/bin/env -i \
+        HOME=/root TERM="$TERM" PS1='\u:\w\$ ' \
+         PATH=/bin:/usr/bin:/sbin:/usr/sbin:/tools/bin \
+        /bin/bash --login +h
+6. Populating /dev
+        mount -nvt tmpfs none /dev
+        mknod -m 622 /dev/console c 5 1
+        mknod -m 666 /dev/null c 1 3
+        mknod -m 666 /dev/zero c 1 5
+        mknod -m 666 /dev/ptmx c 5 2
+        mknod -m 666 /dev/tty c 5 0
+        mknod -m 444 /dev/random c 1 8
+        mknod -m 444 /dev/urandom c 1 9
+        chown -v root:tty /dev/{console,ptmx,tty}
+        ln -sv /proc/self/fd /dev/fd
+        ln -sv /proc/self/fd/0 /dev/stdin
+        ln -sv /proc/self/fd/1 /dev/stdout
+        ln -sv /proc/self/fd/2 /dev/stderr
+        ln -sv /proc/kcore /dev/core
+        mkdir -v /dev/pts
+        mkdir -v /dev/shm
+        mount -vt devpts -o gid=4,mode=620 none /dev/pts
+        mount -vt tmpfs none /dev/shm
+7. Entering your working directory
+        cd /sources
+
+ From section 6.59. Util-linux-2.12q to section 6.60. About Debugging 
+Symbols
+============================================================================
+Following are the commands you need if you stop at 6.59 
+(Util-linux-2.12q) or 6.60 (About Debugging Symbols).
+1. Restart computer and boot from LiveCD
+2. Mount your lfs partition
+        export LFS=/mnt/lfs
+        mkdir -pv $LFS
+        mount /dev/sda2 $LFS
+3. Mount your swap partition (skip this step if you do not use any swap 
+partitions)
+        swapon /dev/sda1
+4. Mount the virtual kernel filesystems
+        mount -vt proc proc $LFS/proc
+        mount -vt sysfs sysfs $LFS/sys
+5. Entering the chroot environment
+        chroot "$LFS" /tools/bin/env -i \
+        HOME=/root TERM="$TERM" PS1='\u:\w\$ ' \
+         PATH=/bin:/usr/bin:/sbin:/usr/sbin:/tools/bin \
+        /bin/bash --login +h
+6. Populating /dev
+        mount -nvt tmpfs none /dev
+        /sbin/udevstart
+        mkdir -v /dev/pts
+        mkdir -v /dev/shm
+        mount -vt devpts -o gid=4,mode=620 none /dev/pts
+        mount -vt tmpfs none /dev/shm
+7. Entering your working directory
+        cd /sources
+
+Section 6.61. Stripping Again
+=============================
+If you reboot your system at this moment, steps to resume the building 
+environment are:
+1. Restart computer and boot from LiveCD
+2. Mount your lfs partition
+        export LFS=/mnt/lfs
+        mkdir -pv $LFS
+        mount /dev/sda2 $LFS
+3. Mount your swap partition (skip this step if you do not use any swap 
+partitions)
+        swapon /dev/sda1
+4. Mount the virtual kernel filesystems
+        mount -vt proc proc $LFS/proc
+        mount -vt sysfs sysfs $LFS/sys
+5. Entering the chroot environment
+        chroot $LFS /tools/bin/env -i \
+        HOME=/root TERM=$TERM PS1='\u:\w\$ ' \
+        PATH=/bin:/usr/bin:/sbin:/usr/sbin \
+        /tools/bin/bash --login
+6. Populating /dev
+        mount -nvt tmpfs none /dev
+        /sbin/udevstart
+        mkdir -v /dev/pts
+        mkdir -v /dev/shm
+        mount -vt devpts -o gid=4,mode=620 none /dev/pts
+        mount -vt tmpfs none /dev/shm
+7. Entering your working directory
+        cd /sources
+
+ From section 6.62. Cleaning Up to The End
+=========================================
+ From this point till the end of the whole LFS build. Steps to resume 
+the building
+environment are:
+1. Restart computer and boot from LiveCD
+2. Mount your lfs partition
+        export LFS=/mnt/lfs
+        mkdir -pv $LFS
+        mount /dev/sda2 $LFS
+3. Mount your swap partition (skip this step if you do not use any swap 
+partitions)
+        swapon /dev/sda1
+4. Mount the virtual kernel filesystems
+        mount -vt proc proc $LFS/proc
+        mount -vt sysfs sysfs $LFS/sys
+5. Entering the chroot environment
+        chroot "$LFS" /usr/bin/env -i \
+        HOME=/root TERM="$TERM" PS1='\u:\w\$ ' \
+         PATH=/bin:/usr/bin:/sbin:/usr/sbin \
+        /bin/bash --login
+6. Populating /dev
+        mount -nvt tmpfs none /dev
+        /sbin/udevstart
+        mkdir -v /dev/pts
+        mkdir -v /dev/shm
+        mount -vt devpts -o gid=4,mode=620 none /dev/pts
+        mount -vt tmpfs none /dev/shm
+7. Entering your working directory
+        cd /sources
+
+
+CHANGELOG:
+
+1.0. Initial Version
+1.1. Email address correction.
+      Description improvement.
+
+
+-- 
+http://linuxfromscratch.org/mailman/listinfo/hints
+FAQ: http://www.linuxfromscratch.org/faq/
+Unsubscribe: See the above information page

@@ -1,0 +1,308 @@
+TITLE:		Installing the ALSA Sounddriver
+LFS VERSION:	any
+AUTHOR:		Alex Kloss <l.x.@gmx.de>
+
+SYNOPSIS:
+	Short Guide how to set up the ALSA Sounddriver and optionally
+	timidity++ as midi client for those cards w/o midi device.
+
+HINT:	
+	There are some tricky bits when installing the ALSA Sounddriver
+	and TiMidity++ as a midi client - especially when using version
+	0.9.0 (currently 0.9.0rc6).
+	Thanks to Mark Hymers <markh@linuxfromscratch.org> for the 
+	bootscript.
+
+DOWNLOADS:
+	Look at http://www.alsa-project.org for the packages you need
+	alsa-driver-<version>.tar.bz2 [Drivers, Startup Script]
+	alsa-lib-<version>.tar.bz2 [Library for ALSA-enabled Programs]
+	alsa-utils-<version>.tar.bz2 [Mixer, Control Program]
+	alsa-oss-<version>.tar.bz2 [OSS Compatibilty Library, for 
+	developers who wants to convert their software from OSS to alsa]
+	alsa-tools-<version>.tar.bz [ac3dec for ALSA, some Soundcard
+	Control Programs, not everyone will need that]
+
+	If your card doesn't support midi by itself, you may want to use
+	timidity as a alsa sequencer client, meaning that every midi file sent
+	to the alsa sequencer emulated by timidity should be played through
+	the normal DSP (digital sound processor). Therefore you need:
+	
+	http://www.goice.co.jp/member/mo/timidity/ [Download the most recent
+	version of TiMidity++] and
+	http://www.i.h.kyoto-u.ac.jp/~shom/timidity/ or
+	ftp://ftp.cdrom.com/pub/gus/sound/patches/files/ [Download the 
+	necessary patch files - those are files that contain datas about the
+	frequency and amplitude modulation of the virtual midi sequencer]
+	
+	If you're using ALSA 0.9.0rc6, which is strongly recommended,
+	you'll need a patch to install timidity:
+	http://www.alsa-project.org/~iwai/timidity-2.11.2-alsa9.dif.gz
+	This patch was originally meant for timidity 2.11.2, but since
+	timidity 2.11.3 is the most recent version, we'll go around the
+	error it causes during the installation.
+
+
+INSTALL:
+	alsa-driver:
+
+	./configure --with-sequencer=yes \
+	--with-moddir=/lib/modules/$(uname -r)/kernel/driver/sound/  \
+	--with-kernel=/usr/src/linux-$(uname -r) \
+	--with-oss=yes --with-cards=<sounddrivers to compile> &&
+	make &&
+	make install 
+
+	replace <sounddrivers to compile> with the card names you need 
+	drivers for (read the SOUNDCARDS Appendix at the end of this hint); 
+	otherwise "./configure --help" gives you a list of drivers you can 
+	compile. "--with-moddir" and "--with-kernel" can be omitted if
+	the default settings should be used.
+
+	There are two ways of setting up the modules. The easiest way is 
+	the "let the kernel module loader load them automatically"-way, the 
+	other one is to use the bootscript.
+
+	For the first alternative, edit your /etc/modules.conf and
+	add:
+
+	cat >> /etc/modules.conf << "EOF"
+	alias char-major-116 snd
+	options snd major=116 cards_limit=1
+	alias snd-card-0 snd-<soundcard>
+	alias sound-slot-0 snd-card-0
+	alias sound-service-0-0 snd-mixer-oss
+	alias sound-service-0-3 snd-pcm-oss
+	post-install snd-card-<soundcard>  /usr/sbin/alsactl restore
+	pre-remove snd-card-<soundcard>  /usr/sbin/alsactl store
+	EOF
+
+	replace <soundcard> with the appropriate Driver name you found
+	in the SOUNDCARDS Appendix. 
+
+	If you want the driver to be loaded on startup, you can use the
+	alsasound script you find in the alsa-driver-<version>/utils
+	directory.
+
+	cp utils/alsasound /etc/init.d &&
+	ln -s /etc/init.d/alsasound /etc/rc{2,3,4,5}.d/S200alsasound &&
+	ln -s /etc/init.d/alsasound /etc/rc{0,1,6,S}.d/K200alsasound
+
+	Since this bootscript is designed for redhat, LFS users may be
+	discontent with it, like Mark Hymers, who designed a replacement:
+	
+cat > /etc/rc.d/init.d/alsa << EOF
+#!/bin/sh
+# Begin $rc_base/init.d/alsa
+
+# Based on sysklogd script from LFS-3.1 and earlier.
+# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+# ALSA specific parts by Mark Hymers - markh@linuxfromscratch.org
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+if [ -f /etc/sysconfig/alsa ]
+then
+        source /etc/sysconfig/alsa
+fi
+
+if [ -z "$CONF" ] 
+then
+        echo "Please create an /etc/sysconfig/alsa file containing"
+        echo "a CONF value (usually /etc/asound.conf)"
+        exit 1;
+fi
+case "$1" in
+        start)
+                echo -n "Starting alsa...    Restoring volumes..."
+                loadproc /usr/sbin/alsactl -f $CONF restore
+                #echo -n "                    Loading MIDI font..."
+                #loadproc sfxload $FONT
+                ;;
+
+        stop)
+                echo -n "Stopping alsa...    Saving volumes......"
+                loadproc /usr/sbin/alsactl -f $CONF store
+                #echo -n "            Removing MIDI font.........."
+                #loadproc sfxload -i
+                ;;
+
+        restart)
+                $0 stop
+                /usr/bin/sleep 1
+                $0 start
+                ;;
+        
+        *)
+                echo "Usage: $0 {start|stop|restart}"
+                exit 1
+                ;;
+
+esac
+
+# End $rc_base/init.d/alsa
+EOF
+chmod 755 /etc/init.d/alsa &&
+ln -s /etc/init.d/alsa /etc/rc{2,3,4,5}.d/S200alsa &&
+ln -s /etc/init.d/alsa /etc/rc{0,1,6,S}.d/K200alsa
+
+	Note that the Loading and Removing MIDI font lines are commented out.
+	This is because they are only needed for certain soundcards and also
+	require an additional program (sfxload). If your soundcard is unable 
+	to play midi files, you might want to look for timidity, a midi to 
+	wav converter that's also able to act as an virtual alsa midi device.
+
+	Beware. All channels of your soundcard are muted by default.
+	You can use the alsamixer (in alsa-utils, requires alsa-lib) or
+	any other OSS mixer program (like kmix, gmix, aumix) to unmute
+	them.
+
+	If you get an error like
+	
+	alsamixer: failed to open mixer #0/#0: No such file or directory
+
+	try the snddevices script in the alsa-driver directory. 
+
+	
+	alsa-lib/utils/oss/tools:
+
+	./configure &&
+	make install
+
+	for each of them. You wouldn't need the tools, except if you
+	have some very old/expensive card which needs more control
+	tools (e.g. multichannel cards).
+
+
+	Configuring other software:
+
+	There is software out there to look at /dev/sndstat to find out
+	wether a sound driver is installed. If you have such software
+	sniggering at you "no soundcard found", try the following
+	before giving up:
+
+	rm /dev/sndstat
+	ln -s /proc/asound/sndstat /dev/sndstat
+
+	If you are using the 0.9.x drivers, it is possible that older
+	software fails to compile for ALSA. This is because it'd need
+	the older API to connect to the driver. Don't bother about ALSA
+	support then, rather try the OSS driver emulation (it's in some
+	cases better than 4Fronts OSS driver itself).
+
+	If the software is complaining about having no access to the
+	devices with your current UID, you need to set the proper
+	permissions (as root):
+
+	chmod a+rw /dev/mi* /dev/dsp* /dev/seq*
+
+	This should do the job. The README in the driver directory has some
+	extra information on how you could configure the driver for the use
+	with certain programs.
+
+
+	Installing TiMidity++:
+
+	Many OnBoard-Cards doesn't have a midi sequencer device. When you want
+	to play midi sounds anyhow on this cards, you have two choices: when 
+	you're only looking for a program that plays midi files without 
+	actually using a midi device, you may easily install TiMidity++ and 
+	use it just like a midi player. If you want to use other programs like
+	Brahms or else that supports an alsa midi sequencer client, you'll have
+	to do a little more:
+	
+	Normal Installation:
+	
+	cat timidity-2.11.2-alsa9.dif | patch -Np1 &&
+	./configure --prefix=/usr --enable-alsa [--enable-spectrogram] \
+	[--enable-spline=no|linear|cubic|lagrange] [--enable-alsaseq] \
+	[--enable-server] [--enable-ncurses] --enable-xaw [--enable-gtk] \
+	[--enable-network] &&
+	make ENABLE_PLUGIN_TRUE=0 &&
+	make ENABLE_PLUGIN_TRUE install
+	
+	Descriptions:
+	
+	--prefix=/usr		binaries and stuff should go to /usr.
+	--enable-alsa		usage of alsa driver.
+				WARNING: as of the current version (2.11.3)
+				timidity is incompatible with the new ALSA
+				API of version 0.9.X - you should rather use
+				the OSS emulation and don't use that option!
+	--enable-spectrogram	usage of a spectrogram (graphic output).
+	--enable-spline=...	no: spectrogram w/o splines (looks dotted)
+				linear: standard spectrogram
+				cubic: better quality, more CPU load
+				lagrange: optimal quality, heavy load.
+	--enable-alsaseq	usage as ALSA sequencer client.
+				WARNING: as of the current version (2.11.3)
+				the alsa sequencer client doesn't work with 
+				the 0.9.X-branch of the alsa driver!
+	--enable-server		ALSA client server (look above).
+	--enable-ncurses	usage of ncurses interface (console).
+	--enable-xaw		usage of XAW (Athena Widgets, these are 
+				included in every usual XFree86 release)
+				interface.
+	--enable-gtk		If you've got gtk+ 1.2.10 or higher (not 
+				gtk+ 2.0!), you may have this nice interface,
+				too.
+	--enable-network	network transparency.
+
+	Explanation:
+
+	The "ENABLE_PLUGIN_TRUE=0" fixes an error of the configure script
+	which is triggered by the alsa9-patch.
+	
+	Now extract the midi patch files to /usr/share/timidity. After that,
+	timidity <file.mid> should play your midi files.
+	
+	To start the sequencer interface, execute:
+
+	timidity -iA -B2,8 -Os -EFreverb=0
+
+	that should output something like:
+
+	TiMidity starting in ALSA server mode
+	Opening sequencer port: 128:0 128:1
+
+	Now you can use the midi port 128:0 and 128:1 for midi output.
+	For example, to play a midi file through that sequencer using
+	pmidi, you'll have to type
+
+	pmidi -p128:0 test.mid
+
+	Or to play around with your midi keyboard:
+
+	aconnect 64:0 128:0
+
+	To get best sound quality, you may want to start timidity as
+	root. If you want to start it on every reboot, you may add it
+	to your boot script, but it will slow down your system.
+
+Appendix: SOUNDCARDS
+
+	try "cat /proc/pci | grep audio" and look for the PCI ID: 
+
+	PCI-ID		Name				Driver
+	EMU10k1		Soundblaster SB Live! (or else) emu10k1
+	10b9:5451	ALi 5451 Onboard		ali5451
+	ES1371		Ensoniq 1371 (Soundblaster)	ens1371
+	ES1370		Ensoniq 1370 (Soundblaster)	ens1370
+	ES1983S		ESS Maestro 3			es1983
+	VIA		VIA AC97 Audio Controller 686A	via686a	
+	ES1986		ESS Maestro 2			es1986
+	Vortex 2	Aureal Vortex II		*
+	ALS4000		Avance Logic ALS 4000		als4000
+
+	*Aureal is dead. So development of an ALSA driver is beyond
+	reach. Try the sourceforge project.
+
+	For further cards look at CARDS-Status (0.9.x-version), the 
+	doc/CARDS file (older Version), or the homepage. Please send me
+	an email about what you'd got on "cat /proc/pci | grep audio"
+	and what driver you used. If that Appendix grows big enough, I'll
+	use it for a fully automatic installation script.
+
+Hope this was helpful!
+Alex

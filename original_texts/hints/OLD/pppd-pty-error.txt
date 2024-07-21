@@ -1,0 +1,23 @@
+TITLE:		PPPd pty error
+LFS VERSION:	any
+AUTHOR:		Hywel Mallett <circular@hmallett.co.uk>
+
+SYNOPSIS:
+	How to fix a strange pty bug.
+
+HINT:
+> Well, I had ppp working  a few days ago, but now I get the error
+> can't open pty slave /dev/pts/0: no such file or dir
+>
+> And yep there is no /dev/pts/*
+>
+> Rather odd...any ideas?
+>    Kurt
+
+Do:
+# cd /dev/pts/
+# mknod --mode=0620 0 char 136 0
+
+this creates /dev/pts/0
+
+The alternative is to use devpts, as decribed in Chapter 8 of the LFS book.

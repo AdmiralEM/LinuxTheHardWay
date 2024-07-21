@@ -1,0 +1,313 @@
+AUTHOR: Mike Hernandez <mike@culmination.org>
+
+DATE: 2003-09-28
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: Printing with samba and cups
+
+ALTERNATE LOCATION: http://www.culmination.org/Mike/printing_with_samba+cups.txt
+
+DESCRIPTION:
+This hint will help you configure CUPS to work with samba.
+It includes directions to help you:
+
+1)Print from your LFS box on a windows domain without a samba server running on the domain.
+
+2)Print to a shared printer that is directly attatched to a windows machine
+on your network, with or without a domain.
+
+The hint now covers HP and Epson printers.
+
+PREREQUISITES:
+This hint assumes that:
+1)You have root access to the linux box you are trying to print from.
+
+2a)If you intend to print to a printer that is on a windows domain, that you
+have an account on that domain, which grants access to the printer which is 
+shared on the domain.
+
+2b)If you intend to print to a shared printer that is attatched to a machine
+directly, you have a username and password that will grant you access to the
+printer. (e.g. The printer in my house is attatched to a machine running
+Windows XP. I do not have a domain, but I have the computers attatched to my
+router. Samba can access the printer, but requires that I use an account name
+and password that is valid for the Windows XP machine.)
+
+3)You have the following installed according to BLFS instructions:
+1.Samba (version 2.2.8a and 3.0.0 definitely work, not sure about others)
+2.Cups-1.1.19
+3.ESP Ghostscript-7.07.1rc2
+*note* I also added the --with-ijs option to esp ghostscript
+4.which-2.14 or an alternative
+
+You will need to download and install the following, preferably with the
+same --prefix as cups, samba, and esp ghostscript:
+1.The Foomatic print filters 
+(http://www.linuxprinting.org/download/foomatic/foomatic-filters-3.0.0.tar.gz)
+2.The Foomatic database engine
+(http://www.linuxprinting.org/download/foomatic/foomatic-db-engine-3.0.0.tar.gz)
+3.The HPIJS Drivers (if you plan on using an HP printer)
+(http://hpinkjet.sourceforge.net/install.php)
+
+
+HINT:
+*One last reminder:
+I installed all of the above, including samba, cups, and esp ghostscript with
+--prefix=/usr.  All instructions below assume you did the same. It won't make
+too much of a difference when running commands, but if your ppd files aren't
+where cups can see them, or you dont know where the cups backend directory is,
+remember this.
+
+Ok let's get to it shall we?
+
+First of all, please make sure you have networking capabilities on your box.
+It might seem silly, but if you downloaded this at home, and are trying it at
+work or vice versa, you might not have networking. Check your network interface
+to be sure you have an ip address by running:
+
+	ifconfig eth0
+
+Or ifconfig eth1, etc. Then try pinging some machines that are on the network to
+be sure you have basic connectivity. It is worth the time to make sure of this!
+Also, please be sure that the printer you are trying to use is ON and connected
+to the network. Trust me, you don't want to find out that something like that
+is wrong later. 
+
+Next we check to see if samba is working, with one of the following commands:
+	If you are connecting to a printer on a domain:
+	
+	smbclient -U Domain/Username -L //Server
+
+	If you are connecting to a shared printer that isn't on a domain:
+	
+	smbclient -L //Server
+
+You will be prompted to enter your password upon pressing return.
+If you are on a domain, enter the password that corresponds to your username,
+otherwise pressing enter should suffice.
+
+*Question*
+What if I don't know the name of the server?
+If you have a windows box near you, you can find out the name of the server
+by browsing the network via Network Neighborhood or My Network Places, etc.
+Also make note of what is said in the smbclient man page:
+
+	"Note that the server name required is  NOT  necessarily  the  IP
+	(DNS)  host  name of the server ! The name required is a NetBIOS
+	server name, which may or may not be the same as the IP hostname
+	of the machine running the server."
+
+
+For example, if your office domain is called Foo, your username is Joe, and
+the server name is FooServ the command would be:
+	
+	smbclient -U Foo/Joe -L //FooServ
+
+If your intent is to use a printer that is attached to a machine that isn't on
+a domain, use the name of that machine. For example, if the box in question
+is running Windows XP, you can right click on the "My Computer" icon and
+select properties, then check for the name on the "Computer Name" tab. The
+workgroup name is not needed.
+
+If this command works you will get a list of services available on the domain.
+Though there are many interesting things listed here, what you are looking for
+is a service of the type Printer. If you don't see any printers listed, there
+is a problem. Be sure the printer is available on the network, possibly using
+a windows machine nearby to browse the network if you can. Once you know the
+name of the printer, you are ready to continue to the next step.
+
+CUPS has a directory called backend where it stores spoolers for various
+devices. If you installed cups with the --prefix=/usr option then the backends
+will be in /usr/lib/cups/backend. If you keep your locate database up to date,
+you can find this directory with the command:
+
+	locate backend | grep cups
+
+Once you know where the backend directory is, change to it.
+On my laptop the command is:
+
+	cd /usr/lib/cups/backend
+
+Once inside, ls -al to see everything that is there. We will be creating a 
+symbolic link in this directory that points to the samba spooler. If you have
+samba and which installed accorinding to the BLFS instructions, then the 
+following command will create the symbolic link:
+
+	ln -s `which smbspool` smb
+
+Notice that which smbspool is enclosed in back ticks, not single quotes!
+The backticks will execute the command within and use the result in the
+ln command. On my system this is the equivalent of entering:
+
+	ln -s /usr/bin/smbspool smb
+
+Now that we have made this link to the samba spooler, we have to restart CUPS
+so that we can be sure the change we made will take effect:
+
+	/etc/rc.c/init.d/cups restart
+
+Once you are sure CUPS has been restarted, you can proceed to add and configure
+your printer. There are a few possible ways to do this:
+
+Method #1 - using the lpadmin command
+--------------------------------------
+If you're comfortable using the command line to get things done, the lpadmin
+command will allow you to add/remove and configure your printers. It is a very
+powerful command and I *strongly* recommend you read the man page to learn
+about all of its options.
+
+The trick to using lpadmin to add a printer is that you need to know which
+ppd file corresponds to your printer. For example, if I want to add the
+Epson Stylus Color 660 that I have, I will use stcolor.ppd. If you aren't sure
+which ppd to use, check linuxprinting.org or if you are a good detective maybe
+you can look at the ppd files, which should be in /usr/share/cups/model and 
+make a guess =) I'm pretty sure that the worst thing that will happen if you 
+guess wrong is that the printer won't print, or will print incorrectly. I am 
+not suggesting that you guess, however.
+
+*note: 	Foomatic ppds ought to be in /usr/share/cups/model/foomatic-ppds
+	and if they aren't you might run into problems later, so read the
+	foomatic documentation to see what might have happened.
+
+The lpadmin command to add a samba printer is as follows:
+
+	lpadmin -p PrinterName -v smb://Username:Password@Server/Printer \
+	-P /path/to/yourprintermodel.ppd
+
+The PrinterName that follows the -p is the name by which you wish to refer to
+the printer on your machine.
+
+For example, to add the HP LaserJet 6P that we use in my office, where my 
+username for the domain is Mike,the password is FooPaSs, the server is FooServ 
+and the printer name is HPLaserJ, the command is:
+
+	lpadmin -p WorkPrinter -v smb://Mike:FooPaSs@FooServ/HPLaserJ \
+	-P /usr/share/cups/model/foomatic-ppds/HP/HP-LaserJet_6P-hpijs.ppd.gz
+
+Note that it's ok if the ppd has been gzipped, so long as the file name ends in
+.ppd.gz.
+
+Also, if you are adding a printer that isn't on a domain, but shared and
+attatched directly to a machine, the Username:Password portion of the device
+URI will be a Username and Password to an account that has access to the
+shared printer.
+
+If you received "error: client-not-possible" then chances are there is a typo 
+in your URI, or your link to smbspool is missing or pointing to the wrong place.
+
+After adding the printer, you will need to enable it before it will accept
+any print jobs. The default status of a printer added with the above lpadmin
+command is stopped, rejecting jobs. I will not go into detail here as you ought
+to have read the cups documentation, however I will mention that the state of
+"stopped, rejecting jobs" describes 2 attributes of a printer. Use the
+following commands to start the printer, and tell it to accept jobs.
+
+	/usr/bin/enable PrinterName
+	accept PrinterName
+
+*IMPORTANT!!* - you must use the full path the the enable command!
+This is because if you are using bash there is a builtin command called
+enable. Due to the order bash follows when interpreting the command line
+the enable builtin will be executed rather than the one in /usr/bin. You can
+see the differences by entering: help enable (for the builtin) and man 8 enable
+(to see the printer-related enable's man page).
+
+Check if all is well with the command:
+	
+	lpstat -a
+
+It should show you that your printer is accpting jobs.
+
+At this point you should try to print using the lpr command. If it doesn't work,
+try restarting cups. If you keep running into problems, set the LogLevel to
+debug in the cupsd.conf file. It should be in the /etc/cups/ directory.
+After doing this, restart cups and read the /var/log/cups/error_log file.
+Read it carefully, as it can usually explain the problem you are having.
+
+That's it! You can add as many printers as you need to via this method, and
+print to them using the lpr -P PrinterName command to specify which printer
+you want to use. Read The Fine Manual to learn more configuration options and
+how to remove printers, etc. =)
+
+Method #2 - Using the CUPS web interface
+----------------------------------------
+If you want to use the CUPS web interface, open your web browser and
+point it to http://localhost:631
+
+*Note: I also tried this with lynx, and it works. I wouldn't suggest using
+lynx unless you are an avid lynx user and understand the way it works. If you
+don't have a graphical web browser, your best bet is probably Method #1*
+
+From the web interface, click on Printers and then Add Printer. If you installed
+CUPS according to BLFS instructions and haven't edited any configuration files,
+you will be asked for a user name and password. root and the appropriate
+password will allow you access.
+
+Enter a name, location, and description of your printer, and click Continue.
+
+The next screen is where you must choose the device. You need to select
+Windows Printer via SAMBA. If you don't see this in the list of devices,
+be sure you have the smb link in your /usr/lib/cups/backend directory and
+check to make sure it is pointing to smbspool. YOU CAN NOT USE ANY OTHER
+DEVICE TO PRINT TO A SAMBA PRINTER! If you try to you will get a message
+similar to "client-not-possible".
+
+*Note: Actually the reason you can't is because the beginning of the URI is
+used by cups to determine which backend to use. I learned this is case by
+using the lpd device, and making lpd a symbolic link to smbspool. DON'T DO IT!
+I am just mentioning it here because it was part of the learning process that
+lead to the creation of this hint*
+
+Once the device has been selected, click continue which will move you to the
+device URI entry screen. The URI for your samba printer follows the following
+format:
+
+	smb://Username:password@Server/Printername
+
+For example, smb://Joe:secret123@FooServ/HPLaserJ
+
+When you are sure you entered it correctly, click continue. We will now select
+the Model/Driver for your printer. If you are using an HP Printer, you will
+select HP and click continue. If you are using a type of printer that is not
+listed, I suggest search the linuxprinting.org database for guidance.
+
+The next screen asks you to pick the specific driver. Here you have to be
+careful in choosing the right one for your printer. I use
+
+	HP LaserJet 6P, Foomatic + hpijs (en)
+
+For the printer in my office. Feel free to try different drivers until you find
+the one that gives the best results.
+
+After clicking continue you should get a message telling you the printer was
+added successfully. 
+
+If you received "error: client-not-possible" then chances
+are there is a typo in your URI, or your link to smbspool is missing or pointing
+to the wrong place. (See the end of the Method #1 instructions for tips on how 
+to find the problem)
+
+Click the Printers link again, and print a test page for your printer to make
+sure everything is in working order.
+
+If everything works, you can now print from any application that uses lpr as 
+its print command. You can also print from the command line using lpr. If you
+install multiple printers, you can print using the format
+
+	lpr -P PrinterName
+
+To print to a specific printer.
+
+That's it! =)
+
+TODO:
+Constructive criticism and/or suggestions regarding this hint are welcomed.
+There's lots of help out there for the gentoo and redhat folks, but running
+redhat-printer-config doesn't quite work for us does it? 
+
+CHANGELOG:
+[2003-09-28]
+  *Added command line configuration commands, cleaned up some typos
+[2003-09-26]
+  * Initial hint.

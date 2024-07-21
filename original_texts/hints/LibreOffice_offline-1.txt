@@ -1,0 +1,41 @@
+
+AUTHOR: rhubarbpieguy@vivaldi.net 
+
+DATE: 2023-05-13 
+
+LICENSE: GNU Free Documentation License Version 1.3 
+
+SYNOPSIS: Compiling LibreOffice without an internet connection. 
+
+DESCRIPTION: 
+The LibreOffice documentation requires an internet connection when compiling to 
+download dependencies not included in the source tarball. This hint presents 
+a method to avoid an internet connection when compiling. 
+
+ATTACHMENTS: none 
+
+PREREQUISITES: 
+This hint requires that you have sufficient knowledge of LinuxFromScratch. 
+This hint is applicable only for users that follow the LFS development book 
+as of the submission date above. 
+
+HINT: 
+       DOWNLOADING DEPENDENCIES 
+       ------------------------ 
+Follow the documentation until "Build the package:"
+but instead of "make build" execute "make fetch" to download the dependencies.
+Scores of files will download to external/tarballs.
+Copy or tar the files in external/tarballs to a location of your choice.
+
+       COMPILING 
+       --------- 
+Follow the documentation from the beginning, but prior to "make build" link,
+copy, or restore the files downloaded above to external/tarballs/.
+Resume following the documentation at "make build" and LibreOffice will compile
+without an internet connection.
+
+ACKNOWLEDGEMENTS: 
+
+CHANGELOG: 
+[2023-05-13] 
+  * Initial hint. 

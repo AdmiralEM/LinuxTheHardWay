@@ -1,0 +1,123 @@
+TITLE:		NTP (Time server) hint
+LFS VERSION:	any (?)
+AUTHOR:		Eric Konopka <ekonopka@konopka.org>
+
+SYNOPSIS:
+	This describes a basic setup and configuration of a network
+	time server
+
+HINT:
+
+A network time server can be used to synchronize all your workstations
+and servers to a common, "official" time.
+
+Basically there are a few main time servers.  These are usually owned
+and/or operated by NIST, the National Institute of Standards and
+Technology, who keeps track of the official time using very precise
+equipment.
+
+An NTP server is given a stratum.  The main NTP servers have a stratum
+of 1.  Any server that gets its time information from a main server is
+of stratum 2, etc.  It is recommended that the servers your server
+uses are of a lower stratum (2, 3, etc.) but you can have it link
+to a stratum 1 server.  I usually use time-a.nist.gov and/or
+time-b.nist.gov with a few others for backup.
+
+The NTP package I use is available from:
+http://www.eecis.udel.edu/~ntp/
+
+The version I used for this hint is 4.1.1a.
+
+I recommend going through some of the documentation to get a better
+idea of how the software actually works.
+
+INSTALLATION
+------------
+
+Installation is simple.
+
+I use the path /opt/ntp for my ntp server, but you can use whatever
+you like.
+
+./configure --prefix=/opt/ntp --exec-prefix=/opt/ntp &&
+make &&
+make install &&
+mkdir /opt/ntp/etc/
+
+The last mkdir is necessary to install the ntp.conf file, unless
+you want to put it in /etc or some other directory.  I usually put
+it in that directory, though.
+
+CONFIGURATION
+-------------
+
+A simple configuration will be placed in /opt/ntp/etc/ntp.conf (or
+whatever path you choose).
+
+To setup NTP, you need to choose the servers you want to designate as
+your peers (the servers you will connect to for time information).
+A list of peers is available from:
+
+http://www.eecis.udel.edu/~mills/ntp/servers.htm
+
+Choose as many peers as you want.  You will designate one as preferred
+over all the others, but the others will be available for backup.
+
+For my setup, I issue:
+
+cat > /opt/ntp/etc/ntp.conf << "EOF"
+server time-a.nist.gov prefer
+server time-b.nist.gov
+server tick.mit.edu
+server ntp.ourconcord.net
+server timeserver.cs.umb.edu
+server ntp-0.cso.uiuc.edu
+
+driftfile /opt/ntp/etc/ntp.drift
+EOF
+
+The bottom line:  for each server, add a line "server xxx.x.xxx".  Append
+"prefer" after the server you want to designated as the default.  The NTP
+server will use that one if possible.
+
+The drift file is used to report the frequency of error.  It's ok if it
+doesn't exist by default.  The server will create it after about an hour.
+
+STARTING
+--------
+
+To start the NTP daemon:
+
+/opt/ntp/bin/ntpd -c /opt/ntp/etc/ntp.conf
+
+The -c flag gives the location of the configuration file.  This should
+point to whereever your ntp.conf file is.
+
+To look at the status of your NTP server, you can use the ntpq command.
+This pulls up a terminal that allows you to issue some basic commands
+to query the running NTP server.  The one I mostly use is "peers", which
+lists all the peers the server is connected to.  If there is no list of
+peers, try restarting ntpd.
+
+I've noticed that after I start ntpd, there are initially two instances
+showing in ps, but about a second after that one disappears.  This seems
+to be fine.
+
+CONFIGURING CLIENTS
+-------------------
+
+The idea behind setting up your own NTP server is, I assume, to allow
+your local computers to synchronize time with it.
+
+On any UNIX/Linux machine install the same package as for ntpd.  Any
+time you want to synchronize the date, run:
+
+/opt/ntp/bin/ntpdate xxx.xxx.xxx
+
+Where "xxx.xxx.xxx" is the hostname for your local server.  This command
+can be added to a crontab to update the time periodically.
+
+For Windows, I found a package called Automachron that serves as an NTP
+client.  Try searching for it.  On Windows XP the system time utility
+includes NTP functionality.  Double-click the clock and go to "Internet Time".
+Then enter your server name.

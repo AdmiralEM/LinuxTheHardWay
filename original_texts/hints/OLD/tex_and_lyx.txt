@@ -1,0 +1,128 @@
+TITLE:		Installation of TeX and LyX
+LFS VERSION:	2.3.2 or better.	
+AUTHOR:		Arthur H. Johnson II <arthur@linuxbox.nu>
+
+SYNOPSIS:
+	How to install TeX from source.  
+
+HINT:
+TeX can be almost trivial to install, once you have the right sources.  However
+if you get the wrong sources, you will chase your tail for hours.  
+
+We will be using the texk source from the TeX users group.  First, download the
+following packages: 
+
+
+TABLE OF CONTENTS:
+==================
+1.  Packages
+2.  Compiling and Installing TeX
+3.  Compiling and Installing LyX
+4.  TeX with LFS and other packages
+5.  Changelog
+
+
+1 PACKAGES
+==========
+
+a. Required from ftp://ftp.tug.org/tex/:
+
+texk-7.2b.tar.bz2	An all-in-one source package for web2c plus the
+			various drivers.  Does need the library packages.
+
+texmflib-7.8.tar.bz2	A basic set of TFM's and other input files,
+			arranged in Web2c's default installation hierarchy.
+
+
+b. Required from ftp://ncmir.ucsd.edu/pub/xforms/linux-i386/elf/:
+
+bxform-089-glibc2.1.tar.bz2	This is the toolkit in which LyX is built on. 
+
+
+
+c. Required from ftp://ftp.lyx.org/pub/lyx/stable/:
+
+lyx-1.1.6fix4.tar.bz2	This is the latest LyX at the time of writing.  This is
+			a front-end to the TeX typesetting system.  Actually,
+			its a front-end to LaTeX which is a front-end to TeX.
+			It is not actually required for TeX or LaTeX.
+
+
+d. Optional from ftp://tug.ctan.org/pub/tex/fonts:
+
+You may want more than the fonts included with your texmflib distribution.  You
+can find more here.
+
+
+
+2 COMPILING AND INSTALLING TEX
+==============================
+
+
+a. Install the texmflib package into /usr/share:
+
+cd /usr/share
+tar jxvf /path/to/packages/texmflib-7.8.tar.bz2
+
+This will add the support files to your already existing texmf directory
+structure.
+
+
+b.  Using the texk-7.2b.tar.bz2, compile and install TeX onto your system by
+issueing the following commands:
+
+./configure --prefix=/usr/ --datadir=/usr/share/
+make 
+make install
+
+
+
+3 COMPILING AND INSTALLING LYX
+==============================
+
+a. Install XForms with the following commands:
+
+make 
+make install
+
+
+b. Install LyX with the following commands:  
+
+./configure --prefix=/usr/X11R6
+make
+make install
+
+
+
+4 TEX WITH LFS AND OTHER PACKAGES
+=================================
+
+Some packages, most noteably gcc, will not compile on a system containing TeX.
+There is a quick workaround for this however.  Move /usr/bin/texconfig to
+/usr/bin/texconfig.lfs before you build your packages.  
+
+If you use a set of scripts, or ALFS, to build LFS, one technique to do
+this automatically would be an if loop in your LFS build:
+
+if [ -f /usr/bin/texconfig ]; then
+        mv /usr/bin/texconfig /usr/bin/texconfig.lfs;
+fi
+
+<build LFS or other packages, including ALFS based systems>
+
+if [ -f /usr/bin/texconfig.lfs ]; then
+        mv /usr/bin/texconfig.lfs /usr/bin/texconfig;
+fi
+
+This way texconfig will be restored to its origional state when you are done
+building.
+
+
+5 CHANGELOG
+===========
+
+20020201	Add table of contents.
+		Fix section numbering.
+		Add section 4. 
+
+20020131	Initial release.

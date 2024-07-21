@@ -1,0 +1,59 @@
+TITLE:		Xaw3d
+LFS VERSION:	any
+AUTHOR:		Philipp Niemann <lfshints@azagtoth.de>
+
+SYNOPSIS:
+	Installing Xaw3d.
+
+HINT:
+Get the source for Xaw3d from:
+ftp://ftp.x.org/contrib/widgets/Xaw3d/R6.3/
+Version this hint used was: Xaw3d-1.5.tar.gz (284420 bytes)
+
+You unpack the tar-archiv in your preferred compile- Directory
+and follow the steps:
+
+1. tar xzvf Xaw3d-1.5.tar.gz
+2. cd xc/lib/Xaw3d
+3. vim +32 XawI18n.h
+    Before doing anything else type:
+    4dd:w
+    :q
+
+    With that you remove the lines
+
+    #include <widec.h>
+    #define wcslen(c) wslen(c)
+    #define wcscpy(d,s) wscpy(d,s)
+    #define wcsncpy(d,s,l) wsncpy(d,s,l)
+
+    from the file.
+    The file <widec.h> was not found on my System. I found references to
+    it on Google with "wslen" as search. Seems to be some old curses
+    stuff. That's my guess. Anyway, with my installed libs I found the
+    functions wcslen wcscpy and wcsncpy in /usr/include/wchar.h
+    If this hint doesn't work for you check the make-output for
+    implicitly declared functions wcslen wcscpy or wcsncpy.
+
+There is an option in the Imakefile which does changes something. Refer
+to the README.XAW3D for details. (Change is about Motif look, I think).
+
+4. xmkmf
+5. make includes
+6. make depend
+7. make # Look out for warnings about implicit declarations
+    # I did "make > /dev/null" add "| grep impl" if you like
+8. su
+9. make install
+    Things are now installed in /usr/X11R6/include/Xaw3d and
+    /usr/X11R6/lib/Xaw3d.so*. Optionally, as libXaw3d.so is linked to
+    libXaw3d.so.7.0, you may want to do
+9a. ln -sf libXaw3d.so.7.0 /usr/X11R6/lib/libXaw3d.so.7
+9b. ln -sf libXaw3d.so.7 /usr/X11R6/lib/libXaw3d.so
+
+10. ldconfig -v
+11 exit
++++++++++++++++++++++
+
+That was verified by compiling gv. Looks like it works. I should
+have installed ghostscript in the first place, though ;-)

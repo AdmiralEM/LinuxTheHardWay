@@ -1,0 +1,137 @@
+TITLE:		LFS 2.3.2 experience
+LFS VERSION:	2.3.2
+AUTHOR:		John Phillips <lfs@linux.demon.co.uk>
+
+SYNOPSIS:
+	Some problems encountered while building an LFS system. All these problems have been addressed in post-2.3.2 versions.
+
+HINT:
+I managed to work through 2.3.2 to the point of booting the LFS system.
+For what it's worth here are some notes from the experience.  I haven't
+been on the list for more than a couple of days so apologies if I raise
+points that have long been solved.
+
+Starting point
+==============
+* LFS 2.3.2 built from a Debian 2.1r2 (updated to r5) host.
+
+Problems arising from Debian 2.1 (and solutions)
+================================================
+* The static linked bash "make install" gave an error because Debian's
+install-info is rather old.  I patched the bash doc/Makefile.in to
+comment out the call to install-info.  (I might better have upgraded
+but the patch was easier and made no difference).
+
+* If you are using X under Debian 2.1 and do the chroot from an xterm, you
+may need to do "export TERM=xterm" to avoid confusion over xterm-debian.
+This happens with "make menuconfig" while compiling the kernel.
+
+Other problems (and solutions)
+==============================
+* I had to compile glibc with the latest kernel headers.  It would not
+compile with Debian's 2.0.38 headers since it needs "#define SO_PEERCRED
+17" which is in 2.2.14 but not 2.0.38.
+
+To do this, I had to install the new kernel and make the links in
+$LFS/usr/include during the static build phase.  I then had to do:
+
+    make include/linux/version.h
+
+since glibc needs version.h, which this command makes.
+
+Then to make glibc I added "--with-headers=$LFS/usr/include".
+
+Finally, in the chrooted environment I had to configure the kernel at the
+beginning (using defaults for now) because some later compiles need the
+"autoconf.h" this generates.  To configure the kernel I did this:
+
+    yes "" | make config
+    make dep
+
+* For some reason I could not properly compile m4 in the chrooted
+environment following LFS-2.3.2 as it currently stands.  It would compile
+and link, but would not run (because the new glibc claimed it did not
+implement "sigstack").  All subsequent compiles needing m4 therefore
+failed (including the immediately following autoconf and automake).
+
+The solution (unexplained) was to make a static linked m4 at the end of
+the static build phase and then move the m4 re-compile in the chrooted
+section to somewhere after autoconf and automake (which need m4, and
+which m4 needs under some circumstances).  I actually put m4 after lilo
+and before make.
+
+* Permissions issues - (I assume umask 022 has been used for the install):
+I had to chmod 1777 for $LFS/tmp and $LFS/var/tmp.  Also for security
+there may need to be other changes such as 700 for $LFS/root, and 555
+for $LFS/proc (probably others I haven't found yet).
+
+* In the chrooted environment when a utility program is compiled and
+then moved, there is a risk that bash will "lose" it by remembering
+where it was.  The cure is "hash -r".
+
+* In the binutils install in the chrooted environment there are complaints
+about "file" which do not occur in the static build of binutils:
+
+   *** Warning: the command libtool uses to detect shared libraries,
+   *** /usr/bin/file, produces output that libtool cannot recognize.
+   *** The result is that libtool may fail to recognize shared libraries
+   *** as such.  This will affect the creation of libtool libraries that
+   *** depend on shared libraries, but programs linked with such libtool
+   *** libraries will work regardless of this problem.  Nevertheless, you
+   *** may want to report the problem to your system manager and/or to
+   *** bug-libtool@gnu.org
+
+I have not checked if these are significant.
+
+* There are quite a few other warnings in the log files but I think these
+are not significant.  Notable (because I don't understand them) are:
+
+binutils static:
+   libtool: install: warning: remember to run `libtool --finish /usr/lib'
+
+binutils under chroot:
+   ./libtool: ldconfig: command not found
+
+Neither seems to be a problem.
+
+* For setting up lilo to boot from LFS: The text was not clear to me.
+I had to to copy the new kernel to the active (bootable) partition
+(which was on the host system in my case), install the edited lilo.conf
+there and run lilo there (not in the chroot environment).
+
+* There were "char 45" errors in the net-tools install - I haven't
+checked then out.
+
+Minor typos in 2.3.2
+====================
+* gcc install on host system - "--enable shared" -> "--enable-shared"
+
+* gzip static linked patch - the directory is wrong, the patch name
+is wrong and the patch should not be gzipped.
+
+* sed static linked patch - the patch should not be gzipped.
+
+* findutils chrooted patch - the directory is wrong and the patch should
+not be gzipped.
+
+* diffutils chrooted install (title) - "diffuitls"-> "diffutils"
+
+* file chrooted install - directory is file-3.26.orig/ (should there
+be a patch for the original?)
+
+* linux86 chrooted install - directories should be .../as or .../ld
+
+* psmisc chrooted install - directory is just psmisc/ (no version number).
+
+* /etc/init.d/syslogd script - "load daemon" -> "log daemon"
+
+* I decided to use the "production" netkit-base-0.16 rather than the
+development version (0.17).
+
+* add netkit-base-0.16 and net-tools-1.54 to the mandatory list in ch3.
+
+* /etc/init.d/ethnet file - use ${NAME}, not $(NAME) and there are two
+cases where "echo" should be "echo -n".  Change "NETMAKSK" to "NETMASK"
+Note also there are potential problems over setting the default route
+if you later set up PPP.
+

@@ -1,0 +1,145 @@
+AUTHOR: Tim van der Molen <tbm at home dot nl>
+DATE: 2003-12-05
+LICENSE: GNU Free Documentation License Version 1.2
+SYNOPSIS: Automatically enabling NumLock when booting LFS and when starting X.
+DESCRIPTION: See SYNOPSIS.
+PREREQUISITES: The use of a System V-style booting process.
+HINT:
+
+This hint describes how to enable NumLock automatically when LFS is booted and
+when X is started.
+
+1. ENABLING NUMLOCK WHEN BOOTING LFS
+
+We will create a simple boot script that will run setleds to enable NumLock on
+all ttys. setleds is part of the kbd package which is installed on a default
+LFS system. You might be happy to know that it can also set CapsLock and
+ScrollLock. Refer to setleds(1) for more information.
+
+Create the boot script:
+
+	cat > /etc/rc.d/init.d/numlock << "EOF"
+	#!/bin/sh
+
+	source /etc/sysconfig/rc || exit 1
+	source $rc_functions || exit 1
+
+	echo "Enabling NumLock..."
+
+	for tty in /dev/tty[1-6]; do
+		/usr/bin/setleds -D +num < $tty
+	done
+
+	evaluate_retval
+	EOF
+
+If you use devfs, you probably want to replace "/dev/tty[1-6]" with
+"/dev/vc/*".
+
+Next, make the boot script executable:
+
+	chmod 0755 /etc/rc.d/init.d/numlock
+
+And finally, create a symlink from the /etc/rc.d/rcsysinit.d directory to the
+boot script:
+
+	ln -s ../init.d/numlock /etc/rc.d/rcsysinit.d/S90numlock
+
+2. ENABLING NUMLOCK WHEN STARTING X
+
+When started, X disables NumLock for some reason. So let us enable it once
+again. There are different ways to accomplish this.
+
+2.1. KDE
+
+If you happen to run KDE, you can set NumLock to be enabled per default in
+Control Center > Peripherals > Keyboard > Advanced.
+
+2.2. NUMLOCKX
+
+NumLockX allows you to enable and disable NumLock for X. It can be downloaded
+from <http://freshmeat.net/projects/numlockx/>.
+
+If you like it, you can compile and install it:
+
+	./configure --prefix=/usr
+	make
+	make install
+
+Then add the following line to the beginning of either the ~/.xinitrc,
+~/.Xsession or ~/.Xclients file:
+
+	/usr/bin/numlockx on
+
+2.3. XSETLEDS
+
+xsetleds can be considered to be the X equivalent of setleds. It can be
+downloaded from <http://www.home.unix-ag.org/bmeurer/projects/xsetleds/>.
+
+2.4. COMPILING A LITTLE PROGRAM YOURSELF
+
+Perhaps the easiest way is to compile a little C program yourself which does
+nothing more than changing the current state of NumLock. Thus, X disables
+NumLock and this program enables it again. The source code of this program was
+taken from an article in the SuSE Support Database at
+<http://sdb.suse.de/en/sdb/html/cg_x11numlock.html>.
+
+Create the C source file:
+
+	cat > xsetnumlock.c << "EOF"
+	#include <X11/extensions/XTest.h>
+	#include <X11/keysym.h>
+
+	int main(void)
+	{
+		Display* disp = XOpenDisplay(NULL);
+
+		if (disp == NULL) return 1;
+
+		XTestFakeKeyEvent(disp, XKeysymToKeycode(disp, XK_Num_Lock),
+			True, CurrentTime);
+		XTestFakeKeyEvent(disp, XKeysymToKeycode(disp, XK_Num_Lock),
+			False, CurrentTime );
+		XCloseDisplay(disp);
+
+		return 0;
+	}
+	EOF
+
+And compile it:
+
+	 gcc -I/usr/X11R6/include -L/usr/X11R6/lib -o xsetnumlock \
+	 	xsetnumlock.c -lX11 -lXtst
+
+Now you have a binary named xsetnumlock. If required, change its ownership and
+permissions:
+
+	chown root:root xsetnumlock
+	chmod 0755 xsetnumlock
+
+Move it to either /usr/bin or /usr/X11R6/bin, whatever you consider more
+suitable. Then add the following line to the beginning of either the
+~/.xinitrc, ~/.Xsession or ~/.Xclients file (assuming you have moved
+xsetnumlock to /usr/bin; if not, use the appropriate path):
+
+	/usr/bin/xsetnumlock
+
+3. THE END
+
+Right, that should do it. Enjoy your NumPad.
+
+Comments, improvements whatsoever on this hint will be received with a warm
+welcome at the e-mail address specified in the AUTHOR field above.
+
+ACKNOWLEDGEMENTS:
+* Manfred H. Winter <mahowi at gmx dot net> for mentioning the C program from
+  the SuSE Support Database as well as other important improvements of this
+  hint.
+* Tushar Teredesai <tush at yahoo dot com> for mentioning NumLockX and the KDE
+  fix.
+* Seth W. Klein <sk at sethwklein dot net> for mentioning xsetleds.
+
+CHANGELOG:
+[2003-12-05]
+  * Hint conforms to new format.
+  * Minor text changes.

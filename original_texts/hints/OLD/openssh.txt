@@ -1,0 +1,290 @@
+TITLE:		Open Secure SHell (OpenSSH)
+LFS VERSION:	any
+AUTHOR:		Daniel Roethlisberger <daniel@roe.ch>
+
+SYNOPSIS:
+	How to compile and install the OpenSSH daemon and client.
+
+HINT:
+HINT VERSION:	1.5 (17-May-2002)
+CHANGES:	1.5:	Latest instructions on privilege separated openssh.
+		1.4:	Latest versions, added more openssh options, and a
+			number of other, minor changes.
+		1.3:	Updated zlib web site.
+		1.2:	Upgraded to latest openssh/openssl. Removed obsolete
+			workaround for broken openssl installation, added man
+			page fix. Enabled MD5 in openssh.
+		1.1:	Incorporated comments by Sergey Ostrovsky regarding
+			OpenSSL configuration, optimization and the broken
+			install script. OpenSSL install is much improved now.
+			Added comments on install location. Modified the
+			random devices script a bit.
+
+
+
+INTRO
+
+	This document describes the necessary steps to get a fully functional
+SSH daemon (sshd), and the SSH clients (ssh, scp). OpenSSH contains
+replacements for the aged, insecure and unencrypted telnet, rlogin, rcp and
+ftp services. With SSH, SFTP and SCP, you have a secure, encrypted
+alternative. In addition, you can tunnel about anything you can think of
+through secure, encrypted SSH tunnels.
+
+	Why "Open"? There is a commercial package from Tatu Ylönen which is
+here for essentially the same thing. The commercial variant has several
+drawbacks, for instance the license doesn't permit using it freely in
+commercial environments, while OpenSSH has an open license, is free from any
+patent issues, and no cryptographic part of it was ever exported from the US,
+which means no ITAR export regulation problems. So in essence, OpenSSH is
+completely free, while the commercial SSH is not. In addition, one might say
+that Tatu has been a little unfriendly to the free SSH offspring in the past,
+so for me the commercial variant is out of the question.
+
+
+
+PACKAGES
+
+	You'll need at least the following three packages to get
+started:
+
+  openssh-3.2.2p1.tar.gz from http://www.openssh.com/portable.html
+  openssl-0.9.6c.tar.gz from http://www.openssl.org/
+  zlib.tar.gz from http://www.gzip.org/zlib/
+
+	You may also get them from a mirror, such as your local sunsite. You
+are advised to get the latest stable release available. There have been
+several serious flaws in both openssl and even more so openssh lately, so
+make sure you are up to date, always. Consider subscribing to the announce
+mailing lists of openssh and openssl, so you'll know when new releases are
+available. Upgrading these two frequently is crucual to your system security.
+
+	zlib is a compression library required to build the OpenSSL and
+OpenSSH packages. OpenSSL is an open SSL implementation library. OpenSSH is
+using OpenSSL for all its crypto-related tasks.
+
+
+
+DEPENDENCIES
+
+	If you want to use SSH in conjunction with PAM, install PAM first.
+See the PAM-hint on how to do this. PAM is in no way required to run any part
+of OpenSSH, but if you want a PAM aware version of OpenSSH, you need to have
+PAM installed first. You are entirely on your own when building for PAM.
+
+
+
+DEVICES
+
+	If you haven't already done so, you should create the /dev/random and
+/dev/urandom random character generator device files. OpenSSH comes with an
+internal random data generator, but it is strongly recommended to use the
+random device provided by the Linux kernel. You do so by typing the following
+commands:
+  
+  mknod /dev/random c 1 8 &&
+  mknod /dev/urandom c 1 9 &&
+  chown root.sys /dev/random /dev/urandom &&
+  chmod 0644 /dev/random /dev/urandom
+
+	The kernel random data generator takes some of its random input
+("noise"), from user interaction such as mouse, keyboard, network delays,
+and so forth. When a Linux system starts up without much outside world
+interaction, the entropy pool may be in a fairly predictable state. This
+reduces the actual amount of noise in the entropy pool below the estimate.
+In order to counteract this effect, it helps to carry entropy pool
+information across shut-downs and start-ups.
+
+	To do this, add the following lines to an appropriate script which is
+run during the Linux system start-up sequence:
+
+  echo -n "Initializing kernel random number generator..."
+  # Initialize kernel random number generator with random seed
+  # from last shut-down (or start-up) to this start-up. Load and
+  # then save 512 bytes, which is the size of the entropy pool.
+  if [ -f /var/random-seed ]; then
+      cat /var/random-seed >/dev/urandom
+  fi
+  dd if=/dev/urandom of=/var/random-seed count=1 &>/dev/null
+  evaluate_retval
+
+	Also, add the following lines in an appropriate script which is run
+during the Linux system shutdown:
+
+  # Carry a random seed from shut-down to start-up for the random
+  # number generator.  Save 512 bytes, which is the size of the
+  # random number generator's entropy pool.
+  echo -n "Saving random seed..."
+  dd if=/dev/urandom of=/var/random-seed count=1 &>/dev/null
+  evaluate_retval
+
+
+
+INSTALLATION
+
+	A note on installation paths: I installed all the three packages into
+the /usr hierarchy. If you want to keep LFS base and additional packages
+you've installed later strictly separated, you'll want to replace /usr with
+/usr/local wherever I've used it in the following commands.
+
+
+
+ZLIB
+
+	After you've made sure you got working random devices, install zlib
+first. Do this by unpacking the tarball as usual, and running the following
+commands from within the zlib source directory.
+
+  ./configure --shared --prefix=/usr &&
+  make &&
+  make install &&
+  ldconfig
+
+
+
+OPENSSL
+
+	Then, install OpenSSL as shared libraries the same way, but running
+those commands:
+
+  ./config --prefix=/usr --openssldir=/usr/lib/openssl shared &&
+  make &&
+  make install &&
+  ldconfig &&
+  for m in /usr/lib/openssl/man/man? ; do
+    cp $m/* /usr/man/$(basename $m)/
+    rm -rf $m
+  done
+
+	You might have noticed that OpenSSL does not read the CFLAGS compiler
+flags variable from the environment, but instead defaults to -O3 -m486. You
+might want to edit ./Configure, find the line beginning with "linux-elf"
+(including quotes) and set the processor model and optimization desired. I've
+used -O3 -march=i686 -mcpu=i686 . You may also want to play with other flags.
+
+	If you don't want any patented algorithms, you can supply the options
+no-rc5 and no-idea to ./configure. That will skip support for those two
+patented algorithms. I want RC5 and IDEA no matter the patent issues.
+
+	By default, the OpenSSL configuration script copies its configuration
+tree into $(prefix)/ssl. That violates the File Hierarchy Standard, and
+besides clutters the directory tree, thus we override this with the
+--openssldir switch, and have the script install the libraries where they
+belong to: into $(prefix)/lib/openssl.
+
+
+
+OPENSSH
+
+	First, we need to do some preparations for the nifty privilege
+separation feature introduced in openssh-3.2.2 . The privilege separated
+SSH daemon is significantly more secure, as all the untrusted data
+processing is done in unprivileged processes, which means that bugs that
+would normally lead to a remote root compromise are now only leading to
+unprivileged user access within an empty chroot jail. Or in plain old
+English: remote root exploits that would normally work against OpenSSH do
+not work against the privilege separated version. Or at least chances are
+extremely slim that a hole leads to remote root.
+
+	Create user and group 'sshd' by editing /etc/passwd, /etc/shadow,
+and /etc/group. Make the user sshd member of the group sshd, and no other
+groups. Set the home directory of the user to be /var/empty, and the shell
+to /bin/false. Then create that special directory by running:
+
+  mkdir /var/empty &&
+  chown root:root /var/empty &&
+  chmod 755 /var/empty
+
+	Take special care that there is not a single file in the whole
+filesystem that has user or group sshd. /var/empty must have owner and
+group root, not sshd.
+
+	Now, install OpenSSH itself by running the following commands within
+its directory created by tar:
+
+  ./configure --prefix=/usr --sysconfdir=/etc/ssh \
+              --with-md5-passwords \
+              --disable-suid-ssh \
+              --with-ipv4-default &&
+  make &&
+  make install
+
+	This installs the binaries into /usr/bin and sbin, and the
+configuration files, including all host keys, into /etc/ssh. make install
+will create the /etc/ssh directory if not already present. New host keys will
+automatically be generated. Those keys are 1024 bits by default. If you want
+to create new or larger host keys manually later, use ssh-keygen to do so. If
+you use SSH protocol versions 1, you might want to raise the ServerKeyBits
+setting from the default 768 to 1024.
+
+	You may need more ./configure options if you want to enable support
+for the likes of Kerberos, smartcards, PAM or AFS, or if you want to change
+the privilege separation defaults (/var/empty, sshd). Note that I install
+the ssh binary -not- suid root. Root privileges are needed by the client
+only when using rhosts for authentication, which requires ssh to bind to a
+privileged port. Since rhosts is an old, deprecated authentication method,
+insecure by design, I'm not using it, and neither should you.
+
+
+
+CONFIGURATION
+
+	To enable privilege separation, edit /etc/ssh/sshd_config and add
+this line:
+
+  UsePrivilegeSeparation yes
+
+	For improved security, you might want to tune other paramters,
+such as disable SSH protocol v1 support, and you might want to disable
+rhosts authentification. I usually only allow password and pubkey
+authentication on my hosts (man sshd).
+
+
+
+RUNNING THE DAEMON
+
+	If you want the SSH daemon (sshd) to be started by init on bootup,
+create a copy of /etc/init.d/template, name it sshd, edit it, put as binary
+path /usr/sbin/sshd where appropriate, make sure the scripts output is to
+your liking, and then create symlinks in the appropriate runlevel directories.
+On my box, I added "S20sshd" symlink in rc{3,4,5}.d, and "K40sshd" in
+rc{0,1,2,6}.d, all pointing to "../init.d/sshd". Note that your LFS may be
+using three digits, in which case make sure you create S200sshd and K400sshd
+as appropriate.
+
+	To immediately start sshd, and to make sure the script works as it
+should, start the daemon via the script by running:
+
+  /etc/init.d/sshd start
+
+	In case you have telnetd or any of the BSD r-daemons running, you will
+want disable them, and tell your users to use ssh, scp and sftp instead. SFTP
+is now reasonably widespread, there are clients for just about every OS out
+there, including Windows, so you really ought to have your users use SFTP, and
+disable FTP access to system users.
+
+	If you want to run sshd chrooted, you can write a simple program which
+does the chroot to the user homedir, drops privileges, cleans the env, and
+runs a shell. Install this chroot program suid root, add it to /etc/shells,
+and use it as the users shell. Don't forget to set up the chroot environment
+for the users in question (eg., sftp requires not only a bin/sh but also the
+sftp-server binary). You should also make sure that the user in question does
+not own anything in the chroot jail, and you might want to set the immutable
+bit on all the jail files if you are using a filesystem which supports it
+(man chattr). An alternative to using a suid root chroot wrapper is to patch
+the sshd and sftp-server binaries. Finding and applying those patches is up to
+you, I assure you they exist, however I prefer the wrapper. You are on your
+own entirely.
+
+	By the way, if you're looking for a free win SSH client, check out
+PuTTY, which you'll find at the following URL. There's a lot of other clients
+as well, so take your pick.
+
+  http://www.freessh.org/
+
+	People really shouldn't have to use any unencrypted protocols for
+authentication anymore. There's just no reason left to do so.
+
+Cheers,
+Dan
+

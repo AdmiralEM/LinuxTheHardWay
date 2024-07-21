@@ -1,0 +1,226 @@
+TITLE:		Compiling and configuring WINE
+LFS VERSION:	any (done with 3.1)
+AUTHOR:		Leslie Polzer <leslie.polzer@gmx.net>
+
+SYNOPSIS:
+	This guide documents how to compile and install WINE on an LFS system.
+
+HINT:
+
+Contents
+--------
+1. What is WINE?
+2. Requirements
+	2.1 Overview
+	2.2 Installation notes
+3. Getting, configuring and compiling WINE
+4. Postconfiguration
+5. Running applications with WINE
+6. Troubleshooting
+7. References and pointers
+
+
+1. What is WINE?
+----------------
+WINE is, as stated on its website, a free implementation of Windows for
+Unix - in other words a program that enables you to run Windows
+applications on your Unix-Box quite comfortably.
+WINE also comes with a library called WineLib with which you are able to
+compile source-code using Windows system calls, but since open-source is
+not a big issue in the Windows world (most open-source stuff there comes
+from ported Unix apps anyway) we won't discuss it here.
+
+IMPORTANT: I assume that you have a native Microsoft Windows installation on
+a separate partition and that it is mounted.
+I do not have any experience with a full Windows replacement and won't give
+you instructions on how to do this, because I don't like talking or even
+giving advice about topics I am not competent enough with.
+
+
+2. Requirements
+---------------
+
+
+2.1 Overview
+------------
+- X11R6, most likely the XFree86 implementation - see the xfree86* hints.
+- Freetype2, if you want True Type support, which I assume.
+- OpenGL libraries and header files (that is, if you want OpenGL support!);
+	NVidia-users read nvidia_glx.txt, others install the Mesa libs:
+	http://prdownloads.sourceforge.net/mesa3d/MesaLib-4.0.4.tar.bz2?download
+
+
+2.2 Installation notes
+----------------------
+Modify the file
+
+	include/freetype/config/ftoption.h
+
+in the Freetype2 source tree:
+
+Change the line
+
+	#undef  TT_CONFIG_OPTION_BYTECODE_INTERPRETER
+
+to
+
+	#define TT_CONFIG_OPTION_BYTECODE_INTERPRETER
+
+and compile Freetype2 with the usual
+
+./configure --prefix=/usr/X11R6 --with-gnu-ld
+make
+make install
+ldconfig
+
+Be root when executing the last two commands.
+
+
+3. Getting, configuring and compiling WINE
+------------------------------------------
+Get the latest snapshot from
+
+	http://www.ibiblio.org/pub/Linux/ALPHA/wine/development/
+
+Unpack with
+
+	tar xvfz Wine-xxxxxxxx.tar.gz
+
+and cd to directory Wine-xxxxxxxx.
+
+
+Now there is more than one way to do the installation.
+You can either do configuring and compiling for yourself
+or use tools/wineinstall. The latter method is more convenient,
+because it automatically creates a configuration file and
+is able to find your Windows partition (if it is mounted).
+
+I will use a combination to get the best of both worlds :)
+First, type
+
+./configure --help
+
+read the available options and pick what you need.
+Run configure again with these options and check whether
+all you want (most notably Freetype2 and OpenGL) was found.
+To get really sure that OpenGL support will be build, type
+
+	cat include/config.h | grep OPENGL
+
+If the output of this command doesn't say
+
+	#define HAVE_OPENGL 1
+
+OpenGL won't be built and there's a problem to fix!
+
+NOTE: Remember to delete config.cache when re-configuring.
+
+If you are content with the output of configure, enter
+the directory tools and open the file 'wineinstall'
+with your favorite editor. Skip the big comment block at the
+beginning and look at the configuration defaults. You may want
+to change 'CONFARGS' to reflect your desired configure options
+(e.g. --enable-opengl) and 'prefix' to select the installation
+prefix. If it is requested, I will provide sed statements and a
+small script for this.
+
+Bear with me, we're almost done:
+Go back to the toplevel source dir, execute
+
+	tools/wineinstall
+
+answer a few questions and get some coffee.
+
+
+4. Postconfiguration
+--------------------
+Impatient people like me can go straight to step 5 and try
+to start a simple application like Solitaire. If it doesn't
+work or you want to know more about WINE configuration, you
+can always return to this step.
+
+Review the file ~/.wine/config with your favorite editor.
+If you do not have this file (probably because you installed
+WINE without wineinstall), copy
+
+	WINESOURCEDIR/documentation/samples/config
+
+to ~/.wine/config
+
+Comments in the config file are denoted with a semi-colon (;),
+statements are terminated by a newline.
+First section is about drives. Syntax example:
+
+	[Drive C]
+	"Path" = "/mnt/win"
+	"Type" = "hd"
+	"Filesystem" = "vfat"
+
+You should use fstype 'vfat' for hard-disk partitions and
+fstype 'win95' for Floppy disk and CD-ROM drives. I can't tell
+you what type of fs you need to use with NTFS partitions, probably
+it doesn't work with those as NTFS kernel support is still
+considered experimental.
+
+Next section is [wine] and contains essential configuration information.
+Configuration format is like the one above:
+
+	"Variable" = "Value"
+
+The relevant variables are:
+
+windows - your Windows install directory, e.g.
+	"windows" = "C:\\win98"
+
+system - your Windows system directory, e.g.
+	"system" = "C:\\win98\\system"
+
+path - application search path, should be at the very least:
+	"path" = "C:\\win98\\system;C:\\win98;C:\\win98\\command"
+
+temp - a directory for temporary files, most likely this:
+	"temp" = "/tmp"
+
+
+If you want to know more about the configuration of WINE,
+refer to reference [1].
+
+
+5. Running applications with WINE
+---------------------------------
+WINE is quite easy to use once it is installed the right way:
+
+
+wine ping (using the path-variable)
+wine ping.exe
+wine c:\\win98\\ping.exe (assuming "C" is mapped to the windows partition)
+wine /mnt/win/win98/ping.exe
+
+You can pass commandline parameters like this:
+
+wine ping.exe -- -t localhost
+
+Use CTRL-C to interrupt as usual.
+
+
+6. Troubleshooting
+------------------
+Problem: Freetype-related files fail to compile
+Solution: Remove _all_ old and conflicting versions of Freetype
+	(both libraries and header files).
+	Please note that XFree86 also brings a version of Freetype with
+	it. You can find its files in /usr/X11R6/lib and /usr/X11R6/include.
+
+Any more questions go to leslie.polzer@gmx.net.
+
+
+7. References and pointers
+--------------------------
+[1] The WINE homepage: http://www.winehq.org/
+[2] Which applications work with WINE?
+	The Codeweavers AppDB: http://appdb.winehq.org/appbrowse.php
+[3] The WINE FAQ: http://www.winehq.org/FAQ/
+[4] Linux Half-Life: lhl.linuxgames.com
+[5] Starcraft under WINE:
+	http://www.linuxgames.com/starcraft.php3
+	http://koti.mbnet.fi/~hoppq/sc-howto.html

@@ -1,0 +1,411 @@
+Author: James Powell <james4591 [at] hotmail [dot] com>
+
+Date: 2014-04-30 Version 0.0.6
+
+License: The MIT License
+
+Copyright (c) 2014 James Powell
+
+================================================================================
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================================
+
+Synopsis:
+
+systemd, while being a new and exciting daemon control system, can often be
+very invasive with how it works with other system tools, daemon services, and
+even various software sets.  Not only that but systemd is rather large at 410MB
+and requires 4.5 SBUs of time to build and install. The overall space of the
+actual installation is around 60-65MB or so, but still it's rather large by
+fair comparison.
+
+Eudev is smaller considerably at 7.4MB and faster to build at 0.3 SBUs, and
+provides the same functionality of systemd-udev utilzied by LFS/BLFS minus the
+service management functionality, alternative init, and isn't invasive to the
+environment requiring itself to be a hard dependency.
+
+There are other reasons people would choose to not use systemd that are more
+personal, political, and are opinions directed at the maintainers of systemd
+and systemd's ultimate goal, but those are best left for another discussion
+topic elsewhere.
+
+The point of eudev is to ask this as a question, why install all of systemd
+just for udev, when all you want is udev? The answer is obvious, you install
+eudev. If you don't need or want systemd, why even bother with it?
+
+Eudev gives you the end-user and system administrator the ultimate choice. It's
+small, does what its supposed to, and doesn't require anything extra. It's
+there, it's quiet, and it behaves itself.
+
+Now enough babble, and on with the installation...
+
+================================================================================
+
+Prerequisites:
+
+None. Basically, you can build LFS as normal up to systemd and switch to
+this Hint.
+
+As a side note due to eudev being a lighter weight udev implementation you may
+also skip sections of the LFS book...
+
+Attr        - 4.5 SBUs - Chapter 6.22
+Acl         - 0.2 SBUs - Chapter 6.23
+libcap      - 0.1 SBUs - Chapter 6.24
+expat       - 0.1 SBUs - Chapter 6.40
+XML::Parser - 0.2 SBUs - Chapter 6.43
+Intltool    - 0.1 SBUs - Chapter 6.50
+D-Bus       - 0.4 SBUs - Chapter 6.68
+
+In all that's a total, added with systemd, 10 SBUs and about 100 MB less time
+and installed space.
+
+The rest of the system configuration is fairly much the same.
+
+================================================================================
+
+Acknowledgements:
+
+I'd like to thank Bruce Dubbs, one of the LFS project maintainers for giving me
+the chance to not only contribute to LFS, but to give users of LFS, yet another
+choice in what they want in their system, as well as the entire LFS team for
+giving advanced users of Linux a chance at building our own custom systems, as
+well as insightful information that was critical to this project.
+
+I'd like to also thank Stoat, Ken Moffat, and akhiezer for helping with the
+testing, retesting, and re-retesting that sorted out bugs, cleaned up the
+installation, directory paths, and other key features of eudev I missed.
+
+I'd also like to thank the unnamed users and system builders who at least took
+the time to read this hint and see all the hard work that went into it, and
+more thanks to those who chose to use this hint in their own builds.
+
+I'd like to thank the guys at www.boycottsystemd.org that are leading the
+charge against systemd in favor of more compliancy with the UNIX Philosophy,
+open and universal-platform standards, as well as the ongoing search for a
+true successor to sysvinit that is multi-platform standard friendly.
+
+I'd also like to thank Doug Mcllroy for stating the obvious in regards to how
+UNIX should be regardless of flavor. "Write programs that do one thing and
+do it well."
+
+================================================================================
+
+Changelog:
+
+2014-04-04
+0.0.1 -	First draft
+
+2014-04-08
+0.0.2 -	Some minor corrections
+
+2014-04-13
+0.0.3 -	Additional information of exclusions that are not required.
+		Added information on systemd sections that can be skipped from
+		LFS book.
+
+2014-04-14
+0.0.4 -	Additional cleanup and reorganization of the documentation and
+		headers of the document.
+		
+2014-04-20
+0.0.5 - Additional scripts and extra sections to eliminate more unneeded
+		systemd left-overs.
+	Added additional directory listed for extra udev functionality purposes.
+	Added installation map of software package.
+	Thank you Stoat at LinuxQuestions.org for the updates.
+
+2014-04-30
+0.0.6 - Added information regarding updated content of Eudev-1.6.
+        Cleaned up install flags to properly build shared libs.
+
+	You may have noticed that the eudev-manpages are not included with this
+	release for B/LFS. This is because these manpages were pregenerated for
+	users. In order to generate the proper manpages you will first need to
+	install libxslt from BLFS. Documentation on this is included.
+	
+	
+================================================================================
+
+How-To:
+
+First download a copy of eudev to your system, and it's manpages:
+
+Eudev (1.6) - 1,689 KB:
+Home page: http://www.gentoo.org/proj/en/eudev/
+Download: http://dev.gentoo.org/~blueness/eudev/eudev-1.6.tar.gz
+MD5 sum: c2fbf420a50d07b80158a0185cbb08f7
+
+As an extra hint, you can eliminate the systemd download and md5sum entries
+in md5sums and wget-list and replace it with these entries for eudev if desired.
+
+For it's brief time it was included in LFS, Eudev was stationed at Chapter 6.62
+so these instructions are the same instructions preserved from the book.
+
+================================================================================
+
+6.62.1 Installation of Eudev
+
+Prepare Eudev for compilation:
+
+  sed -i '/struct ucred/i struct ucred;' src/libudev/util.h
+  sed -r -i 's|/usr(/bin/test)|\1|' test/udev-test.pl
+  BLKID_CFLAGS=-I/tools/include       \
+  BLKID_LIBS='-L/tools/lib -lblkid'   \
+  ./configure --prefix=/usr           \
+         --bindir=/sbin          \
+         --sbindir=/sbin         \
+         --libdir=/usr/lib       \
+         --sysconfdir=/etc       \
+         --libexecdir=/lib       \
+         --with-rootprefix=      \
+         --with-rootlibdir=/lib  \
+         --enable-split-usr      \
+         --enable-libkmod        \
+         --enable-rule_generator \
+         --enable-shared         \
+         --disable-static        \
+         --disable-selinux       \
+         --disable-introspection \
+         --disable-keymap        \
+         --disable-gudev         \
+         --disable-gtk-doc-html  \
+         --with-firmware-path=/lib/firmware
+
+Compile the package:
+
+  make
+  
+Create some directories now that are needed for tests, but will also be used as
+a part of installation:
+
+  mkdir -pv /lib/{firmware,udev/devices/pts}
+  mkdir -pv /lib/udev/{devices/pts,rules.d}
+  mkdir -pv /etc/udev/{hwdb.d,rules.d}
+
+To optionally test the results, run this command: 
+
+  make check*
+  
+*NOTE: The udev-test.pl will fail due to an unknown error. It's safe to ignore this.
+I have not been able to track down the source of this error, except a flaw in
+reading device node, /dev/null. This is probably a permissions error or a test that
+is ran by a user account and not root.
+
+Install the package: 
+
+  make install
+
+If you rebuild with libxslt, "make install" will automatically install the manpages.
+
+-----------------------------------------------------------------------------------------
+This next step is probably optional, but is recommended you at least attempt to complete.
+The LFS init-net-rules.sh script is possibly still required to be ran as far as I can
+tell.
+-----------------------------------------------------------------------------------------
+
+Extract udev-lfs-20140408 into your /sources directory enter the directory and execute
+command:
+
+  make -f Makefile.lfs install
+  
+in the directory as suggested by the book. This package is no longer directly tied to
+systemd and can be ran seperately. This will install important scripts for Eudev. Many
+thanks to Bruce Dubbs for creating this package.
+
+Lastly, this next step will be required post-installation of the LFS-Bootscripts
+
+Open /etc/rc.d/init.d/udev in a text editor such as Vi, Nano, etc.
+
+Go to this line:
+
+      # Start the udev daemon to continually watch for, and act on,
+      # uevents
+      /lib/systemd/systemd-udevd --daemon
+
+and change it to the following:
+
+      # Start the udev daemon to continually watch for, and act on,
+      # uevents
+      /lib/udev/udevd --daemon
+      
+Also change each command for:
+
+      /bin/udevadm
+      
+to this command:
+
+      /sbin/udevadm
+      
+Open /etc/rc.d/init.d/udev_retry in a text editor as above:
+
+Go to these lines:
+
+      /bin/udevadm
+      
+and edit each of them to reflect this command:
+
+      /sbin/udevadm
+      
+We want udevadm to work from the /sbin directory, not the actual install
+location in /bin.
+      
+By default LFS now uses systemd-udev so in order to initialize the udev
+daemon, you'll need to edit the scripts to work from Eudev's locations.
+
+Now initialize the hardware database:
+
+      /usr/bin/udevadm hwdb --update
+      
+And run the udev init-net-rules.sh shell script
+
+      /lib/udev/init-net-rules.sh
+      
+This will generate several rules used by default with udev/eudev.
+
+6.62.2 Contents of Eudev
+
+Installed programs: udevadm and udevd
+Installed libraries: libudev.so
+Installed directories: /etc/udev, /lib/udev, and /lib/firmware 
+
+Short Descriptions
+
+udevadm
+   
+Generic udev administration tool: controls the udevd daemon, provides info from
+the Udev database, monitors uevents, waits for uevents to finish, tests Udev
+configuration, and triggers uevents for a given device
+
+udevd
+   
+A daemon that listens for uevents on the netlink socket, creates devices and
+runs the configured external programs in response to these uevents
+
+libudev
+   
+A library interface to udev device information
+
+/etc/udev
+   
+Contains Udev configuration files, device permissions, and rules for device naming
+
+===================================================================================
+
+That's it. You now have Eudev installed on your system.
+
+If and when you want to rebuild Eudev for gudev support, the compilation
+process is the same except that you will need to simply remove per line needed:
+
+  	BLKID_CFLAGS=-I/tools/include       \
+  	BLKID_LIBS='-L/tools/lib -lblkid'   \
+         
+Per each used, they will require you install the following from BLFS:
+
+GLib   - 		required for gudev (Used by a number of BLFS packages)
+Gperf  - 		required for keymap (Comes with LFS and is useful for
+			laptop and netbook PCs)  
+gobject-introspection - required for gir-data (Used by some Gnome applications)
+
+To enable gobject-introspection simply replace flag:
+
+	  --disable-introspection \
+	 
+with this flag:
+
+	  --enable-introspection \
+
+If you wish to rebuild the manpages, you will also need the package libxslt from
+BLFS. The configure script will detect libxslt and rebuild the manpages
+automatically upon executing make.
+
+If you wish to build the API documentation change this flag:
+
+	--disable-gtk-doc-html
+	
+with this flag:
+
+	--enable-gtk-doc-html
+
+In addition to these changes, there are other sections you may not require
+from the book as well:
+
+Chapter 6.6 - Creating Essential Files and Symlinks
+
+You will not the need the following user groups for Eudev:
+
+adm:x:16:
+messagebus:x:18:
+systemd-journal:x:23:
+
+Special note on this:
+
+Eliminating the messagebus usergroup fixes an error in BLFS regarding
+installing d-bus where generating the usergroup described there results
+in an error
+
+Chapter 6.64 - SysVinit relinking command:
+
+for p in init halt poweroff reboot runlevel shutdown telinit; do
+  mv -v /sbin/$p /sbin/$p-sysv
+  mv -v /usr/share/man/man8/$p.8 /usr/share/man/man8/$p-sysv.8
+done
+
+Is not required as we will not be installing systemd.
+
+Chapter 7.1 - Introduction
+
+Because we are using sysvinit, the systemd and sysvinit switch scripts do not
+require being created. This chapter can be skipped.
+
+Chapter 7.2 - LFS-Bootscripts
+
+You can also delete the "ifupdown@.service" unit file for systemd. Simply
+run the command "whereis ifupdown@.service", change directories to it's
+location, and use "rm -rf ipupdown@.service" to delete this unneeded file.
+If any systemd directories are left behind, delete them at your leisure.
+
+Chapter 7.3.3 - systemd Network Interface Card setup
+
+Again this is not required.
+
+Chapter 7.8 - systemd Customization
+
+This whole chapter is not required.
+
+Chapter 7.10.2 - systemd Clock Configuration
+
+Again, yet another unrequired section
+
+Chapter 7.11.2 - systemd Console
+
+Yet another unrequired section
+
+Thanks and enjoy.
+
+================================================================================
+
+Additional Thanks to:
+
+Ken Moffat and akhiezer for Corrections and added information.
+Stoat and Bruce Dubbs for additional corrections, files, and other info.
+
+================================================================================

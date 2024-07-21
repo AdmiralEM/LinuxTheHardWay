@@ -1,0 +1,365 @@
+AUTHOR: Eloi Primaux eloi AT bliscat dot org
+
+DATE: 2007-10-11
+
+LICENSE: GNU Free Documentation License Version 2
+
+SYNOPSIS: Very basic network recognition using MAC address
+
+PRIMARY URL:
+https://www.harasdebondereau.com/bliscat/hints/network-recognition/network-recognition-0.0.2.tar.bz2
+
+DESCRIPTION:
+	This hint explains how to make a very basic automatic network recognition
+ATTACHMENTS:
+
+http://www.linuxfromscratch.org/hints/downloads/files/ATTACHMENTS/network-recognition/network-recognition-0.0.2.tar.bz2
+
+PREREQUISITES:
+
+- A working LFS-6.2 system or newer with wireless capabilities  
+- Almost two networks services like ipv4-static/dhcpcd installed
+ 
+HINT:
+
+0) Requirement and Optional tools
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Well, we will need the arpdiscover tool which comes from the arptools package.
+The ArpTools package provides arpdiscover, arpfool and the so called arpflush.
+You should only install the arpdiscover program, the others are used for network
+security check.
+
+The ArpTools package requires libnet and libpcap
+
+0.1) libpcap >= 0.8.1
+~~~~~~~~~~~~~~~~~~~~~~
+download it from:
+http://ovh.dl.sourceforge.net/sourceforge/libpcap/libpcap-0.8.1.tar.gz
+
+install it with these commands:
+./configure --prefix=/usr &&
+make &&
+make install
+
+0.2) libnet >= 1.1.3-RC-01
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+download it from:
+http://www.packetfactory.net/libnet/dist/libnet-1.1.3-RC-01.tar.gz
+
+install it with these commands:
+./configure --prefix=/usr &&
+make &&
+make install
+
+0.3) ArpTools >=  1.0.2 'The core'
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+download it from:
+http://freshmeat.net/redir/arptools/63568/url_tgz/arptools-1.0.2.tar.gz
+
+install it with these commands:
+./configure --prefix=/usr &&
+make &&
+make install
+
+0.3) NetDiscover >=  0.3-beta6
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+you can download it from:
+http://nixgeneration.com/~jaime/netdiscover/releases/netdiscover-0.3-beta6.tar.gz
+
+install it with:
+./configure --prefix=/usr &&
+make &&
+make install
+
+0.3) ifplugd >=  0.28
+~~~~~~~~~~~~~~~~~~~~~
+you can download it from:
+http://0pointer.de/lennart/projects/ifplugd/ifplugd-0.28.tar.gz
+patches from ubuntnu:
+http://launchpadlibrarian.net/6580436/ifplugd_0.28-2.3ubuntu1.diff.gz
+
+
+in the package directory, run this command to really apply the patch:
+gunzip ../ifplugd_0.28-2.3ubuntu1.diff
+patch -Np1 -i ../ifplugd_0.28-2.3ubuntu1.diff
+patch -Np1 -i debian/patches/01_fix_ftbfs_feisty.dpatch
+
+ifplugd install it's configuration in /etc/ifplugd, i don't like this
+run:
+sed 's,/ifplugd/ifplugd.action,/sysconfig/ifplugd/ifplugd.action,' -i src/ifplugd.c
+sed 's,ifplugd/ifplugd.conf,/sysconfig/ifplugd/ifplugd.conf,' -i conf/ifplugd.init.in
+
+now compile and install:
+./configure --prefix=/usr --sysconfdir=/etc &&
+make &&
+make install
+
+
+
+1) This Hints
+~~~~~~~~~~~~~
+Well ...
+now we have a tool which can discover MAC address  
+
+1.1) Install Files and Directories (this is only a proposal)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Extract network-recognition-0.0.1.tar.bz2 and in the extracted directory and run the
+following commands:
+
+OPION 1 : 
+
+  install -dv -m 700 /etc/sysconfig/network.d
+  install -dv /etc/sysconfig/network-recognition
+  install -dv /usr/share/doc/network-recognition
+	
+  install -m 744 netdevices-example /etc/sysconfig/network.d/netdevice.example
+  install -v -m644 network-recognition-conf /etc/sysconfig/network-recognition/network-recognition.conf
+  install -v -m750 network-recognition-script /usr/sbin/network-recognition
+ 
+
+OPTION 2: same as above but in a script
+        ./install.sh (if present ;)
+
+2) The principle
+~~~~~~~~~~~~~~~~
+
+The network-recognition script use a netdevices file in which are stored
+network names, with specific ip and mac address of knowned permanent network
+devices such as routers. The script call arpdiscover to check if that device is
+present, if the device is present the script exit the loop and returns the name
+of the network it successfully recognized.
+
+This first discovering method is really slow (10-15 sec per scan), it uses
+arpdiscover, the second method is faster and uses netdiscover.
+
+2) IP service integration
+~~~~~~~~~~~~~~~~~~~~~~~~~
+In the case of wpa-service you simply edit the wpa-actions file and replace
+the function get_ssid by :
+
+function get_ssid {
+if [ "$EVENT" == "CONNECTED" ]; then
+	RET=`network-discover $IFACE`
+	echo $RET > "$WPA_ACCESS_DIR/$IFACE.ssid"
+	else
+	if [ -e "$WPA_ACCESS_DIR" ]; then
+		RET=$(cat "$WPA_ACCESS_DIR/$IFACE.ssid")
+	fi
+fi
+}
+
+In the case of ifplugd you can modify the ifplugd.action file like this:
+
+BEGIN of ifplugd.action
+set -e
+. /etc/sysconfig/network-recognition/network-recognition.conf
+
+if [ -z "$1" ] || [ -z "$2" ] ; then
+	echo "Wrong arguments" > /dev/stderr
+	exit 1
+fi
+
+function reload_avahi {
+	$AVAHI_DAEMON -c
+	RET=$?
+	if [ "$RET" == "0" ]; then
+	        $AVAHI_DAEMON -r
+	fi
+}
+
+IFACE=$1
+[ "$2" == "up" ] && EVENT="CONNECTED"
+[ "$2" == "down" ] && EVENT="DISCONNECTED"
+
+function get_ssid {
+if [ "$EVENT" == "CONNECTED" ]; then
+	RET=`network-recognition $IFACE` &> /dev/null
+	echo $RET > "/tmp/$IFACE.ssid"
+	else
+	if [ -e "/tmp/$IFACE.ssid" ]; then
+		RET=$(cat "/tmp/$IFACE.ssid")
+	fi
+fi
+}
+
+
+if [ "$EVENT" == "CONNECTED" ]; then
+	get_ssid
+	SSID=$RET
+	# configure network, signal DHCP client, etc.
+	# If special networks definition exist, use it
+	if [ -f "$NETWORKDIR/$SSID" ]; then
+		IFCONFIG="$NETWORKDIR/$SSID"
+		. $IFCONFIG
+		export IFCONFIG
+		$SERVICESDIR/$SERVICE $IFACE up
+	else
+		IFCONFIG="$NETWORKDIR/AUTO"
+		. $IFCONFIG
+		export IFCONFIG
+		$SERVICESDIR/$SERVICE $IFACE up
+	fi
+	RET=$?
+	# reload the Avahi daemon if it runs
+	reload_avahi
+	exit $RET
+fi
+
+
+if [ "$EVENT" == "DISCONNECTED" ]; then
+    # remove network configuration, if needed
+	get_ssid
+	if [ "x$RET" != "x" ]; then
+	# this is false when there is nothing known around
+	# and when the system is disabling the service
+	SSID=$RET
+	# configure network, signal DHCP client, etc.
+	# If special networks definition exist, use it
+	if [ -f "$NETWORKDIR/$SSID" ]; then
+		IFCONFIG="$NETWORKDIR/$SSID"		
+		. $IFCONFIG
+		export IFCONFIG
+		$SERVICESDIR/$SERVICE $IFACE down
+	else
+		IFCONFIG="$NETWORKDIR/AUTO"
+		. $IFCONFIG
+		export IFCONFIG
+		$SERVICESDIR/$SERVICE $IFACE down
+	fi
+	fi
+	RET=$?
+	# reload the Avahi daemon if it runs
+	reload_avahi
+	exit $RET
+fi
+END of ifplugd.action
+
+remember to add your computer network device to /etc/sysconfig/ifplugd/ifplugd.conf 
+
+3) Configuration
+~~~~~~~~~~~~~~~~
+
+Script configuration go in the 
+/etc/sysconfig/network-recognition/network-recognition.conf file
+
+ 
+2.1) Network configurations (IP):
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In fact i strongly use the wpa-service ipconf methods, that why i use the same
+configuration files for networks.
+
+this part comes from the wpa-service hint:
+
+you can set up your network according to it's network_name (eg SSID), this means
+that if the SSID "DHCP_network" manage ip via a dhcp server, wpa-service will
+use the SSID file descriptor to set up you network when connecting to the SSID
+network.
+
+Those ssid descriptors are named with the name of the SSID they describe,
+and took place in the /etc/sysconfig/network.d directory.
+
+The "AzErTy" SSID descriptor will be /etc/sysconfig/network.d/AzeRtY
+
+2.1.1) SSID descriptor syntax:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An SSID descriptor is a regular network configuration file as used in LFS BOOK.
+it means that if SSID "IPV4" use ipv4-static, the the descriptor "IPV4" will be
+
+        cat > /etc/sysconfig/network.d/IPV4 << "EOF"
+        ONBOOT=yes
+        SERVICE=ipv4-static
+        IP=192.168.1.1
+        GATEWAY=192.168.1.2
+        PREFIX=24
+        BROADCAST=192.168.1.255
+        EOF
+
+and if the "DHCP" SSID use dhcp :
+
+        cat > /etc/sysconfig/network.d/DHCP << "EOF"
+        ONBOOT="yes"
+        SERVICE="dhcpcd"
+        DHCP_START="-o"
+        DHCP_STOP="-k -o"
+	# the '-o' prevent your interface being destroyed by dhcpcd 
+
+        # Set PRINTIP="yes" to have the script print
+        # the DHCP assigned IP address
+        PRINTIP="no"
+
+        # Set PRINTALL="yes" to print the DHCP assigned values for
+        # IP, SM, DG, and 1st NS. This requires PRINTIP="yes".
+        PRINTALL="no"
+        EOF
+
+for convenience, your ip manager will fall back to /etc/sysconfig/network.d/AUTO
+ when no SSID descriptor is available.
+
+Then install a common/automatic network configuration:
+I use dhcpcd:   
+
+        cat > /etc/sysconfig/network.d/AUTO << "EOF"
+        ONBOOT="yes"
+        SERVICE="dhcpcd"
+        DHCP_START="-o"
+        DHCP_STOP="-k -o"
+	# the '-o' prevent your interface being destroyed by dhcpcd
+
+        # Set PRINTIP="yes" to have the script print
+        # the DHCP assigned IP address
+        PRINTIP="no"
+
+        # Set PRINTALL="yes" to print the DHCP assigned values for
+        # IP, SM, DG, and 1st NS. This requires PRINTIP="yes".
+        PRINTALL="no"
+        EOF
+
+3) The netdevice file (The network description) 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+We've installed an example file in /etc/sysconfig/network.d
+
+Now edit the newly created netdevices file:
+Which should contains something similar to:
+
+network={
+        network_name=LaboPhy
+	# ip of the permanent device
+        ip=192.168.0.23
+	# mac address of the permanent device
+        mac=00:0F:B5:EE:88:8C
+}
+
+
+You will directly see that you can define more than one network and also more
+than one permanent device by duplicating the network blocs
+
+You can feed this file by running directly arpdiscover when you plug in a new
+network:
+
+arpdiscover IP iterations computer_network_device
+
+
+another usefull tool to do this would be netdiscover
+
+
+
+4) Feeding our netdevices file
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The perfect tool: NetDiscover
+
+use it as follow:
+
+netdiscover -i IFACE
+
+it will show you everything connected to your network (and more)
+
+
+CHANGELOG:
+2007 11 11 First release, first send to lfshint
+2007 11 22 Second release added netdiscover method and some bugs fixed
+			+ avahi-daemon reload in ifplugd.action
+			+ a work around for bad promiscuous netcards mode

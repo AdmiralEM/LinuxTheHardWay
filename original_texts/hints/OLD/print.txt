@@ -1,0 +1,255 @@
+TITLE:		Print_hint
+LFS VERSION:	3.0-pre4
+AUTHOR:		ktb <x.y.f@home.com>
+
+SYNOPSIS:
+	This hint covers setting up basic printing.  I'm assuming local 
+	networking is enabled, sections 9.1 through 9.6 of the book.
+
+HINT:
+	ver 0.8
+
+
+Contents
+=========
+
+	* Support
+	    * Hardware
+ 	    * Kernel
+	* Software
+	    * lprng
+	    * ghostscript
+	    * a2ps
+	    * apsfilter
+	* Post installation
+	* Sources and disclaimer
+
+
+
+Support
+========
+
+Hardware
+--------
+
+First check if your printer is supported -
+
+http://www.linuxprinting.org/printer_list.cgi
+
+Make sure there is communication with the printer.  
+For a local printer on the first parallel port try -
+
+	# cat test_file > /dev/lp0
+
+The printer should respond.
+
+For a networked printer try pinging the IP number of the printer.  
+
+If one of those worked you are ready to install the software.
+
+If the printer didn't respond make sure it is connected to the computer 
+correctly i.e., check cables, make sure the network is working
+correctly and that there is kernel support for the printer.
+
+
+
+Kernel
+------
+
+If you are installing a local printer it isn't going to work if you don't have 
+printer and parallel port support in the kernel.  For the latter see the 
+"Parallel port support" section of the kernel .config file -
+
+	$ cat /usr/src/linux/.config | grep CONFIG_PARPORT 
+
+and the former -
+
+	$ cat /usr/src/linux/.config | grep CONFIG_PRINTER
+
+
+
+Software
+========
+
+lprng is the software that manages the print queue.
+-----
+
+http://www.astart.com/lprng/LPRng.html
+  LPRng-3.7.4.tgz
+
+	./configure --prefix=/usr --sysconfdir=/etc \ 
+  		--disable-setuid --disable-gdbm &&
+	make &&
+	make install
+
+Notes: lprng won't compile unless you have "gdbm" installed or 
+"--disable-gdbm" as a ./configure option.  The gdbm database library
+helps speed up large print jobs.  For more information see -
+
+http://www.astart.com/lprng/LPRng-HOWTO.html
+http://www.gnu.org/software/gdbm/gdbm.html
+ftp://ftp.gnu.org/gnu/gdbm/
+
+
+
+
+Ghostscript adds postscript support to non-postscript printers.
+-----------
+ 
+http://www.cs.wisc.edu/~ghost/
+http://www.cs.wisc.edu/~ghost/doc/AFPL/get700.htm
+  ghostscript-7.00.tar.gz
+  ghostscript-7.00libpng.tar.gz
+  ghostscript-7.00jpeg.tar.gz
+  ghostscript-7.00zlib.tar.gz
+  ghostscript-fonts-std-6.0.tar.gz
+
+
+Unpack ghostscript-7.00.tar.gz.
+
+	# cd gs7.00/
+	# ln -s ./src/unix-gcc.mak makefile
+
+Even if you have jpeg installed
+unpack ghostscript-7.00jpeg.tar.gz within gs7.00/ and -
+
+	# mv jpeg-6b jpeg
+
+If you don't have zlib and libpng installed
+unpack ghostscript-7.00libpng.tar.gz and ghostscript-7.00zlib.tar.gz
+within gs7.00/ and -
+ 
+	# mv libpng-1.0.10 libpng
+	# mv zlib-1.1.3 zlib
+
+If you have zlib and libpng installed edit the makefile -
+
+change
+SHARE_LIBPNG=0
+to
+SHARE_LIBPNG=1
+
+change
+SHARE_ZLIB=0
+to
+SHARE_ZLIB=1
+
+Also edit the makefile if you want to change the prefix to /usr -
+
+prefix = /usr/local
+to
+prefix = /usr
+
+Make sure you have the paths to your X libs and X*.h files accessible to
+the build process.  With a default X install they should be in
+/usr/X11R6/lib and /usr/X11R6/include/X11.
+
+Add the following two lines to /etc/ld.so.conf -
+
+/usr/X11R6/lib
+/usr/X11R6/include/X11
+
+To make these directories immediately accessible, run -
+
+	# ldconfig
+
+If you don't have X then comment out all the lines in the makefile
+dealing with X.
+
+Then build and install with -
+
+	make &&
+	make install
+
+Install fonts in the ghostscript directory -
+ 
+	# cd /usr/share/ghostscript
+	# tar xvfz path_to_/ghostscript-fonts-std-6.0.tar.gz
+
+Notes: There are several flavors of Ghostscript see -
+http://www.linuxprinting.org/howto/ghostscript.html
+
+
+
+a2ps is a text/any to Postscript filter.
+----
+
+http://www.inf.enst.fr/~demaille/a2ps/
+ftp://ftp.enst.fr/pub/unix/a2ps/
+  a2ps-4.13b.tar.gz
+
+	./configure --prefix=/usr --sysconfdir=/etc/a2ps \ 
+  		--disable-nls --enable-shared &&
+	make &&
+	make install
+
+Notes: During the make process you will be notified that a2ps works better 
+with "psutils."  It's your choice.  For more information on that see -
+
+http://www.dcs.ed.ac.uk/home/ajcd/psutils/
+
+
+
+Apsfilter a filter that runs ghostscript and creates /etc/printcap.
+---------
+
+http://www.apsfilter.org/
+http://www.apsfilter.org/download.html
+  apsfilter-6.1.1.tar.bz2
+
+To install run -
+
+	./SETUP
+
+You will be asked a series of questions.  Some of the information SETUP
+will be looking for: printer type, which driver you want to use, paper size, 
+network or local printer, etc. 
+
+Note the driver name as you will be copying the driver to a different directory
+later.  Don't worry if you try "Test" during apsfilter setup and it
+doesn't work.  Make sure the values you have entered are correct and 
+install the configuration.
+
+
+
+Post installation
+=================
+
+The driver should be in /usr/src/apsfilter/uniprint/
+copy it to /usr/share/ghostscript/6.50/lib/
+The driver should be picked up by apsfilter on that path but if it
+becomes an issue, the path to the driver can be set in
+/etc/apsfilter/lp/apsfilterrc.
+
+Next test and fix permissions with the new setup by running -
+
+	# checkpc -f
+
+We are almost ready to test our new configuration.  If the line printer
+daemon (lpd) is running issue -
+	
+	# lpc reread
+
+If lpd isn't running start it with -
+
+	# lpd
+
+Test by sending a print job with lpr  -
+
+	# lpr file_to_print
+
+
+
+Sources and disclaimer
+======================
+
+I certainly don't consider myself an expert at print installations:)  It
+should give you a good start though.  This hint could use some cleaning
+up, hence ver 0.8.  I welcome any comments.
+  
+The sources I followed for my initial print install -
+
+http://hints.linuxfromscratch.org/hints/printing.txt
+http://www.linuxprinting.org/howto/
+http://www.linuxprinting.org/
+

@@ -1,0 +1,92 @@
+TITLE:          Reiserfs
+LFS VERSION:    Any with lilo 21.6 or newer
+Author:         <roryo@roryo.dynup.net> and Tio Hiap Ho<deux@deux.dyndns.org>
+
+Synopsis:
+        Reiserfs is an alternative filesystem which people are growing to like
+since it would out perform the ext2 filesystem in most of the cases. This hint
+are for those who want to use reiserfs without any ext2 filesystem in their lfs
+system.
+
+HINT:
+WHAT TO CHANGE FROM THE LFS BOOKS
+
+        If you are not going to use ext2 at all, it is safe for you space
+monkeys out there to skip the installation of e2fsprogs, although they can/will
+come in quite handy.  Reiserfs requires a minimum of 32 mb (for the journal) on
+a *writable* media, so using it on a floppy or a cdrom is out of the question.
+The badblocks program could also be of some use.
+
+
+SETTING UP THE BOOTSCRIPT
+
+Change the content of your /etc/fstab to something like below
+
+/dev/hda2 / reiserfs noatime,nodiratime,notail,defaults 0 0
+/dev/hda3 /var reiserfs noatime,nodiratime,notail,defaults 0 0
+/dev/hda5 /usr reiserfs noatime,nodiratime,notail,defaults 0 0
+/dev/hda6 /home reiserfs noatime,nodiratime,notail,defaults 0 0
+
+The above /etc/fstab will cause fsck to be skipped so you can remove the checkfs
+bootscript safely
+
+WHAT TO DO WITH THE KERNEL
+1. Enable
+        Prompt for development and/or incomplete code/drivers
+2. Enable
+        File systems ---> Reiserfs support
+3. Recompile Kernel
+
+In older kernel you might need to get the patch from www.reiserfs.org and patch
+it first. In the latest kernel 2.4.5 you will need to use
+reiserfs-umount-bug-fix-patch-for-linux-2.4.5 patch:
+Get the patch and put it in /usr/src
+patch -p0  linux-2.4.5-reiserfs-umount-fix-patch
+
+Or just use a kernel version <> 2.4.5.  ;)
+
+
+INSTALLING Reiserfsprogs 3.x.0k.pre8
+        ./configure --prefix=/usr &&
+        make &&
+        make install
+
+HOW TO CONVERT FROM ext2fs to reiserfs
+
+*** QUESTION ***
+Is there a method of actually converting ext2 to reiser?
+*** ANSWER ***
+In short, no not without a lot of buggering around.
+Long answer http://www.namesys.com/change_fs.html
+
+
+And now a few boring facts about the different configurations possible when
+creating your reiser partition.  There are three different types of hash
+(and before some clown asks, no you cant smoke it!) available when
+making your reiser partition :
+
+    rupasov : the fastest yet MOST unstable type available, DO NO USE IT!
+              It will, in most cases, cause you to have hash collisions,
+              a very bad thing to happen.  You will loose some/all the data
+              that you are in the process of writing.  You have been warned.  ;)
+
+    tea     : This is the slowest of the hashes available, it does mean that
+              you are VERY unlikely to get any hash collisions, hence no loss
+              of data.
+
+    r5      : This is a modified rupasov hash, it is the default hash and is the
+              middle in terms of speed and relability.  Being a total reiserfs user
+              i can say that I have never had a problem with r5, where i had many
+              when using rupasov.
+
+Before starting a new LFS that will be on reiserfs
+        a. Install Reiserfsprogs 3.x.0k.pre8
+        b. Do
+            mkreiserfs -h r5 -v 1 /dev/<whatever> (for patched 2.2.x kernel) or
+            mkreiserfs -h r5 -v 2 /dev/<whatever> (for kernel 2.4.x series) instead of mke2fs
+        c. And do everything else like those in the books except for the change
+           mentioned above
+
+WHAT NEXT
+        Now you have fully reiserfs LFS =)
+

@@ -1,0 +1,226 @@
+TITLE:		Using devfs and devfsd
+
+LFS VERSION:	LFS-4.0
+
+AUTHOR:         Tushar Teredesai <Tushar@LinuxFromScratch.Org>
+
+SYNOPSIS:
+	Using device filesystem and the devfs daemon for storing device
+	permissions across reboots.
+
+HINT:
+
+Primary Location of this hint:
+        http://www.linuxfromscratch.org/~tushar/
+The latest version of the hint and any relevant patches are available at that
+site. Please refer to the primary location before submitting
+bug-reports/enhancements to this hint.
+
+You may freely copy this document or create derivate works or distribute the
+document in any format. At your discretion, you may give credit to the original
+author:)
+
+Use the hint at your own risk. Neither the author, nor the Linux From Scratch
+project accept any responsibility for anything that happens when using these
+documents or associated files.
+
+An appropriate place to discuss this hint is blfs-support MailingList/NewsGroup
+at LinuxFromScratch.Org. I welcome bug reports but for support requests, please
+use the support list.
+
+Change Log:
+[2003-03-05]
+	* Clarified the purpose of the hint.
+	* Added information on changing sound-device permissions.
+[2002-12-28]
+	* First public version.
+
+Packages to download:
+	* devfsd - 1.3.25
+		<http://freshmeat.net/projects/devfsd/>
+
+
+What is devfs?
+
+Devfs is an alternative to "real" character and block special devices on your
+root filesystem. Kernel device drivers can register devices by name rather than
+major and minor numbers. These devices will appear in devfs automatically, with
+whatever default ownership and protection the driver specified. To know more,
+(and to answer questions like "why?" and "how does it work?") check out the
+homepage for devfsd. Please be sure to check out the documentation at the above
+site.
+
+
+What is devfsd?
+
+Devfsd is a daemon that provides:
+	* Compatibility old style device names.
+	* Ability to retain device permissions across reboots.
+
+How are we going to set it up?
+
+I use devfsd for both reasons mentioned above. I find it preferable to type
+"fdisk /dev/hda" instead of "fdisk /dev/discs/disc0/disc":) But the primary
+focus of this hint is the second reason mentioned above. Hence, based on your
+preference, you may disable the compatibility mode and the system will still
+work.
+
+The hint will discuss enabling devfs while following the book, at the end are
+short instructions on how to enable it for an installed LFS.
+
+
+Creating directories (Chapter 6):
+
+Don't create the directory /dev/pts, create only /dev. Additionally create a
+directory /dev-state which we will be used by devfsd to store permissions
+between reboots.
+	rm -rf /dev/pts
+	mkdir /dev-state
+
+
+Creating devices (Chapter 6):
+
+Skip the Makedev package, instead create the following two devices manually.
+	mknod -m 611 /dev/console c 5 1
+	chgrp 4 /dev/console
+	mknod -m 666 /dev/null c 1 3
+These devices are needed since we don't mount devfs at boot. /dev/console is
+required else you will get the dreaded message "Unable to open initial console".
+/dev/null is required since the init scripts redirect output to it during
+execution.
+
+
+Configuring essential software (Chapter 7):
+
+When creating /etc/inittab, replace all the ttyN (where N is the tty number) by
+vc/N. e.g. replace tty1 by vc/1.
+
+
+Creating the /etc/fstab file (Chapter 8):
+
+Replace the device names by the new names, especially for the the root
+partition. For example my root partition /dev/hda2 is replaced by
+/dev/discs/disc0/part2.
+
+Also, don't add the line for devpts since we use devfs to manage /dev/pts
+
+
+Installing Linux i.e. Configuring the Kernel (Chapter 8):
+
+Note the following options when configuring the kernel.
+	Code maturity level options
+		Prompt for development and/or incomplete code/drivers
+			Enabled
+	File Systems
+		/dev file system support
+			Enabled
+		Automatically mount at boot
+			Disabled
+		/dev/pts file system for Unix98 PTYs
+			Disabled
+We don't mount devfs at boot since we want to use devfsd. /dev/pts is disabled
+since it is now managed by devfs.
+
+
+Making the LFS system bootable (Chapter 8):
+
+We have to use the new names for the root devices.
+
+If you are using LILO, then add a line to the end of the lilo.conf:
+	echo append=\"root=/dev/ide/host0/bus0/target0/lun0/part2\" >> \
+		/etc/lilo.conf
+
+If you are using GRUB, use the following line:
+	kernel /boot/lfskernel root=/dev/ide/host0/bus0/target0/lun0/part2
+
+
+Installing devfsd:
+
+Adjust optimization flags based on your preferences or skip them if you don't
+want to optimize.
+	export CFLAGS="-O2 -march=i686 -fomit-frame-pointer -s -w"
+	cp GNUmakefile GNUmakefile.orig
+	sed -e "s:-O2:${CFLAGS}:g" GNUmakefile.orig > GNUmakefile
+To compile and install
+	make && make install
+
+In the installed /etc/devfsd.conf, there is a section that specifies
+uncommenting some files to store permissions between reboots, just uncomment the
+specified lines. The following are the lines that should be uncommented.
+	REGISTER    ^pt[sy]     IGNORE
+	CREATE      ^pt[sy]     IGNORE
+	CHANGE      ^pt[sy]     IGNORE
+	DELETE      ^pt[sy]     IGNORE
+	REGISTER    .*      COPY    /dev-state/$devname $devpath
+	CREATE      .*      COPY    $devpath /dev-state/$devname
+	CHANGE      .*      COPY    $devpath /dev-state/$devname
+	DELETE      .*      CFUNCTION GLOBAL unlink /dev-state/$devname
+	RESTORE     /dev-state
+
+If you don't want the older compatibility names, comment out the corresponding
+lines from /etc/devfsd.conf. Note that this may cause problems for some apps
+which expect the older style names, but most of the packages have been adapted
+to accomodate devfs.
+
+We also need to create a init script to start devfsd. Create a script using the
+template that basically does the following
+	if [ ! -d /dev-state ]
+	then
+		mkdir /dev-state
+	fi
+	mount --bind /dev /dev-state
+	mount -t devfs none /dev
+	devfsd /dev
+The above script binds the current /dev to /dev-state so that the current /dev
+is available as /dev-state in case you need to verify/modify the contents.
+devfsd also uses it to store device permissions. It then mounts devfs on /dev
+since we choose not to mount it at boot time. If we had mounted devfs at boot
+time, the original /dev would not have been available to us. It then starts
+devfsd to manage /dev.
+
+Make a link in the /etc/rc.d/rcS.d so that the above script is the first script
+to be executed.
+
+
+Configuring autoloading of modules:
+
+devfs uses modules.conf to decipher which module to load when a particular
+device is accessed. The easiest way to do this is to add the module to be loaded
+when a particular device is accessed. For example, for my soundblaster live, I
+have the following in my /etc/modules.conf
+	alias /dev/sound emu10k1
+
+An alternative is to use directives in /etc/devfsd.conf to load the appropriate
+module
+	LOOKUP sound EXECUTE modprobe emu10k1
+
+Please read the documentation for more information on how to use devfs.
+
+Changing default device permissions:
+
+Since we have configured devfsd to store permissions, if you make an explicit
+change to any of the devices in /dev, devfsd will automatically backup the new
+permissions/ownerships to /dev-state and will use the permissions in /dev-state
+(a behavior which mimics having a static /dev). This procdeure can be used to
+allow all the users access to the sound devices (/dev/sound/*). If you would
+like to restrict access to the sound devices to a particular group (e.g. sound),
+use chown and chmod to change the ownerships and permissions for the
+/dev/sound/* files as shown below:
+	groupadd sound
+	chmod 664 /dev/sound/*
+	chgrp sound /dev/sound/*
+
+
+For an already running system:
+
+If you have a running system and want to use devfs, then:
+* Reconfigure the kernel ensuring the above changes.
+* Install devfsd as mentioned above.
+* Make changes to the configuration files to use new names.
+* Create /dev-state directory.
+* Add the init script for devfs.
+* Reboot.
+
+
+Don't forget to send me bug reports and enhancements so that I can keep the hint
+updated.

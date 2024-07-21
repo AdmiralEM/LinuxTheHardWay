@@ -1,0 +1,170 @@
+AUTHOR:			Dr. Edgar Alwers  <edgaralwers@gmx.de>
+
+DATE:			2010-04-12
+
+LICENSE:		GNU Free Documentation License  Version 1.2
+
+SYNOPSIS:		How to install mgetty+sendfax from sources
+
+DESCRIPTION:
+
+Compilation and Installation of mgetty+sendfax from the sources.
+Faxes may be send direct from the PC by running  first "faxspool" and then
+"faxrunq".  Documents may be queed  from the editor (e.g. StarOffice ) to the
+fax-queue  and then sent with "faxrunq"
+
+PREREQUISITES:
+
+Basic knowledge in compiling programs. Should run on all LFS versions. This update was tested with LFS 6.5 and BLFS Version svn-20100411.
+
+HINT:
+
+Download:
+
+	mgetty1.1.36-Jun15.tar.gz
+	ftp://alpha.greenie.net/pub/mgetty/source/1.1
+	
+	Netpbm (image manipulation/conversion graphics utilities ) netpbm-10.35.74.tgz
+	March 24, 2010, super stable. 
+	http://sourceforge.net/projects/netpbm
+
+	GPL ghostscript-8.71.tar.gz
+	ftp://mirror.cs.wisc.edu/pub/mirrors/ghost/GPL/gs871/ghostscript-8.71.tar.gz
+
+
+Installing GPL Ghostscript:
+
+( see also BLFS Book version svn-20100411 chapter 39, printing )
+
+Untar
+	tar xvjf ghostscript-8.71.tar.gz
+and change to the ghostscript-8.71 directory
+	cd ghostscript-8.71
+Run configure:
+	./configure --prefix=/usr --enable-dynamic
+Then run
+	make
+	make install docdir=/usr/share/doc/ghostscript-8.71
+You  may also need to download the ghostscript fonts. Get them from
+	http://downloads.sourceforge.net/gs-fonts/
+Download "ghostscript-fonts-std-8.11.tar.gz" to the directory
+	/usr/X11R6/lib/X11/fonts/ghostscript. GPL looks in /usr/share/ghostscript for the fonts. So you will need in /usr/share/ghostscript a link:
+	ln -s /usr/X11R6/lib/X11/fonts/ghostscript/fonts fonts
+Untar
+	tar xvzf ghostscript-fonts-std-8.11tar.gz
+
+Installing netpbm's utility pbmtext:
+
+Faxspool will only need the text of the pixel converter pbmtext:
+
+Untar the file with
+	tar xvzf netpbm-10.35.74.tgz
+and change to the netpbm-10.35.74 directory
+	cd netpbm-10.35.74
+
+run the configure file:
+	./configure
+and answer the questions as follows:
+	platform:					gnu
+	regular or merge build			regular
+	libnetpbm					static
+	headerfile that defines wint32_t etc		</inttypes.h>  
+	JPEG library					none
+	TIFF library					none
+	Z library					none
+	X11 library					/lib/X11R6/lib/libX11.so
+	X11 interface headers				default
+	Svgalib library					libvga.so
+	Svgalib header directory			default
+	Documentation URL				http://netpbm.sourceforge.net/doc
+
+You may change the resulting Makefile.config, if necessary. Change to the directory generator:
+	cd generator
+	make pbmtext
+and finally copy the executable to the bin directory:
+	cp pbmtext /usr/local/bin
+
+Installing mgetty:
+
+Untar
+	tar xvzf mgetty1.1.36-Jun15.tar.gz
+and change to the directory  mgetty-1.1.36:
+	cd mgetty-1.1.36
+Copy the file "policy.h-dist" to "policy.h":
+	cp policy.h.dist policy.h
+Edit the Makefile and change line 167 from
+	INSTALL=install -c -o bin -g bin
+to
+	INSTALL=install -c -o root -g root
+Change line 176 to "prefix=/usr"
+edit the next lines according to your needs or accept the suggestions in the Makefile.
+
+mgetty needs a user "fax". So, if "fax" does not exist, create it with
+	useradd -D 
+Run make and make install.
+
+Change to the directory  /usr/etc/mgetty+sendfax:
+	cd /usr/etc/mgetty+sendfax
+and edit the file sendfax.config. Change the line which devices to use for
+outgoing faxes from
+fax-devices tty4c:tty4d to
+fax-devices ttyS0:ttyS2
+and the line which fax number to transmit to the receiving station from
+fax-id 49 115 xxxxxxxx into your own fax line number. Edit the dial-prefix
+line  e.g. in
+	dial-prefix ATDT.
+
+Uncomment the line port ttyS0, if this is the port of your modem.
+You might need also a modem initialisation string. I inserted
+	modem-init ATS7=255
+You might edit the file "faxheader" in the same directory.
+Finally, you should create and edit a file "fax.allow" or "fax.deny" in the same
+directory, to define access control for users other than root.
+
+Testing faxspool:
+
+You are now ready to run a first test with faxspool. With your prefered
+editor    ( vi ? ), create  a file test.txt and then run ( as user )
+
+	faxspool    123456 /your/directory/test.txt
+where "123456" stands for the telefon number of a fax receiver.
+You can have a look at the fax file in the converted g3 format with Okular
+ The fax image is stored in /var/spool/fax/outgoing
+
+Fax spooling from StarOffice7:
+
+Open spadmin in StarOffice7's directory, choose new printer -> connect a fax device -> default driver and enter the command faxspool (PHONE) (TMP) in the corresponding window.
+
+If you are using a recent version of gcc, e.g. 4.4.2, you may get an error ...staroffice/program/libgcc_s.so.1: version 'GCC_4.2.0' not found ( required by /usr/lib/libstdc++.so.6 )  when testing to send a fax. In this case, you should exchange the old libgcc_s.so.1 library in /home/user/staroffice7/program/ by the new one in  /usr/lib.
+
+Print a job to the fax printer, and a window will pop up, asking for the fax number. That's all.
+
+Sending Faxes:
+
+run -as root - "faxrunq"
+
+LITERATURE	:
+
+Gert Doering: mgetty+sendfax manual
+
+ACKNOWLEDGEMENTS:
+
+This hint is now much simpler thanks to advises given by Akira F. Urushibata,  "Prophet of the Way", long time contributor of Netpbm. Also the executable of Netpbm is now much smaller.
+
+CHANGELOG:
+
+[2003-10-13]
+
+Changed hint to new format. Some minor adjustments. Changed versions of mgetty, netpbm and ESPG Ghostscript
+[2004-08-24]
+
+Changed versions of mgetty and ESPG Ghostscript. Programs placed under /usr and not under /usr/local. Changed download-URL's.Changed configuration commands.
+[2005-04-16]
+
+Changed versions of mgetty and netpbm. New LFS and BLFS books for kernel 2.6.8 architecture
+[2007-01-20]
+
+Changed versions of mgetty and netpbm. New LFS and BLFS books for kernel 2.6.18 architecture. Changed procedures for the build of Netpbm.
+[2010-04-12]
+
+Changed versions of mgetty and netpbm. New LFS and BLFS books. Kernel 2.6.33.1. New ghostscript package. Runs under KDE-4.4.1

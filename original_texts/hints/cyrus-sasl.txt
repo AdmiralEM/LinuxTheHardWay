@@ -1,0 +1,525 @@
+AUTHOR:   Randy McMurchy <LFS-User_at_mcmurchy_dot_com>
+
+DATE:     2004-05-05
+
+LICENSE:  Creative Commons Attribution-NonCommercial-ShareAlike License
+          http://creativecommons.org/licenses/by-nc-sa/1.0/
+
+SYNOPSIS: Installing Cyrus-SASL and testing the GSSAPI authentication mechanism 
+
+DESCRIPTION:
+
+This hint will guide you through the installation of Cyrus-SASL, then guide
+you through testing your Kerberos 5 GSSAPI authentication mechanism
+functionality using the Cyrus-SASL sample-server and sample-client
+applications.
+
+ATTACHMENTS:
+
+none
+
+PREREQUISITES:
+
+For the purposes of this hint, you must have a Kerberos 5 installation on the
+machine you are installing Cyrus-SASL on. Cyrus-SASL does not require a
+Kerberos installation, however this hint is based on testing the GSSAPI
+authentication mechanism provided by a Cyrus-SASL/Kerberos 5 combination.
+
+My testing was with the Heimdal Kerberos 5 package, though the MIT Kerberos 5
+package should work equally well. You can find a hint for deploying the 
+Heimdal Kerberos 5 package on your network at:
+http://www.linuxfromscratch.org/hints/downloads/files/heimdal.txt
+
+HINT:
+
+=========
+CONTENTS:
+=========
+
+        1. Introduction
+        2. Package Dependencies
+            Required
+            Optional
+        3. Package Installation
+            Download the package
+            Configure the build
+            Build the package
+            Checking the build
+            Install the package
+            Update /etc/ld.so.cache
+            Stripping the binaries
+            Installation modifications
+        4. Package Configuration
+        5. Testing Cyrus-SASL/GSSAPI
+            Create the test programs
+            Notes about the test
+            Get a Kerberos authentication ticket
+            Starting the test server
+            Starting the test client
+            Starting the negotiation
+            Possible problem
+            Continuing the negotiation
+            Results analysis
+        6. Issues, Gotchas and Other Sundry Items
+        7. To Do List
+        8. Closing
+
+================
+1. INTRODUCTION:
+================
+
+These instructions should allow you to build and install Cyrus-SASL, then
+test the installation using your Kerberos 5 GSSAPI authentication mechansim.
+The testing is performed using the Cyrus-SASL sample-client and sample-server
+applications.
+
+Cyrus-SASL is an authentication "layer" which provides a secure interface
+from an application to an authentication mechanism. Cyrus-SASL provides an
+interface to many different authentication mechanisms, however, this hint is
+based on authentication using the Kerberos 5 GSSAPI.
+
+If you have any plans of integrating Kerberos with OpenLDAP, you'll need
+the Cyrus-SASL GSSAPI functionality.
+
+First off, you should already have a functional Kerberos installation. This
+could be the MIT or Heimdal variations, both should work equally well with
+Cyrus-SASL. My testing is with the Heimdal Kerberos 5 package, so if anyone
+is using the MIT version and completes this hint (sample-server and
+sample-client testing checks out), please let me know. I'll update the hint
+to reflect MIT Kerberos as checked out.
+
+There's a hint for deploying the Heimdal Kerberos 5 package on your network.
+You can find the Heimdal hint at:
+http://www.linuxfromscratch.org/hints/downloads/files/heimdal.txt
+
+========================
+2. PACKAGE DEPENDENCIES:
+========================
+
+---------
+Required:
+---------
+
+heimdal-0.6.1 or MIT Kerberos5 (for this hint, not required for plain
+Cyrus-SASL installation)
+
+---------
+Optional:
+---------
+
+J2SDK-1.4.2, Linux-PAM-0.77, MySQL-4.0.18, PostgreSQL-7.4.2 
+
+Additionally, an optional dependency of Heimdal is OpenLDAP-2.1.30. For the
+purposes of this hint, OpenLDAP should be installed *after* Cyrus-SASL. If
+your intention is simply to store the Cyrus-SASL saslauthd information in
+LDAP, and not use SASL authentication mechanisms with LDAP, you should
+install LDAP first.
+
+========================
+3. PACKAGE INSTALLATION:
+========================
+
+---------------------
+Download the package:
+---------------------
+
+The current stable package is cyrus-sasl-2.1.18 and can be downloaded using
+the following URL's:
+
+Anonymous FTP:
+ftp://ftp.andrew.cmu.edu/pub/cyrus-mail/cyrus-sasl-2.1.18.tar.gz
+
+HTTP:
+http://ftp.andrew.cmu.edu/pub/cyrus-mail/cyrus-sasl-2.1.18.tar.gz
+
+--------------------
+Configure the Build:
+--------------------
+
+First run the configure script. I used many options to the script, some of
+which may not have been necessary. Omit any as you see fit.
+
+***WARNING*** DO NOT TRY TO CREATE STATIC LIBRARIES USING --enable-static
+
+I spent a couple of hours trying to figure out why Open-LDAP would not build
+correctly after installing Cyrus-SASL. It turns out the libtool script Cyrus
+provides is broken. Cyrus-SASL will build and install using --enable-static,
+however, Open-LDAP will *not* build against this installation.
+
+Cyrus is aware of the problem, and the above mentioned is listed as a known
+bug (with different wording) on the Cyrus web site.
+
+Configure the build:
+
+./configure --prefix=/usr \
+    --sysconfdir=/etc \
+    --localstatedir=/var/lib/sasl \
+    --with-dbpath=/var/lib/sasl \
+    --with-saslauthd=/var/lib/sasl \
+    --with-openssl=/usr
+
+Here's my reasoning with the options to ./configure.
+
+--prefix=/usr will install the libraries in /usr/lib and the programs in
+/usr/sbin
+
+--sysconfdir=/etc insures that any configuration files required by Cyrus-SASL
+are looked for in /etc.
+
+--localstatedir=/var/lib/sasl is used to point to the run-time files created
+and used by saslauthd. In an environment where Cyrus-SASL is used strictly as
+a GSSAPI authentication layer, the saslauthd daemon is not used and this
+option may be left off.
+
+--with-dbpath=/var/lib/sasl is where the Cyrus-SASL authentication database
+is located. In an environment where Cyrus-SASL is used strictly as a GSSAPI
+authentication layer, no database is required and this option may be left
+off.
+
+--with-saslauthd=/var/lib/sasl is where the saslauthd daemon stores its named
+socket. In an environment where Cyrus-SASL is used strictly as a GSSAPI
+authentication layer, the saslauthd daemon is not used and this option may be
+left off.
+
+--with-openssl=/usr tells configure where to find OpenSSL.
+
+------------------
+Build the Package:
+------------------
+
+Simply running the "make" command will build the package.
+
+-------------------
+Checking the Build:
+-------------------
+
+There are no "check" rules in the various subdirectory makefiles, so there's
+nothing to check. Running the "make check" command is pointless. We'll check
+the build during the testing.
+
+--------------------
+Install the Package:
+--------------------
+
+****************************************************************************
+*****                                                                  *****
+*****  The remainder of this hint must be performed by the root user   *****
+*****                                                                  *****
+****************************************************************************
+
+Simply issue a "make install" command to install the package.
+
+------------------------
+Update /etc/ld.so.cache:
+------------------------
+
+Update the linker's library cache file by issuing the "ldconfig" command:
+
+ldconfig -v
+
+-----------------------
+Stripping the Binaries:
+-----------------------
+
+If desired, strip the unnecessary symbols from the installed binaries by
+issuing the following commands:
+
+strip --strip-all /usr/sbin/saslpasswd2 \
+    /usr/sbin/sasldblistusers2 /usr/sbin/saslauthd
+strip --strip-debug /usr/lib/libsasl2.so.2.0.18
+find /usr/lib/sasl2 -type f -exec strip --strip-debug {} \;
+
+---------------------------
+Installation Modifications:
+---------------------------
+
+The instructions provided by Cyrus say to provide a symbolic link from
+wherever you installed the sasl2 library directory to /usr/lib/sasl2. Because
+we used --prefix=/usr and installed the libraries directly into
+/usr/lib/sasl2, this step is not required.
+
+=========================
+4. PACKAGE CONFIGURATION:
+=========================
+
+There is no configuration required for the Cyrus-SASL package as used in this
+hint. If you are installing Cyrus-SASL for reasons other than used in this
+hint, there is probably some configuration involved.
+
+=============================
+5. TESTING CYRUS-SASL/GSSAPI:
+=============================
+
+This section will run a client-server test of Cyrus-SASL's ability to
+communicate with your installed Kerberos 5 installation using the GSSAPI.
+Note you must have a fully functional Kerberos 5 installation before this
+test will succeed. By fully functional, I mean you must have Kerberos
+installed, a valid krb5.keytab file and least one user principal identified
+in the Kerberos database. Additionally, the kdc daemon must be running.
+
+The tests should be run by the root user as a direct read of the krb5.keytab
+file is necessary and only root should have access to this file.
+
+-------------------------
+Create the Test Programs:
+-------------------------
+
+Change directories to the first-level deep "sample" subdirectory in the
+cyrus-sasl-2.1.18 source tree.
+
+The sample-client and sample-server programs were not created during the
+package build, so we must create them now. Issue the following commands:
+
+make sample-client
+make sample-server
+
+You should now have "sample-server" and "sample-client" programs in the
+current directory.
+
+---------------------
+Notes About the Test:
+---------------------
+
+Throughout the test, we'll be using two different terminals to emulate a 
+"server" and a "client". Both terminals should be logged in as root from the
+machine where Kerberos5 and Cyrus-SASL are installed. One of the terminals is
+ready now if you've followed the instructions and created the test programs.
+We'll use this one as the "server". You'll need to open a new terminal window
+on the same machine and use this terminal as the "client".
+
+We'll be sending commands to the server and clients by cutting and pasting
+from one window to the other. The server and client will "talk" to one
+another with you acting as the interpreter. The "server" will send a response
+starting with "S:". You'll need to copy the entire line (including the S:)
+into the client window to send a command from the server to the client.
+
+Likewise, you copy the line starting with "C:" from the client window into
+the server window to continue the negotiation between server and client.
+
+Note: Some of the lines I show here in this hint are truncated to stay within
+the bounds of an 80-column display. The real responses are very long, and
+would extend way past 80 chars.
+
+-------------------------------------
+Get a Kerberos Authentication Ticket:
+-------------------------------------
+
+Get a ticket from any valid user in the Kerberos database using the "kinit"
+program. This is the "user" you will use during the tests.
+
+-------------------------
+Starting the Test Server:
+-------------------------
+
+Issue the following command to start the server:
+
+./sample-server -s host -p ../plugins/.libs
+
+You should get a response similar to:
+
+Generating client mechanism list...
+Sending list of 6 mechanism(s)
+S: QU5PTllNT1ABCDEMQUlOEdTU0FQSSBPVFAgRElHRVNULU1ENSBDUkFNLU1ENQ==
+Waiting for client mechanism...
+
+-------------------------
+Starting the Test Client:
+-------------------------
+
+Change to the sample sub-directory of the cyrus-sasl-2.1.18 source tree and
+issue the following command:
+
+./sample-client -s host -n belgarath.lfs.org -u user -p ../plugins/.libs
+
+Of course, substitute the FQDN of your machine for "belgararth.lfs.org" and
+the username of the user you got the authentication ticket for earlier. You
+should get a response similar to:
+
+service=host
+Waiting for mechanism list from server...
+
+-------------------------
+Starting the Negotiation:
+-------------------------
+
+>From here on out, I'm simply going to cut and paste the responses back and
+forth between server and client and show the output. We'll start by copying
+the line from the server window starting with "S:" into the client window.
+You must, of course, hit return after you've pasted the data.
+
+S: QU5PTllNT1ABCDEMQUlOEdTU0FQSSBPVFAgRElHRVNULU1ENSBDUkFNLU1ENQ==
+
+The client should respond with something similar to:
+
+recieved 46 byte message
+Choosing best mechanism from: ANONYMOUS PLAIN GSSAPI OTP DIGEST-MD5 CRAM-MD5
+returning OK: user
+Using mechanism GSSAPI
+Preparing initial.
+Sending initial response...
+C: R1NTQVBJAGCCAiEGCSqGABCDEgECAgEAboICEDCCAygAwIBBaEDAgEOogcDBQAgAAAAo4IBKG
+GCASQwggEgoAMCAQWhDhsMTUNNVVJDSFkuUFJWoicwJaADAgEBoR4wHBsEaG9zdBsUcm1saW51eC
+5tY211cmNoeS5wcnajgd8wgdygAwIBEKEDAgEBooHPBIHMPjIqKN0hDYaInF4oJqsHviI3tFsNY/
+o+WJAUavr2fiShzcgMWlFNAiHn5Vu4PDmmahIgrlfTfzb7BVdqUK6DTKGS8frSgaCtZg/UiVR95Y
+ilfhbzWtovbK2kbNUESGAgjSrMzLWrcoHLAaX8gdOBh8d9OWuMY0hnHVCGPZgQRFu6HadF1phtjl
+Ia5DduhF2yln/ouJQgPAC6ArRTevYw0gynPu+ieKwdcaRr/UZC5DQX7SW3tG8Y12YHxNiuwUQ/jQ
+J2CCa0bRhpRefupIHKMIHHoAMCARCigb8Egbx5F6qCmaIzvKYN+qvpk0AwiP+6QQHq1cslZE+Kgo
+92PVNnNnWzosPvq0dSbLABuvA0P7jCpIjfxAoxK8KngIkuus1tHClD/fyDn/Yo3vv2ykNxibe5Dt
+oPJTLOPIdOlCxNfjSftqhLhyPHuRQkvSQJExVR4XYy69vKierr//ziVH6Bjo0I01Ac/vSlgxD6pQ
+qAzUd37luN9SX1O1bFoTg3andX9lgD2JuvtiD6k5K2shDZHWHCuptM9Y8nYw==
+Waiting for server reply...
+
+-----------------
+Possible Problem:
+-----------------
+
+If GSSAPI is not selected as the mechanism, you need to stop and figure out
+why. I don't have a lot to offer if it fails other than to look at the
+instructions at: http://asg.web.cmu.edu/cyrus/download/sasl/gssapi.html.
+
+---------------------------
+Continuing the Negotiation:
+---------------------------
+
+Next we'll take the clients response and paste it into the server window:
+
+C: R1NTQVBJAGCCAiEGCSqGABCDEgECAgEAboICEDCCAygAwIBBaEDAgEOogcDBQAgAAAAo4IBKG
+GCASQwggEgoAMCAQWhDhsMTUNNVVJDSFkuUFJWoicwJaADAgEBoR4wHBsEaG9zdBsUcm1saW51eC
+5tY211cmNoeS5wcnajgd8wgdygAwIBEKEDAgEBooHPBIHMPjIqKN0hDYaInF4oJqsHviI3tFsNY/
+o+WJAUavr2fiShzcgMWlFNAiHn5Vu4PDmmahIgrlfTfzb7BVdqUK6DTKGS8frSgaCtZg/UiVR95Y
+ilfhbzWtovbK2kbNUESGAgjSrMzLWrcoHLAaX8gdOBh8d9OWuMY0hnHVCGPZgQRFu6HadF1phtjl
+Ia5DduhF2yln/ouJQgPAC6ArRTevYw0gynPu+ieKwdcaRr/UZC5DQX7SW3tG8Y12YHxNiuwUQ/jQ
+J2CCa0bRhpRefupIHKMIHHoAMCARCigb8Egbx5F6qCmaIzvKYN+qvpk0AwiP+6QQHq1cslZE+Kgo
+92PVNnNnWzosPvq0dSbLABuvA0P7jCpIjfxAoxK8KngIkuus1tHClD/fyDn/Yo3vv2ykNxibe5Dt
+oPJTLOPIdOlCxNfjSftqhLhyPHuRQkvSQJExVR4XYy69vKierr//ziVH6Bjo0I01Ac/vSlgxD6pQ
+qAzUd37luN9SX1O1bFoTg3andX9lgD2JuvtiD6k5K2shDZHWHCuptM9Y8nYw==
+
+The server should respond with something similar to the following:
+
+got 'GSSAPI'
+Sending response...
+S: YGwGCSqGSIb3EgABCEDAb10w6ADAgEFoQMCAQ+iTzBNoAMCARCiRgRE+gyefHkAoVAopWb2gH
+Ys1j5GLPAmZUwzi/RCPBT7PUHU9fmHsS0MbnDqOyJpuNxSTfwYW3X6gaynTVSSDskw5Rt+c7o=
+Waiting for client reply...
+
+Paste the "S:" line returned by the server into the client and the client
+should respond with something similar to the following:
+
+recieved 110 byte message
+C: 
+Waiting for server reply...
+
+Paste the client's response, "C: ", into the server and the server should 
+respond with something similar to the following:
+
+got ''
+Sending response...
+S: YD8GCABCDEbEgECAgIBBAD/////vcDLfGe6YcE8C9xSSqtgPmE92SdQaf43nxiCHqpuBjBoWV
+IkBwAIAAQEBAQ=
+Waiting for client reply...
+
+Paste the "S:" line returned by the server into the client and the client
+should respond with something similar to the following:
+
+recieved 65 byte message
+Sending response...
+C: YD8GCABCEDb3gECAgIBBAD/////wojejnxqRluhJXmIdw+E8QNgrVM51TXK2/3tYjXlFcLGbR
+u2BAAIAHJtbAE=
+Negotiation complete
+Username: user
+SSF: 56
+Waiting for encoded message...
+
+Paste the "C:" line returned by the client into the server and the server
+should respond with something similar to the following:
+
+got '`? *H÷'
+Negotiation complete
+Username: user
+Realm: (NULL)
+SSF: 56
+sending encrypted message 'srv message 1'
+S: AAAASWBHBgkqhkiG9xIBAgICAQQAAgD//3va2sQlP9/yLTzIP5ABCDE8BkUBfeoMYs0n9gdGB
+oRCOcp/0JF2NUalD/vXOnllEtTtrA=
+Waiting for encrypted message...
+
+Paste the "S:" line returned by the server into the client and the client
+should respond with something similar to the following:
+
+recieved 77 byte message
+recieved decoded message 'srv message 1'
+sending encrypted message 'client message 1'
+C: AAAAUWBPBgkqhkiG9xIBAgICAQQAAgD//yyN28j66vOfMxKvbm2XkqJgxCNFpXjB3h2UoaLj+
+LkABCEDkO2FS8tNuu3ks+WV4WgagWyf3c6Mbs39g==
+
+At this point the client should return back to the unix shell prompt. Paste
+the "C:" line returned by the client into the server and the server should
+respond with something similar to the following:
+
+got ''
+recieved decoded message 'client message 1'
+
+The server should return back to the unix shell prompt and the client-server
+negotiation is finished.
+
+-----------------
+Results Analysis:
+-----------------
+
+If you got this far and the client-server negotiation tests completed with
+responses similar to the ones shown above, you're done. You can feel
+confident that your GSSAPI works. If any application using GSSAPI
+authentication, such as OpenLDAP or sendmail, can't communicate with Kerberos
+via SASL, the problem probably lies somewhere other than with Kerberos or
+Cyrus-SASL.
+
+==========================================
+6. ISSUES, GOTCHAS AND OTHER SUNDRY ITEMS:
+==========================================
+
+I can't think of anything other than the issue with building Cyrus-SASL with
+the --enable-static option. If others have used Cyrus-SASL for reasons other
+than straight GSSAPI authentication, you are welcome to contribute to this
+hint. Information on using the saslauthd daemon is especially encouraged.
+
+========
+7. TODO:
+========
+
+Figure out why and how to use the saslauthd daemon and provide instructions.
+
+===========
+8. CLOSING:
+===========
+
+Maybe there's enough information here to go ahead and create a new package
+for BLFS. If it's decided to include Cyrus-SASL in BLFS, I'm sure we'll hear
+about other problems as they occur. I'm mainly interested in providing the
+instructions for a clean build and testing Kerberos/Cyrus-SASL GSSAPI
+functionality. I hope I've succeeded. Enjoy!
+
+
+ACKNOWLEDGEMENTS:
+
+Ken Hornstein <kenh_AT_cmf.nrl.navy.mil> for providing the information at:
+http://www.ipnet6.org/src/cyrus-sasl-2/doc/gssapi.html
+
+
+CHANGELOG:
+
+[2004-05-05]
+    * Despamify email address of Ken at his request
+    * Minor wording changes
+
+[2004-05-02]
+    * Reformatted the document IAW the LFS hint submission guideline
+    * Changed the Synopsis to identify GSSAPI as the test mechanism
+    * Removed reference to stripping the static library file
+    * Minor wording changes
+
+[2004-04-28]
+    * Minor wording changes
+
+[2004-04-23]
+    * Original draft
+

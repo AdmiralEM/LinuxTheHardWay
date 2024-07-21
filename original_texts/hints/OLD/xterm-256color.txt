@@ -1,0 +1,131 @@
+TITLE:		256 color xterm
+LFS VERSION:	any
+AUTHOR:		Randy Hron <rwhron@earthlink.net>
+
+SYNOPSIS:
+	How to build a 256 color capable xterm.
+
+HINT:
+	XFree86 builds a 16 color capable xterm by default.
+If you want to run vim or other color capable programs, you may
+want an xterm that does more colors.
+
+This hint assumes you've already installed XFree86.  Check out
+the x11.txt hint if you haven't.  If you've already graduated to
+KDE, GNOME, Eterm or "the console", you may not need this either.
+
+1. How many colors do I have?
+You can check how many colors your xterm knows with the command:
+
+strings /usr/X11R6/bin/xterm | grep ^color[0-9] | sort -tr +1 -n
+
+This command has to be executed as root, since xterm is setuid
+and is not readable by normal users.  It may print something like:
+
+color0
+color1
+..
+color14
+color15
+
+If that is all you get, you have a 16 color xterm.  If the list keeps
+going to color255, you already have a 256 color xterm.
+
+2. Building a 256 color xterm
+If you already removed your xc tree, don't despair.  You can recompile
+xterm without compiling the World.  The xterm program is in the first 
+XFree86 tarball, X410src-1.tgz.  You won't need tarball 2 or 3 for this
+hint.  Here are the steps after you extract the tarball:
+
+cd xc/programs/xterm &&
+xmkmf &&
+sed 's/_WIDE_CHARS/_WIDE_CHARS -DOPT_256_COLORS -DDFT_TERM_TYPE=linux/' \
+	Makefile > Makefile~ &&
+mv Makefile~ Makefile &&
+make &&
+strings xterm | grep ^color[0-9] | sort -tr +1 -n
+
+This time you should see a list of colors that counts to color255
+
+color0
+color1
+..
+color254
+color255
+
+4) Install the new xterm
+make install
+
+5) Use linux as your TERM variable
+Amazingly TERM=linux gives better colors than TERM=xterm-256color.  
+This may already set if your /etc/inittab has entries like:
+
+1:2345:respawn:/sbin/agetty tty1  38400 linux
+	
+6) Xdefaults
+Different X apps/window managers may use either .Xresources or .Xdefaults
+to change their default behavior.  Here are some things in my .Xdefaults
+to make colors more enjoyable:
+
+! Pick your favorites from /usr/X11R6/lib/X11/rgb.txt
+! Be sure to use the "OneWord" value for a color, and not
+! the "two words" value.  
+! xterm*background:       black
+! xterm*foreground:       green
+*loginShell:            true
+
+! Use color for underline attribute
+*VT100*colorULMode: on
+*VT100*underLine: off
+
+! Use color for the bold attribute
+*VT100*colorBDMode: on
+
+! Love scrollback
+*VT100*saveLines: 5000
+*VT100*scrollBar: true
+
+! Use -color app-defaults in /usr/X11R6/lib/X11/app-defaults
+*customization: -color
+
+Make your new ~/.Xdefaults take effect without restarting X with:
+xrdb -merge ~/.Xdefaults
+
+
+7) Vim
+To have syntax highlighting in vim, have this in your ~/.vimrc:
+
+syntax on
+
+8) Log all the way out and come back in.  
+You can do a combination of xrdb and sourcing your .bash_profile,
+but your window manager will still think your TERM is xterm and
+not linux.  To eliminate confusion, just log out to xdm
+or the login prompt and come back in.
+
+9) Checking colors
+There are several nifty xterm tests in xc/programs/xterm/vttests.  
+The fastest one for testing colors is 256colors2.pl.  Just run:
+
+/256colors2.pl
+
+10) Testing vim colors
+Vim has a colortest program that you run with vim:
+
+vim /usr/share/vim/vim58/syntax/colortest.vim
+
+>From inside vim, type:
+:source %
+
+I counted about 22 colors in this test, but it's nice seeing
+the words associated with the colors.
+
+11) Have fun.  Let me know if something here is inaccurate or
+could be better.
+
+12) Thanks to Gerard and everyone at Linux From Scratch.
+
+13) William S Gahr mentioned you can set TERM when you start
+xterm with "xterm -tn linux".
+
+Mon Dec 10 20:06:44 EST 2001

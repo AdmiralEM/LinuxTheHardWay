@@ -1,0 +1,229 @@
+#!/bin/bash
+#PGR facit
+parms=1      # How many parameters must it have?
+usage="Usage: pod COMMAND [PARM]
+Action: pod is a collection of quick and dirty little scripts that aid
+pod development.
+
+mkdist:		PARM = destination_directory
+
+  Make tarballs of the system's build scripts, installed files, patches,
+  uninstall scripts, tarballs, and cloning execs, i.e. what we need to
+  write a release candidate CD/DVD.
+---
+rename:		PARM = pkg-now pkg-new
+
+  Renames a pod package in build scripts, pio uninstall and backup files,
+  then fixes-up dependencies.
+---
+fixtimes:	PARM =
+
+  Fixes timestamps on pio's uninstall scripts to match the time its
+  header says it was run.
+---
+listpod:	PARM =
+
+  List the POD built packages, i.e. omit the LFS packages.
+---
+listlfs:	PARM =
+
+  List the LFS built packages, i.e. omit the POD packages.
+---
+collect:	PARM = package_name
+
+  Collect a package's uninstall script, installed files, build script, and
+  source tarball into one tarball useful for updates
+---
+chkup:		PARM = collection1 [collection2 ... collectionN]
+
+  Go through a collected update looking for the updated files.
+---
+xdeps:		PARM =
+
+  Cross reference dependencies on stdout.
+  pkg1 requires pkg2:	pkg1 ==> pkg2
+  			pkg2 <== pkg1
+  pkg1 uses pkg2:	pkg1 --> pkg2
+  			pkg2 <-- pkg1
+"
+
+function doit () {
+  # get to it
+  command=$1
+  shift
+  case $command in
+  mkdist)
+    if [ $1 = "" ]; then
+      echo "No destination given"
+    else
+      here=`pwd`
+      mkdir -p $1
+      cd /usr/local
+      echo "Compressing pio scripts"
+      tar -czpf $1/pio.tgz pio/*-* --exclude=kernel\*
+      cd pio
+      echo "Tarballing asbuilt binaries"
+      tar -cpf $1/backups.tar backups/ --exclude=kernel\*
+      cd /usr/local/src/
+      echo "Compressing patches"
+      tar -czpf $1/patches.tgz patches/
+      echo "Compressing build scripts"
+      tar -czpf $1/scripts.tgz scripts/
+      echo "Tarballing source tarballs"
+      tar -cpf $1/tarballs.tar tarballs/
+      # Sometimes this may have been moved around
+      ex=`find / -xdev -type d -name execs`
+      if [ $ex ]; then
+	cd $ex
+	cd ..
+        echo "Compressing execs at " $ex
+	tar -czpf $1/execs.tgz execs
+	      else
+	echo "execs directory not found"
+      fi
+      cd $here
+    fi
+  ;;
+  rename)
+    if [ $# -eq 2 ]; then
+      # rename script
+      mv /usr/local/src/scripts/$1 \
+         /usr/local/src/scripts/$2
+      # rename as-installed backup
+      mv /usr/local/pio/backups/$1.tgz \
+         /usr/local/pio/backups/$2.tgz
+      # rename the removal script
+      mv /usr/local/pio/$1 \
+         /usr/local/pio/$2
+      # change references in pio scripts
+      # (catch self-reference, and dependencies in others)
+      for fn in `ls /usr/local/pio/*-*`	# avoid backups/
+      do
+        grep -q $1 $fn		# sets return code 0 when found
+        if [ $? -eq 0 ]; then
+          mtime=mktemp
+          touch -r $fn $mtime
+          sed -i 's/'$1'/'$2'/' $fn	# $1 & $2 are exposed for substitution
+          touch -mr $mtime $fn
+          rm -f $mtime
+        fi
+      done
+    else
+      echo "Now and new names not given"
+    fi
+  ;;
+  fixtimes)
+    for i in `ls /usr/local/pio/*-*`
+     do
+      echo $i
+      touch -t `gawk '/# created by/{
+       month["Jan"]=1
+       month["Feb"]=2
+       month["Mar"]=3
+       month["Apr"]=4
+       month["May"]=5
+       month["Jun"]=6
+       month["Jul"]=7
+       month["Aug"]=8
+       month["Sep"]=9
+       month["Oct"]=10
+       month["Nov"]=11
+       month["Dec"]=12
+       split($12,time,":")
+       printf("%4d%02d%02d%02d%02d.%02d",$14,month[$10],$11,time[1],time[2],time[3]) }' $i` $i
+     done
+  ;;
+  listpod)
+    ls /usr/local/pio/ |\
+    grep -v ch[4-8] |\
+    awk -F- '{OFS="-";print $3, $4, $5, $6, $7}' |\
+    sed -e 's/---$//' -e 's/--$//' -e 's/-$//' |\
+    grep "-" |\
+    sort
+  ;;
+  listlfs)
+    ls /usr/local/pio/ |\
+    grep ch[4-8] |\
+    awk -F- '{OFS="-";print $3, $4, $5, $6, $7}' |\
+    sed -e 's/---$//' -e 's/--$//' -e 's/-$//' |\
+    grep "-" |\
+    sort
+  ;;
+  collect)
+    if [ $1 = "" ]; then
+      echo "No package name given"
+    else
+      # pull apart argument
+      wg=${1#*-}	# without group
+      ws=${wg#*-}	# without group & sequence number
+      wv=${ws%-*}	# without version
+      vn=${ws##*-}	# version number
+      src=`find /usr/local/src/tarballs -iname "${ws}*" -print`
+      # if it's null, i.e. not found, try with "_" replaced by "-"
+      # duplicates ARE possible, quote it
+      if [ ! "$src" ]; then
+	tr=${ws//_/-}
+	src=`find /usr/local/src/tarballs -iname "${tr}*" -print`
+      fi
+      # list of patches in the build script
+      patches=`grep "../patches" /usr/local/src/scripts/$1 | \
+               sed 's/&&//' | \
+               sed 's:patch -Np1 -i ..:/usr/local/src:'`
+      tar cvpPf $1.tar \
+	/usr/local/pio/$1 \
+	/usr/local/pio/backups/${1}.t* \
+	/usr/local/src/scripts/$1 \
+	$src \
+	$patches
+    fi
+  ;;
+  chkup)
+    tempfile=`mktemp -p /var/run`	# in a tempfs
+    while [ $1 ]
+    do
+      tar tvPf $1 >$tempfile
+      while read tarred_file
+      do
+        tarred_data=`echo $tarred_file|cut -d " " -f 3-6`
+        fn=${tarred_data##*" "}
+        current_data=`ls -l --time-style=long-iso $fn|cut -d " " -f 5-8`
+        if [ "$tarred_data" = "$current_data" ]; then
+          echo "OK: " $fn
+        else
+         echo "Fix: "$fn
+         echo "Update:"$tarred_data	# It's hard for me to suggest what
+         echo "Active:"$current_data	# the fix would be, easy for you.
+        fi
+      done < $tempfile
+      shift
+    done
+    rm -f $tempfile
+  ;;
+  xdeps)
+    i=`mktemp`
+    o=`mktemp`
+    pio --deps > $i
+    awk '/requires/ {print $1,"==>",$3,"\n" $3,"<==", $1}' <$i >$o
+    awk '/uses/ {print $1,"-->",$3,"\n" $3,"<--",$1}' <$i >>$o
+    sort <$o|column -c 3 -t
+    rm -f $i $o
+  ;;
+  *)
+  echo "unknown command:" $command
+  ;;
+  esac
+}
+
+case $* in
+  -[?h]) echo "$usage"
+    ;;
+  --help) echo "$usage"
+    ;;
+  *)
+    if [ $# -ge $parms ]; then
+      doit "$@"
+    else
+      echo "$usage"
+    fi
+    ;;
+esac

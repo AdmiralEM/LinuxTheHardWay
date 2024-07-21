@@ -1,0 +1,152 @@
+AUTHOR:         Bruce Dubbs <bdubbs@linuxfromscratch.org>
+
+DATE:           2009-09-12
+
+LICENSE:        The MIT License
+
+SYNOPSIS:       Installing and using GRUB2
+
+PREREQUISITES:  None
+
+
+DESCRIPTION:
+    GRUB2 is the next generation of GNU GRUB. The version, as of this date, 
+    is grub-1.97~beta2.  This is a very workable system for most LFS 
+    installations and can be built and run on several architectures
+    including i386, powerpc, and x86_64.
+    
+REFERENCES: http://grub.enbug.org/ 
+
+
+HINT:
+
+Installing GRUB2:
+   wget ftp://alpha.gnu.org/gnu/grub/grub-1.97~beta3.tar.gz
+   
+   The md5sum is 542917012de4d2e47241bdffb67bedef and the file size is 1.3Mb.
+   
+   tar -xf grub-1.97~beta3.tar.gz
+   cd grub-1.97~beta3
+
+   ./configure --prefix=/usr --sysconfdir=/etc --disable-largefile \
+          --disable-grub-emu  --disable-grub-emu-usb  --disable-grub-fstest \
+          --disable-efiemu
+
+   The --disable switches just minimze what is built by disabling features
+   and testing programs not really needed for LFS.
+
+   make
+   sudo make install
+
+   The install adds the following programs and directories:
+
+   /usr/bin:
+   grub-editenv  grub-mkelfimage  grub-mkfont  grub-mkimage  grub-mkrescue
+
+   /usr/sbin:
+   grub-dumpbios  grub-install  grub-mkconfig  grub-mkdevicemap  grub-probe  grub-setup
+
+   /etc/grub.d:
+   00_header  10_linux  30_os-prober  40_custom  README
+
+   /usr/include/:
+   grub/  multiboot.h  multiboot2.h
+
+   /usr/lib/grub:  Many supporting files
+
+   No man pages are installed unless you have the help2man program installed.  
+   To get minimal help, use --help on each executable program.  There are no
+   info pages yet available.
+
+Configuring GRUB2:
+
+   When setting up the boot directory on LFS, I highly recommend using a separate
+   partition for /boot.  That way each build, whether LFS or some commercial distro,
+   can access the same boot files and access can be made from any booted system.
+
+   I use /dev/sda1 and create the boot partition as 100Mb.  That leaves lots
+   of room for new kernels, but does not take up much space from the large 
+   disk drives generally in use today.  
+
+   The rest of this hint assumes a separately mounted boot partition:
+
+   /dev/sda1 on /boot type ext3 (rw)
+
+   Step 1.  As root, install the GRUB2 files into /boot/grub
+
+   grub-install --grub-setup=/bin/true /dev/sda
+
+   This step creates the core.img file needed to boot, but does not install it
+   into the master boot record (MBR).  If the --grub-setup=/bin/true switch
+   is not set, the MBR *will* be updated.  That is probably not what you want
+   until you have tested the installation.
+
+   This step populates /boot/grub/ with many files.  GRUB2 utilizes a system
+   of modules to extend basic functionality.  Right now there are 125 modules 
+   installed.  There are also a few other files with extentions of .img, .map,
+   .o, and .lst.
+
+   Step2.  As root, generate /boot/grub/grub.cfg
+
+   grub-mkconfig -o /boot/grub/grub.cfg
+
+   This program uses the scripts in /etc/grub.d/ to generate the configuruation
+   file.  By default, it looks for files with the naming convention of
+   vmlinu[xz]-*.  My naming conventions for kernels is different.  For
+   instance, one kernel is named linux-2.6.30.2-lfs65.  I had to modify line 64
+   of /etc/grub.d/10_linux to add /boot/linux* to the list of filenames
+   searched.
+
+   The entries in /boot/grub/grub.cfg look like:
+
+   menuentry "GNU/Linux, Linux 2.6.30.2-lfs65" {
+      insmod ext2
+      set root=(hd0,1)
+      #search --no-floppy --fs-uuid --set 2ae9c39c-c1ee-4006-80af-5a3d41f1255c
+      linux /linux-2.6.30.2-lfs65 root=/dev/sda5 ro
+   }
+
+   Note that I commented out the search line above because it was assuming the
+   wrong root partition.  The linux line specifies the / directory because
+   the /boot directory is mounted on a separate partition and the files are
+   relative to the unmounted partition.
+
+   One other comment is that GRUB2 uses partition numbers relative to 1.  Legacy 
+   GRUB used partitions relative to 0.  Therefore the line using (hd0,1) refers
+   to /dev/sda1.  
+
+   Step 3.  Test the configuration.
+
+   The core image of GRUB 2 is also a Multiboot kernel, so you can load GRUB2 
+   by GRUB Legacy:
+
+   /sbin/reboot
+   ...
+   grub> root (hd0,0)
+   grub> kernel /boot/grub/core.img
+   grub> boot
+
+   At this point the GRUB2 prompt will appear (very similar to GRUB Legacy) and
+   you can explore the interface or boot to one of the systems in the grub.cfg 
+   file.
+
+   Step 4.  As root, update the Master Boot Record
+
+   grub-setup
+
+   This program uses the following defaults:
+   boot image  - boot.img
+   core image  - core.img
+   directory   - /boot/grub
+   device map  - device.map
+   root device - guessed
+
+   The defaults are generally OK for an LFS sytem.
+
+CHANGELOG:
+   [2009-09-12]
+      Initial Release
+   [2009-09-13]
+      Update to beta3
+
+

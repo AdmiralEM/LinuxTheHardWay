@@ -1,0 +1,235 @@
+TITLE:		Using metalog instead of sysklogd
+LFS VERSION:	3.0-rc1
+AUTHOR:		Laurence Withers <lwithers@lwithers.demon.co.uk>
+
+SYNOPSIS:
+	How to set up and use metalog, a replacement for the
+	system/kernel logging daemon. Metalog is simpler to use, and
+	more powerful. This hint is useful both during building an LFS
+	system, and after you have one set up.
+
+    See http://metalog.sf.net/ .
+
+HINT:
+
+0. Contents
+-----------
+
+    1. Introduction
+    2. Compiling, installing
+    3. Creating /etc/metalog.conf
+    4. Changing /etc/init.d/sysklogd
+    5. Logging to a console
+    Appendix A. Building LFS with metalog
+
+1. Introduction
+---------------
+
+    Why metalog? Well, it is a decent replacement for sysklogd, the
+package currently used in LFS to perform system and kernel logging. It
+has a simpler (and yet more powerful) configuration file, supports
+maximum log file size, rotates old logs, and buffers log messages in
+memory (thus improving system performance).
+
+    This hint will walk you through the installation and set up of
+metalog. Please also read the metalog documentation when creating
+/etc/metalog.conf; it will let you know about all sorts of options you
+can use.
+
+2. Compiling, installing
+------------------------
+
+    I used version 0.6 of metalog on my system, but these instructions
+should be useful whichever version you have. Examine the `README' file
+if you have a different version.
+
+    Firstly, you need to install the PCRE library (Perl Compatible
+Regular Expressions). This is available from http://www.pcre.org/ . I
+used version 3.5, but again, any version should be fine. After
+extracting the archive and changing to its directory, type:
+
+# CFLAGS="-O2" ./configure --prefix=/usr
+# make
+# make install
+# ldconfig
+
+    Now, installation of metalog is simple. Extract the archive and
+change to its directory, and type:
+
+# ./configure --prefix=/usr
+# make install-strip
+
+    Metalog is now installed.
+
+3. Creating /etc/metalog.conf
+-----------------------------
+
+    Read the metalog README for the exact rules on how to create a
+configuration file. This file is a good start, however:
+
+# /etc/metalog.conf
+#  Configuration for metalog (replacement for syslog et al.)
+
+maxsize  = 100000
+maxtime  = 86400
+maxfiles = 3
+
+Kernel messages :
+
+  facility = "kern"
+  logdir   = "/var/log/kernel"
+
+Authorisation messages :
+
+  facility = "auth"
+  facility = "authpriv"
+  logdir   = "/var/log/auth"
+
+Daemon messages :
+
+  facility = "daemon"
+  logdir   = "/var/log/daemon"
+
+FTP, mail, news :
+
+  facility = "ftp"
+  facility = "mail"
+  facility = "news"
+  logdir   = "/var/log/ftp-mail-news"
+
+Printing :
+
+  facility = "lpr"
+  logdir   = "/var/log/printer"
+
+Security :
+
+  facility = "security"
+  logdir   = "/var/log/security"
+
+System :
+
+  facility = "syslog"
+  logdir   = "/var/log/syslog"
+
+Serious stuff :
+
+  facility = "*"
+  minimum  = 2
+  logdir   = "/var/log/critical"
+
+# end
+
+    For each `logdir' mentioned in the above file, you need to
+create a directory. Metalog will install some files in that directory.
+The log can be accessed as $logdir/current (for instance,
+/var/log/critical/current ). For the configuration file above, type:
+
+# cd /var/log
+# mkdir kernel auth daemon ftp-mail-news printer
+# mkdir critical security syslog
+
+    You can also delete the old log files: /var/log/*.log . I would
+recommend doing this once you have rebooted the system and no longer
+have sysklogd running.
+
+4. Changing /etc/init.d/sysklogd
+--------------------------------
+
+    In order to get metalog running instead of sysklogd, you need to
+change the startup script /etc/init.d/sysklogd . You can rename this
+file to metalog if you like, but I had already set up the symlinks and
+it was easier to edit the file. Simply copy the following:
+
+#!/bin/sh
+# Begin /etc/init.d/sysklogd
+
+#
+# Include the functions declared in the /etc/init.d/functions file
+#
+
+source /etc/init.d/functions
+
+case "$1" in
+	start)
+		echo -n "Starting metalog daemon..."
+		loadproc /usr/sbin/metalog -B
+
+		;;
+
+	stop)
+		echo -n "Stopping metalog daemon..."
+		killproc metalog
+
+		;;
+
+	reload)
+	echo -n "Reloading system log daemon configuration file..."
+		reloadproc metalog 1
+		;;
+
+	restart)
+		$0 stop
+		/usr/bin/sleep 1
+		$0 start
+		;;
+
+	status)
+		statusproc /usr/sbin/metalog
+		;;
+
+	*)
+		echo "Usage: $0 {start|stop|reload|restart|status}"
+		exit 1
+		;;
+
+esac
+
+# End /etc/init.d/sysklogd
+
+5. Logging to a console
+-----------------------
+
+    Unlike sysklogd, metalog doesn't immediately write anything it logs
+to disk. This means that `tail -f' doesn't really do the job anymore. I
+use a shell script to print to a console, however. Add the following to
+/etc/metalog.conf:
+
+# start
+Log to a console :
+
+  facility = "*"
+  command  = "/usr/sbin/consolelog.sh 12"
+# end
+
+    Obviously, you can change the `facility', `minimum', etc. to suit
+yourself. Also, you can combine `command' and `logdir' in a single
+entry. See metalog's README for more details. The `12' in the
+commandline is the VT to print to.
+
+    Create the /usr/sbin/consolelog.sh script like this:
+
+# cat >/usr/sbin/consolelog.sh <<EOF
+>#!/bin/sh
+># /usr/sbin/consolelog.sh
+>#  For metalog -- log something to a console
+>
+>echo "$2 [$3] $4" >/dev/tty$1
+>
+>EOF
+# chmod +x /usr/sbin/consolelog.sh
+
+    You can change the formatting of the echo command as needed; $2 is
+the date, $3 is the name of the program sending the entry, $4 is the
+entry text, and $1 is the VT to print to.
+
+Appendix A. Building LFS with metalog
+-------------------------------------
+
+    This is a trivial change to make. Obviously, you no longer need to
+install the `sysklogd' package. When you come to install this package,
+install PCRE and then metalog instead (step 2). Rather than creating
+/etc/syslog.conf and /var/log/*.log, create /etc/metalog.conf (step 3)
+and its directories. Finally, don't use the LFS-provided
+/etc/init.d/sysklogd script, use the one given in step 4.
+

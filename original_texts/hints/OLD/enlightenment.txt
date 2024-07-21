@@ -1,0 +1,132 @@
+TITLE:		Enlightenment-hint
+LFS VERSION:	3.0
+AUTHOR:		Jason M'Sadoques <jsado@(nospam)mediaone.net>
+
+SYNOPSIS:
+	How to add the Enlightenment window manager to your X-configured LFS system.
+
+HINT:
+Contents:
+1. Introduction
+2. Packages
+3. Installation
+
+1. Introduction
+
+This hint describes the process to go through to install the Enlightenment
+window manager on a LFS system. It is basically a straight forward install, but
+some libraries needed to be made a bit differently than most packages, and some
+files are harder to find than others. Also, order is important. Where you see
+^OPT^ replace that with the optimizations you want to use. For instance on my
+AMD K6-2 machine I use '-O3 -march=k6' without any problems.
+
+2. Packages
+
+These are the packages you will need. All of these sites at least have
+anonymouse ftp access, but might not have web access.
+
+enlightenment-0.16.5.tar.gz
+at ftp.enlightenment.org/enlightenment/enlightenment
+
+imlib-1.9.8.tar.gz
+fnlib-0.5.tar.gz
+giflib-3.0-2.tar.gz
+at ftp.enlightenment.org/enlightenment/enlightenment/libs
+
+libpng-1.0.10.tar.gz
+at swrinde.nde.swri.edu/pub/png/src
+
+tiff-v3.5.5.tar.gz
+at ftp.remotesensing.org/pub/libtiff
+
+jpegsrc.v6b.tar.gz
+at www.xfig.org/jpeg
+
+(This one may not be needed, but I got it just in case.)
+libungif-4.1.0
+at prtr-13.ucsc.edu/pug/libungif
+
+3. Installation
+
+Unpack each file in turn, and enter it's directory. First the image libraries
+will be built, then imlib, fnlib, and finally Enlightenment itself.
+
+libpng:
+
+run:
+cp scripts/makefile.linux makefile
+
+run:
+make CFLAGS='^OPT^' CXXFLAGS='^OPT^' &&
+make &&
+./pngtest &&
+make install
+
+libtiff:
+
+If you want the documentation then run:
+mkdir /usr/share/html
+
+Edit the configure file. Find DIR_HTML= and change set it to
+/usr/share/html/tiff. Find HTML= and set it to yes. Find the line : ${ENVOPTS=}
+and add your optimizations after the '='. Find GCOPTS="-g" and remove the -g.
+Find DIR_BIN, DIR_LIB, DIR_INC, MANPATH, and DIR_MAN and remove the "local/"
+from the directory.
+
+run:
+./configure &&
+make &&
+make install
+
+libjpeg:
+
+run:
+./configure --prefix=/usr --enable-static --enable-shared &&
+make &&
+make install
+
+giflib:
+
+Edit both lib/Makefile and util/Makefile find the uncommented CFLAGS= line
+(without the # in front of it), and add your optimizations to that line. Be
+sure to remove the -g to keep your code small (it enables debugging).
+
+run:
+make &&
+make install
+
+libungif:
+
+run:
+./configure --prefix=/usr &&
+make &&
+make install
+
+imlib:
+
+run:
+./configure --prefix=/usr &&
+make &&
+make install
+
+fnlib:
+
+run:
+./configure --prefix=/usr &&
+make &&
+make install
+
+Enlightenment:
+
+run:
+./configure --prefix=/usr &&
+make &&
+make install
+
+Now you need to log in as a normal user. In your home directory edit your
+.xinitrc file. If it exists, look for "exec fvwm" as the last line of the file.
+Replace that line with exec /usr/enlightenment/bin/enlightenment. If the file
+doesn't exist, then just create the file with that one line.
+
+run:
+chmod +x .xinitrc

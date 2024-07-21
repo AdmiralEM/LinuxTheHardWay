@@ -1,0 +1,655 @@
+TITLE:		Boot (not just root) any HD.
+LFS VERSION:	All.
+AUTHOR:		Bill Maltby <lfsbill@wlmcs.com>
+
+SYNOPSIS:
+	*Boot* any OS from any hard drive, with recent BIOS and Lilo.
+
+HINT:
+
+Version: 0.9.4 2003-07-03
+
+Change Log:
+   0.9.4 2003-07-03 - Testing completed with lilo-22.5 ok. Update text.
+   0.9.3 2003-06-27 - Correct typo, minor phrasing changes.
+   0.9.2 2003-06-14 - Add warning about symlink in liloboot dir in Win*
+		      partition. Forgot to mention in earlier versions.
+   0.9.1 2003-06-14 - Discovered that Lilo 22.2 doesn't support swapping
+		      more than two device assignments in the "other="
+		      section of a configuration file. Add a note about it.
+		    - Miscellaneous typographical error fixes and a few word-
+		      ing changes to increase clarity, hopefully. No
+		      substantive changes.
+   0.9   2003-06-12 - Initial release
+
+As is usual for me, I began explaining everything in the world while
+writing this. But I came to my senses and wrote a (hopefully) more
+palatable version (i.e. shorter) that I hope meets the needs of a wide
+range of users of different levels of experience. Constructive
+suggestions are welcome.
+
+I have checked, and this hint *is* shorter than the Lilo README, appearance
+to the contrary notwithstanding. :)
+
+CONTENTS
+   I. OBJECTIVES
+  II. STRATEGY
+ III. BACKGROUND
+  IV. BENEFITS
+   V. CAVEATS
+  VI. THANKS
+ VII. PREREQUISITES
+VIII. MY CONFIGURATION
+  IX. IMPLEMENTATION
+      A) General.
+      B) Minimal fall-back, hda (W98 drive) default boot.
+      C) Better fall-back, hda boot, hdb Linux root.
+      D) Better fall-back, hdb default boot, bios= changes.
+      E) Examples summary.
+   X. TESTING AND GOTCHAS
+  XI. FOLLOW ONS
+ XII. SOME MORE READING
+
+I. OBJECTIVES
+    My three primary goals for this process are:
+    a) faster reboot/recovery via enhanced "fall-back" capability;
+    b) reduced upgrade risk of "downtime";
+    c) more convenience by being able to boot from any hard drive in a
+       node to any OS installed on any drive in that node.
+    
+II. STRATEGY
+    Objective a) is supported by configuring a secondary drive that is boot
+    ready and has a root file system containing everything needed to cont-
+    inue service in "fall-back" mode if the primary drive is not available
+    due to corruption or hardware problems. It is kept up-to-date via cron-
+    invoked drive-to-drive copies of selected portions of my primary drive.
+
+    Objective b) is supported by designating a drive/partition as my "sand-
+    box" and using it for making bootable images that can be tested "end-to-
+    end" with no hardware changes. For testing, I can boot it by just
+    changing my BIOS boot sequence specification. If I trash that drive, a
+    BIOS setup change gets me booting my primary drive again.
+
+    Objective c) is supported by having every drive bootable as the "pri-
+    mary" drive (from BIOS point of view) and configuring the boot loader to
+    boot any of the valid OSs on any drive that will support this.
+
+    This is implemented by making use of the ability of BIOS to boot any hard
+    drive and making use of the ability of system loaders, like Lilo, to sup-
+    port that capability in an OS-independent fashion.
+
+III. BACKGROUND
+    Recent BIOSs (ca. mid-1990s and later) have the ability to boot from any
+    hard disk in the node. Use of secondary drives as a root file system is
+    common practice, but I have not seen this enhanced boot ability exploited
+    frequently for the benefits it can provide.
+
+    Because cost per giga-byte of storage is now commonly below $1.00 (US),
+    it is feasible to consider secondary hard drives as reasonable alterna-
+    tives in recovery scenarios. When compared to the costs (in time, money
+    and lost availability) of traditional recovery activities, a bootable
+    secondary drive alternative may be quite attractive. It is even more
+    attractive when you consider that the drive can also be used in daily
+    operations, with some safeguards preventing loss of recovery utility.
+
+    Common practice, when upgrading a node or building hard drive images that
+    are destined for other nodes, has required either hardware reconfiguration
+    (jumper changes, removal of the primary drive or its cabling) in order to
+    adequately test "end-to-end". This increases risk of something going
+    wrong and slows progress.
+
+    In my past life (before BIOS had the capabilities) I provided similar
+    capabilities with a simple home-made switch attached to the case that
+    would swap drive assignments by changing the jumpering of the drives.
+    Since this was in the days when drives were much less reliable than now,
+    there were several occasions when I looked like a hero when full service
+    was restored by simply flipping a switch. Now you can buy those switches
+    ready-made. Better (maybe) is the fact that you can accomplish almost the
+    same function through the combination of BIOS, boot loader and adequate
+    planning and implementation.
+    
+IV. BENEFITS
+    Here is where I cut a lot of verbiage. Apply your knowledge of your
+    situation to see how you benefit. I'll just give some "one-liners" here.
+    
+    Workstation users who run different OSs on separate drives, can have
+    quicker recovery when the primary boot drive/partition fails or gets
+    corrupted. Boot floppy usage may become a "last resort" scenario.
+
+    Administrators responsible for high-availability systems on-the-cheap
+    can recover much more quickly than with typical alternative processes
+    and might continue to provide service, at possibly reduced levels, even
+    when the primary drive has failed. This "buys time" while awaiting the
+    hardware repair.
+
+    Developers/experimenters that must engage in constant upgrade and test
+    of their OS, as many (B)LFSers do, can reduce risk of catastrophe by
+    having the primary boot stuff be "sacrosanct" and untouched by the
+    development activities. If you trash your development drive to the point
+    it is not bootable or recoverable, change the BIOS setting and reboot.
+    You are back in business (hope you backed up your development stuff).
+
+    When compiling for another node onto a drive that will be inserted on
+    the target node, you can configure the boot process to boot in that node
+    as any of the BIOS-bootable drives. You may not need to even change
+    jumpers and should not need to remove any existing drive if a "slot" is
+    available on one of the IDE cables.
+
+    Lastly, all benefit because you have the full set of tools available to
+    recover the failed stuff. No more working in the restricted boot-diskette
+    environment (unless you get *really* inattentative).
+
+V. CAVEATS
+    As with any reasonably complex procedure, there are many opportunities
+    for mistakes and unexpected circumstances to foil your best efforts
+    against disaster. It is very important that you plan for and test any
+    recovery procedures that might be needed to restore service as quickly
+    as possible. A multi-tier plan that covers from minor damage to a comp-
+    lete disaster should be in place and tested. Be sure that your recovery
+    media is reliable and available.
+
+    If you use devfs(d), you will need to make the necessary adjustments on
+    your own (for now) - I use a static /dev directory as provided by (B)LFS.
+    Contributions from devfs users are appreciated.
+
+    As I've seen posted somewhere, "If you break it, you get to keep the
+    pieces". I have *no* responsibility whatsoever for your results.
+
+VI. THANKS
+    John McGinn - who posted to LFS development when he first discovered and
+    used the "bios=" Lilo parameter while creating a boot drive that was
+    destined for another box. That post may have saved me a lot of research
+    and additional experimentation.
+
+    The LFS and BLFS projects, and all those who constructively participate,
+    for the on-going education provided to me.
+
+VII. PREREQUISITES
+    a) Determine the capabilities of the BIOS for any nodes involved in the
+       process you will undertake. Be sure that they will support your inten-
+       tions. As example, one BIOS I have will allow selection of a non-
+       primary drive for boot, but then will not allow another HD to boot if
+       that drive fails to boot. Another BIOS may allow "fail-over" to other
+       drives to be specified. This may be important if you are planning to
+       use this hint's techniques to provide automatic "fail-over". You may
+       need to temporarily add drives to a node to make this determination,
+       as a BIOS may not allow selection unless it detects a drive.
+    b) Educate yourself. If you are somewhat new to these processes, a review
+       and understanding of some of the documents in the references at the
+       end of this hint will make your efforts more likely successful.
+    c) Have a recovery plan, in place and tested, that is appropriate to your
+       situation, as mentioned above.
+    d) A working GNU/Linux host node (preferably a (B)LFS one).
+    e) A hardware and drive partition configuration that will support your
+       goals (placement of user data, mounting of various directories and so
+       on).
+
+VIII. MY CONFIGURATION
+    A small private network with nodes having various CPUs (486 DX2/66, AMD
+    5x86, Cyrix 6x86, AMD K6-III and others), various memory configurations,
+    some BIOS that support secondary-drive boot and some that may not (don't
+    know yet), various OSs (recent CVS (B)LFS, RH 6.2, RH 6.0, W95, W98). All
+    nodes have multiple HDs.
+
+    I use Lilo. You may be able to use Grub, or another loader. I have not
+    tried any others, because of a lack of interest. As I figured, the
+    expected benefits to the list of the switch to Grub haven't (apparently,
+    based on list traffic) materialized. It seems the "weaknesses" in Lilo
+    traveled with the users and also affects Grub.
+
+    The platform upon which this procedure was developed is a workstation
+    configuration as follows.
+
+    PC CHIPS M-571 mainboard (updated BIOS), AMD K6-III 380MHz, 256MB SDRAM,
+    4GB primary drive W98 (seldom used) /dev/hda, 20GB 10K RPM drive "pure"
+    LFS pre-cvs (my normal boot drive) /dev/hdb, CD-RW as /dev/hdc, 40GB
+    7800 RPM utility drive (my "fall-back") /dev/hdd. The OS is a Pure LFS
+    installation based on Ryan Oliver's 2.2.8 scripts, slightly modified.
+    Tested with lilo versions 22.2 and 22.5 (which needs nasm installed).
+    I've not tested the nerw master boot or other new parameters available
+    with 22.5. But the setup I used for 22.2 worked unchanged with 22.5.
+
+    My normal boot is /dev/hdb, first fall-back is /dev/hdd, second is
+    /dev/hda (W98) and last is my boot diskette. You need to adjust the
+    examples to account for the normal boot drive (primary drive from BIOS
+    point of view).
+
+    My mount configuration (edited out non-significant things) is:
+
+	/dev/hdb7 on / type ext2 (rw)		   # Normal root
+	/dev/hdb1 on /boot type ext2 (rw)	   # Normal boot
+	/dev/hda1 on /mnt/hda1 type vfat (rw)      # Fallback boot 2
+	/dev/hdd7 on /mnt/hdd7 type ext2 (rw)      # Fallback root 1
+	/dev/hdd1 on /mnt/hdd7/boot type ext2 (rw) # Fallback boot 1
+    
+    Although I have separate /boot partitions, this is not mandatory. But it
+    does allow additional security because I can leave it unmounted (or
+    mounted read-only) so it is less likely to be damaged. The aggravation comes
+    when you run Lilo and forget to (re)mount it read-write. *sigh*
+
+    Of note above is the /mnt/hda1 listing. It is a 4GB drive dedicated to
+    W98. So there is no room for a separate boot/root LFS partition. That is
+    handled by configuring the Linux kernel to support vfat and creating a
+    directory in W98 of /liloboot with a copy of the needed parts of my
+    normal boot directory (actually, it has everything because I haven't
+    taken the time yet to clean it up). The important things are those
+    needed when installing the Lilo boot blocks (kernel image, boot.b,
+    etc.) and the things needed at boot time. See the Lilo man pages and
+    README for a list of them.
+
+    WARNING! The normal /boot/boot.b is a symlink to boot-menu.b or some
+    equivalent. The Win* OSs I've used don't support symlinks. So you must
+    copy the target of the symlink to liloboot and name it boot.b. Like so:
+
+    cp -avL /boot/boot.b /mnt/hda1/liloboot # Derefs, copies target, renames
+
+    You must adjust these examples to fit your configuration and intentions.
+    I use each drive as backup to the other, as needed. That is, if /dev/hdb
+    fails, I use /dev/hdd as my primary drive and /dev/hdb will become the
+    "fail-over" drive until I have reason to switch them again.
+
+    I run Lilo boot installs to all three of my hard drives. This way, even
+    if two of my drives fail, I can still boot *something* from the
+    remaining drive. I even have a minimal RH 6.0 that I can boot for
+    recovery purposes. I also keep a recovery diskette (see the BLFS book,
+    chapter 3) as a "last resort" tool. But I doubt I will need it again (I
+    had to use it while testing these procedures - more on that later).
+
+IX. IMPLEMENTATION
+    A) General. I have structured my /etc/lilo components to reduce acci-
+       dental running of the wrong configuration. For this reason, I have no
+       file named "/etc/lilo.conf" and I have a directory structure like this.
+
+       /etc/LiloBootInst
+	   LiloBootInst/a-boot - for setting up hda as default boot drive
+	   LiloBootInst/b-boot -  "     "    "  hdb "     "     "     "
+	   LiloBootInst/d-boot -  "     "    "  hdd "     "     "     "
+
+       In each of those sub-directories are files named similar to this.
+
+	   ?-boot.PR0?-test     - shell to install Lilo boot blocks on hd?
+	   ?-boot.PR0?-test.out - output from shell a-boot.PR01-test
+	   ?-boot.PR01		- conf for W98/LFS hdb boot
+	   ?-boot.PR02		- conf for W98/LFS hdb/LFS hdd/LFS boot
+
+       Contents of shell a-boot.PR01-test is
+
+	   lilo -v3 -C /etc/LiloBootInst/a-boot/a-boot.PR01 \
+	       -t &> a-boot.PR01-test.out
+
+       Until you remove the "-t" on the second line, no update will be done
+       by Lilo. But you will get an output that shows what Lilo sees and
+       what decisions Lilo makes. When you are satisfied with that, remove
+       the "-t".
+
+       All the ?-boot.PR0? scripts are the same but for the changing of "1"
+       to "2" and "a-" to "b-" or "d-", depending on what drive is being
+       set up. To run the script(s) as root, (after assuring execute permis-
+       sion is set):
+    
+	   cd /etc/LiloBootInst/?-boot    # ?=a or b or d
+	   ./?-boot.PR0n-test		  # ?=a or b or d, n=1 or 2
+
+       It is important to keep in mind the difference between the "boot" and
+       "root" terms. Boot means the components used by the BIOS to get
+       needed parts to find loaders and begin getting the operating system
+       going. Root is the Linux file system that will be mounted when the
+       kernel has been loaded. It may be on the same or a different
+       partition from the "boot" components. Don't get confused.
+
+       In all the below examples, the "bios=" in the "disk=" sections refer
+       to the BIOS devices assignments *at_boot_time*, not what they are
+       now. Don't get confused by thinking of what the devices assignments
+       (0x80, 0x81,...) are now, in your current boot environment. For
+       example, if booted off hdb, its assignment is 0x80, hda is 0x81. But
+       if I boot from hda, those assignments are reversed. The important
+       thing to remember is the assignments at boot-time.
+
+    B) Minimal fall-back, hda (W98 drive) default boot.
+       The contents of a-boot.PR01 (edited to remove unimportant things and
+       annotated) are as follows. Don't forget to add in any additional
+       things you need, like linear or lba32, append="pci=biosirq" or
+       "prompt", "delay=100", "timeout=100" and other things you need/want.
+
+       # In the "disk=" sections, "bios=" reflects what the BIOS device
+       # assignment (0x80, 0x81, ...) *will* be when BIOS IDE0 (hda, "C:"
+       # for you MSers) is default boot. Though not needed here, they are
+       # shown for later comparison. Why do I show the geometry here? Be-
+       # cause I want Lilo to do its matches on the *real* device geometry,
+       # *not* the (possibly) phony geometry contained in the partition
+       # tables of the master boot block.
+
+       disk=/dev/hda
+	   sectors=63
+	   heads=16
+	   cylinders=6296
+	   bios=0x80
+
+       disk=/dev/hdb
+	   sectors=63
+	   heads=16
+	   cylinders=39560
+	   bios=0x81
+
+       # To reduce error by "loose nut behind the wheel", add a custom menu
+       # that shows the boot drive and menu being used. Also, note the cus-
+       # tom "map=" parameter. This allows me to back up all boot related
+       # information from any drive without stepping on the "map" file from
+       # other bootable disk setups. Note that all components are gotten from
+       # the liloboot directory. That way, if hdb has failed due to just
+       # loss of the /boot directory, I can recover that directory from the
+       # W98 directory. Also, Lilo will reference *at boot-time* the needed
+       # components in the liloboot directory. So if hdb is not bootable, I
+       # can still boot anything else in the system that is still good.
+       # IMPORTANT! If you do *anything* that may change physical locations
+       # on the drive, RERUN LILO. Lilo is OS independent. It works on phys-
+       # ical locations. If you defrag, replace a kernel image or copy some
+       # files in/out of the directory, locations may change (usually do).
+       # RERUN LILO so it can update the hda1map with the new information.
+
+       menu-title="A Drive Boot Menu PR01"
+       boot=/dev/hda
+
+       map=/mnt/hda1/liloboot/hda1map
+
+       install=/mnt/hda1/liloboot/boot.b
+
+       # Default is W98 because it is first in the file and no "-D" on the
+       # command line or "default=" in the configuration file was given.
+       # Note that the loader is required for W98 because it is not a Linux
+       # system. Also, we get it from the liloboot drive, as we do for the
+       # Linux stuff.
+       other=/dev/hda1
+	   lable=W98
+	   loader=/mnt/hda1/liloboot/chain.b
+
+       image=/mnt/hda1/liloboot/K6-20030530
+	   label=B7-K6-20030530
+	   root=/dev/hdb7
+	   read-only
+
+    C) Better fall-back, hda boot, hdb Linux root.
+       Contents of a-boot.PR02 (edited to remove some things) are here.
+       Since we just add another drive here, and change the default OS we
+       run, I've not annotated it. Just take note that we've added parameter
+       "default=" and the menu name is changed. As before, don't forget to
+       add in any additional things you need.
+
+       disk=/dev/hda
+	   sectors=63
+	   heads=16
+	   cylinders=6296
+	   bios=0x80
+
+       disk=/dev/hdb
+	   sectors=63
+	   heads=16
+	   cylinders=39560
+	   bios=0x81
+
+       disk=/dev/hdd
+	   sectors=63
+	   heads=15
+	   cylinders=82714
+	   bios=0x82
+
+       menu-title="A Drive Boot Menu PR02"
+
+       boot=/dev/hda
+       map=/mnt/hda1/liloboot/hda1map
+       install=/mnt/hda1/liloboot/boot.b
+
+       default=D7-K6-20030530
+
+       other=/dev/hda1
+	   label=W98
+	   loader=/mnt/hda1/liloboot/chain.b
+
+       image=/mnt/hda1/liloboot/K6-20030530
+	   label=B7-K6-20030530
+	   root=/dev/hdb7
+	   read-only
+
+       image=/mnt/hda1/liloboot/K6-20030530
+	   label=D7-K6-20030530
+	   root=/dev/hdd7
+	   read-only
+
+    D) Better fall-back, hdb default boot, bios= changes.
+       As before, unrelated stuff is removed. The below is from b-boot.PR02,
+       the equivalent of the a-boot.PR02. The significant changes are in the
+       "bios=" in the "disk=" sections and new statements in the "other="
+       section. As before, a changed boot menu title is used and a "default="
+       parameter is used. Annotations have been inserted.
+
+       # Since the BIOS setup has been changed to default-boot IDE1 (hdb),
+       # the device assignments (0x80, 0x81, ...) are different than they
+       # were when booting from IDE0. It's a "shuffle down" process. So if
+       # boot is IDE2, it becomes device 0x80, hda becomes 0x81 and hdb be-
+       # comes 0x82. Here we are using IDE1 as default boot, so only the hda
+       # and hdb "bios=" parameters are affected. Hdd is still 0x82.
+
+       disk=/dev/hda
+	   sectors=63
+	   heads=16
+	   cylinders=6296
+	   bios=0x81
+
+       disk=/dev/hdb
+	   sectors=63
+	   heads=16
+	   cylinders=39560
+	   bios=0x80
+
+       disk=/dev/hdd
+	   sectors=63
+	   heads=15
+	   cylinders=82714
+	   bios=0x82
+
+       # Now we get all components from hdb because that is considered the
+       # "reliable" drive. We could still get things from hda, but we are
+       # booting hdb and hda may have failed. If hdb is good, all its
+       # components should be considered more reliable than a potentially
+       # failed drive (we don't know if drives are good yet, but BIOS may
+       # "fail over" under certain failure conditions).
+
+       menu-title="B Drive Boot Menu PR02"
+       boot=/dev/hdb
+       map=/boot/hdb1map
+       install=/boot/boot.b
+       default=B7-K6-20030530
+
+       # Look at the "map-drive=" parameters. Since at boot time hdb is now
+       # device 0x80 and hda is 0x81, we need to switch them if we want to
+       # run W98. These statements reassign hdb to 0x81 and hda to 0x80
+       # before loading the W98 stuff, so it will still work. But we still
+       # get chain.b from the (currently) known good drive, hdb. If you have
+       # shown more than two drives, don't try to "map-drive" more than two
+       # in this section. It will make the results unbootable. You can (ap-
+       # parently) re-map only two devices. If you have DOS partitions scat-
+       # tered among your drives, this may have nasty implications when you
+       # boot from other than your normal drive - I don't know.
+
+       other=/dev/hda1
+	   label=W98
+	   loader=/boot/chain.b
+	   map-drive=0x80
+	       to=0x81
+	   map-drive=0x81
+	       to=0x80
+
+       image=/boot/K6-20030530
+	   label=B7-K6-20030530
+	   root=/dev/hdb7
+	   read-only
+
+       image=/boot/K6-20030530
+	   label=D7-K6-20030530
+	   root=/dev/hdd7
+	   read-only
+
+    E) Examples summary.
+       I also have hdd boot examples, but they are just extensions of what
+       you've seen already. Things to keep in mind are listed here.
+
+       1) Use the "menu-title=" parameter to help protect against
+	  inadvertently booting the wrong drive. Of course, you must look at
+	  the menu title for it to do any good.
+
+       2) The "bios=" always refers to the BIOS device assignments
+	  *at_boot_time*, not what the assignments are now.
+
+       3) The "bios=" parameters change as you change the BIOS boot drive
+	  sequence(s) in BIOS setup. They "shuffle down". If you have four
+	  drives and you set BIOS boot to IDE3 (normally 0x83), your dev-
+	  ice assignments will become like these.
+
+	      hdd = 0x80, hda = 0x81, hdb = 0x82, hdc = 0x83
+
+       4) Things which are not bootable are not included in the device
+	  assignments series 0x80, 0x81, ... So if you have a CD as master
+	  on the second IDE channel (hdc), it will not affect the device
+	  assignments with which we are concerned now. You will have 0x80
+	  and 0x81, but 0x82 will be assigned to hdd, not 0x83.
+
+	  NOTE! I haven't yet tested with a bootable CD installed in the CD
+	  drive. I do know that "El Torito" spec bootable CDs get defined as
+	  the floppy drive. I have not investigated other boot formats yet.
+
+       5) Store all needed components, and references to them at boot time,
+          on the drive the BIOS will successfully boot. That way if the OS
+	  or partition you are targeting is bad, you can still reference
+	  other OSs and partitions from the drive that is still good. If your
+	  normal boot drive fails, or its components get corrupted, you can
+	  change the BIOS boot device and boot from the other good drives.
+
+X. TESTING and GOTCHAS
+    Make sure that all BIOS boot-time needed components occur where your
+    BIOS can find them (below cyl 1024 for some old BIOSs). Lilo uses BIOS
+    to read several of the early components (see "SOME MORE READING" below).
+
+    The most important testing tools are various type of backups and
+    recovery tools that allow recovery from disasters. Have them available
+    and well-tested.
+
+    The next most important testing tool is Lilo itself. The -v and -t para-
+    meters get information about what Lilo will do and the decisions it
+    makes. Examine the output from a Lilo run with the -t parameter (and -v)
+    before doing anything that will actually update your boot blocks. Be
+    especially alert that you have specified the correct drive(s) and the
+    correct locations of components needed at boot time. It is very easy to
+    copy configurations and forget to change drive specifications, a "bios="
+    parameter or other parameters.
+
+    Copy *at least* the boot blocks of any drive you *might* affect,
+    intentionally or accidentally. I usually just get the first track like
+    this. Change the ? to the drive specifier and the 63 to whatever.
+
+	dd if=/dev/hd? bs=512 count=63 of=/hd?_1st_track.
+
+    Then if the worst happens, I can recover the original by
+
+	dd of=/dev/hd? if=/hd?_1st_track.
+
+    Watch out for the LFS book bootscripts. They are brain-damaged wrt
+    handling detected file system error conditions. For example, when run-
+    ning from hdb and with hdd7 mount required by your normal boot, if you
+    test by wiping the partition information on hdd, you will no longer be
+    able to access hdd and you can't boot into the root on hdb because the
+    missing hdd partitions will cause the LFS bootscripts to shutdown your
+    machine. Wip out the old recovery diskette (it better be very good).
+    Don't ask how I know. Someday I'll submit a fix and see what happens.
+
+    That problem can be circumvented by adding "noauto" to all the fstab
+    entries that reference the drive to be "crash tested". If you forget and
+    get burned by that "gotcha", you can still copy back the saved first
+    blocks (you *did* copy them as shown above, didn't you) and not lose
+    anything if you have a bootable recovery floppy.
+
+    Rerun Lilo anytime you change anything in a /boot directory (Linux) or
+    defrag a W* partition containing boot components or copy new components
+    into/out of the directory containing the boot components. Remember that
+    Lilo, being OS independent, is physical-location dependent at boot time.
+    These locations are resolved at Lilo boot-block install time (this is
+    *not* the same as installing the Lilo package time) and any changes in
+    physical location *after* the boot blocks are installed will cause a
+    boot failure of some kind (depends on what has been relocated).
+
+    Note that there is no boot flag (partition activation) on my non-M$
+    drives. If Lilo is installed into the master boot block, activating a
+    partition may provide all sorts of confusion and opportunities for some
+    fun. It won't always cause problems, but I have seen certain situations
+    where it did. It works fine on my W98 drive (which does have Lilo in the
+    master boot record). IIRC, the problem was with two partitions active at
+    the same time (an older version of Lilo, or LVM related? - I don't
+    recall). BIOS expects the master boot record to take care of situations
+    when no partition is "active".
+
+    Don't forget to modify the /etc/fstab on the non-primary drive to boot
+    so that it will correctly access things when it is booted/rooted. For
+    example, on my hdd root, I change the hdb7 (root file system) entry to
+    /mnt/hdb7 and change the hdd7 (/mnt/hdd7) entry to be /. Per a post to
+    LFS sometime back (search if you need to know who - I'm too lazy to look
+    it up, but I thank them anyway), /rootfs can be used to eliminate one of
+    the alterations. I haven't tested this yet.
+
+    Depending on your configuration of root/boot stuff, it may be safer to
+    run Lilo in a chroot environment. Use the -r parameter (man Lilo) for
+    this. This is most useful when you've installed a whole new LFS into a
+    mount partition(s) and want all components to be referenced relative to
+    the mounted components. Remember, at boot time the pathnames do not come
+    into play. Lilo has resolved them to physical locations. If you change
+    the contents of the (relative) /boot in any way, it is safest to RERUN
+    LILO.
+
+XI. FOLLOW ONS
+    In my real Lilo configuration files, I have removed everything that I
+    can specify on the Lilo command line. That, combined with a little shell
+    scripting, allows me to have a single configuration file that works with
+    installing boot blocks on all three of my drives. The last thing I need
+    to add to it is the adjustment of the "bios=" parameters.
+
+    I have a rudimentary script that generates a find with a prune command
+    that backs up just my root partition, regardless of what else is
+    mounted. With automatic cron invocation at ungodly wee hours of the
+    morning, I'm assured of having a reasonably current root backup that I
+    can boot and root if needed. BTW, it automatically runs Lilo for the
+    backup drive after the backup (not completed yet). If the normal
+    boot/root drive gets corrupted, but is still mechanically/electrically
+    sound, I can just boot into the backup and do a find|cpio operation or a
+    cp -pDr (?) to recover the normal root after doing any *e2fs* operations
+    needed.
+
+    Since I have, essentially, 3 copies of my /boot directory, I can recover
+    a corrupted boot directory from any of them and RERUN Lilo (very important to
+    remember to do this).
+
+    I have yet to implement the reduced service capability of my main
+    server. But I have tested the BIOS fail-over capability and it works *if*
+    the BIOS can not detect a valid boot block (the signature must be
+    missing). Unfortunately, if it sees a valid boot signature and loads
+    what it thinks is a good loader, and that loader fails (corrupted boot
+    information, kernel or root file system) then no fail-over will occur. I
+    have worked on IBM servers that have custom BIOS and hardware monitoring
+    and a timer that we were able to use to get around this. If you have one
+    of those, there is more that can be done.
+
+XII. SOME MORE READING
+    See the man pages for lilo and lilo.conf.
+    Read the README in /usr/src/Lilo*.
+    Get to The Linux Documentation Project site (http://www.tldp.org) and
+    look at the various things having to do with booting.
+
+XIII. SUPPORT
+    All the Lilo error codes are documented in the Lilo README. However,
+    they don't necessarily increase your understanding by themselves.
+    Additional research in that (and other documents) may be required.
+
+    Post to blfs-support. But, if you have problems and the nature of your
+    post indicates that you have not made a good-faith effort to read the
+    stuff I mentioned above, I will not reply. Some others on the list may
+    be more tolerant.
+
+    This is an early version. I gratefully accept constructive criticism
+    posted publicly to blfs-support.

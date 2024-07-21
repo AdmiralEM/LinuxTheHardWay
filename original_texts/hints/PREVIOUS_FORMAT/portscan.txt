@@ -1,0 +1,127 @@
+TITLE:          Port Scan Detection 
+LFS VERSION:    3.3
+AUTHOR:	        yoonsoo <yoonsoo@gmx.net>
+
+
+SYNOPSIS:
+	How to detect port scans 
+
+HINT:
+Version 0.2
+20/05/2002
+
+Contents
+--------
+
+    1. Preface
+    2. packages needed to be downloaded
+    3. installation of the packages
+    4. testing
+    5. TODO
+
+1. Preface
+   -------
+	The first step of an attacker may be the scanning of your box
+	to find out what services you have running. Other way round it
+	could be helpful for yourself to scan your own machine to find
+	some security leaks. So both, a port scanner and a scan detector 
+	could help to raise the security a little bit.
+
+2. packages needed to be downloaded
+   --------------------------------
+	
+	libpcap-0.7.1 ( www.tcpdump.org/release/ )
+	Libnet-1.0.2a ( www.packetfactory.net/Projects/Libnet/ )
+	libnids-1.16 ( www.packetfactory.net/Projects/Libnids/ )
+	scanlogd-2.2 ( www.openwall.com/scanlogd/ )
+	nmap-2.54BETA34 ( www.insecure.org/nmap/ )
+
+3. Installation
+   ------------
+	 
+	libpcap-0.7.1 
+		./configure --prefix=/usr
+		make 
+		make install
+
+/* optional (will be needed for additiona packages maybe)
+
+	Libnet-1.0.2a
+		./configure 
+		make
+		make install
+
+	libnids-1.16
+		./configure 
+		make
+		make install
+
+*/
+
+	scanlogd-2.2
+		make linux
+		mv scanlogd /usr/sbin
+		mv scanlogd.8 /usr/share/man/man8
+		useradd -g daemon scanlogd
+		echo "daemon.alert -/var/log/alert.log" >> /etc/syslog.conf
+
+		creating Startscript :
+
+cat > /etc/rc.d/init.d/scanlogd << "EOF"
+#!/bin/bash
+
+source $rc_functions
+
+case "$1" in
+	start)
+		echo "Starting PortScan Logging Facility..."
+		loadproc scanlogd
+		;;
+	stop)
+		echo "Stopping Portscan Logging..."
+		killproc scanlogd
+		;;
+	*)
+		echo "Usage: $0 {start|stop}"
+		exit 1
+		;;
+esac
+EOF
+
+		nmap-2.54BETA34
+        ---------------
+		
+			export GTK_CONFIG=/usr/X11R6/bin/gtk-config *)
+			configure --prefix=/usr
+			make
+			make install
+
+*) if you dont have gtk and gnome installed, you will have to
+disable gtk and compile it without gtk support. In this case you will
+not have nmapfe (the gtk-frontend to nmap), otherwise specify the path
+to your gtk-config
+
+4. Testing
+----------
+
+Now you can test both. Scan your box with nmap (or nmapfe) and check the
+file /var/log/alert.log.
+
+or use 
+
+http://scan.sysgatetech.com
+
+As it is already mentioned on the documentations of scanlogd, this does
+NOT prevent any port scan but just logging them.
+
+
+5.TODO
+------
+
+add some more programs and daemons to raise the security of LFS
+
+---------------------------------------------------
+For additions remarks and bugs please contact me on
+
+yoonsoo@gmx.net. thx.
+----------------------------------------------------

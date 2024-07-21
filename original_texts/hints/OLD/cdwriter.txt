@@ -1,0 +1,157 @@
+TITLE:		CD-writer configuration
+LFS VERSION:	Any
+AUTHOR:		Adam Ottley <aottley@home.com>
+
+SYNOPSIS:
+	This hints covers the task of configuring the Linux kernel for a CD-writer 
+plus the installation of the cdrtools and cdrdao software packages.
+
+HINT:
+
+Software you'll need:
+
+  cdrtools-1.10.tar.gz  (ftp://ftp.fokus.gmd.de/pub/unix/cdrecord/)
+  cdrdao-1.1.5.tar.gz  (http://sourceforge.net/projects/cdrdao/)
+  pccts133mr.tar.gz  (http://www.polhode.com/pccts.html)
+
+
+-------------------------------------
+
+CONFIGURING THE KERNEL
+
+CD-writing software communicates on a SCSI interface, even if it's to an IDE 
+CD-writer.  Here's what options you'll need enabled/disabled in your kernel:
+
+SCSI CD-writer:
+
+<SCSI support menu>
+  SCSI support:  Y or M
+  SCSI CD-ROM support:  Y or M
+  SCSI generic support:  Y or M
+  Vendor-specific extensions:  Y
+Also include the low-level driver for your SCSI card if applicable.
+
+
+IDE CD-writer:
+
+<ATA/IDE/MFM/RLL support menu>
+  IDE/ATAPI CDROM support:  N
+  SCSI emulation support:  Y or M
+<SCSI support menu>
+  SCSI support:  Y or M
+  SCSI CD-ROM support:  Y or M
+  SCSI generic support:  Y or M
+  Vendor-specific extensions:  Y
+
+Having the loopback device can also be useful for mounting ISO files from the 
+hard drive.  To do that, use this command:
+
+  mount -t iso9660 -o loop <iso file> <mount point>
+
+Build the new kernel and install it.  You may have to alter a few 
+symlinks or your fstab to reflect the new location of your CD/DVD drives - 
+they'll be located at /dev/scd# now.  Once you're convinced that your new 
+kernel works, move on to the next section.
+
+
+-------------------------------------
+
+
+cdrtools 1.10
+
+cdrtools includes many programs including cdrecord, mkisofs and cdda2wav.  It 
+is the premier suite of burning tools for Unix, especially for data CDs.
+
+First you'll need to edit the DEFAULTS/Defaults.linux file to change the 
+installation path and the user/group to which the binaries will be assigned.  
+Change each occurrance of /opt/schily to your preferred path, i.e. /usr/local. 
+By default, the binaries are assigned to the user and group "bin".  For 
+convention's sake, we'll just change both to root by editing the DEFINSUSR and 
+DEFINSGRP entries.  Once that's finished, go back to the top-level cdrtools 
+directory and run:
+
+  make COPTS=$CFLAGS &&
+  make install
+
+to build and install cdrtools.  The COPTS=$CFLAGS is optional, only used if 
+you want optimization (which probably only makes a difference with mkisofs).
+
+With cdrtools now installed, you can check the SCSI interface for your 
+CD-writer.  To do that, issue this command as root:
+
+  cdrecord -scanbus
+
+Here's a sample output from this command:
+
+Linux sg driver version: 3.1.17
+Using libscg version 'schily-0.5'
+scsibus0:
+        0,0,0     0) 'CREATIVE' 'DVD5240E-1      ' '1.30' Removable CD-ROM
+        0,1,0     1) 'HP      ' 'CD-Writer+ 9100b' '1.07' Removable CD-ROM
+        0,2,0     2) *
+        0,3,0     3) *
+        0,4,0     4) *
+        0,5,0     5) *
+        0,6,0     6) *
+        0,7,0     7) *
+
+You'll need the three-number ID of each of your drives if you want to read 
+and burn from the command line using cdrtools and cdrdao.
+
+
+-------------------------------------
+
+
+pccts 1.33
+
+pccts is a parser generator that is required by cdrdao.  Both the binaries and 
+the headers must be installed manually.
+
+To build and install pccts, run these commands:
+
+  make &&
+  cp bin/antlr bin/dlg bin/genmk bin/sor /usr/local/bin &&
+  cp -a h/ /usr/local/include/pccts
+
+
+-------------------------------------
+
+
+cdrdao 1.1.5
+
+cdrdao is a tool that specializes in disc-at-once audio CD burning.  It also 
+supports bin/cue burning, custom tables of contents, and CDDB lookup for 
+automatic CD-TEXT insertion.
+
+Build and install cdrdao with the following commands:
+
+  ./configure --prefix=/usr/local &&
+  make &&
+  make install
+
+
+-------------------------------------
+
+
+PERMISSIONS
+
+Anyone who needs to rip or burn CDs needs to be configured for the proper 
+permissions.  Specifically, read and write permissions are needed on the SCSI 
+generic device (/dev/sg*) for each drive, and read permission is needed for 
+the /dev/scd device for each drive.
+
+The optimal way to do this is create a group called cdwriter, add the 
+necessary people to that group, assign the devices to group cdwriter, and 
+change the permissions to 660 on the /dev/sg devices and 640 on the /dev/scd 
+devices.  Note that you need to do this for CD readers as well in order to rip 
+CDs.
+
+
+-------------------------------------
+
+
+Now that the kernel is configured, the software is installed and the 
+permissions are set, you're done!  Try burning an ISO or two or grab a GUI 
+frontend for the burning programs.  Happy burning!
+
+

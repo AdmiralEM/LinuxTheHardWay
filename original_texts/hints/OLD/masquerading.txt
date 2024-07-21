@@ -1,0 +1,181 @@
+TITLE:          Masquerading with linux-2.4.xx
+LFS VERSION:    3.1+
+AUTHOR:         Pierre Cyr <pierre.cyr@mail.mcgill.ca>
+
+SYNOPSIS:
+        Enabling a router for simple masquerading on a Linux 2.4 kernel
+
+CREDITS:
+Thanks to Tijmen Stam <tijmen@stamadvies.nl> for his input and his improved
+startup script.
+
+CHANGES:
+- Changed the links that were no longer valid.
+- Changed the menuconfig options to reflect kernel 2.4.17
+- Changed the name of the startup script from "route" to "masquerade" as
+suggested by Tijmen.
+- Added Tijmen's improvements to the startup script 
+
+HINT:
+First of all,  the required (and relevant) documentation:
+IP-Masquerading HOWTO
+(http://www.linux.org/docs/ldp/howto/IP-Masquerade-HOWTO/index.html)
+Linux-NAT-HOWTO (and other interesting texts...)
+(http://www.iptables.org/documentation/index.html)
+
+REQUIREMENTS:
+You need a linux 2.4 kernel and the most recent iptables package (1.2.5 as of
+this writing)
+available from http://www.iptables.org
+
+THE PROCESS:
+Configuring the Kernel...  Refer to the IP-Masquerading HOWTO for explanations.
+
+This is what my networking options look like in a menuconfig:
+
+  x x      <*> Packet socket  
+  x x      [ ]   Packet socket: mmapped IO   
+  x x      < > Netlink device emulation   
+  x x      [*] Network packet filtering (replaces ipchains)   
+  x x      [ ]   Network packet filtering debugging  
+  x x      [ ] Socket Filtering   
+  x x      <*> Unix domain sockets  
+  x x      [*] TCP/IP networking  
+  x x      [*]   IP: multicasting   
+  x x      [*]   IP: advanced router   
+  x x      [ ]     IP: policy routing  
+  x x      [ ]     IP: equal cost multipath  
+  x x      [ ]     IP: use TOS value as routing key   
+  x x      [*]     IP: verbose route monitoring   
+  x x      [ ]     IP: large routing tables   
+  x x      [ ]   IP: kernel level autoconfiguration   
+  x x      < >   IP: tunneling    
+  x x      < >   IP: GRE tunnels over IP  
+  x x      [ ]   IP: multicast routing   
+  x x      [ ]   IP: ARP daemon support (EXPERIMENTAL)   
+  x x      [ ]   IP: TCP Explicit Congestion Notification support 
+  x x      [*]   IP: TCP syncookie support (disabled per default)  
+  x x        IP: Netfilter Configuration  --->  
+  x x      <*>   The IPv6 protocol (EXPERIMENTAL)  
+  x x        IPv6: Netfilter Configuration  --->   
+  x x      < >   Kernel httpd acceleration (EXPERIMENTAL)
+  x x      [ ] Asynchronous Transfer Mode (ATM) (EXPERIMENTAL)
+  x x      < > 802.1Q VLAN Support (EXPERIMENTAL)  
+  x x      --- 
+  x x      < > The IPX protocol   
+  x x      < > Appletalk protocol support 
+  x x      < > DECnet Support  
+  x x      < > 802.1d Ethernet Bridging   
+  x x      < > CCITT X.25 Packet Layer (EXPERIMENTAL)   
+  x x      < > LAPB Data Link Driver (EXPERIMENTAL)  
+  x x      [ ] 802.2 LLC (EXPERIMENTAL)  
+  x x      [ ] Frame Diverter (EXPERIMENTAL) 
+  x x      < > Acorn Econet/AUN protocols (EXPERIMENTAL) 
+  x x      < > WAN router   
+  x x      [ ] Fast switching (read help!)  
+  x x      [ ] Forwarding between high speed interfaces  
+  x x      QoS and/or fair queueing  --->
+
+
+Don't forget to go in the  IP: Netfilter Configuration  --->
+
+  x x      <*> Connection tracking (required for masq/NAT)  
+  x x      <*>   FTP protocol support   
+  x x      <*>   IRC protocol support   
+  x x      < > Userspace queueing via NETLINK (EXPERIMENTAL)   
+  x x      <*> IP tables support (required for filtering/masq/NAT)    
+  x x      < >   limit match support   
+  x x      < >   MAC address match support  
+  x x      < >   netfilter MARK match support  
+  x x      < >   Multiple port match support   
+  x x      < >   TOS match support   
+  x x      < >   LENGTH match support  
+  x x      < >   TTL match support   
+  x x      < >   tcpmss match support  
+  x x      < >   Connection state match support   
+  x x      < >   Unclean match support (EXPERIMENTAL)   
+  x x      < >   Owner match support (EXPERIMENTAL)  
+  x x      < >   Packet filtering 
+  x x      <*>   Full NAT   
+  x x      <*>     MASQUERADE target support   
+  x x      <*>     REDIRECT target support   
+  x x      < >     Basic SNMP-ALG support (EXPERIMENTAL)  
+  x x      < >   Packet mangling   
+  x x      < >   LOG target support  
+  x x      < >   TCPMSS target support  
+
+
+And since I enabled IPv6 I went into  IPv6: Netfilter Configuration
+
+  x x     <*> IP6 tables support (required for filtering/masq/NAT) 
+  x x     < >   limit match support  
+  x x     < >   MAC address match support   
+  x x     < >   Multiple port match support   
+  x x     < >   Owner match support (EXPERIMENTAL)  
+  x x     < >   netfilter MARK match support  
+  x x     < >   Packet filtering  
+  x x     < >   Packet mangling 
+
+
+Compile the kernel
+
+Installing iptables:
+
+If your linux kernel source is in /usr/src/linux then a simple:
+
+make BINDIR=/usr/bin LIBDIR=/usr/lib MANDIR=/usr/man &&
+make BINDIR=/usr/bin LIBDIR=/usr/lib MANDIR=/usr/man install
+
+should suffice...
+
+Now... at boot I use the /etc/init.d/masquerade script which looks like this:
+You'll have to adapt the script to fit your network interface (in my case eth1)
+
+Here are Tijmen's improvements over the script from the last version of this
+hint:
+
+1. in the script, in start) add an evaluate_retval after the echo "1" >
+/proc/sys... because then it shows a [failed] if /proc isn'r mountet or
+ip_forwarding is not embedded in the kernel.
+
+2. the iptables -t nat -F flushes the masquerading rules, thus disabling
+the masquerading...
+
+#!/bin/sh
+# Begin of /etc/init.d/masquerade
+
+source /etc/init.d/functions
+
+case "$1" in
+    start)
+        echo "Enabling masquerading..."
+        echo "1" > /proc/sys/net/ipv4/ip_forward
+        evaluate_retval
+        echo -n "Bringing up iptables..."
+        loadproc /usr/bin/iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE
+        ;;
+    stop)
+        echo -n "Disabling masquerading..."
+        echo "0" > /proc/sys/net/ipv4/ip_forward
+        evaluate_retval
+        echo -n "stopping iptables ... "
+        /usr/bin/iptables -t nat -F
+        evaluate_retval
+        ;;
+    restart)
+        $0 stop
+        /usr/bin/sleep 1
+        $0 start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac
+
+# End of /etc/init.d/masquerade
+
+All that's left is to create the appropriate symbolic links in /etc/rc?.d
+
+That's
+it...

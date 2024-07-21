@@ -1,0 +1,346 @@
+TITLE:		How to install alternative shells on your LFS-system
+LFS VERSION:	All
+AUTHOR:		Björn Lindberg <d95-bli@nada.kth.se>
+
+SYNOPSIS:	A guide on how to install other shells than bash on an 
+		LFS-system.
+
+HINT:
+
+1. INTRODUCTION
+
+A vanilla LFS only comes with one shell, namely bash (Bourne-again
+shell). There are a lot of reasons why one would like to have
+alternatives. Different shells are good at different things. You might
+want to use one particular shell as your interactive shell, but another
+one for scripting. There are some programs that have their compile
+scripts written with a syntax that requires a certain shells. I will
+give a brief description of each shell, listing some of their strong
+points below.
+
+
+1.1 The Almquist Shell (ash)
+
+This is the shell that most closely tries to mimick the behaviour of
+the original Bourne shell -- and no more. It is therefore Bourne shell
+compliant, while being extraordinarily small and efficient. It is used
+as the /bin/sh shell on NetBSD, who also currently maintains it. There
+are two good reasons why you might want to consider installing ash:
+
+(1) It is small. It's memory footprint is about a third of bigger more
+    feature-filled shells, like bash and Korn shell. On a less
+    powerful machine it could be installed as /bin/sh, causing all
+    common administration scripts, eg. boot scripts to be run with it.
+
+(2) Portability. On Linux systems it is commonplace to begin a script
+    with /bin/sh, yet oftentimes bash-specific features will creep in,
+    since bash is the Linux standard shell. Those scripts should
+    arguably have /bin/bash at the top, because most of them won't run
+    as intended on other flavors of UNIX that don't use bash for their
+    /bin/sh, like the *BSDs and commercial Unices. Thus, using ash for
+    /bin/sh is an extra insurance that your scripts are portable in
+    the sense that they will generally work with the interpreter given
+    on the first line. this is good.
+
+
+1.2 The Korn Shell (ksh)
+
+Korn shell, like bash, is an improved Bourne shell derivative. It is
+actually more than a shell, designed to be a very high-level
+programming language while still maintaining Bourne shell
+compatibility. Bash has borrowed a lot of the ksh functionality, so
+the syntax is very similar. Korn shell is commonly used for more
+advanced scripting on non-Linux platforms, and since ksh is frequently
+available on commerical Unices, the portability for ksh scripts is
+good. It is also a very good interactive shell, and has some distinct
+features, like co-processes. See http://www.kornshell.com for more info.
+
+
+1.3 The T C Shell (tcsh)
+
+T C shell is the successor of the C shell, a competitor to the Bourne
+shell but with C-like syntax. tcsh thus has a vastly different syntax
+than the Bourne shell derivatives. Although shell afficionados
+consider csh (and by extension tcsh) a bad scripting shell (see
+http://www.faqs.org/faqs/unix-faq/shell/csh-whynot/), it is a very
+nice interactive shell with some unique features, like programmable
+tab completion. Another good reason to have it is that you might
+encounter scripts written in csh or tcsh. Such scripts won't run with
+Bourne shell and compatibles, since the syntax is different. Some
+program sources requires tcsh to build, eq xv (the image viewer), and
+openoffice. See http://www.tcsh.org for more info on tcsh.
+
+
+1.4 The Z shell (zsh)
+
+The Z shell is the most feature-filled (or bloated :-) of our
+shells. It's syntax is mostly similar to the Korn shell, but also
+borrowing elements from the C shell. It strongpoints are as an
+interactive shell, where it incorporates features from all other
+shells, while containing modules with a large variation of
+functionality. As an example, zsh comes with it's built-in ftp-client!
+See http://www.zsh.org for more info.
+
+
+2. INSTALLATION
+
+
+2.1 The Almquist Shell
+
+As mentioned earlier, the most actively maintained ash is the one
+NetBSD are using for their /bin/sh. Most Linux-distros are including
+ash, and they are then typically keeping their sources in sync with
+the NetBSD ones. We will use the Debian sources, since they are a bit
+more Linux-friendly than NetBSD. :-)
+
+It is still a lot of trouble to compile though, because the makefile
+requires pmake, which is a make common on *BSDs. Gnu make won't
+work. The tarballs we'll need, and the places I got them:
+
+ash
+	ftp://ftp.debian.org/debian/dists/potato/main/source/shells/\
+		ash_0.3.5.orig.tar.gz
+ash-diff
+	ftp://ftp.debian.org/debian/dists/potato/main/source/shells/\
+		ash_0.3.5-11.diff.gz
+ash-hetios
+	ftp://ftp.psychosis.com/linux/linux-router-devel/\
+		ash-hetios-0.5.1.diff.gz
+pmake
+	ftp://ftp.debian.org/debian/dists/potato/main/source/devel/ \
+		pmake_1.45-3.2.tar.gz
+
+We might as well use the Debian pmake, found at the same place. Don't
+hesitate to use your local Debian mirror site instead of the main one.
+
+The ash-hetios patch is a patch from the Linux Router Project that
+enables history support and arrow keys. If you plan on using ash as an
+interactive shell, you would want this patch, and if not, just don't
+apply it.
+
+In the section below I will assume that you do not want to keep pmake
+after using it to build ash. If you want to install pmake on your
+system the procedure will actually be somewhat easier.
+
+Unpack the pmake tarball and issue the following command:
+
+	debian/rules
+
+We will need this later:
+
+	export PMAKE=<path-to-pmake>
+	export PATH=$PATH:$PMAKE
+
+If you want to install pmake on your system, instead do the following:
+
+	install -m 755 bmake /usr/bin/pmake
+	install -m 755 mkdep /usr/bin/
+	install -m 644 make.1 /usr/share/man/man1/pmake.1
+	install -m 644 mkdep.1 /usr/share/man/man1/
+	install -d -m 755 /usr/share/mk/
+	for file in mk/*; do install -m 644 $file /usr/share/; done
+
+Now unpack the ash tarball and apply first the debian diff, and then
+the hetios diff. The hetios diff will not apply cleanly beacuse it was
+made against a slightly different source tree. This is nothing to
+worry about.
+
+We still have to make some small modifications:
+
+	mv Makefile Makefile.orig
+	sed 's/\(^CPPFLAGS.*$\)/\1 -DHETIO/' Makefile.orig > Makefile
+	echo -e "#endif\n" >> hetio.c
+	mv arith.y arith.y.orig
+	sed 's/\(yyerrok;\)/\/* \1 *\//' arith.y.orig > arith.y
+	$PMAKE/pmake -m $PMAKE/mk CFLAGS='-O2' CPPFLAGS='-DBSD \
+		-DSMALL	-DSHELL -DHETIO -D__COPYRIGHT\(x\)= \
+		-D__RCSID\(x\)=' HOST_CPPFLAGS='-DBSD -DSMALL \
+		-DSHELL -DHETIO -D__COPYRIGHT\(x\)= \
+		-D__RCSID\(x\)=' YACC='bison -y'
+
+Voilà! We now have a binary called sh and a manpage to go with
+it. Install via the following:
+
+	install -m 755 sh /bin/ash
+	install -m 644 sh.1 /usr/share/man/man1/
+	cd /usr/share/man/man1 && ln sh.1 ash.1
+
+If you would like to use ash as /bin/sh, either symlink it or install
+it as sh directly. The manpage is a very good manpage for sh in either
+case.
+
+
+2.2 The Korn Shell
+
+The Korn SHell used to be a commercial closed-source shell. Because of
+this, a free clone was written, pdksh (Public Domain Korn
+Shell). pdksh supposedly has most of the original ksh's functionality,
+but since early 2000 the source code for the original ksh is
+available, so that is what we are going to install here. Note that ksh
+is still under a license though. The following packages are needed:
+
+http://www.research.att.com/~gsf/download/tgz/INIT.2002-06-28.tgz
+http://www.research.att.com/~gsf/download/tgz/ast-ksh.2002-06-28.tgz
+http://www.research.att.com/~gsf/download/tgz/ast-ksh-locale.2002-06-28.tgz
+
+Note that the exact URL may change as a result of updates to the
+source code packages. If the above links don't work you will have to
+go to http://www.research.att.com/sw/download/ and manually download
+the following packages: INIT, ast-ksh and ast-ksh-locale.
+
+ksh is built using AT&T's particular build system. First you will need
+to designate an empty build directory, eg <...>/src/ksh. The rest of
+the install commands should be executed while standing in this
+directory. Unpack the INIT package from this directory. Execute
+
+	mkdir lib/package/tgz
+
+and move all three packages to this directory. Now issue
+
+	bin/package read
+	bin/package make
+
+To install ksh
+
+	cp arch/linux.i386/bin/ksh /bin
+	cp arch/linux.i386/man/man1/sh.1 /usr/share/man/man1/ksh.1
+
+To install the provided shell functions pushd, popd and dirs, do this
+
+	mkdir -p /usr/share/ksh/functions
+	cp arch/linux.i386/fun/* /usr/share/ksh/functions
+
+you will then have to set the following environment variable to access
+them, this can be done in one of the startup scripts
+
+	export FPATH=/usr/share/ksh/functions
+
+The install management system supposedly will make it easier to
+upgrade ksh to a newer version by the following command
+
+	bin/package update source http://www.research.att.com/sw/download
+
+
+2.3 The T C Shell
+
+tcsh is by comparison easy to install. First we need the sources:
+
+ftp://ftp.funet.fi/pub/unix/shells/tcsh/tcsh-6.11.tar.gz
+
+Build the sources
+
+	./configure --prefix=/usr --bindir=/bin --mandir=/usr/share/man
+	mv config_f.h config_f.h.orig
+	sed '/NLS_CATALOGS/s/undef/define/; /AUTOLOGOUT/s/define/undef/' \
+		config_f.h.orig > config_f.h
+	make
+	make install install.man
+
+That's it! You now have a shiny new tcsh in your /bin directory. If
+you have special considerations you might want to edit the settings in
+config_f.h differently from mine, for instance it is possible to set
+vi editing as default. If you want to play with the programmable tab
+completion feature, have a look at the file complete.tcsh.
+
+
+2.4 The Z Shell
+
+The sources are available for instance here:
+
+ftp://sunsite.dk/pub/unix/shells/zsh/zsh-4.0.4.tar.bz2
+
+Building and installation is straightforward
+
+	./configure --prefix=/usr --bindir=/bin --mandir=/usr/share/man
+	make
+	make install
+
+This will install, in addition to the shell, the shell modules as well
+as a lot of shell functions. To take advantage of the latter, you need
+to set the following environment variable, and also "autoload" the
+functions you would like to use
+
+	fpath=(/usr/share/zsh/4.0.4/functions/)
+	autoload zed	# example
+
+
+3. Startup files
+
+To learn more about the different shells, I recommend the manpages and
+homepages for the shells, as well as the general web resources listed
+in section 5. I will however say something about startup files, which
+is otherwise often a source of confusion.
+
+Beginning with ash and ksh, all shells (interactive, non-interactive
+and login) will read the file specified in $ENV. A login shell will in
+addition to this first read /etc/profile and .profile. It is common to
+set $ENV from one of those two files with a command such as this
+
+	ENV=$HOME/.shrc; export ENV	# or
+	export ENV=$HOME/.kshrc
+
+To restrict parts of the $ENV file to interactive shells (that will
+not be run for eg shell scripts), something like the following can be
+used
+
+	case $- in *i*)
+		# interactive commands
+		# ...
+	esac
+
+A tsch login shell will read the following files
+
+	/etc/csh.cshrc
+	/etc/csh.login
+	~/.tcshrc, or if not found, ~/.chsrc
+	~/.login
+
+a non-login shell will only read /etc/csh.cshrc and ~/.tcshrc (or
+~/.cshrc). On logout, a login shell will read /etc/csh.logout and
+~/.logout.
+
+A zsh login shell reads the following files
+
+	/etc/zshenv
+	~/.zshenv
+	/etc/zprofile
+	~/.zprofile
+	/etc/zshrc
+	~/.zshrc
+	/etc/zlogin
+	~/.zlogin
+
+an interactive (but non-login) shell will read all those but the
+*profile and *login files. A non-interactive shell will not read
+*zshrc. In addition, zsh login shells will also read ~/.zlogout and
+/etc/zlogout on exit.
+
+
+4. Size comparisons
+
+Shell	In-memory size (kB)	Binary size (kB)
+-------------------------------------------
+ash	472			97
+bash	1400			533
+ksh	1212			834
+tcsh	1448			292
+zsh	1472			424
+
+All binaries were stripped. The in-memory size is obtained from the
+RSS column from 'top'. Sizes may vary slightly from system to system
+and also depending on exact shell version. I am actually not certain
+how relevant these figures are, but decided to include them for
+comparison. Another thing to keep in mind is that zsh uses a lot of
+modules that also takes up space, so the total disk space needed are
+higher than the above figure. The total zsh installation uses over 3
+MB.
+
+
+5. Shell resources
+
+http://www.shelldorado.com
+http://www.faqs.org/faqs/unix-faq/shell/shell-differences/
+http://www.faqs.org/faqs/unix-faq/shell/csh-whynot/
+http://www.kornshell.com
+http://www.tcsh.org
+http://www.zsh.org

@@ -1,0 +1,480 @@
+AUTHOR:         Jim Gifford <lfs-hints@jg555.com>
+
+DATE:		2003-09-09
+
+LICENSE: 	GNU Free Documentation License Version 1.2
+
+SYNOPSIS:	Courier Mail Server for setup
+
+DESCRIPTION:	This hint will show you how to install the Courier Mail
+		Server with virutial users using mysql.
+
+PREREQUISITES:  gdbm-1.8.3 expect-5.39 Linux_PAM-0.77 apache openssl-0.97
+		mysql aspell-0.50.3
+
+HINT:
+	
+courier-0.43.2
+Introduction to courier
+Download location (HTTP):       
+http://osdn.dl.sourceforge.net/sourceforge/courier/courier-0.43.2.tar.bz2
+Download location (FTP):        
+ftp://courier.sourceforge.net/courier/courier-0.43.2.tar.bz2
+Version used:                   0.43.2
+Package size:                   3.1 MB
+Estimated Disk space required:  55 MB
+ 
+
+The courier package contains a Mail Transport Agent (MTA). This is useful
+for sending email to other users of your host machine. It can also be 
+configured to be a central mail server for your domain or a mail relay agent.
+The courier packages also includes a web-based email interface, IMAP, IMAP-SSL,
+POP3, and POP3-SSL. The configuration listed below will allow users with PAM
+and virtual-users in a Mysql Database access to email.
+
+courier depends on:
+	gdbm-1.8.3
+	expect-5.39(see below for installation information) 
+	Linux_PAM-0.77 apache openssl-0.97
+	
+	Notes - db-4.0.14 will also work
+		db-4.1.25 does not work, causes problems with makealiases
+
+courier can utilize:
+	mysql-3.23.55 mysql-4.0.15 aspell-0.50.3
+
+Installation of courier
+
+	Before you compile the program, you need to create users and groups that
+	will be expected to be in place when the install script executes. Add
+	the users and groups with the following commands:
+
+	echo "courier:x:103:103:Courier Mail Server:/dev/null:/bin/false" \
+	>> /etc/passwd	
+	echo "courier:x:103:" >> /etc/group
+
+	You may change the 103 to your particular needs.
+
+Install courier by running the following commands:
+
+	./configure --prefix=/usr --sysconfdir=/etc/courier \
+		    --with-piddir=/var/run \
+		    --libexecdir=/usr/libexec --datadir=/usr/share/courier \
+		    --localstatedir=/var/lib/courier --disable-root-check \
+	            --with-db=gdbm --with-mailuser=courier \
+		    --withmailgroup=courier \
+		    --enable-workarounds-for-imap-client-bugs \
+		    --with-ispell=/usr/bin/aspell
+	make &&
+	make install &&
+	make install-configure
+	
+	# Note - You may receive an error saying that the mime.types file could
+		   not be found. This can easily be corrected by adding
+		   --enable-mimetypes=(location of mime.types file)
+
+Configure authentication 
+
+	/etc/courier/authmysqlrc
+	
+	You will need edit the following entries
+	
+	MYSQL_SERVER		mysql.example.com
+	MYSQL_SERVER		localhost
+	
+	MYSQL_USERNAME		admin
+	MYSQL_USERNAME		courier
+	
+	MYSQL_PASSWORD		admin
+	MYSQL_PASSWORD		(your choice) (This is the db password)
+
+	# MYSQL_SOCKET		/var/mysql/mysql.sock
+	MYSQL_SOCKET		/tmp/mysql.sock
+
+	MYSQL_PORT		0
+	MYSQL_PORT		3306
+
+	MYSQL_DATABASE		mysql
+	MYSQL_DATABASE		courier-mail
+
+	MYSQL_USER_TABLE	passwd
+	MYSQL_USER_TABLE	users
+
+	#MYSQL_CLEAR_PWFIELD	clear
+	MYSQL_CLEAR_PWFIELD	clear
+
+	#DEFAULT DOMAIN		example.com
+	DEFAULT DOMAIN		(your domain)
+
+	#MYSQL_QUOTA_FIELD	quota
+	MYSQL_QUOTA_FIELD	quota
+
+	PAM Configuration
+
+	/etc/courier/esmtp
+	
+	# Begin /etc/pam.d/esmtp
+
+	auth		required	pam_unix.so		try_first_pass
+	account		required	pam_unix.so
+	session		required	pam_unix.so
+
+	# End /etc/pam.d/esmtp
+
+	/etc/courier/pop3
+	
+	# Begin /etc/pam.d/pop3
+
+	auth		required	pam_unix.so		try_first_pass
+	account		required	pam_unix.so
+	session		required	pam_unix.so
+
+	# End /etc/pam.d/pop3
+
+	/etc/courier/imap
+	
+	# Begin /etc/pam.d/imap
+
+	auth		required	pam_unix.so		try_first_pass
+	account		required	pam_unix.so
+	session		required	pam_unix.so
+
+	# End /etc/pam.d/imap
+
+	/etc/courier/webmail
+	
+	# Begin /etc/pam.d/webmail
+
+	auth		required	pam_unix.so		try_first_pass
+	account		required	pam_unix.so
+	session		required	pam_unix.so
+
+	# End /etc/pam.d/webmail
+
+MySQL Configuration
+
+	This section will create the mysql database for authentication. 
+
+	mysqladmin -uroot -p{password} create courier-mail
+
+	This section will setup the table users for the courier-mail database.
+
+	mysql -uroot -p{password} courier-mail
+
+	CREATE TABLE users (
+        id                    char(128) DEFAULT '' NOT NULL,
+        crypt                 char(128) DEFAULT '' NOT NULL,
+        clear                 char(128) DEFAULT '' NOT NULL,
+        name                  char(128) DEFAULT '' NOT NULL,
+        uid                   int(10) unsigned DEFAULT '65534' NOT NULL,
+        gid                   int(10) unsigned DEFAULT '65534' NOT NULL,
+        home                  char(255) DEFAULT '' NOT NULL,
+        quota                 char(255) DEFAULT '' NOT NULL,
+        KEY id (id(128))
+	);
+
+	This will add the courier user that we specified earlier in 
+	the authmysql file.
+
+	mysql -uroot -p{password} mysql
+
+	grant all privileges on *.* to courier@localhost 
+	identified by '{password}' with grant option;
+
+General Settings for Mail
+
+	You will need to create the following files with the contents
+	specified.
+
+	/etc/courier/defaultdomain
+
+	cat > /etc/courier/defaultdomain << "EOF"
+	{yourdomain}
+	EOF
+
+	/etc/courier/locals
+
+	cat > /etc/courier/locals << "EOF"
+	localhost
+	{yourdomain}
+	EOF
+
+	/etc/courier/esmtpacceptmailfor
+
+	cat > /etc/courier/esmtpacceptmailfor << "EOF"
+	localhost
+	{yourdomain}
+	EOF
+
+	/etc/courier/hosteddomains
+	
+	cat > /etc/courier/hosteddomains << "EOF"
+	{yourdomain}
+	EOF
+
+	/etc/courier/me
+	
+	cat > /etc/courier/me << "EOF"
+	{yourdomain}
+	EOF
+
+	You will also need to edit the aliases file and change the 
+	following entry.
+
+	/etc/courier/aliases/system
+
+	postmaster:
+	postmaster: {your adminstrator email}
+
+	If you want to deny access from some hosts from sending mail you 
+	will need to edit the /etc/courier/smtpaccess/default.
+
+	After the above steps are completed you will need to run the 
+	following commands
+
+	makesmtpaccess
+	makehosteddomains
+	makealiases
+	
+SMTP/SMTMP-SSL Configuration
+
+	This section will enable the SMTP Server from Courier
+
+	/etc/courier/esmtpd
+
+	You will need edit the follow entries
+
+	ESMTPDSTART=NO
+	ESMTPDSTART=YES
+
+	/etc/courier/esmtpd-ssl
+
+	ESMTPDSSLSTART=NO
+	ESMTPDSSLSTART=YES
+
+POP3/POP3-SSL Configuration
+
+	This section will enable the POP3 Server from Courier
+
+	/etc/courier/pop3d
+
+	You will need edit the follow entries
+
+	POP3DSTART=NO
+	POP3DSTART=YES
+
+	/etc/courier/pop3d-ssl
+
+	POP3DSSLSTART=NO
+	POP3DSLLSTART=YES
+
+IMAP/IMAP-SSL Configruation
+
+	This seciton will enable the IMAP Server from Courierd
+
+	/etc/courier/imapd
+
+	You will need to edit the following entries
+
+	IMAPDSTART=NO
+	IMAPDSTART=YES
+
+	/etc/courierd/imapd-ssl
+
+	IMAPDSSLSTART=NO
+	IMAPDSSLSTART=YES
+
+Creating Maildirectories for System Users
+
+	This section will explain on how to create MailDirs for your 
+	system users.
+
+	cd /home/{username}
+	maildirmake Maildir
+	chown {username}.{username} Maildir -R
+
+Setup for Virtual users
+
+	This section will explain how to setup Maildir for your virtual users.
+
+	echo "vmailman:x:9000:9000:Virtual Mailman:/home/vmailman:/bin/bash" \
+	>> /etc/passwd
+	echo "vmailman:x:9000:" >> /etc/group
+
+	You may change the 9000 to your particular needs.
+
+	Now to setup the maildir for these virutal users.
+
+	cd /home/vmailman
+	mkdir {virtual_user}
+	cd {virtual_user}
+	maildirmake Maildir
+	chown vmailman.vmailman Maildir -R
+
+	Add the virtual user to the MySQL database. You need to enter at least on 
+	version of the password either clear text or encrypted.
+
+	mysql -ucourier -p{password} courier-mail
+
+	insert into users values('{virtual_users}@{domain.com},
+				 '{encrypted password or blank}',
+                                 '{clear text password or blank}',
+				 '{User's Name}',9000,9000,
+				 '{location of Maildir}','{Quota in Bytes'});
+
+	example
+
+	insert into users values ('blfsuser@linuxfromscratch.org','','password',
+				  'BLFS User',9000 ,9000,
+				  '/home/vmailman/blfsuser','');	
+
+Setup for Mail Drop Procedures
+
+	This section will give examples on how to setup Maildrop with Courier.
+
+	If you use this feature, you will need to edit your 
+	/etc/courier/courierd file and change the line DEFAULTDELIVERY=./Maildir
+	to DEFAULTDELIVERY="| /usr/bin/maildrop".
+	
+	Remember if you are using folders, you will need to create them using 
+	the command maildirmake .(Foldername) the . is required. For example if
+	you need to create a folder named ISP1 for the user jeff, you would 
+	follow this procedure.
+
+	cd /home/jeff/Maildir
+	maildirmake .ISP1
+	chown jeff.jeff .ISP1 -R
+
+	For Global MailDrop procedures, you will need to create the file
+	/etc/courier/maildroprc.
+
+	Here is an example of a maildroprc file. These rules will work globally.
+
+	# Global maildrop filter
+
+	# Global Variables
+	#
+	DEFAULT="$HOME/Maildir"
+	LOGDIR="$HOME/log"
+
+	# Log File
+	#
+	logfile "$LOGDIR/maildroprc.log"
+
+	# Drop anything listed as a Virus into .Virus
+	#
+	if (/^Subject:.*VIRUS FROM*/)
+	        to "$DEFAULT/.Virus/"
+
+	# Drop anything listed as Spam into .Spam
+	#
+	if (/^X-Spam-Flag: *YES/)
+      	  to "$DEFAULT/.Spam/"
+
+
+	For Individual Maildrop procedures, you will need to create the 
+	file ~/.mailfilter. You can use Global and Individual Maildrop 
+	procedures. 
+
+	Here is an example of a .mailfilter file. These rules will work on
+	a individual basis.
+
+	# Begin /~/.mailfilter
+
+	# Local maildrop filter
+
+	# Global Variables
+	#
+	DEFAULT="$HOME/Maildir"
+	LOGDIR="$HOME/log"
+
+	# Log File
+	#
+	logfile "$LOGDIR/maildroprc.log"
+
+	# ISP1 Email into File ISP1
+	#
+	if (/^(To|[Cc][Cc][Mail-Followup-to]):.*userfrom@isp1.com*/)
+      	  to "$DEFAULT/.ISP1/"
+
+	# Courier Maillist into Folder Courier
+	#
+	if (/^List-Post:.*courier-users@lists.sourceforge.net*/)
+      	  to "$DEFAULT/.Courier/"
+
+
+
+# End /~/.mailfilter
+
+
+Setup for Web-based Email
+
+	This section will explain how to setup Courier Web-based email system.
+
+	You will need to copy the file webmail from /usr/libexec/courier/webmail
+	to your cgi-bin	directory of you Apache server.
+
+	cp -a /usr/libexec/courier/webmail/webmail /var/www/cgi-bin
+
+	You will then need to copy the images to a folder under your htdocs 
+	directory of your Apache server. The directory needs to be named webmail
+	or you need to specify it during the configure phase with
+	--enable-imageurl=/url.
+
+	cp -a /usr/share/courier/sqwebmail/images /var/www/htdocs/webmail
+
+Setup for Web-based Administration
+
+	This section will explain how to setup Courier Web-based admin system.
+
+	You will need to copy the file webadmin from /usr/libexec/courier/webmail
+	to your cgi-bin	directory of you Apache server.
+
+	cp -a /usr/libexec/courier/webmail/webadmin /var/www/cgi-bin
+
+-----Expect 5.39-----
+
+	This section will explain how to setup expect for Webadmin and Webmail.
+
+Download location (FTP):        ftp://expect.nist.gov/expect.tar.gz
+Version used:                   5.39
+Package size:                   505 KB
+Estimated Disk space required:  5 MB
+
+Introduction to expect
+
+Expect is a tool for automating interactive applications such as telnet, ftp,
+passwd, fsck, rlogin, tip, etc. Expect really makes this stuff trivial. Expect
+is also useful for testing these same applications. And by adding Tk, you can
+also wrap interactive applications in X11 GUIs. 
+
+Install expect by running the following commands:
+
+	./configure --prefix=/usr --with-tcl=/usr/lib \
+		    --with-tclinclude=/usr/include/tcl
+	make &&
+	make install &&
+	
+	# Note - If you also have tk installed, you can add 
+		   --with-tk=/usr/lib \
+		   --with-tkinclude=/usr/include/tk
+
+----Amavis 0.312----
+
+	To use amavis with Courier you will need to download the patch at
+	http://www.jg555.com/projects/patches/amavis.php	
+
+
+VERSION: 	1.7
+
+CHANGELOG: 	1.7 Updated Package, fixed for new db issue
+		1.6 Updated to New Hint Format Completed
+		1.5 Updated Email Address
+		1.4 Updated to New Hint Format
+	    	1.3 Updated to Version 0.43.1 and added me file
+	    	1.2 Fixed Typos
+	    	1.1 Added Information about Amavis Patch
+	    	1.0 Initial Version
+
+ New Version of this document can be viewed from http://www.jg555.com/cvs
+

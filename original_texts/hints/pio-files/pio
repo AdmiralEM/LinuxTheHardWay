@@ -1,0 +1,1096 @@
+#!/bin/bash
+# Package Installation Observer, pio
+#PGR was here for minor config changes
+#PGR SUBVER=16a: added restore command, added a deliberate delay
+#PGR SUBVER=16b: changed "files" function to include "touched" files in
+#		 lists and backups.  Important!
+#PGR SUBVER=16c: added --color to ls, shortened backup file extension
+#PGR SUBVER=16d: find wants -maxdepth before -type (some versions)
+#PGR SUBVER=16e: reorganized configuration section for easier bootstrapping
+#PGR SUBVER=16f: functionalized restore code, added "check" command
+#PGR SUBVER=17: re-identified, changed hyphenated commands
+#PGR SUBVER=17a: tar: ignore zero-blocks, don't pass tar "/"
+#PGR SUBVER=17b: in write_script, sort used an obsolete POSIX syntax
+#PGR SUBVER=17c: find syntax for -perm changed
+#PGR SUBVER=17d: added /srv to WATCHed DIRectorieS
+#
+# Once upon a time there was git, the Guarded Installation Tool, by Ingo
+# Brueckl (ib@wupperonline.de) 14.11.1996.  I found it useful for LFS
+# builds & added a few functions.  Then Linus made a kernel development
+# management tool he chose to call git.  So I changed this script to
+# avoid potential confusion.  pio is still almost entirely Ingo's git.
+# Some functionality has been changed.  That's my responsibility.
+#
+
+LNAME="Package Installation Observer"
+SNAME=$(basename "$0")
+VERSION=2
+SUBVER=17d
+
+#PGR-16e: reorganized configuration section
+#--------------------------------------------------------------------------
+CFG=3
+case $CFG in
+ 1)
+  #PGR During LFS-Ch5 stage1 build when $LFS is defined externally
+  VIEWPROG="less -c"
+  SHOWRESULT=yes         # default answer to 'Show it?'
+  WATCHDIRS=$LFS
+  IGNOREDIRS=
+  SCRIPTPATH=$LFS/$SNAME ;;
+ 2)
+  #PGR During LFS-Ch6 stage2 build
+  VIEWPROG=cat
+  SHOWRESULT=yes         # default answer to 'Show it?'
+  WATCHDIRS="/bin /boot /dev /etc /lib /opt /sbin /srv /usr /var"
+  IGNOREDIRS="/usr/local/src /usr/local/$SNAME /var/log"
+  SCRIPTPATH=/usr/local/$SNAME ;;
+ 3) 
+  #PGR After LFS-Ch6 stage 2 complete, general ops
+  VIEWPROG="less -c"
+  SHOWRESULT=yes         # default answer to 'Show it?'
+  WATCHDIRS="/bin /boot /dev /etc /lib /opt /sbin /srv /usr /var"
+#PGR if cups is installed, ignore cups changes
+  [ -d /etc/cups ] && cups="/etc/cups" || cups=""
+  [ -d /var/spool/fcron ] && fcron="/var/spool/fcron" || fcron=""
+  IGNOREDIRS="/usr/local/src /usr/local/$SNAME /var/log $cups $fcron"
+  SCRIPTPATH=/usr/local/$SNAME ;;
+esac
+
+#PGR-16c: use color
+LSPROG="ls --color=auto -dCv" # program used to list de-installation scripts
+#PGR-16c: shorten extension
+BACKUPEXT=tgz          # file extension used for backups
+FINDCASE=-i            # will cause --find to ignore case
+PROFILEVAR=*default*   # empty, *default*, or individual variable name
+PRESERVE=yes           # preserve the de-installation script's timestamps
+EXPERT=no              # non-experts get some additional help
+EDITPROG=${EDITOR:-vi} # program used to edit de-installation scripts
+BACKUPPIPE="tar --no-recursion --null -T - -czf" # program used to back up
+#PGR-17b: ignore zero blocks
+RESTOREPIPE="tar -xzif" #restore parms
+#--------------------------------------------------------------------------
+# end of configuration section
+
+#PGR-17: eliminated hyphenated commands
+USAGE="Usage: 
+$SNAME PKG
+$SNAME command
+	[--cd] [--deps] [--help] [--profile] [--version]
+$SNAME command [argument]
+	[--cwd [...]] [--ls [PKG*]] [--lsbak [PKG*]] [--dirs [PKG*]] 
+$SNAME command argument
+	[--edit PKG] [--remove PKG] [--backup PKG] [--restore PKG] 
+	[--check PKG] [--files PKG] [--files0 PKG] [--list PKG]
+	[--xcheck PKG] [--find FILENAME] 
+$SNAME PKG command argument
+	[PKG --requires PKG2] [PKG --uses PKG2] [PKG --supports PKG2] 
+$SNAME [PKG] --lib [LIBNAME] 
+$SNAME [PKG] [--watch DIR1 DIR2 ...] [--ignore DIR1 DIR2 ...]
+
+i.e.
+  PKG			observe installation start/finish of PKG
+  --backup PKG		create a backup of the files in PKG
+  --cd			change the current directory to $SCRIPTPATH
+  --check PKG		check current files against backup
+  --cwd [...]		execute with arguments given in [...], but create all
+			working files in ./ (only works as first option)
+  --deps		show all dependencies and usages
+  --dirs [PKG]		show the defaults for --watch and --ignore or the
+ 			values used for the (current) installation of PKG
+  --edit PKG		edit PKG's script preserving the file's timestamp
+  --files PKG		list the files in PKG
+  --files0 PKG		list the files in PKG with null-terminated names
+  --find FILENAME	tell which PKG installed files matching FILENAME
+  --help		display this help and exit
+  --ignore DIRn		paths excluded from being watched during installation
+  --lib [LIBNAME]	tell which programs use libraries matching LIBNAME
+  --list PKG		list information about the files in PKG
+  --ls [PKG]		list all de-installation scripts matching PKG*
+  --lsbak [PKG]		list all backups matching PKG*
+  --profile		print definitions required for option --cd and for a
+ 			variable containing $SCRIPTPATH
+  --remove PKG		call the de-installation script for PKG
+  --requires PKG2	note the dependency on PKG2
+  --restore PKG		restore files from backup PKG
+  --supports PKG2	note the exclusive use by PKG2
+  --uses PKG2 		note the advantage because of PKG2
+  --version		output version information and exit
+  --watch DIRn		paths to be watched during installation
+  --xcheck PKG		cross-check contents of PKG against all other
+ 			(executable) de-installation scripts to find out
+			whether a file has been installed more than once"
+
+TRY="Try \`$SNAME --help' for more information."
+
+ID="De-installation script"
+#PGR-17: use unhyphenated synonyms
+DEPEND="requires"
+USE_OF="uses"
+USED_BY="supports"
+
+BACKUPPATH=$SCRIPTPATH/backups
+
+SOFAR=so-far
+SUFFIX=pre-inst
+PIOOPT=pio-opts
+
+OPTIONS=0     # a bitmap flag for options, bit 0: --watch, bit 1: --ignore
+
+WSPACE=$(echo -e " \t")
+eval "$(echo -e 'NL="\n"')"
+# newlines in filenames will be expressed by ${NL} in de-installation scripts
+# the following...
+export NL
+# ...allows subshells started by this script to handle those filenames properly
+
+if [ ".$1" = ".--cwd" ]; then
+  shift
+  TEMPDIR=$(pwd)/$SNAME.$$
+else
+  TEMPDIR=${TMPDIR:-/tmp}/$SNAME.$$
+fi
+TEMPFILE=$TEMPDIR/$SNAME
+
+function novice ()                  # $1: string to return
+{
+  if [ "$EXPERT" = no ]; then
+    echo "$1 "
+  else
+    echo ""
+  fi
+}
+
+function change_filenames ()
+{
+  # split lines separated by \0
+  # change <newline> temporarily into \0,
+  # question mark into //Q,
+  # and \0 into question mark
+
+  tr "\0\n" "\n\0" | sed "s:?://Q:g" | tr "\0" "?"
+}
+
+function restore_filename ()
+{
+  # reverse what change_filenames did
+
+  tr "?" "\n" | sed "s://Q:?:g"
+}
+
+function find_filenames ()
+{
+  eval "find $WATCHDIRS $PRUNE \"\$@\" \( -type d -printf "d" -print0 -o \
+                                                  -printf "f" -print0 \)" |
+  change_filenames
+}
+
+function translate_filenames ()     # $1: inserted as first character in line
+{
+  # escape special characters,
+  # change question mark into ${NL},
+  # change //Q into question mark,
+  # translate file type into 'rm -f' or 'rmdir'
+  # and put double quotes around the filename if (possibly) necessary
+
+  sed -e 's:["$\\`]:\\&:g' -e 's:?:${NL}:g' -e "s://Q:?:g" \
+      -e "s:^f:$1 rm -f  :" -e "s:^d:$1 rmdir  :" \
+      -e 's:^\(.\{8\}\) \(.*[^a-zA-Z0-9+,./:_-].*\)$:\1"\2":'
+}
+
+function create_tempdir ()
+{
+  mkdir "$TEMPDIR" && chmod go-w "$TEMPDIR" && rm -rf "$TEMPDIR"/{,.[^.],..?}*
+  if [ $? -ne 0 ]; then
+    echo "Fatal error while creating working directory."
+    exit 1
+  fi
+  TMPDIR=$TEMPDIR
+  export TMPDIR
+}
+
+function write_script ()            # $1: pre-inst, $2: script, $3: quiet?
+{
+  # detect new or modified files
+  find_filenames -cnewer "$1" | sort > "$TEMPFILE.new"
+
+  # detect files that have been deleted
+  find_filenames | sort > "$TEMPFILE.all"
+  comm -23 "$1" "$TEMPFILE.all" > "$TEMPFILE.del"
+
+  # handle files that have been newly created
+  comm -13 "$1" "$TEMPFILE.new" | translate_filenames " " > "$TEMPFILE.rm"
+
+  # handle previously existing files that have been changed
+  comm -12 "$1" "$TEMPFILE.new" | translate_filenames "#" >> "$TEMPFILE.rm"
+
+  # now create the de-installation script
+  echo "#!/bin/bash" > "$2"
+  echo "#" >> "$2"
+  echo $E "$ID for \`$(basename "$1" ".$SUFFIX")'," | sed "s:^:# :" >> "$2"
+  echo "# created by $LNAME $VERSION.$SUBVER on $(date)" >> "$2"
+  echo >> "$2"
+  if grep -q "?" "$TEMPFILE.new" "$TEMPFILE.del"; then
+    echo 'NL="' >> "$2"
+    echo '"        # some filenames contain newlines expressed by ${NL}' >> "$2"
+    echo >> "$2"
+  fi
+  if [ -s "$TEMPFILE.del" ]; then
+    echo "## WARNING!" >> "$2"
+    echo "##" >> "$2"
+    echo "## This is a list of files that seem to have been deleted during installation:" >> "$2"
+    echo "##" >> "$2"
+    cat "$TEMPFILE.del" | translate_filenames "#" | sed "s:^# rm...:## :" | sort >> "$2"
+    echo "##" >> "$2"
+    echo "## End of WARNING" >> "$2"
+    echo >> "$2"
+  fi
+  echo "$SNAME --xcheck" '"$(basename "$0")"' >> "$2"
+  echo 'echo -n "Ok to start de-installation? "' >> "$2"
+  echo "read" >> "$2"
+  echo 'if [ ".$REPLY" != ".y" -a ".$REPLY" != ".yes" ]; then' >> "$2"
+  echo '  echo "No, aborted."' >> "$2"
+  echo "  exit" >> "$2"
+  echo "else" >> "$2"
+  echo -n '  echo -n "Removing \`$(basename "$0")' >> "$2"
+  echo "'... \"" >> "$2"
+  echo "fi" >> "$2"
+  echo >> "$2"
+  echo "# The following statements will completely remove the installation," >> "$2"
+  echo "# files already existing prior to the installation are commented out." >> "$2"
+  echo >> "$2"
+  #PGR updated syntax for POSIX-200112 standard (klugey, I know)
+  sort -t : -k1.9 -r "$TEMPFILE.rm" >> "$2"	# puts files before directory
+  echo >> "$2"
+  echo 'chmod -x "$0"' >> "$2"
+  echo 'echo "done."' >> "$2"
+  echo 'echo -n "Remove script, too? "' >> "$2"
+  echo "read" >> "$2"
+  echo 'if [ ".$REPLY" = ".y" -o ".$REPLY" = ".yes" ]; then' >> "$2"
+  echo '  rm "$0"' >> "$2"
+  echo "else" >> "$2"
+  echo '  echo "It has been made non-executable instead."' >> "$2"
+  echo "fi" >> "$2"
+
+  # we're done
+  if [ -z "$3" ]; then
+    trap "" SIGINT
+    echo "done."
+    if [ -s "$TEMPFILE.del" ]; then
+      echo "See it for warnings!"
+    fi
+  fi
+}
+
+function show_result ()             # $1: script
+{
+  if [ ! -s "$1" ]; then
+    echo "Nothing to show."
+    return 1
+  elif [ -z "$VIEWPROG" ]; then
+    echo -n "Can't show it, press enter. "
+    read
+  else
+    echo -n "Show it? [$SHOWRESULT] "
+    read
+    REPLY=${REPLY:-$SHOWRESULT}
+    if [ ".$REPLY" = ".y" -o ".$REPLY" = ".yes" ]; then
+      $VIEWPROG "$1"
+    fi
+  fi
+  return 0
+}
+
+function extract_filenames ()       # $1: search pattern for beginning of line
+{
+  NFNAME="[^$WSPACE\";]\+"   # normal (unquoted) filenames
+  QFNAME='".*"'              # double quoted filenames
+
+  sed "s:$1\($NFNAME\|$QFNAME\)\([$WSPACE;].*\)\?\$: \1:"
+}
+
+function xcheck ()                  # $1: script, $2: ANYNAME
+{
+  echo $E -n "Checking \`$(basename "$1")'... "
+
+  # separate files to be removed
+  grep "^ *rm -f " "$1" | extract_filenames "^ *rm -f \+" |
+  sort > "$TEMPFILE.check"
+
+  # separate files commented out
+#PGR-16d: -maxdepth order problem with some versions of find
+#  find "$SCRIPTPATH" -maxdepth 1 -type f -perm +u+x -print0 |
+#PGR-17c: syntax for -perm changed
+  find "$SCRIPTPATH" -maxdepth 1 -type f -perm /u+x -print0 |
+  xargs -0re grep -h '^#[^"]*rm -f ' | extract_filenames '^#[^"]*rm -f \+' |
+  sort > "$TEMPFILE.against"
+
+  # detect files being installed more than once
+  FILES=$(comm -12 "$TEMPFILE.check" "$TEMPFILE.against")
+
+  # check result
+  if [ "$FILES" ]; then
+    echo -e "\nSome files seem to have been installed more than once!\n"
+    grep -F "$FILES" "$1"
+    echo -e "conflict(s) with:\n"
+    INUM=$(find "$1" -printf "%i")
+#PGR-16d: -maxdepth order problem with some versions of find
+#    find "$SCRIPTPATH" -maxdepth 1 -type f -perm +u+x -not -inum $INUM \
+#PGR-17c: syntax for -perm changed
+    find "$SCRIPTPATH" -maxdepth 1 -type f -perm /u+x -not -inum $INUM \
+    -exec grep -F "$FILES" {} \; -printf "(in %P)\n\n"
+  fi
+
+  SCRIPT=$(echo $E -n "$2" | change_filenames)
+  DEPENDENCIES=$(dependencies "$SCRIPT")
+
+  if [ -z "$FILES" -a -z "$DEPENDENCIES" ]; then
+    echo "done."
+    return 0
+  fi
+
+  if [ -z "$FILES" ]; then
+    echo -e "\n"
+  fi
+
+  if [ "$DEPENDENCIES" ]; then
+    echo $E "$DEPENDENCIES"
+    echo
+  fi
+
+  return 1
+}
+
+function permissions ()             # $1: script
+{
+  COL="\([^ ]\+\)\( \+\)"   # a column (with delimiter)
+
+  IFSold=$IFS
+  IFS=$(echo -e "\t")
+
+  for c in " " "#"; do
+    grep "^$c *rm... " "$1" | extract_filenames "^$c *rm... \+" | tr "\n" "\0" |
+    xargs -0re sh -c 'eval ls -ldbF "$@"' -- |
+    sed "s:^$COL$COL$COL$COL$COL$COL$COL$COL:\1\t\3\t\5\t\7\t$c\t:"
+  done | sort -r -k 6 -t "$IFS" |
+  while read -r p n o g c f; do
+    printf "%s %3s %-8s %-8s %s %s\n" $p $n $o $g "$c" "$f"
+  done
+
+  IFS=$IFSold
+}
+
+function files ()                   # $1: script
+{
+#PGR-16b: don't ignore changed previously existing files
+#  grep "^ *rm... " "$1" | extract_filenames "^ *rm... \+" | sed "s:^ ::" |
+  grep "^[ #] *rm... " "$1" | extract_filenames "^[ #] *rm... \+" | sed "s:^ ::" |
+  tr "\n" "\0" | xargs -0re sh -c 'eval find "$@" -maxdepth 0 -print0' --
+}
+
+function chkname ()                 # $1: ANYNAME
+{
+  case "$1" in
+    */*)  echo $E "Will not handle \`$1' (containing a slash)!"
+          exit 1
+          ;;
+  esac
+}
+
+function chkscript ()               # $1: ANYNAME
+{
+  chkname "$1"
+  if [ ! -f "$SCRIPTPATH/$1" ]; then
+    echo $E "\`$SCRIPTPATH/$1' does not exist!"
+    exit 1
+  elif sed -n "3p" "$SCRIPTPATH/$1" | grep -q "$ID"; then
+    return 0
+  else
+    echo $E "\`$SCRIPTPATH/$1' does not seem to be a de-installation script!"
+    exit 1
+  fi
+}
+
+function chkbakpath ()
+{
+  if [ ! -d "$BACKUPPATH" ]; then
+    echo -n "Ok to create backup directory $BACKUPPATH? $(novice '[no/yes]')"
+    read
+    if [ ".$REPLY" = ".y" -o ".$REPLY" = ".yes" ]; then
+      mkdir -p "$BACKUPPATH" || exit 1
+    else
+      echo "No, aborted."
+      exit 1
+    fi
+  fi
+}
+
+function check_paths ()             # $@: directories to check
+{
+  RC=0
+  for p in "$@"; do
+    case "$p" in
+      /*)  if [ ! -d "$p" ]; then
+             echo $E "Warning: \`$p' does not exist!"
+             RC=1
+           fi
+           ;;
+      *)   echo $E "Will not accept \`$p' (not an absolute path)!"
+           exit 1
+           ;;
+    esac
+  done
+  return $RC
+}
+
+function find_script ()             # $1: string to search
+{
+  NOREGEX=$(echo $E -n "f$1" | change_filenames | translate_filenames " " |
+            sed -e "s:^.\{9\}::" -e 's:"$::' -e 's:[][^$\\.*]:\\&:g')
+  NFNAME="[^$WSPACE\";]*$NOREGEX"   # string inside normal (unquoted) filenames
+  QFNAME="\".*$NOREGEX.*\""         # string inside double quoted filenames
+
+  cd "$SCRIPTPATH" || return 1
+#PGR-16d: -maxdepth order problem with some versions of find
+#  find -maxdepth 1 -type f -perm +u+x -printf "%P\0" |
+#PGR-17c: syntax for -perm changed
+  find -maxdepth 1 -type f -perm /u+x -printf "%P\0" |
+  xargs -0re grep $FINDCASE "^[ #] *rm... \+\($NFNAME\|$QFNAME\)" /dev/null
+}
+
+function profile ()
+{
+  echo "function $SNAME ()"
+  echo "{"
+  echo '  if [ ".$1" = ".--cd" ]; then'
+  echo "    cd \"$SCRIPTPATH\""
+  echo "  else"
+  echo "    command $SNAME" '"$@"'
+  echo "  fi"
+  echo "}"
+  echo "export -f $SNAME"
+
+  if [ ".$PROFILEVAR" = ".*default*" ]; then
+    PROFILEVAR=$SNAME
+  fi
+
+  case "$PROFILEVAR" in *[^a-zA-Z0-9_]* | [0-9]* | _)
+    echo "$SNAME --profile: \`$PROFILEVAR' is not a valid variable name." >&2
+    exit 1
+    ;;
+  esac
+
+  if [ "$PROFILEVAR" ]; then
+    echo "$PROFILEVAR=\"$SCRIPTPATH\""
+    echo "export $PROFILEVAR"
+  fi
+}
+
+function quote ()                   # $1: file or path name
+{
+  # put single quotes around the name
+  # after replacing all ' by '\'' if necessary
+
+  case "$1" in
+    *\'*)  echo $E "$1" | sed -e "s:':'\\\'':g" -e "1s:^:':" -e '$s:$:'\'':'
+           ;;
+    *)     echo $E "'$1'"
+           ;;
+  esac
+}
+
+function option_list ()             # $@: command line
+{
+  CURROPT=""
+  for p in "$@"; do
+    case "$p" in
+      --watch)   WATCHDIRS=""
+                 CURROPT=--watch
+                 OPTIONS=$((OPTIONS | 1))
+                 ;;
+      --ignore)  IGNOREDIRS=""
+                 CURROPT=--ignore
+                 OPTIONS=$((OPTIONS | 2))
+                 ;;
+      -*)        echo $TRY
+                 exit 1
+                 ;;
+      "")        continue
+                 ;;
+      *)         if [ -z "$CURROPT" ]; then
+                   CURROPT=none
+                 elif [ $CURROPT = --watch ]; then
+                   WATCHDIRS="$WATCHDIRS $(quote "$p")"
+                 elif [ $CURROPT = --ignore ]; then
+                   IGNOREDIRS="$IGNOREDIRS $(quote "$p")"
+                 else
+                   echo $TRY
+                   exit 1
+                 fi
+                 ;;
+    esac
+  done
+  WATCHDIRS=${WATCHDIRS# }
+  IGNOREDIRS=${IGNOREDIRS# }
+}
+
+function prune_statement ()         # $@: directories to ignore
+{
+  PRUNE=""
+  for p in "$@"; do
+    PRUNE="$PRUNE -path $(quote "$p") -prune -o"
+  done
+  PRUNE=$(echo $E "$PRUNE" | sed "s:[][*?]:\\\&:g")
+}
+
+function default_dirs ()
+{
+  echo $E "--watch ${WATCHDIRS:-\"\"}"
+  echo $E "--ignore ${IGNOREDIRS:-\"\"}"
+}
+
+function dirs ()                    # $1: ANYNAME
+{
+  if [ ! -f "$SCRIPTPATH/$1.$SUFFIX" ]; then
+    echo $E "A guarded installation of \`$1' isn't in progress."
+    return 1
+  else
+    if [ -f "$SCRIPTPATH/$1.$PIOOPT" ]; then
+      WATCHDIRS=$(grep "^w" "$SCRIPTPATH/$1.$PIOOPT" | sed "s:^.::")
+      IGNOREDIRS=$(grep "^i" "$SCRIPTPATH/$1.$PIOOPT" | sed "s:^.::")
+    fi
+    default_dirs
+    return 0
+  fi
+}
+
+function finish_installation ()     # $1: ANYNAME
+{
+  chmod u+x "$SCRIPTPATH/$1"
+  rm "$SCRIPTPATH/$1.$SUFFIX"
+  rm -f "$SCRIPTPATH/$1.$PIOOPT"
+  trap SIGINT
+  show_result "$SCRIPTPATH/$1"
+}
+
+function check_directories ()
+{
+  if [ -z "$WATCHDIRS" ]; then
+    echo "Nothing to watch."
+    exit 1
+  fi
+
+  eval check_paths "$WATCHDIRS $IGNOREDIRS"
+
+  if [ $? -ne 0 -a $OPTIONS -ne 0 ]; then
+    echo -n "Continue anyway? $(novice '[no/yes]')"
+    read
+    if [ ".$REPLY" != ".y" -a ".$REPLY" != ".yes" ]; then
+      echo "No, aborted."
+      exit 1
+    fi
+  fi
+
+  eval prune_statement "$IGNOREDIRS"
+}
+
+function cleanup ()                 # $@: files to delete
+{
+  trap "" SIGINT
+  echo "interrupted!"
+  rm -f "$@"
+  exit 1
+}
+
+function noregex ()                 # $1: pattern
+{
+  echo $E ".$1" | sed -e "s:^.::" -e 's:[][^$\\.*]:\\&:g'
+}
+
+function lddlib ()                  # $1: script, $2: search pattern, $3: ANYNAME
+{
+  if [ -z "$2" ]; then
+    HEADER="Use of libraries found in \`$3'."
+  else
+    HEADER="Use of \`$2' found in \`$3'."
+  fi
+
+  NOREGEX=$(noregex "$2")
+  FILE=""
+
+  grep "^. *rm -f " "$1" | extract_filenames "^. *rm -f \+" |
+  grep -v "^ /dev/\|^ /proc/" | tr "\n" "\0" |
+  xargs -0re sh -c 'eval ldd "$@"' -- /dev/null 2> /dev/null |
+  grep $FINDCASE "^[^$WSPACE]\|$NOREGEX" |
+
+  while read -r; do
+    case "$REPLY" in
+      [^$WSPACE]*)  FILE=$REPLY
+                    ;;
+      *)            [ "$HEADER" ] && echo && echo $E "$HEADER" && HEADER=""
+                    [ "$FILE" ] && echo $E "$FILE" && FILE=""
+                    echo $E "$REPLY"
+                    ;;
+    esac
+  done
+}
+
+function dependencies ()            # $1: search pattern
+{
+  NOREGEX=$(noregex "$1")
+  if [ "$1" ]; then
+    NOREGEX="$NOREGEX\$"
+  fi
+
+  MAGIC="#: \($DEPEND\|$USE_OF\|$USED_BY\): "
+
+  cd "$SCRIPTPATH" || return 1
+#PGR-16d: -maxdepth order problem with some versions of find
+#  find -maxdepth 1 -type f -perm +u+x -printf "%P\0" |
+#PGR-17c: syntax for -perm changed
+  find -maxdepth 1 -type f -perm /u+x -printf "%P\0" |
+  xargs -0re grep "^${MAGIC}${NOREGEX}" /dev/null |
+  # change all question marks in front of :$MAGIC and
+  # those in all lines not containing :$MAGIC to //Q
+  # (which protects them against restore_filename)
+  # then extract $DEPEND, $USE_OF or $USED_BY from :$MAGIC
+  sed -e ":loop" -e "s;?\(.*:$MAGIC\);//Q\1;" -e "t loop" \
+      -e "/:$MAGIC/ !s:?://Q:g" \
+      -e "s;:$MAGIC; \1 ;" |
+  restore_filename
+}
+
+function touch_script ()            # $1: script, $2: save/restore
+{
+  case $2 in
+    save)     touch -r "$1" "$TEMPFILE.mtime"
+              ;;
+    restore)  if [ "$1" -nt "$TEMPFILE.mtime" -o \
+                   "$1" -ot "$TEMPFILE.mtime" ]; then
+                touch -mr "$TEMPFILE.mtime" "$1"
+              fi
+              ;;
+  esac
+}
+
+function depend ()                  # $1: script, $2: DEPNAME, $3: string
+{
+  SCRIPT=$(echo $E -n "$2" | change_filenames)
+
+  if grep -q "^#: $3: $(noregex "$SCRIPT")\$" "$1"; then
+    return 0
+  else
+    touch_script "$1" save
+    N="\\$NL"
+    if grep -q "^#: $3: " "$1"; then
+      MAGIC="^#: $3: "
+      EXTRA=""
+    elif grep -q "^#: " "$1"; then
+      MAGIC="^#: "
+      EXTRA=""
+    else
+      MAGIC="^[$WSPACE]*\$"
+      EXTRA=$N
+    fi
+
+    # determine the line number behind the last $MAGIC line
+    # and insert '#: $3: $SCRIPT' there
+    LNR=$(sed -n "/$MAGIC/,\$ { /$MAGIC/ !{ =; q; }; }" "$1")
+    sed "$((LNR)) i${N}#: $3: ${SCRIPT}${EXTRA}" "$1" > "$TEMPFILE.copy"
+
+    if [ $? -eq 0 -a -s "$TEMPFILE.copy" ]; then
+      cp "$TEMPFILE.copy" "$1"
+    else
+      return 1
+    fi
+
+    if [ "$PRESERVE" = yes ]; then
+      touch_script "$1" restore
+    fi
+  fi
+}
+
+function edit_script ()             # $1: script
+{
+  touch_script "$1" save
+  $EDITPROG "$1"
+  touch_script "$1" restore
+}
+
+function no_other_pre_inst_file ()
+{
+#PGR-16d: -maxdepth order problem with some versions of find
+  FILES=$(find "$SCRIPTPATH" -maxdepth 1 -type f -name "*.$SUFFIX")
+
+  if [ "$FILES" ]; then
+    echo "Other installation(s) still in progress:"
+    cd "$SCRIPTPATH" && ls -CdbF *."$SUFFIX"
+    echo -n "Continue anyway? $(novice '[no/yes]')"
+    read
+    if [ ".$REPLY" = ".y" -o ".$REPLY" = ".yes" ]; then
+      return 0
+    else
+      return 1
+    fi
+  else
+    return 0
+  fi
+}
+
+function backup ()                  # $1: script, $2: ANYNAME
+{
+  if [ -e "$BACKUPPATH/$2.$BACKUPEXT" ]; then
+    echo -n "Backup already exists. Ok to overwrite? $(novice '[no/yes]')"
+    read
+    if [ ".$REPLY" != ".y" -a ".$REPLY" != ".yes" ]; then
+      echo "No, aborted."
+      exit 1
+    fi
+  fi
+# PGR passing it "/", i.e. when package contains a root-level directory,
+# would cause it to backup a "null member".
+#  files "$1" | $BACKUPPIPE "$BACKUPPATH/$2.$BACKUPEXT"
+  files "$1" | sed -e '/^\/$/d' | $BACKUPPIPE "$BACKUPPATH/$2.$BACKUPEXT"
+  echo "Done."
+}
+
+#PGR-16a: functionalized restore code
+function restore ()                  # $1: script $2: ANYNAME
+{
+   if [ -e "$BACKUPPATH/$2.$BACKUPEXT" ]; then
+     (cd / && $RESTOREPIPE "$BACKUPPATH/$2.$BACKUPEXT")
+     if [ $? -eq 0 ]; then
+	 echo "Files restored successfully."
+       if [ -e "$1" ]; then
+	 if [ ! -x "$1" ]; then
+	   chmod u+x "$1"
+	   echo "$1 made executable again."
+	 fi
+       else
+	 echo "Oops! $ID $1 doesn't exist anymore."
+# Yes, backup is restored even if deinstall script is missing.
+       fi
+     else
+       echo "Restore returned error code $?"
+     fi
+   else
+     echo "$BACKUPPATH/$2.$BACKUPEXT doesn't exist."
+   fi
+}
+
+#PGR-16f: compare current files to contents of backup
+function check ()
+{
+  create_tempdir
+  mkdir $TEMPDIR/CHECK		#branch for temporary restore
+  cd $TEMPDIR/CHECK
+  $RESTOREPIPE "$BACKUPPATH/$1.$BACKUPEXT"
+  for i in `find $TEMPDIR/CHECK -type f -exec echo {} \;`
+    do
+      file=${i#$TEMPDIR/CHECK}
+      cmp -s $i $file || echo $file "changed."
+    done
+}
+
+#
+# start of main program
+#
+
+case "$SNAME" in *[^a-zA-Z0-9+,.:_-]*)
+  echo "Please call me under a name only containing characters [a-zA-Z0-9+,.:_-]."
+  exit 1
+  ;;
+esac
+
+if echo "\t" | grep -q "t"; then
+  E=""
+elif echo -E "\t" | grep -q "t"; then
+  E="-E"
+else
+  echo "Warning: Your \`echo' can't handle backslash-escaped characters literally."
+  E=""
+fi
+
+trap 'trap "" SIGINT; rm -rf "$TEMPDIR"' EXIT
+trap 'echo "interrupted!"; exit 1' SIGINT
+create_tempdir
+
+if [ ".$1" = ".--ls" ]; then
+  chkname "$2"
+  cd "$SCRIPTPATH" && $LSPROG -- "$2"*
+  exit
+elif [ ".$1" = ".--lsbak" ]; then
+  chkname "$2"
+  chkbakpath
+  cd "$BACKUPPATH" && $LSPROG -- "$2"*
+  exit
+elif [ ".$1" = ".--lib" -a $# -le 2 ]; then
+#PGR-16d: -maxdepth order problem with some versions of find
+#  find "$SCRIPTPATH" -maxdepth 1 -type f -perm +u+x -print0 |
+#PGR-17c: syntax for -perm changed
+  find "$SCRIPTPATH" -maxdepth 1 -type f -perm /u+x -print0 |
+  xargs -0re -i $SNAME {} "$@"
+  exit
+elif [ ".$2" = ".--lib" -a $# -le 3 ]; then
+  ANYNAME=${1#"$SCRIPTPATH/"}
+  chkscript "$ANYNAME"
+  lddlib "$SCRIPTPATH/$ANYNAME" "$3" "$ANYNAME"
+  exit
+fi
+
+case $# in
+  3)  ANYNAME=${1#"$SCRIPTPATH/"}
+      DEPNAME=${3#"$SCRIPTPATH/"}
+      case "$2" in
+        --requires)      chkscript "$ANYNAME"
+                         chkscript "$DEPNAME"
+                         depend "$SCRIPTPATH/$ANYNAME" "$DEPNAME" "$DEPEND"
+                         exit
+                         ;;
+        --uses)          chkscript "$ANYNAME"
+                         chkscript "$DEPNAME"
+                         depend "$SCRIPTPATH/$ANYNAME" "$DEPNAME" "$USE_OF"
+                         exit
+                         ;;
+        --supports)      chkscript "$ANYNAME"
+                         chkscript "$DEPNAME"
+                         depend "$SCRIPTPATH/$ANYNAME" "$DEPNAME" "$USED_BY"
+                         exit
+                         ;;
+        *)               chkname "$1"
+                         option_list "$@"
+                         ;;
+      esac
+      ;;
+  2)  ANYNAME=${2#"$SCRIPTPATH/"}
+      case "$1" in
+        --xcheck)  chkscript "$ANYNAME"
+                   xcheck "$SCRIPTPATH/$ANYNAME" "$ANYNAME"
+                   exit
+                   ;;
+        --remove)  chkscript "$ANYNAME"
+                   rm -rf "$TEMPDIR"
+                   export -n TMPDIR
+                   exec "$SCRIPTPATH/$ANYNAME"
+                   ;;
+        --backup)  chkscript "$ANYNAME"
+                   chkbakpath
+                   backup "$SCRIPTPATH/$ANYNAME" "$ANYNAME"
+                   exit
+                   ;;
+#PGR added "restore" command so we don't have to run tar from / and chmod
+	--restore) chkname "$ANYNAME"
+		   chkbakpath
+		   restore "$SCRIPTPATH/$ANYNAME" "$ANYNAME"
+		   exit
+		   ;;
+#PGR added "check" command to validate current files & backup
+	--check)   chkname "$ANYNAME"
+		   chkbakpath
+                   rm -rf "$TEMPDIR"
+                   export -n TMPDIR
+		   check "$ANYNAME"
+		   exit
+		   ;;
+        --list)    chkscript "$ANYNAME"
+                   permissions "$SCRIPTPATH/$ANYNAME"
+                   exit 0
+                   ;;
+        --files)   chkscript "$ANYNAME"
+                   files "$SCRIPTPATH/$ANYNAME" | tr "\0" "\n"
+                   exit 0
+                   ;;
+        --files0)  chkscript "$ANYNAME"
+                   files "$SCRIPTPATH/$ANYNAME"
+                   exit 0
+                   ;;
+        --edit)    chkscript "$ANYNAME"
+                   edit_script "$SCRIPTPATH/$ANYNAME"
+                   exit
+                   ;;
+        --find)    find_script "$2"
+                   exit
+                   ;;
+        --dirs)    chkname "$ANYNAME"
+                   dirs "$ANYNAME"
+                   exit
+                   ;;
+        *)         echo $TRY
+                   exit 1
+                   ;;
+      esac
+      ;;
+  1)  case "$1" in
+        --cd)       echo "Option --cd isn't available, use \`cd $SCRIPTPATH' instead."
+                    exit 1
+                    ;;
+        --deps)     dependencies
+                    exit
+                    ;;
+        --dirs)     default_dirs
+                    exit 0
+                    ;;
+        --profile)  profile
+                    exit 0
+                    ;;
+        --help)     echo "$USAGE"
+                    exit 0
+                    ;;
+        --version)  echo "$SNAME - $LNAME $VERSION.$SUBVER"
+                    exit 0
+                    ;;
+        -*)         echo $TRY
+                    exit 1
+                    ;;
+        *)          chkname "$1"
+                    ;;
+      esac
+      ;;
+  *)  case "$1" in
+        -* | "")  echo $TRY
+                  exit 1
+                  ;;
+        *)        chkname "$1"
+                  option_list "$@"
+                  ;;
+      esac
+      ;;
+esac
+
+# called first time ever
+if [ ! -d "$SCRIPTPATH" ]; then
+  echo -n "Ok to create script directory $SCRIPTPATH? $(novice '[no/yes]')"
+  read
+  if [ ".$REPLY" = ".y" -o ".$REPLY" = ".yes" ]; then
+    mkdir -p "$SCRIPTPATH" || exit 1
+  else
+    echo "No, aborted."
+    exit 1
+  fi
+fi
+
+ANYNAME=$1
+
+# installation in progress
+if [ -f "$SCRIPTPATH/$ANYNAME.$SUFFIX" ]; then
+
+  if [ -f "$SCRIPTPATH/$ANYNAME.$PIOOPT" ]; then
+    if [ $((OPTIONS & 1)) -eq 0 ]; then
+      WATCHDIRS=$(grep "^w" "$SCRIPTPATH/$ANYNAME.$PIOOPT" | sed "s:^.::")
+    fi
+    if [ $((OPTIONS & 2)) -eq 0 ]; then
+      IGNOREDIRS=$(grep "^i" "$SCRIPTPATH/$ANYNAME.$PIOOPT" | sed "s:^.::")
+    fi
+  fi
+
+  check_directories
+
+  # ask what to do
+  echo $E "Observing the installation of \`$ANYNAME'."
+  REPLY=""
+  until [ "$REPLY" ]; do
+    echo -n "What shall $SNAME do now (s/r/f/q)? $(novice '[Press enter for help]')"
+    read
+    if [ ".$REPLY" != ".s" -a ".$REPLY" != ".r" -a \
+         ".$REPLY" != ".f" -a ".$REPLY" != ".q" ]; then
+      echo "  s ... show state of installation"
+      echo "  r ... revoke installation"
+      echo "  f ... finish installation"
+      echo "  q ... quit"
+      REPLY=""
+    fi
+  done
+
+  # finish installation
+  if [ "$REPLY" = "f" ]; then
+    echo $E -n "Creating de-installation script \`$SCRIPTPATH/$ANYNAME'... "
+    trap 'cleanup "$SCRIPTPATH/$ANYNAME"' SIGINT
+    write_script "$SCRIPTPATH/$ANYNAME.$SUFFIX" "$SCRIPTPATH/$ANYNAME"
+    finish_installation "$ANYNAME"
+
+  # state of installation
+  elif [ "$REPLY" = "s" ]; then
+    echo $E -n "Analyzing the state of installation of \`$ANYNAME'... "
+    write_script "$SCRIPTPATH/$ANYNAME.$SUFFIX" "$TEMPFILE.script" -q
+    grep "^##" "$TEMPFILE.script" > "$TEMPDIR/$ANYNAME.$SOFAR"
+    if [ -s "$TEMPDIR/$ANYNAME.$SOFAR" ]; then
+      echo >> "$TEMPDIR/$ANYNAME.$SOFAR"
+    fi
+    permissions "$TEMPFILE.script" >> "$TEMPDIR/$ANYNAME.$SOFAR" 2>&1
+    echo "done."
+    show_result "$TEMPDIR/$ANYNAME.$SOFAR"
+
+    # enable quick finish of installation
+    if [ $? -eq 0 ]; then
+      echo -n "Use state information and finish installation now? $(novice '[no/yes]')"
+      read
+      if [ ".$REPLY" = ".y" -o ".$REPLY" = ".yes" ]; then
+        echo -n "State information may be out of date. Please confirm: $(novice '[no/yes]')"
+        read
+        if [ ".$REPLY" = ".y" -o ".$REPLY" = ".yes" ]; then
+          echo $E -n "Creating de-installation script \`$SCRIPTPATH/$ANYNAME'... "
+          trap 'cleanup "$SCRIPTPATH/$ANYNAME"' SIGINT
+          mv "$TEMPFILE.script" "$SCRIPTPATH/$ANYNAME"
+          trap "" SIGINT
+          echo "done."
+          finish_installation "$ANYNAME"
+        else
+          echo "No."
+        fi
+      else
+        echo "No."
+      fi
+    fi
+
+  # revoke installation
+  elif [ "$REPLY" = "r" ]; then
+    echo $E -n "Revoking the installation of \`$ANYNAME'... Sure? $(novice '[no/yes]')"
+    read
+    if [ ".$REPLY" = ".y" -o ".$REPLY" = ".yes" ]; then
+      rm "$SCRIPTPATH/$ANYNAME.$SUFFIX"
+      rm -f "$SCRIPTPATH/$ANYNAME.$PIOOPT"
+      echo "Done."
+    else
+      echo "Nothing done."
+      exit 1
+    fi
+
+  # quit
+  else
+    echo "Nothing done."
+    exit 1
+  fi
+
+# new installation
+else
+
+  check_directories
+
+  if [ -e "$SCRIPTPATH/$ANYNAME" ]; then
+    echo $E "\`$ANYNAME' seems to be installed."
+    echo "What about removing the script first?"
+    exit 1
+  elif no_other_pre_inst_file; then
+    echo $E -n "Preparing to observe the installation of \`$ANYNAME'... "
+    trap 'cleanup "$SCRIPTPATH/$ANYNAME".{"$SUFFIX","$PIOOPT"}' SIGINT
+    find_filenames | sort > "$SCRIPTPATH/$ANYNAME.$SUFFIX"
+    if [ $OPTIONS -ne 0 ]; then
+      echo $E "$WATCHDIRS" | sed "s:^:w:" > "$SCRIPTPATH/$ANYNAME.$PIOOPT"
+      echo $E "$IGNOREDIRS" | sed "s:^:i:" >> "$SCRIPTPATH/$ANYNAME.$PIOOPT"
+    fi
+    trap "" SIGINT
+    if [ -f "$SCRIPTPATH/$ANYNAME.$SUFFIX" ]; then
+#PGR-16a: make sure before and after timestamps aren't the same
+      sleep 2
+      echo "done."
+    else
+      echo "failed!"
+      exit 1
+    fi
+  else
+    echo "Nothing done."
+    exit 1
+  fi
+fi
+
+exit 0

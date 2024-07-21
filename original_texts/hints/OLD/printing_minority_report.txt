@@ -1,0 +1,480 @@
+TITLE:		The Printing Minority Report
+
+LFS VERSION:	3.3 (Any, really)
+
+AUTHOR:		"Declan Moriarty"<declan.moriarty@ntlworld.ie>
+
+SYNOPSIS:	Get Printing in 60 minutes.
+
+HINT:
+
+For those without Postscript printers who get pissed off big time with
+printing programs in linux and only need basic functionality, one
+dissented loser with all this printing crap took the following way out. 
+Printing is accomplished by ghostscript, and a simple but effective 
+script kindly contributed by Uli Fahrenberg <uli@math.auc.dk>. This hint
+does not install 10 packages and then tell you 'it all worked for me'.
+I install a max of 3 and tell you how to hack them to your taste.
+
+
+CHANGES: 
+
+	22nd May 2003: Trimmed aliases, halved self congratulatory
+	propeganda and bloat, converted to a more noraml hint style
+	form it's highly eccentric predecessor.Added a2ps as a
+	concession to deal with multipage ascii files.
+
+	16TH May 2003: Added 'lpr' script by Uli Fahrenberg to replace
+	ALL print programs. Caught some of my own spelling & grammar 
+	mistakes. Reworked opening boasts accordingly.
+
+SOFTWARE:
+
+GHOSTSCRIPT: 
+ftp://ftp.easysw.com/pub/ghostscript/espgs-7.05.6-source.tar.bz2
+
+ABIWORD:(or any other word processor entirely at your own discretion)
+http://www.abisource.org and download from nearest mirror.
+There are also Maxwell, OpenOffice, and many others. Choose yours.
+
+(Optionally) a2ps (For multipage ascii documents only)
+http://www.infres.enst.fr/~demaille/a2ps/4.13.html (Current 20/05/2003)
+
+
+INSTALLING:
+
+1. Get a Word Processor - Abiword is mine. A hint is there, and it 
+worked for me. If it doesn't work for you, argue with him, not me. 
+
+If  you haven't done anything right yet, build abiword first. It has
+loads of nice fonts which you can include in ghostscript by adding
+'--with-fontpath=/usr/local/share/AbiSuite/fonts' to the gs
+'./configure'.  Otherwise see below.
+
+
+2. Get ghostscript. I used espgs-7.05. There's all sorts of patches if
+you want to go with gnu ghostscript, and AFAIK, Version 8 doesn't
+compile for those who have tried it.
+
+I won't bore you further on this. There is a ghostscript hint.From my 
+inspection the gimp printer drivers for ghostscript seem to offer more 
+promise than the cups ones. So a good set of options for ghostscript 
+might include the following
+./configure --with-drivers=all --with-cups --with-gimp --with-fontpath=<etc>
+
+If you don't have cups or gimp - that's fine. Lie through your teeth ;-)
+
+This completes necessary installing. Easy, wasn't it?
+
+CONFIGURING:
+
+3. Type gs -h at a prompt and select your printer from the pageful of
+drivers that it gives up. I have a BJC-4000 (bjc600 driver), but like a
+true cheapskate, I use b/w cartridges, so bjcmono suits me. The bjc600
+driver performs poorly, giving colour to a b/w printer. You may then
+want to fire up vim and edit the ppd slightly.
+
+vim /usr/local/share/ghostscript-7.05/filter/bjcmono.ppd
+
+or whatever your ghostscript /filter directory is. Don't muck it up,
+just change defaults to another blindingly obvious option. If you
+screw up completely, delete and you can do another 'make install'.
+Test this driver by executing the following commands from a console.
+
+gs -q -dBATCH -dNOPAUSE -dSAFER -sDEVICE=<your-printer-driver>  \
+-sOutputFile=/tmp/testit  <some_file.ps> .
+
+There are good postscript files in the <ghostscript source>/examples
+directory.  Give it a few seconds. Make sure your printer is on.
+Follow this with
+
+cat /tmp/testit > /dev/lp0
+
+or whatever point in the /dev directory your printer resides in. Paper
+& ink should flow relatively productively. If you get a ghostscript
+crash, look for a wordlike 'invalidfileaccess' (file error) as a hint
+to what went wrong. If you can see the file but not send it to
+print,have you permission? If so,  it's your '-sDEVICE=' option or a
+syntax error.
+
+If you fall over trying to write to /tmp as a user, execute (as root)
+
+chmod 1777 /tmp 
+
+and kick yourself for being too security conscious.
+
+To save paper - less /tmp/testit
+
+should show you a binary file full of gibberish. Perfect!  If you see
+text, you've got problems. The details after ' -sOutputFile=' can be
+any filename.  -sOutputFile=/home/your_dir/rude_word would work just as
+well. Those options mean: 
+
+-q - tells gs not to display anything & saves it looking for X.
+
+-dBATCH - tells gs to quit after processing - always a good idea.
+
+-dNOPAUSE - gs will not wait for a keypress.
+
+-dSAFER -   stops gs from  deleting or zapping anything.
+
+-sDEVICE= your printer driver. Be exact and case sensitive. GS is
+stupid.Use the spelling on the info at 'gs -h'.
+
+-r360 - tells the resolution to use. You may not need this. You hacked
+the ppd, remember? Yours may be different. It's the dpi.
+
+-sOutputFile= write to this output file (congratulations for guessing!)
+Brew your own cocktail of these options. Refine & remember it, or write
+it down. 'Man gs' is instructive.
+
+-sPAPERSIZE= (if I have to tell you this....).
+
+An added refinement is to review the gs -h info. At the end it
+mentions a number of places where ghostscript checks for fonts.
+Let one of them symlink to wherever abiword hid it's selection
+(/usr/local/share/AbiSuite/fonts on my system), so ghostscript can
+tap in, in the vain hope that you might get a WYSIWYG word processor.
+It might even work.
+
+
+3. Skip this if you are opting for the a2ps option for multipage ascii. 
+You should also be able to print text with 'cat > /dev/lp0' or
+wherever your printer is. I found I needed a few lines on top of the
+page with cat as my printing tool.  I got them the lazy way vim
+/tmp/header. It says "new file"; hit insert, return 3 times, escape,
+and :wq. You should have a /tmp/header file with three blank lines ;-)
+
+An alias  in etc/profile to get it out to the printer
+
+alias print='cat  /tmp/header  /tmp/testit  >  /dev/lp0'
+
+This sends my file /tmp/testit to the printer after /tmp/header.
+Log out & in to get the alias recognised. Type alias and see if print
+is actually one of the ones listed
+
+Usage: print <filename>or cat /tmp/header <textfile> >/dev/lp0
+
+
+A hidden gotcha is that multipage ascii docs will mess up by
+missing headers and often a few lines between pages. Load them in
+abiword, or any wp that will print to a .ps file, and that will sort
+them neatly into pages. Go around & set defaults to your paper size.
+Uli's script (section 10) ideally needs a text section to send a 
+header at the top of each page of ascii. If you can dream it up,  
+script it and send it to me for inclusion. You, of course, will get 
+credited, and a2ps will come out.
+
+
+4. Some tidying up :-D.  Use 'make uninstall' targets on your
+"printing" programs if they exist. Then, if cups
+has you seriously browned off (like it has me), for example
+
+	rm -rf /etc/cups
+	rm -rf /usr/share/cups
+	rm -rf /var/spool/cups
+	rm -rf /usr/src/cups*
+	rm  -rf /usr/share/docs/cups
+
+All those unnecessary files in the /usr/bin & /usr/local/bin
+directories; broken loser program to do what we are doing: gsbj; gsdj;
+gsdj500; gslp; lp; lpr; lpd; lpadmin; lpstat, and probably lp*. You get
+the  idea.  Have fun, and don't come crying to me if you mess up by
+overdoing it. You can always reinstall, and reconfigure. It's your
+system. You're the boss. I suggest you choose a directory for print
+files - NOT /home/you/followed/by/a/long/directory/name but /tmp. You
+can then add a
+
+rm -f /tmp/*.ps
+
+to some startup or shutdown file to clean up printed matter on a
+reboot.. If you're fussy & security conscious,
+make that something fussy & secure like
+
+rm -i /tmp/*.ps and play God with these files.
+
+Note that we got to here without a huge amount of the formatters and 
+translators that seem to gather around inferior print strategies. Sad 
+to say, few of these have 'make uninstall' targets, but such could be 
+manufactured by attacking the Makefile :-D. 
+
+
+5. If your docs have appearance problems, be aware that there are a
+useful set of help documents in the .abw format which come with the
+abiword source tree which AFAIK are not installed anywhere. These are
+in the ~/abi/docs/ subdirectory.  They give details of how to load
+windoze fonts, as well as the the best and most logical explanation of
+the tortured intricasies of the Unix font and locale systems that I
+have come across in some time. The abiword source is worth downloading
+for these alone, even if you hate the thing. Unfortunately, in real M$
+style, they are in abiword's individual .abw format. 
+
+6. The first versions of this hint contained an appeal to savants for a 
+printing script to automate this.
+
+This script below (name it lpr locally) takes a .ps or .pdf file and
+spits it at the printer, something printer programs seem to find
+difficulty with ;-). Uli Fahrenberg <uli@math.auc.dk> contributed this,
+and we bow and scrape in his general direction :-).
+
+Before you say it doesn't work, revisit point 4 and make sure you
+cleared all the other lpr programs out of the path. Install it
+somewhewre in the path and chmod it to 755. 
+
+Next, open lpr in your favourite editor. You may need to hack it.
+
+	1. Line 6 - DEVICE=<your printer driver>. Set now as ljet4
+	2. Line 7 - LP=<your printer port> without the '/dev/' bit
+	3. Lines 33, 43. If your paper isn't a4, edit it's size here
+
+Usage is simple: it IS lpr, and does everything a 500K binary should:
+Print from the 'print' function in any program, or call it from  a
+command line or script. At a stroke we have obsoleted megabytes of 
+bloated crap associated with printing. More Power to you, Uli!
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#!/bin/bash
+# By Uli Fahrenberg <uli@math.auc.dk>
+# Check the arguments to gs suit your printer
+
+
+DEVICE=ljet4  	## Your printer driver from 'gs -h' here
+LP=lp0		## Your printer port 
+
+
+# Prints file to $DEVICE (above) connected at /dev/$LP(any port as above)
+# Usage:	`lpr <ps or pdf file>' or `cat bla.ps | lpr'
+		Or Print from any application to lpr.
+		
+
+if [ -e /tmp/.lp-lock ] ; then
+        	echo "Error: printer is locked  (/tmp/.lp-lock exists)"
+        	exit 1
+     	fi
+FILE=$1
+if ! [ X$FILE = X ] ; then ### We have a filename as an argument.
+        if ! [ -r $FILE ] ; then
+                echo "Error: Cannot read file $FILE"
+                exit 1
+        fi
+
+FTYPE=$(file -b $FILE | awk '{print $1}')
+        if ! [ $FTYPE = 'PDF' ] && ! [ $FTYPE = 'PostScript' ] ; then
+                echo "Error: $FILE should be a PS or PDF file."
+                exit 1
+        fi
+	        echo -n "Printing $FILE... "
+	        (touch /tmp/.lp-lock;\
+        gs -q -dBATCH -dNOPAUSE -dSAFER -sDEVICE=$DEVICE \
+	        -sPAPERSIZE=a4 -sOutputFile=- $FILE > /dev/$LP ; \
+           	rm /tmp/.lp-lock) & echo "Done."
+
+else ### We are part of a pipe.
+	DATA="$(</dev/stdin)"
+	(touch /tmp/.lp-lock;\
+	echo "$DATA" \
+	| gs -q -dBATCH -dNOPAUSE -dSAFER -sDEVICE=$DEVICE \
+	-sPAPERSIZE=a4 -sOutputFile=- - \
+        > /dev/$LP;\
+        rm /tmp/.lp-lock)&
+fi
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+And to you, the reader: You should now be printing! 
+If you want printing by users,  chmod 666 /dev/lp0
+Also revisit the permissions of lpr (755), and gs (751)
+
+7. Programmers and others like hint maintainers may have a need for
+multipage ascii documents. As a concession to their needs, we cover
+installing another program, a2ps. This is against the minimalist,
+'delete all the crap' philosophy of this hint, but I weakened.
+
+Install is the usual ./configure && make && make install. If you don't
+like the /usr/local/etc location give it a --sysconfdir instruction on
+the configure. 
+
+A2ps has as many options as pppd :-(. If that wasn't bad enough, most
+of them have long and short versions. He takes it for granted we all
+know C :-/.Hack the config file and you can forget them. Here is how.
+
+cp /usr/local/etc/a2ps.cfg /usr/local/etc/a2ps.cfg.orig just in case.
+
+Install something like this as  /usr/local/etc/a2ps.cfg. I shortened
+the original considerably but left it's sections intact, so you could
+find things in it.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# -*- ksh -*-
+# a2psrc
+
+#################################################################
+# 1)            Definition of some media                        #
+# (Must be defined before --medium)                             #
+#################################################################
+# Medium: name, width height [llx lly urx ury]
+Medium: A3       842    1190
+Medium: A4       595     800
+Medium: A5       420     595
+Medium: B4       729    1032
+Medium: B5       516     729
+Medium: Letter   612     792
+Medium: Legal    612    1008
+Medium: Tabloid  792    1224
+Medium: Ledger  1224     792
+Medium: Statement 396    612
+Medium: Executive 540     720
+Medium: Folio    612     936
+Medium: Quarto   610     780
+Medium: 10x14    720    1008
+
+# Desk Jet users: bigger margins
+#	Also bigger ink cartridge bills :-D 
+
+#################################################################
+# 2)    Path to the a2ps resource                               #
+#################################################################
+# Default path where a2ps dropped its library files.
+LibraryPath: /usr/local/share/a2ps/sheets:/usr/local/share/a2ps/ps:/usr/
+local/share/a2ps/encoding:/usr/local/share/a2ps/afm:/usr/local/share/a2p
+s/ppd:/usr/local/share/a2ps/fonts:/usr/local/share/a2ps
+
+
+#################################################################
+# 3)    System dependant parameters                             #
+#################################################################
+# By default, produce Level 1 PostScript.
+# Currently it only means to consider only the 13 level 1 standard
+# fonts, and not the 35 standard level 2 fonts.
+DefaultPPD: level2
+
+# First, the default printer (option -d, no argument)
+DefaultPrinter: | lpr
+
+
+# Second, a printer unkown to a2ps (option -P, argument is #o)
+UnknownPrinter: | lpr
+
+# Then, special printers you might want to define.
+# Here, dominique is a Level 2 PostScript printer
+# Printer: dominique level2 | lp -d dominique
+
+# Default encoding
+Options: --encoding=latin1
+
+# Default medium
+Options: --medium=A4
+
+Options: --lines-per-page=60
+
+
+# How to call file(1), and if possible, follow the links
+FileCommand: /usr/bin/file -L
+
+
+#################################################################
+# 4)    Your printers                                           #
+#################################################################
+
+#################################################################
+# 5)    Default settings                                        #
+#################################################################
+# Two virtual pages per sheet.
+Options: -1
+
+# Set automatic pretty-printing on (set to "plain" for off)
+Options: --pretty-print
+
+# By default, single sided printing
+Options: -s1
+
+# Name of the document is the list of files
+# (Don't put too many of them: it breaks some PS interpreters)
+# ptions: '--title=#10!f|$n|, |'
+
+# Header is the client of the job
+# Options: --header=%a
+
+# Title of the page is the (short) name of the current file
+# or the first taged text if there is
+Options: --center-title=#?1|$t1|$n|
+
+# Left part of the title is the mod. date of the file
+# or empty is there is a tag2
+Options: '--left-title=#?2||$e $T|'
+
+# Right part of the title is the page number
+# or tag2 if there is
+Options: '--right-title=#?2|$t2|$Q|'
+
+# If in landscape, print date on the left hand side
+# If portrait, then print date on recto, and sheet # on verso
+Options: --left-footer=#?l!%E!#?v|%E|%s./%s#|!
+
+# Center footer is the list of files on this sheet if landscape
+# Options: '--footer=#?l|#!s-$f-, -||'
+
+# If in landscape, print date on the right hand side
+# If portrait, then print date on verso, and sheet # on recto
+# Options: --right-footer=#?l!%s./%s#!#?v|%s./%s#|%E|!
+
+# We want the %%Page comments to be instructive.
+# There are two predefined choices: #{pl.short} and #{pl.long}
+PageLabelFormat: #{pl.short}
+
+
+#################################################################
+# 6)    Preconfigured Macro Meta Sequences                      #
+#################################################################
+#
+# Some Macros for the delegations
+#       Strictly for the ambitious!
+
+#################################################################
+# 7)    Preconfigured delegations                               #
+#################################################################
+#
+# Delegations are ways to hand off the processing of some
+# files to other filters.
+#        What other filters? 
+
+#################################################################
+# 8)    Some interesting UserOptions/Printers                   #
+#################################################################
+
+#               Yeah... Right!
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Trim out my nauseous disrespectful comments, and insert your own more 
+pointed and caustic humour.Interesting things to note are: (Section 
+numbers in Brackets)
+
+(1)Medium: A4       595     800. 
+
+This is shorter than the 840 in the original, as I found it ran off the
+page and dirtied the second and subsequent pages.
+
+(3)DefaultPrinter: | lpr
+
+(3)Options: --lines-per-page=58
+
+Default printer pipes to the lpr script. I inserted the lines per page
+to tweak down the length, as my printer default font is bigger than
+a2ps thinks it is. The config file apparently takes any of the long
+options as shown on the man page. The header/footer stuff is in Section
+5 and I don't understand a word of it. (It seems patterned on the
+twisted thinking  typical of sed expressions).
+
+With this, I can simply type
+
+a2ps <textfile>
+
+And I get a neat header, side borders, and page numbers. It goes off 
+through lpr,  which wakes up ghostscript, but then we set lpr up, 
+didn't we? The header has date, title, and page numbers.
+
+Stop the stopwatch, e-mail me with your grateful thanks, praise, and
+offers of gifts:-), & Cc to Uli Fahrenberg for the script.
+
+
+
+	Declan Moriarty.

@@ -1,0 +1,219 @@
+TITLE:		scp-before-relay
+LFS VERSION:	any
+AUTHOR:		Gerard Beekmans <gerard@linuxfromscratch.org>
+
+SYNOPSIS:
+	An alternative to the pop-before-relay scheme using postfix
+
+HINT:
+
+Disclaimer
+----------
+	This document is, at the moment, mostly a quick hack. I had to
+	implement this in between releasing the LFS-3.0 book and some
+	other pending LFS work, because my ISP's SMTP servers went offline.
+	The scripts are anything but effecient, but it gets the job done, 
+	which is good enough for me at the moment. There's nothing elegant 
+	about it, so be warned ;)
+
+	Having that said, let's get the show on the road.
+
+
+
+what is pop-before-relay
+------------------------
+
+A lot of ISP's give their users dynamically assigned IP addresses. One of
+the side-effects of this is that remote servers never know who is behind a 
+particular IP address. You cannot simply tell the SMTP server you wish to relay 
+with to allow it from one or a block of IP addresses, because this would allow
+anybody from your ISP to exploit the relay.
+
+So, people came up with the pop-before-relay scheme. When you login to a
+server to check for new mail, your current IP address is logged and added
+to the SMTP's server relay database. A pop-before-relay (helper) daemon
+will check that database and expire IP addresses after they have been
+in the database for a certain amount of time, because you could have gone offline
+after you checked for new email, so the IP address should be flushed from
+that database as soon as possible to lower the chance of somebody else obtaining 
+the IP address and exploit the relay, unless you check for new mail again within 
+the expire time.
+
+
+
+scp-before-relay
+----------------
+
+What is this scp-before-relay and why not use pop-before-relay if software
+has already been written to support it?
+
+The problem I encountered is that I use ssh tunneling to login to my pop3
+server at linuxfromscratch.org. With pop3 (imap and others probably too) your 
+password is transmitted as clear text, much like happens with telnet. I don't 
+quite like that, so I use port forwarding with openssh. The downside is that
+the pop3 daemon now logs my login attempt with the IP address of the server
+itself (since I'm ssh'ed into the server and connect to localhost there, so
+the originating IP address is that of localhost as well).
+
+So I had to come up with something different, and I call it
+scp-before-relay.
+
+
+
+How it works
+------------
+
+My workstation, called gwaihir, runs the following script every 4
+minutes:
+
+	#!/bin/bash
+	# Begin send-ip
+
+	PATH=/bin:/sbin:/usr/bin:/usr/sbin
+
+	ifconfig ppp0 > /home/gerard/tmp/ppp.tmp || exit 1
+
+	IP=$(cat /home/gerard/tmp/ppp.tmp|grep "inet addr"| \
+		cut -f 2 -d ":"|cut -f 1 -d " ")
+
+	echo "$IP 0" > /home/gerard/tmp/gwaihir-ip
+
+	/usr/bin/scp /home/gerard/tmp/gwaihir-ip \
+		linuxfromscratch.org:tmp
+
+	# End send-ip
+
+The above script will obtain gwaihir's current IP address on the ppp0 link, 
+if it's up at the moment. Then send the file, gwaihir-ip, to the
+linuxfromscratch.org server in my ~/tmp directory over there.
+
+The format of the file is:
+		IP 0
+
+The 0 can be any value you want, it's not used in the current scheme. It's
+just to satisfy the hash database format used by postfix.
+
+The server, shadowfax, runs the following script every 10 minutes:
+
+	#!/bin/sh
+	# Start update-postfix-relay
+
+	PATH=/bin:/sbin:/usr/bin:/usr/sbin
+
+	if [ -f /home/gerard/tmp/gwaihir-ip ]
+	then
+	        mv /home/gerard/tmp/gwaihir-ip /etc/postfix
+	        chown root.root /etc/postfix/gwaihir-ip
+	        postmap /etc/postfix/gwaihir-ip
+	        date +%s > /etc/postfix/gwaihir-ip.log
+	else
+	        LAST=$(cat /etc/postfix/gwaihir-ip.log)
+	        if [ $(expr $(date +%s) - $LAST) -lt 1200 ]
+	        then
+	                exit
+	        else
+        	        echo "0 0" > /etc/postfix/gwaihir-ip
+	                postmap /etc/postfix/gwaihir-ip
+	        fi
+	fi
+	# End update-postfix-relay
+
+
+This script checks for a new gwaihir-ip file. If found, move the file to
+/etc/postfix and run postmap to update the database (else postfix will
+complain that the database file is older than it's source file). Also log
+the time when this update took place. The +%s option will log the amount of
+seconds since January 1970. This makes it easier to calculate when it's
+supposed to expire.
+
+Now, if there is no file gwaihir-ip present on shadowfax, it usually is
+caused by one of the following:
+
+1) both scripts were run at the same time. There will always be a point in
+time where both systems will be running the scripts at the exact same
+time, so gwaihir could be in the middle of sending the new file while
+shadowfax is checking for it to exist.
+
+2) gwaihir is still online, but there's a network problem between gwaihir's
+ISP and shadowfax, which could have caused shadowfax to be unreachable from
+gwaihir for a short period of time.
+
+3) gwaihir went offline
+
+There is no way for shadowfax to know which of the 3 reasons applies at the
+moment. It's most likely reason 1 or 2, so we don't want to turn off the 
+relay authorization right away.
+
+So instead, shadowfax checks gwaihir-ip.log's contents against the current
+time. If the difference is less than 1200 seconds (20 minutes), then
+it won't do anything. Since shadowfax checks every 10 minutes, gwaihir will have
+10 minutes to send the file. Because gwaihir tries to send it every 4
+minutes, it gives gwaihir 2 more chances to get the file delivered before
+shadowfax checks again, when the 1200 seconds are up.
+
+If during the next check (after 1200 seconds) gwaihir still hasn't sent a file, 
+we'll have to disable gwaihir's ability to relay. At that time "0 0" is put in 
+postfix's database. There is no IP address that matches '0', so this effectively 
+disables the relay.
+
+
+
+Improvements
+------------
+
+There is much room for improvement.
+
+Shortly after I activated this scheme I got the idea to put the date +%s
+output in the gwaihir-ip file as the second value, which would elimate the 
+need for the gwaihir-ip.log file. gwaihir can't put the date +%s in it's
+file, because the systems are in different timezones. So shadowfax will
+have to do this when it found the new file.
+
+The send-ip script could be changed to write the gwaihir-ip file as:
+
+	echo "$IP stub" > /home/gerard/tmp/gwaihir-ip
+
+Then the modified update-postfix-relay script could look like:
+	#!/bin/sh
+	# Start update-postfix-relay
+
+	PATH=/bin:/sbin:/usr/bin:/usr/sbin
+
+	if [ -f /home/gerard/tmp/gwaihir-ip ]
+	then
+		sed s/stub/$(date +%s)/ /home/gerard/tmp/gwaihir-ip \
+			> /etc/postfix/gwaihir-ip
+		rm /home/gerard/tmp/gwaihir-ip
+		postmap /etc/postfix/gwaihir-ip
+	else
+		LAST=$(cat /etc/postfix/gwaihir-ip|cut -f 2 -d " ")
+		if [ $(expr $(date +%s) - $LAST) -lt 1200 ]
+		then
+			exit
+		else
+			echo "0 0" > /etc/postfix/gwaihir-ip
+			postmap /etc/postfix/gwaihir-ip
+		fi
+	fi
+	# End update-postfix-relay
+
+
+I'm pretty sure this works, I just haven't tried it yet.
+
+Another obvious improvent would be using variables in the scripts for the
+gwaihir-ip file locations, like:
+
+	SOURCE=/home/gerard/tmp/gwaihir-ip
+	DEST=/etc/postfix/gwaihir-ip
+
+
+
+Other than that, this is designed to work with one user. If you have more
+people you want to be able to use the server as a relay, you need to make some 
+changes. You could use seperate files for every user, and put the script in a loop 
+to parse the files and disable or refresh somebody's relay abilities
+accordingly. I haven't bothered giving multi-user functionality any thought, 
+so you're on your own for now. Feel free to get back to me if you have any ideas 
+on the matter. I'm not going to pursue it right now because I don't have the 
+need for it. The need may arise in the future, so who knows.
+

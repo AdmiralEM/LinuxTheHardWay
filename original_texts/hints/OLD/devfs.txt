@@ -1,0 +1,310 @@
+TITLE:		Devfs hint
+LFS VERSION:	Any recent LFS with kernel > 2.4
+AUTHOR:	Jeroen Coumans <jeroencoumans@gmx.net>
+
+SYNOPSIS:
+This hint explains how to setup devfs with your current LFS-configuration using
+devfsd. The second section explains how you can use devfs from scratch.
+
+HINT:
+The first section will explain to use devfs with your current LFS-configuration
+using devfsd. This is the easiest and least problematic. The second section will
+explain how you can use devfs from scratch.
+
+VERSION:	19-04-2003
+
+USEFULL DOCUMENTATION:
+/usr/src/linux/Documentation/filesystems/devfs/README
+http://www.atnf.csiro.au/~rgooch/linux/docs/devfs.html
+
+IBM has posted a tutorial on filesystems and devfs on their website and offer an
+excellent way to implement devfs. It can be found on:
+http://www-106.ibm.com/developerworks/library/l-fs4.html 
+(thanks Uwe Kramer).
+
+Also see the other devfs hints:
+http://hints.linuxfromscratch.org/hints/devfsd.txt
+http://hints.linuxfromscratch.org/hints/devfs+modules.txt
+http://hints.linuxfromscratch.org/hints/dsp_devfsd.txt
+http://hints.linuxfromscratch.org/hints/mk_initrd+devfs.txt
+
+CHANGES
+19-04-2003: Grammatical fixes
+
+============
+Introduction
+============
+Devfs is a new implementation of device management under the /dev
+directory. Instead of a static /dev directory with hundreds or maybe
+thousands of files, device files are created 'on the fly'.
+There are some advantages to this, most notably the fact that the /dev directory
+represents your current hardware layout in an easy way. It also makes USB
+devices and other hot pluggable hardware easier to setup and manage, since you
+don't have to manually create the device nodes (which are documented, as every
+LFS'er should know, in the kernel documentation under
+/usr/src/linux/Documentation/devices.txt). It also requires a new naming scheme
+which breaks compatibility with older programs trying to find the old device
+files. There are two ways to use the devfs. The first way, described in section
+2, is to use both the new and the old names. The old names are symlinks to the
+real device files, and these are managed by a daemon which must be loaded at
+system startup. This way is the safest way to go, since it won't break any
+programs relying on the old names, and you still have a less cluttered up /dev
+directory with the new devfs. The second way, described in section 2, is to not
+run devfsd, and (re)direct software to the new names. More and more programs are
+'devfs-aware', so this should become less of a problem. Most changes are only
+minor though, but there are some catches you need to be aware of.
+
+One last note.
+This hint is not meant to replace the extensive documentation on devfs, it just
+describes what needs to be done to use it on a LFS-box or how to implement it if
+you're building a new one. So please make sure to read the appropriate docs,
+they are located in /usr/src/linux/Documentation/filesystems/devfs. Also, make
+sure to check out the website http://www.atnf.csiro.au/~rgooch/linux.
+
+=========
+Section 1
+=========
+
+Enabling devfs in your current LFS-configuration.
+
+I'll try to explain how you can use devfs without breaking any programs. The new
+devfs has a naming scheme different from the structure in the static /dev. To
+use this without reconfiguring your software, you have to run devfsd. This makes
+sure that all devices are available under their old names by providing symlinks
+to them. Devfsd has some other advantages, such as  preserving permissions and
+loading modules. Check out the documentation (man devfsd) for a complete list.
+
+Required files:
+1. linux kernel > 2.4
+2. devfsd (http://www.atnf.csiro.au/~rgooch/linux)
+Make sure that you use the latest stable version of both available. Devfs has
+had some problems in older kernel releases, and I also recall a message on the
+lfs mailing lists that the newest version of devfsd can give some compilation
+problems with older kernels.
+
+First, you need to enable devfs-support in the kernel. Note that this is only in
+kernel's 2.4 and higher, which is standard in the latest LFS. I assume you know
+how to build a new kernel, if not, look at the LFS-book for instructions.
+
+Under "Code maturity level options", enable:
+
+     "Prompt for development and/or incomplete code/drivers"
+     (CONFIG_EXPERIMENTAL).
+
+Under "File systems", enable:
+
+  [*]   "/dev file system support (EXPERIMENTAL)" (CONFIG_DEVFS_FS)
+  [*]   "automatically mount at boot" (CONFIG_DEVFS_MOUNT)
+
+If you use pty's (and nearly everybody does), disable:
+
+     "/dev/pts file system for Unix98 PTYs" (CONFIG_DEVPTS_FS)
+
+since devfs will take care of those and it could cause problems logging in.
+Please note that you still have to enable pty support. Under "Character
+devices", enable:
+ [*]    "Unix98 PTY support" (CONFIG_UNIX98_PTYS)
+
+Build this new kernel and copy the bzImage to /boot/linux-devfs (or whatever
+name you wish). Add a new entry to your boot manager which points to this image.
+Again, for instructions, see either the LFS-book, or the appropriate
+documentation. There are no additional boot-parameters needed, since we enabled
+CONFIG_DEVFS_MOUNT. If you're interested in the boot parameters, check out the
+kernel documentation.
+
+Now we're going to install devfsd. This is very simple, just issue a make &&
+make install. These are the files it install:
+
+	/usr/share/man/man5/devfsd.conf.5
+	/usr/share/man/man8/devfsd.8
+	/etc/devfsd.conf
+	/etc/modules.devfs
+	/sbin/devfsd
+
+Last but not least you need to make sure devfsd starts up at boot-time. Copy the
+template in /etc/rc.d/init.d to devfs and add "/sbin/devfsd /dev" to the start
+function. Or, copy and paste the following (minimalistic) script and save it as
+/etc/rc.d/init.d/devfs
+
+#!/bin/sh
+#
+# Begin /etc/rc.d/init.d/devfs
+#
+ . /etc/rc.d/init.d/functions
+ echo -n "Enabling DevFS..."
+ /sbin/devfsd /dev
+ evaluate_retval
+
+# End /etc/rc.d/init.d/devfs
+
+Now create a symlink to start it:
+ln -s /etc/rc.d/init.d/devfs /etc/rc.d/rc.sysinit/S001devfs
+
+If you're not using the latest LFS-bootscripts, adjust the locations of the
+bootscripts accordingly.
+
+If you're using a BSD-init, just add the line
+
+ /sbin/devfsd /dev
+
+at the beginning of your rc.sysinit.
+
+It's important that devfsd starts up first, since we didn't adjust any
+configuration files yet. The devfs daemon takes care of providing compatibility
+symlinks so all programs can still access devices.
+
+If you've followed the above steps, you can try out devfs by rebooting and
+selecting the new kernel. The old /dev files aren't deleted, so if something
+fails, just reboot into your previous kernel. (You may get an error message from
+devfsd, but this can safely be ignored).
+
+=========
+Section 2
+=========
+
+This section is if you want to build a LFS-system with the new devfs from
+scratch. Note that this will break compatibility with some older programs you
+may install after the basic setup, but luckily most are flexible enough to
+convince them into using the new device names.
+
+You don't need to do much to use devfs from scratch. You may save some inodes by
+not using MAKEDEV in chapter 6 of the book, although you should only do this if
+you're absolutely sure that you won't need to boot into a non-devfs kernel and
+if you really need the inodes.
+
+None of the packages in the LFS book are affected by the use of devfs as far as
+I know. But you have to change some configuration files in order to use devfs.
+Do not skip this step or you'll render your machine nearly unbootable!
+
+The following files from the LFS-book are affected:
+1. /etc/inittab
+2. /etc/fstab
+3. /etc/lilo.conf
+These files will be adjusted to reflect the new naming scheme.
+
+1. In /etc/inittab, replace all instances of ttyx with vc/x, where x
+is the number of the console.
+Thus,
+
+  1:2345:respawn:/sbin/agetty tty1 9600
+
+becomes:
+
+  1:2345:respawn:/sbin/agetty vc/1 9600
+
+2. When you create the /etc/fstab file, make sure to use the new device names.
+Do not use the old device names, which are only present if you run devfsd in
+compatibility mode. These symlinks may not always be present. You can create the
+device names as presented by the kernel, which look like
+/dev/ide/host0/bus0/target0/lun0/part5. You can also use the symlinks which are
+automatically generated by the kernel which look like /dev/discs/disc0/part5.
+Note that these symlinks are always present if you use devfs without the devfs
+daemon, so you can safely apply them in your configuration files.
+
+3. The same goes for lilo and grub when you specify the root filesystem.
+Quoted from Peter Havshøi:
+"Make adjustments to your 'build-distro' /etc/lilo.conf :
+    image=/boot/lfs-devfs
+    label=lfs-devfs
+    read-only
+    append="root=/dev/ide/host0/bus0/target0/lun0/part5"
+(or whatever your $LFS-partition is). Remember to copy System.map and bzImage to
+your build-distro /boot, and run '/sbin/lilo -v'. Lilo does not check
+"append"-statements, so you don't get an error message." When you boot into your
+LFS, you can change the last line from /etc/lilo.conf to a plain
+"root=/dev/ide/host0/bus0/target0/lun0/part5".
+
+Note: this only seems to apply when using devfsd or when you're not mounting
+devfs at boottime. The symlinks which appear in the /dev tree without running
+devfsd or when running it without compatibility are always  there. I have made
+my grub menu.lst and my /etc/fstab a whole lot more readable and maintainable by
+using the links. Instead of /dev/ide/host0/bus0/target1/lun0/cd I now use
+/dev/cdroms/cdrom0. The same for floppy's and harddiscs. This feature of devfs
+is especially usefull for boot floppy's and bootcd's. Be aware that these
+symlinks are affected by shuffling your hardware configuration, for example
+moving the primary harddisk to the secondary IDE channel. I assume that if
+you're smart enough to build in new hardware, you're also smart enough to change
+these configuration files accordingly.
+
+A note on building the kernel from Rasmus Andersson:
+"Avoid [auto loading] loadable modules that adds devices. Without devfsd we get
+a catch-22 since the device does not exist, so the probe fails to load the
+module...". This affects devices like the cd-rom, floppy, etc. You could
+probably try to set up a script which loads the driver when a program tries to
+find a device or adjust /etc/modules.conf, but easiest will be to compile them
+statically in the kernel.
+
+If all is set up right, you should be able to reboot into your shiny new LFS
+system, with the new devfs. If you experience any problems with software trying
+to access the old names, you can always set up the devfsd like in section 1 or
+run it manually, this takes care of compatibility. However, most programs have
+an option to specify a specific device, and this is almost always sufficient. So
+far, I'm being able to work this way and haven't encountered any difficulties
+which couldn't be solved without some common sense (and this means something,
+since I'm a relative newbie and no programmer!).
+
+========
+Problems
+========
+
+KDE Mixer doesn't work:
+I've noticed that the mixer applet doesn't work. Even though I use alsa, it
+only looks for the oss mixer. (If anyone knows why, drop me a line). Since the
+path to the mixer is hard coded I use the following hack when compiling
+kdemultimedia:
+
+	tar xyvf kdemultimedia-$VERSION.tar.bz2 &&
+	cp kmix/mixer_oss.cpp kmix/mixer_oss.cpp.backup &&
+	sed s/'\/dev\/mixer/\/dev\/sound\/mixer/' kmix/mixer_oss.cpp.backup > \
+	kmix/mixer_oss.cpp
+
+You can also provide a symlink from /dev/sound/mixer to /dev/mixer. I prefer the
+above, however, since the point of using devfs is a clean /dev directory.
+
+
+Hendrik Hoeth notified me of the following error:
+
+	If I'm not using devfsd, I need to compile
+	agetty with -DDO_DEVFS_FIDDLING  (I use util-linux-2.11b)
+
+	If I don't do so, agetty passes e.g. tty2 instead of vc/2 to login when
+	I logout and then try to log in again on vc/2 (even if I put vc/2 into
+	my /etc/inittab). The result is a system on which one can't login twice.
+
+	to compile util-linux with -DDO_DEVFS_FIDDLING, just add the line
+
+                        -DDO_DEVFS_FIDDLING
+
+	to the CFLAGS in MCONFIG (and a backslash at the end of the line
+	before...) Thus CFLAGS become
+
+	CFLAGS    := $(CFLAGS) $(OPT) -I$(LIB) $(WARNFLAGS) \
+                        $(CURSESFLAGS) $(SLANGFLAGS) \
+                        -D_FILE_OFFSET_BITS=64 \
+                        -DSBINDIR=\"$(SBINDIR)\" \
+                        -DUSRSBINDIR=\"$(USRSBINDIR)\" \
+                        -DLOGDIR=\"$(LOGDIR)\" \
+                        -DVARPATH=\"$(VARPATH)\" \
+                        -DLOCALEDIR=\"$(LOCALEDIR)\" \
+                        -DDO_DEVFS_FIDDLING
+
+It seems this error is solved in later version of util-linux (2.11d), since I
+couldn't reproduce it with that version. Take this example as a lesson: since
+devfs is an experimental feature (although present in the stable kernel), make
+sure you use the latest version possible of your software, since patches may
+have gone in to ensure devfs-compatibility.
+
+=========
+Thanks to
+=========
+Well, since I didn't figure all this out by myself, I'd like to thank the
+following people for providing some answers on the mailing list:
+Jack Byer
+Rasmus Andersson
+Steve Jones
+Usurpator
+Björn Lindberg
+Peter Havshøi
+Hendrik Hoeth
+Bryan Breen
+And probably some others which I have forgotten

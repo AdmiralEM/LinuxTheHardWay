@@ -1,0 +1,24 @@
+For details about the HINTS project, visit the website at
+	http://hints.linuxfromscratch.org/
+
+The fact that you are reading this file indicates that you are
+accessing the archive directly :-) Here is a short map of what
+the significance is for the various folders found here.
+* HOLD:
+    Contains hints that are being integrated into one of the
+    official book (LFS/BLFS). Once a stable version of the book
+    is released, the hint will be removed from this directory.
+* PREVIOUS_FORMAT:
+    Contains the hints that have not yet been moved to the new and
+    improved format. Once all hints are converted, this directory
+    will be removed. Note that hints in this directory do not show
+    up on the Online Hints Index.
+* OLD:
+    Contains hints that are obsolete for one reason or another.
+* LICENSES:
+    This directory contains various licenses that the hints are under.
+* MAINTAINER:
+    Scripts and files useful for Maintainers and Authors to verify the
+    Hint format.
+
+Maintainer: Tushar Teredesai <tushar@linuxfromscratch.org>.

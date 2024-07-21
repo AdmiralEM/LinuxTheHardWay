@@ -1,0 +1,92 @@
+TITLE:		Ispell
+LFS VERSION:	4.1
+AUTHOR:		Tom Harrison <harrist@freeshell.org>
+
+SYNOPSIS:
+	ispell-3.2.06 is a spell checker. This brief hint is intended to
+make installing it easier. I only installed the American English
+dictionary, but dictionaries for some other languages are included. 
+
+HINT:
+The goal is to install ispell, and optionally to integrate an
+existing word list into its dictionary.  My Mandrake distribution
+includes the file /usr/share/dict/linux.words.  You might have this, or
+a list of names or technical terms that you want to include.  You don't
+have to include anything at all;  The documentation describes how to
+build with only the default dictionary, and add a word list later if you
+want to.  Make sure you have at least 10 MB of free space in /tmp, or
+set TMPDIR to someplace that does:
+  	
+	$ export TMPDIR=/var/tmp
+	
+Download ispell-3.2.06.tar.gz from 
+http://fmg-www.cs.ucla.edu/fmg-members/geoff/ispell.html. 
+The md5sum of my copy is d434e1aef1a815294d5012c60c4c414a. 
+	
+Unpack the source in an appropriate place, for example /usr/src, then cd
+to ispell-3.2.06/
+
+Next, correct a minor known typo in the file parse.y
+	
+	$ cp parse.y parse.y.backup &&
+	> sed '675d' parse.y.backup >parse.y
+
+This is to prevent a syntax error from halting the build.
+
+	
+Ispell is configured by editing a file called local.h.
+local.h.samp is provided to get you started.
+
+	$ cp local.h.samp local.h
+
+Configuration options are listed in the file config.X, and are
+discussed in README.  Note: config.X is not to be changed.  All
+changes are made to local.h.  Read the warning in local.h;  local.h
+is not a normal C header file.  
+
+Open the file local.h in the text editor of your choice.
+Refer to config.X as you edit local.h;  Except for the changes listed
+here, I used the defaults.  The default install is to /usr/local. 
+
+	Change "#undef USG" to "#define USG".
+	
+At the end of the file, add these lines:
+	#define TERMLIB "-lncurses"
+	#define SORTTMP ""
+	#define WORDS "/usr/local/share/dict/linux.words"
+	#define LANGUAGES "{american,MASTERDICTS=american.med+,\
+	HASHFILES=americanmed+.hash,\
+	EXTRADICT=/usr/local/share/dict/linux.words}"
+(Note that the previous #define is all one line, without back-slashes.)
+	#define MASTERHASH "americanmed+.hash"
+
+	Save local.h
+
+	$ make all
+
+	$ su
+
+	# make install
+
+At least glance at the man page, and try it out.  You can use ispell
+interactively to look up individual words, or you can spell-check
+a file or files.  If you want to integrate ispell with EMACS, ispell.el
+is available from
+
+	http://www.kdstevens.com/~stevens/ispell-page.html	
+
+In addition to those provided, dictionaries for quite a few languages
+other than English are available at
+
+	http://fmg-www.cs.ucla.edu/fmg-members/geoff/ispell-dictionaries.html
+
+
+I hope this hint is useful.  If it doesn't work for you, or if you have ideas
+for improvement or expansion, please let me know.
+
+
+
+
+
+
+

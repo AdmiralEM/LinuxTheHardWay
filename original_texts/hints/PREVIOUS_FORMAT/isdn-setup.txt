@@ -1,0 +1,483 @@
+TITLE:		ISDN Setup
+LFS VERSION:	3.3 and higher
+AUTHOR:		Eric Dillenseger <eric@naxalite.homelinux.org>
+
+SYNOPSIS:
+	Setting up ISDN on LFS and using ISDN4Linux.
+
+HINT:
+version 0.1.0
+Nov. 03 2002
+
+CONTENT:
+--------
+	1° What do I need?
+	2° Setting up ISDN support in the linux kernel.
+	3° Installing ISDN4Linux
+	4° Configuring ISDN interfaces
+	5° The end
+
+1° What do I need?
+------------------
+
+For this hint I used a 2.4.18 kernel and isdn4k-utils.v3.1pre1
+	
+-Linux kernel sources at http://kernel.org
+-ISDN4Linux at http://www.isdn4linux.de
+	(requires sgml2html for FAQ installation and gdbm for isdnlog)
+-Know how to compile a kernel
+-Some time ;)
+
+2° Setting up ISDN support in the linux kernel.
+-----------------------------------------------
+
+I suppose you have the source for your kernel in /usr/src/linux
+We start from a clean source by runing:
+
+#: make mrproper
+
+Now you can choose your own way to configure it (config/menuconfig/xconfig).
+I use menuconfig.
+
+#: make menuconfig
+
+There you set up your configuration the way you want it.
+For ISDN support, you need to go in 'ISDN subsytem' then select 
+	-'ISDN support' as a module <M>
+		(Activates ISDN subsystem)
+	-'Support synchronous PPP' <Y>
+		(To use synchronous transmit on ISDN line)
+	-'Use VJ-compression with synchronous PPP' <Y>
+		(Van Jacobson compression)
+	-'Support generic MP (RFC 1717)' <Y>
+		(To be able to connect at 128k)
+	-'Support BSD compression' as a module <M>
+		(BSD compression)
+
+Depending on your card, choose the appropriate driver from
+	-Passive ISDN cards
+	-Active ISDN cards
+It depends of your card' chipset.
+
+I have an Olitec card with ISDN 128 Gazel chipset so:
+	-Passive ISDN cards
+	+->HiSax SiemensChipset driver support <M>
+	|+->HiSax support for EURO/DSS1 <Y>
+	+->Gazel cards <Y>
+
+Once again, this is my configuration, adapt to yours.
+
+*Note*
+	If you have an Olitec 128 RNIS PCI card (like me), there's a little trick
+	to make it work before compiling the new kernel.
+	Here it is for 2.2.17 kernel:
+
+	#: cat /proc/pci
+	
+	there should be an entry like 
+
+	Network controler : PLX Unknown device?
+	Vendor id=10b5. Device id=1187
+
+	Write down this device id and go to /usr/src/linux/drivers/isdn/hisax
+	edit gazel.c and replace
+		#DEFINE GAZEL_R753 0x1152
+	by
+		#DEFINE GAZEL_R753 0x1187
+	and save it.
+	For 2.4.18 kernel:
+	go to /usr/src/linux/include/linux
+	edit pci_ids.h and replace line 766
+		#define PCI_DEVICE_ID_PLX_R753          0x1152
+	by
+		#define PCI_DEVICE_ID_PLX_R753          0x1187
+	and save it.
+	Don't ask me where to find it for other kernel, i don't know.
+	But it seems that they're keeping the 2.4.18 way.
+	Let's see how it'll be in 2.6.x next year (or maybe 2004 ;)
+
+Ok, now we can compile the kernel as usual:
+
+#: make dep && make bzImage && make modules && make modules_install
+
+copy the kernel to /boot
+
+#: cp arch/i386/boot/bzImage /boot/lfskernel-isdn
+#: cp System.map /boot/System.map-isdn
+#: rm /boot/System.map
+#: ln -s /boot/System.map-isdn /boot/System.map
+
+Edit /etc/lilo.conf to reflect the new configuration
+
+# Begin /etc/lilo.conf
+
+lba32
+boot=/dev/hda
+root=/dev/hda1
+install=/boot/boot-menu.b
+prompt
+timeout=50
+default=lfsisdn
+image=/boot/lfskernel-isdn
+       label=lfs-isdn
+       read-write
+image=/boot/lfskernel
+        label=lfs
+	read-write
+
+# End /etc/lilo.conf
+
+Then run lilo to update the mbr
+
+#: /sbin/lilo
+Added lfs-isdn *
+Added lfs
+
+And now, the moment of truth, reboot your system.
+Log in as root, and type:
+
+#: modprobe hisax type=xx protocol=x
+
+Replace by the values corresponding to your card, in doubt, read
+/usr/src/linux/Documentation/isdn/README.hisax
+It should load without problem.
+
+3° Installing ISDN4Linux
+------------------------
+
+Unpack the source in a directory:
+
+#: tar xzf isdn4k-utils.v3.1pre1.tar.gz
+
+go to the new directory and run:
+
+#: make config
+
+This brings you to a screen looking like menuconfig for the kernel.
+There you can choose what you want to enable/disable and set the path where
+the stuff will be installed.
+Use help anytime if you don't know the meaning of an item.
+Once you're done, you may save your config to a file for further use or
+simply exit. The program will configure everything.
+
+#: make && make install
+
+At the end of make install, devices are automatically created.
+
+#: ls /dev/ippp* && ls /dev/isdn*
+
+Should show them, and you should have isdnctrl, hisaxctrl and ipppd in /sbin
+
+4° Configuring ISDN interfaces
+------------------------------
+
+First, we're going to write the config file for isdnctrl that will set ippp0
+interface for single channel connection.
+Feel free to modify it to suit your needs.
+
+/etc/isdn/isdn1B.conf
+[ISDNCTRL]
+	INTERFACES = {
+		INTERFACE]
+		NAME = ippp0
+		EAZ = <EAZ>		#this is your line number w/o <>
+		PHONE_OUT = <ISP>	#this is the phone number of your ISP
+		SECURE = on
+		DIALMODE = auto
+		DIALMAX = 1
+		HUPTIMEOUT= 180
+		IHUP = on
+		CHARGEHUP = off
+		L2_PROT = hdlc
+		L3_PROT = trans
+		ENCAP = syncppp
+		SDELAY = 10
+		PPPBIND = 0
+	}
+
+for dual channel connection:
+
+/etc/isdn/isdn2B.conf
+[ISDNCTRL]
+	INTERFACES = {
+		[INTERFACE]
+		NAME = ippp0
+		EAZ = <EAZ>
+		PHONE_OUT = <ISP>
+		SECURE = on
+		DIALMODE = auto
+		DIALMAX = 1
+		HUPTIMEOUT= 170
+		IHUP = on
+		CHARGEHUP = off
+		L2_PROT = hdlc
+		L3_PROT = trans
+		ENCAP = syncppp
+		ADDSLAVE = ippp1
+		SDELAY = 30
+		PPPBIND = 0
+		[SLAVE]
+		NAME = ippp1
+		EAZ = <EAZ>
+		PHONE_OUT = <ISP>
+		SECURE = on
+		DIALMODE = auto
+		DIALMAX = 3
+		HUPTIMEOUT= 170
+		IHUP = on
+		CHARGEHUP = off
+		L2_PROT = hdlc
+		L3_PROT = trans
+		ENCAP = syncppp
+		PPPBIND = 1
+	}
+
+Now we can test our configuration by passing the file to isdnctrl with:
+
+#: cd /etc/isdn
+#: ln -s isdn1B.conf device.conf
+#: isdnctrl readconf /etc/isdn/device.con
+
+You should see something like:
+[root@lfs] /etc/isdn
+#:> isdnctrl readconf device.conf
+ippp0 added
+EAZ/MSN for ippp0 is <EAZ>
+Security for ippp0 is on
+Dialmax for ippp0 is 1 times.
+Hangup-Timeout for ippp0 is 180 sec.
+Incoming-Hangup for ippp0 is on
+Charge-Hangup for ippp0 is off
+Layer-2-Protocol for ippp0 is hdlc
+Layer-3-Protocol for ippp0 is trans
+Encapsulation for ippp0 is syncppp
+Slave-activation delay for ippp0 is 10 sec.
+ippp0 bound to 0
+ISDN Configuration read from device.conf.
+
+Now you should be able to connect to internet. You have no gateway
+or nameserver set so you may not browse the net.
+Simply type:
+
+#: isdnctrl dial ippp0
+
+To erase this configuration, type
+
+#: isdnctrl delif ippp0
+
+Now we're going to set some startup script to automate the configuration
+of ipppd daemon. ipppd expect to find a file called ioptions in /etc/ppp
+even if it's empty so create it to avoid some errors:
+
+#: touch /etc/ppp/ioptions
+
+For one channel (64kb):
+
+/etc/isdn/ioptions1B
+
+# Begin /etc/isdn/ioptions1B
+
+/dev/ippp0
+defaultroute
+debug
++pwlog
+name !!login-name!! # replace with your ISP login name
+
+# End /etc/isdn/ioptions1B
+
+For two channels (128kb):
+
+/etc/isdn/ioptions2B
+
+# Begin /etc/isdn/ioptions2B
+
+/dev/ippp0
+/dev/ippp1
++mp
+defaultroute
+debug
++pwlog
+name !!login-name!! # replace with your ISP login name
+
+# End /etc/isdn/ioptions2B
+
+Now we need to create a chap-secrets or pap-secrets file.
+
+#: mkdir /etc/ppp
+#: echo "\"login-name\"    *    \"password\"" > /etc/ppp/chap-secrets
+#: chmod 600 /etc/ppp/chap-secrets
+
+As this file contains our login/password for our ISP, we don't want everybody
+to be able to read them.
+At this point, don't forget to add users who will be able to connect to
+internet to the dialout group:
+
+#: usermod -G dialout user
+
+Check the rights on /dev/isdninfo and /dev/isdnctrl*
+All should belong to user root and group dialout and be crw-rw----
+except /dev/isdnctrl wich is a symlink to /dev/isdnctrl0
+
+#: ls /dev/isdninfo
+crw-rw----    1 root     dialout   45, 255 nov  3 20:14 /dev/isdninfo
+#: ls /dev/isdnctrl
+lrwxrwxrwx    1 root     dialout         9 nov  3 20:14 /dev/isdnctrl -> isdnctrl0
+#: ls /dev/isdnctrl0
+crw-rw----    1 root     dialout   45,  64 nov  3 20:14 /dev/isdnctrl0
+
+Correct if needed:
+#: chown root:dialout /dev/isdninfo
+#: chmod 660 /dev/isdninfo
+#: chown root:dialout /dev/isdnctrl
+
+Now we can start ipppd to see if everything works fine:
+
+#: ipppd file /etc/isdn.ioptions1B
+#: ps aux | grep ipppd
+root      4705  0.0  0.2  2088 1068 ?        S    21:10   0:00 ipppd file /etc/i
+
+This means that everything is ok, you can check your logs to be sure, I'm using
+metalog so I give you the files from sysklogd from my old debian:
+in /var/log/kern.log:
+Nov  3 15:56:38 naxalite kernel: ippp, open, slot: 0, minor: 0, state: 0000
+Nov  3 15:56:38 naxalite kernel: ippp_ccp: allocated reset data structure c4f29
+Nov  3 15:56:38 naxalite kernel: ippp_ccp: freeing reset data structure c384080
+Nov  3 15:56:38 naxalite kernel: ippp0: dialing 1 0860095557...
+Nov  3 15:56:40 naxalite kernel: isdn_net: ippp0 connected
+
+This shows a succesfull connection.
+in /var/log/messages:
+Nov  3 15:56:38 naxalite ipppd[231]: reinit_unit: 0
+Nov  3 15:56:38 naxalite ipppd[231]: Connect[0]: /dev/ippp0, fd: 8
+Nov  3 15:56:38 naxalite kernel: ippp0: dialing 1 ...
+Nov  3 15:56:40 naxalite ipppd[231]: Local number: , Remote number: , Type: out
+Nov  3 15:56:40 naxalite kernel: isdn_net: ippp0 connected
+Nov  3 15:56:40 naxalite ipppd[231]: ChapReceiveChallenge: Rcvd id 27.
+Nov  3 15:56:40 naxalite ipppd[231]: ChapReceiveChallenge: received name field:
+Nov  3 15:56:41 naxalite ipppd[231]: ChapReceiveSuccess: Rcvd id 27.
+Nov  3 15:56:41 naxalite ipppd[231]: MPPP negotiation, He: Yes We: Yes
+Nov  3 15:56:41 naxalite ipppd[231]: CCP enabled! Trying CCP.
+Nov  3 15:56:41 naxalite ipppd[231]: ccp_resetci!
+Nov  3 15:56:41 naxalite ipppd[231]: Compressor BSD Compress loaded!
+Nov  3 15:56:41 naxalite ipppd[231]: ccp_resetci!
+Nov  3 15:56:41 naxalite ipppd[231]: Compressor BSD Compress loaded!
+Nov  3 15:56:41 naxalite ipppd[231]: local  IP address 212.83.145.79
+Nov  3 15:56:41 naxalite ipppd[231]: remote IP address 212.47.226.2
+
+This shows ipppd connection.
+
+Now we almost have a working internet connection via ISDN, we just need to
+setup some system boot scripts to load ipppd and set the default gateway on
+dial.
+
+#: touch /etc/rc.d/init.d/hisax
+
+Edit /etc/rc.d/init.d/hisax
+
+#!/bin/sh
+# Begin of /etc/rc.d/init.d/hisax
+case "$1" in
+	start)
+		/sbin/modprobe hisax type=34 protocol=2
+		/sbin/isdnctrl readconf /etc/isdn/device.conf
+		/sbin/ipppd file /etc/isdn/ioptions1B
+	;;
+	stop)
+		/sbin/ifconfig ippp0 down
+		/sbin/isdnctrl delif ippp0
+	;;
+	restart)
+		$0 stop
+		wait 3
+		$0 start
+	;;
+	*)
+		echo "Usage: $0 {start|stop|restart}"
+		exit 1
+	;;
+esac
+
+exit 0
+# End /etc/rc.d/init.d/hisax
+
+Make it executable:
+
+#: chmod +x /etc/rc.d/init.d/hisax
+
+Link it to the differents runlevels, replace XX by the levels tou want:
+
+#: ln -sf /etc/rc.d/init.d/hisax /etc/rc.d/rc0.d/KXXhisax
+#: ln -sf /etc/rc.d/init.d/hisax /etc/rc.d/rc1.d/KXXhisax
+#: ln -sf /etc/rc.d/init.d/hisax /etc/rc.d/rc2.d/KXXhisax
+#: ln -sf /etc/rc.d/init.d/hisax /etc/rc.d/rc3.d/SXXhisax
+#: ln -sf /etc/rc.d/init.d/hisax /etc/rc.d/rc4.d/SXXhisax
+#: ln -sf /etc/rc.d/init.d/hisax /etc/rc.d/rc5.d/SXXhisax
+#: ln -sf /etc/rc.d/init.d/hisax /etc/rc.d/rc6.d/KXXhisax
+
+We need to define a gateway:
+
+/etc/ppp/ip-down.local
+
+#!/bin/sh
+# Begin of /etc/ppp/ip-down.local
+route add default dev ippp0
+# End of /etc/ppp/ip-down.local
+
+Now we can create a small script to dial/hangup or check the status of
+our connection:
+
+#!/bin/sh
+# Begin /bin/isdn
+case "$1" in
+	on)
+		/sbin/isdnctrl dial ippp0
+	;;
+	off)
+		/sbin/isdnctrl hangup ippp0
+	;;
+	info)
+		/sbin/isdnctrl list ippp0 | egrep "Dial mode|Hangup-Timeout" \
+			&& /sbin/isdnctrl status ippp0
+	;;
+	*)
+		echo "Usage: $0 {on|off|info}"
+		exit 1
+	;;
+esac
+
+exit 0
+# End /bin/isdn
+
+#: chmod +x /bin/isdn
+
+Don't forget to set tour nameservers in /etc/resolv.conf and check
+/etc/sysconfig/network-devices/ifconfig.ethX for GATEWAY=xxx.xxx.xxx.xxx
+value.
+I wrotte this hint while installing isdn4linux on my box without problem.
+I repeat it again, the main problem comes from your chipset and how you load
+the hisax module. Check your reseller or the card box to figure out wich
+chipset your card use.
+Another hint:
+If you have an ISA/PnP card, dont forget to add io= and irq= to modprobe
+(cat /proc/isapnp is your friend)
+
+You may create /etc/isapnp.conf with pnpdump:
+
+#: pnpdump > /etc/isapnp.conf
+
+For more information, check the kernel documentation, isdn4linux website,
+newsgroups, IRC, google, etc.
+
+5° The end:
+-----------
+
+Well, we're done, we have a working ISDN connection.
+This document is a very beta version, it may contain some erros, feel free to
+mail me any correction or addition I should/may add.
+If you have question, I may try to help you in the scope of my little knowledge
+but don't expect too much ;)
+
+Some script from this document are from a french document written by 
+Philippe Latu, and the adaptation to LFS and is from me ;p
+
+I hope this document helped you.

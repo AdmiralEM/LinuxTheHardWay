@@ -1,0 +1,186 @@
+TITLE:		Compiling Mozilla and Installing Plugins
+
+LFS VERSION:	All(?)
+
+AUTHOR:		Tushar Teredesai <Tush@Yahoo.Com>
+
+SYNOPSIS:
+	How to compile moz from scratch and install Plugins.
+	The compiler I used was gcc-3.0.4. There are some additional tips to
+	allow commercial plugins to be used with gcc3 compiled moz.
+
+HINT:
+
+Hint Version: 1.1
+ChangeLog:
+	* Typo in running regxpcom.
+	* Env variable to speed up mozilla.
+
+Pre-requesites:
+	* X (See X Hint)
+	* GLib & GTK >= 1.2 (See GNOME Hint)
+	* libIDL >= 0.6.3 & <= 0.6.8 (See GNOME Hint)
+	* JPEG, PNG, MNG Libraries (See BLFS Book or KDE Hint)
+
+Packages to download:
+	* Info Zip >= 2.3 <http://www.info-zip.org/Zip.html>
+	* iCal <http://www.softwarestudio.org/libical> [Optional]
+	* Mozilla:) <http://www.mozilla.org/download-mozilla.html>
+
+Installing Zip:
+	There are additional options, check out the unix/Makefile.
+		make -f unix/Makefile prefix=/usr generic_gcc &&
+		make -f unix/Makefile prefix=/usr install
+
+Installing libical:
+	libical is only required if you want to play around with calendar.
+	I had problems building mozilla calendar, YMMV.
+		./configure --prefix=/usr --disable-static &&
+		make &&
+		make install
+
+Installing Mozilla:
+	One option is to pass the options to configure. Alternatively, these
+	options can be placed in a file .mozconfig that is read by moz's
+	configure script. I used the latter method.
+
+	I built the package in /usr/src/mozilla.
+
+	First we will set the flags so that we can build a distribution rather
+	than having to run mozilla from the directory we compiled.
+		export MOZILLA_OFFICIAL=1
+		export BUILD_OFFICIAL=1
+		export MOZ_INTERNAL_LIBART_LGPL=1
+		export MOZ_CALENDAR=1
+	The third export specifies that you accept the LGPL License for libart.
+	This is required for SVG support and is recommended.
+	The fourth export is required only if you want to build the calendar
+	interface (experimental).
+	Also set CFLAGS and CXXFLAGS based on your needs.
+
+	Now we create the .mozconfig file containing the options we want.
+	This is how I configure, skip the options you don't like; for more
+	options try ./configure --help.
+		cd /usr/src/mozilla/
+		echo ac_add_options --with-system-jpeg >> .mozconfig
+		echo ac_add_options --with-system-zlib >> .mozconfig
+		echo ac_add_options --with-system-png >> .mozconfig
+		echo ac_add_options --with-system-mng >> .mozconfig
+		echo ac_add_options --enable-crypto >> .mozconfig
+		echo ac_add_options --disable-jsd >> .mozconfig
+		echo ac_add_options --disable-accessibility >> .mozconfig
+		echo ac_add_options --enable-mathml >> .mozconfig
+		echo ac_add_options --enable-svg >> .mozconfig
+		echo mk_add_options MOZ_INTERNAL_LIBART_LGPL=1 >> .mozconfig
+		echo ac_add_options --disable-tests >> .mozconfig
+		echo ac_add_options --disable-debug >> .mozconfig
+		echo ac_add_options --disable-dtd-debug >> .mozconfig
+		echo ac_add_options --enable-reorder >> .mozconfig
+		echo ac_add_options --enable-strip >> .mozconfig
+		echo ac_add_options --enable-optimize=-O3 >> .mozconfig
+		echo ac_add_options --enable-elf-dynstr-gc >> .mozconfig
+		echo ac_add_options --enable-cpp-rtti >> .mozconfig
+		echo mk_add_options MOZCALENDAR=1
+		echo ac_add_options --enable-calendar >> .mozconfig
+	Remove the last two commands to skip building the calendar.
+
+	Now configure and compile the package as usual. If there are problems
+	run configure again by removing the option that caused the problem.
+		./configure &&
+		make
+
+	Now to making the distribution:
+		cd xpinstall/packager &&
+		make
+	This will run for some time and create a package in the dist directory.
+		cd ../../dist &&
+		ls *.tar.gz
+	Verify that the distribution has been built.
+
+	I install moz into /opt/mozilla.
+		cd /opt &&
+		tar -xzf /usr/src/mozilla/dist/mozilla-i686-pc-linux-gnu.tar.gz
+
+	Add mozilla to your PATH.
+		export PATH=$PATH:/opt/mozilla
+
+	To make your mozilla build go faster, set XPCOM_CHECK_THREADSAFE=0 in
+	.bash_profile or in run-mozilla.sh. This apparently only affects
+	debug builds, but no harm in setting it for optimized builds.
+
+	To allow all users to run mozilla, the following needs to be done.
+		/opt/mozilla/regxpcom
+		/opt/mozilla/regchrome
+		touch `find /opt/mozilla -name *.rdf`
+
+	Enzoy:)
+
+GCC 3 Tips:
+	If you compile Mozilla using gcc3, closed source plugins such as flash
+	will crash moz since these plugins are compiled using gcc2. A work-
+	around till the plugins are fixed is to pre-load a library that will
+	make some required functions available to these plugins.
+
+	Create a file libc++mem.c.
+		cat > libc++mem.c << "EOF"
+		// From http://bugzilla.mozilla.org/show_bug.cgi?id=124006
+		void *__builtin_new(int size) {
+			return (void*)malloc(size);
+		}
+		void *__builtin_vec_new(int size) {
+			return __builtin_new(size);
+		}
+		void *__builtin_delete(void *ptr) {
+			free(ptr);
+		}
+		void *__builtin_vec_delete(void *ptr) {
+			__builtin_delete(ptr);
+		}
+		EOF
+
+		gcc -shared -fPIC -o libc++mem.so libc++mem.c &&
+		mv libc++mem.so /opt/mozilla
+
+		Open /opt/mozilla/run-mozilla.sh and just below line 351 enter
+			export LD_PRELOAD=/opt/mozilla/libc++mem.so
+
+Installing Adobe Acrobat Plugin:
+	Download the Acronat Reader from Adobe's website.
+	http://www.adobe.com/products/acrobat/readstep2.html
+	Install Acrobat in /opt/acrobat
+		cd /opt/mozilla/plugins &&
+		ln -s /opt/acrobat/Browsers/intellinux/nppdf.so
+
+Installing Java Plugin from IBM:
+	Download IBM JRE 1.3 from IBM's website. I had problems with Sun's JDK.
+	http://www.alphaworks.ibm.com/
+	Install IBM JDK in /opt/IBMJava2-13
+		cd /opt/mozilla/plugins &&
+		ln -s /opt/IBMJava2-13/jre/bin/libjavaplugin_oji.so
+
+Installing Macromedia Flash Player:
+	Download the Flash Player from Macromedia's website.
+	http://sdc.shockwave.com/shockwave/download/alternates/#linux
+	Untar the files and copy libflashplayer.so and ShockwaveFlash.class
+	to /opt/mozilla/plugins
+
+Installing RealPlayer:
+	Download the plugin from Real Networks.
+	http://forms.real.com/real/player/unix/unix.html
+	I am still working on making Real Player work. I will update this
+	section when I have more information.
+
+CodeWeaver's CrossOver Plugin:
+	If you are interested in using Windows plugins (Why??!!), this
+	commercial product will allow you to do it. Check out
+	http://www.codeweavers.com/products/crossover/ for more info.
+
+Have fun mozzing around.
+
+BTW, seems like the countdown for Mozilla 1.0 (YaY) has started. Will update
+the hint on release if needed.
+
+Don't forget to send me bug reports so that I can keep the hint updated.
+
+--Tushar.
+

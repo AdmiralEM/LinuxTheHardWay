@@ -1,0 +1,95 @@
+#!/bin/bash -x
+
+# Script to verify hint format and to submit it via local mail command.
+# Needs checkHint script available from the Hints website.
+# 
+# Script depends on the presences of the following executables that
+# are not included in a standard LFS installation.
+#   mail
+#   which
+#
+# Script created by Jim Gifford
+# Based on script by Oliver Pérès
+# Modified by Tushar Teredesai
+
+## Configuration params
+# Your name
+submitter=""
+# Your e-mail address
+email=""
+# Whether to submit the hint
+SUBMIT_HINT="disabled"
+# Whether to compress hint before submission
+COMPRESS="disabled"
+# Hints submission address
+hints="hints@linuxfromscratch.org"
+# Mail program to use
+mailprog="mail"
+compressprog="bzip2"
+compressext="bz2"
+
+# Sanity checks
+HINT_FILE="$1"
+if [ "$HINT_FILE" == "" ]
+then
+	echo "`basename $0` hint-file"
+	exit 1
+fi
+if [ "$submitter" = "" ] || [ "$email" = "" ]
+then
+	echo "Please edit $0 before executing"
+	exit 1
+fi
+
+MAIL_FILE="`mktemp`"
+mailbin="`which $mailprog 2>/dev/null`"
+compressbin="`which $compressprog 2>/dev/null`"
+
+ERROR=""
+
+# Subroutines
+#
+YESNO ()
+{
+	INPUT="$1"
+	echo -n "$INPUT -=>"
+	RETURN="0"
+	read input
+	if [ "$input" == "YES" ] || [ "$input" == "yes" ] || [ "$input" == "Y" ] || [ "$input" == "y" ] 
+		then
+			OK="YES"
+			RETURN="1"
+	fi
+	if [ "$input" == "NO" ] || [ "$input" == "no" ] || [ "$input" == "N" ] || [ "$input" == "n" ]
+		then
+			OK="NO"
+			RETURN="1"
+	fi
+	if [ "$RETURN" == "0" ]
+		then
+			YESNO "$INPUT"
+	fi
+}
+
+checkHint $HINT_FILE || ERROR="true"
+
+if [ "$ERROR" == "" ] && [ "$SUBMIT_HINT" == "enabled" ] && [ "$mailbin" != "" ]
+then
+	YESNO "Are you sure you want to send $HINT_FILE to $hints (yes/no)"
+	if [ "$OK" == "YES" ]
+	then
+		if [ "$COMPRESS" == "enabled" ] && [ "$compressbin" != "" ]
+		then
+			echo "Compressing $HINT_FILE..."
+			$compressbin $HINT_FILE
+			attachment="$HINT_FILE.$compressext"
+		else
+			attachment="$HINT_FILE"
+		fi
+		echo "Hint Submission: $HINT_FILE" > $MAIL_FILE
+		echo "Sending email to $hints..."
+		$mailbin -B -s "Hint Submission for $HINT_FILE" -a $attachment -r $email $hints < $MAIL_FILE
+	fi
+fi
+rm -f $MAIL_FILE
+

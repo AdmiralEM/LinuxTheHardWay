@@ -1,0 +1,298 @@
+TITLE:          DHCP client daemon
+LFS VERSION:    2.x-3.1 (all???)
+AUTHOR:         D.J. Lucas <dj_me@swbell.net>
+
+SYNOPSIS:       How to setup a DHCP client daemon. This is used with most 
+                networking gateways for cable modems and xDSL modems.  Also
+                used, nowadays, on almost all corporate networks to set up
+                non mission critical servers and most workstations.
+
+HINT:  After reading the dhcpd hints by Simon Perreault <nomis80@videotron.ca>
+and Thinus Pollard <thinusp@olienhout.org.za>, I had an excelent grasp on the
+configuration and use of dhcpcd.  I, however, felt the need to expand on their 
+ideas and incorporate the use of the DHCP client into the ethnet init script.
+This will both reduce the amount of scripts in the /etc/init.d directory and 
+symlinks in /etc/init.d/rc?.d, and also allow for easy change back to a static
+network should the need arise.  
+
+NOTE:  Just a basic reminder....because this works on my system, dosen't mean
+that it will work on yours, tho it should.  Even though these are just script 
+changes, IT IS ALWAYS A GOOD IDEA TO BACKUP any existing files that will be 
+changed, deleted, modified, moved, etc....  Also if you used the hint for
+shadow passwords http://hints.linuxfromscratch.org/hints/shadowpasswd_plus.txt,
+you'll want to run the configure script below without the --prefix and change
+the ethnet script below to point to the correct install location.
+ie: /sbin/dhcpcd as opposed to /usr/sbin/dhcpcd
+
+
+How to install and configure the DHCP client daemon according to the LFS
+standards.
+
+1. Get the current version of dhcpcd at ftp://ftp.phystech.com/pub/ 
+2. Unpack the archive and install. 
+------------------------------------------------------------------------------
+tar -zxf dhcpcd-1.?.?.pl?  (maybe overstating the obvious...replace the "?"s)
+cd dhcpcd-1.?.?.pl?
+./configure --prefix=/usr
+make
+make install
+------------------------------------------------------------------------------
+NOTE:  Although not recomended, if you are using a version older than 
+dhcpcd-1.3.21-pl1, see the previous dhcp hints (dhcpd.txt and dhcpd2.txt) at: 
+http://hints.linuxfromscratch.org/hints/old/
+
+3. Move the old ethnet script and create the new one.  As you can see I 
+have included the new variable explanations for the nic-config files 
+in the script itself for easier administration after the initial setup. 
+These can be omitted if you like.
+Run the following commands to backup the old file and create the new one.
+______________________________________________________________________________
+mv /etc/init.d/ethnet /etc/init.d/ethnet.predhcpcd
+cat > /etc/init.d/ethnet << "EOF"
+#!/bin/sh
+# Begin /etc/init.d/ethnet
+#
+# Main script by Gerard Beekmans - gerard@linuxfromscratch.org
+# GATEWAY check by Jean-François Le Ray - jfleray@club-internet.fr
+# "Specify which IF to use to reach default GATEWAY" by
+# Graham Cantin - gcantin@pacbell.net
+# DHCP sections added by D.J. Lucas - dj_me@swbell.net
+#
+# This file has been updated from it's original version to include the use
+# of dhcpcd to autoconfigure network cards.  Therefore, the structure of the
+# $DEVICE-config and sysconfig/network files has changed slightly.
+# The new variable set now uses the following variables:
+#
+# /etc/$DEVICE-config:
+# ONBOOT - yes,no - wether to set up the interface at boot
+# DHCP - yes,no - wether or not to use dhcp
+# DEVICE - device name (eth0,eth1...etc.) - the device name
+# IP - IP address of the interface - not used with DHCP
+# NETMASK - subnet mask of the interface - not used with DHCP
+# BROADCAST - broadcast address of the interface - not used with DHCP
+#
+# /etc/sysconfig/network:
+# HOSTNAME - host name of the machine - must be set
+# GATEWAY - default gateway of the interface - not used with DHCP
+# GATEWAY_IF - Interface - sets interface as default gateway for the system
+#                          not used with DHCP
+#
+# Hope this makes things a bit more clear as my if/then/else statments are a
+# little hard to follow.  Note:  the script will fail if both the GATEWAY_IF
+# and the GW variables are set, or if both the GATEWAY and the GW variables
+# are set.
+#
+# End of my additions...send any questions to DJ_Me@swbell.net.
+#
+# Include the functions declared in the /etc/init.d/functions file
+# and the variables from the /etc/sysconfig/network file.
+#
+
+source /etc/init.d/functions
+source /etc/sysconfig/network
+
+case "$1" in
+        start)
+
+#
+# Obtain all the network card configuration files
+#
+
+        for interface in $(/bin/ls /etc/sysconfig/nic-config/ifcfg* | \
+            grep -v ifcfg-lo)
+        do
+#
+# Load the variables from that file
+#
+
+            source $interface
+#
+# If the ONBOOT variable is set to yes, process this file and bring the
+# interface up.
+#
+# Added for DHCP using dhcpcd:
+# If the DHCP variable is set to yes, the if/then/else statements below
+# will force the use of dhcpcd instead of ifconfig.
+# End Addition
+#
+
+            if [ "$ONBOOT" == yes ]
+            then
+               if [ "$DHCP" == yes ]
+               then
+                  echo -n "Bringing up the $DEVICE interface using DHCP..."
+                  /usr/sbin/dhcpcd $DEVICE
+                  evaluate_retval
+               else
+                   echo -n "Bringing up the $DEVICE interface..."
+                   /sbin/ifconfig $DEVICE $IP broadcast $BROADCAST \
+                       netmask $NETMASK
+                   evaluate_retval
+               fi
+            fi
+        done
+
+#
+# If the /etc/sysconfig/network file contains a GATEWAY variable, set
+# the default gateway and the interface through which the default
+# gateway can be reached.
+#
+# Added for DHCP using dhcpcd:
+# If the default gateway device is to be set up using DHCP, then the
+# GATEWAY and GATEWAY_IF variables should not be used as dhcpcd takes care
+# of setting up the default route.
+# End Addition
+#
+
+            if [ "$GATEWAY" != "" ]
+            then
+                   echo -n "Setting up routing for $GATEWAY_IF interface..."
+                   /sbin/route add default gateway $GATEWAY \
+                           metric 1 dev $GATEWAY_IF
+                   evaluate_retval
+            fi
+                ;;
+
+        stop)
+
+#
+# Obtain all the network card configuration files
+#
+
+        for interface in $(/bin/ls /etc/sysconfig/nic-config/ifcfg* | \
+            grep -v ifcfg-lo)
+        do
+#
+# Load the variables from that file
+#
+
+            source $interface
+#
+# If the ONBOOT variable is set, process the file and bring the
+# interface down
+# If the DHCP variable is set to yes, then use dhcpcd to bring the
+# interface down instead of ifconfig.
+
+            if [ $ONBOOT == yes ]
+            then
+                if [ $DHCP == yes ]
+                then
+                    echo -n "Bringing down the $DEVICE interface..."
+                    /usr/sbin/dhcpcd -k $DEVICE
+                    evaluate_retval
+                else
+                    echo -n "Bringing down the $DEVICE interface..."
+                    /sbin/ifconfig $DEVICE down
+                    evaluate_retval
+                fi
+            fi
+        done
+                ;;
+
+        restart)
+                $0 stop
+                sleep 1
+                $0 start
+                ;;
+        *)
+                echo "Usage: $0 {start|stop|restart}"
+                exit 1
+                ;;
+esac
+
+# End /etc/init.d/ethnet
+EOF
+chmod +x /etc/init.d/ethnet
+______________________________________________________________________________
+
+4.  Create the updated nic-config files.  Decide which interface(s) will now
+use DHCP and create the files.  On devices that will use static information,
+you will use the old config files as created in the LFS book.  
+MAKE BACKUP COPIES of the config files that are going to be replaced.
+In the new files there will only be 3 variables set.  Here is a copy of my 
+/etc/sysconfig/nic-config/ifcfg-eth0 file.
+______________________________________________________________________________
+ONBOOT=yes
+DEVICE=eth0
+DHCP=yes
+______________________________________________________________________________
+The ONBOOT variale tells the ethnet script wether or not to set up the card 
+(at boot time).  The options for this variable are "yes" or "no"
+
+The DEVICE variable tells the ethnet script the device name.  This should be
+the same as whatever is after "ifcfg-" in the filename.
+
+The DHCP variable tells the ethnet script to run the DCHP client.
+The options for this variable are "yes" or "no"
+
+IF the interface that provides the default route for your system is now set
+up by DHCP, then you will need to edit the /etc/sysconfig/network file and
+remove the GATEWAY and GATEWAY_IF variables.  dhcpcd, by default, will assign
+the default route to any adapter that is givin a default gateway by a DHCP
+server.  It is worth noting that there is no way to disable this behavior.
+
+
+5.  What to do with your hostname and the /etc/hosts file. 
+
+On most systems it should not be necessary to do the following, but I have
+recieved questions reguarding specific aplications.
+THE FOLLOWING IS NOT RECOMENDED UNLESS YOU KNOW EXACTLY WHAT YOU ARE DOING.
+I'll leave it up to the reader to edit/create the scripts to do this.
+You can source the variables in the /etc/dhcpc/dhcpcd-$1.info file after the
+interface is set up, and then dynamicly write (appended) to the hosts file.
+If you have the need to do this, create an additional script that runs only on
+startup (in the same runlevels as network) that deletes the hosts file, gets
+the necessary info from the dhcpcd-$1.info file's variables, creates a new
+hosts file, and writes to that hosts file (appended) from a static copy of the
+permanent entries.  I may edit this how-to in the future to include info on
+this process, but not untill I've had a chance to test ALL of the failsafes.
+This is currently out of the scope of this document, however, feedback on this
+idea would be much appreciated.
+
+6.  Before you reboot you need to test the system.  Start by running ifconfig
+with no options to see which devices are enabled.  Disable all devices except
+lo by running ifconfig <device name> down.  Now run the ethnet script using 
+the following command:  /etc/init.d/ethnet start
+Look for any failures and try to track them down.  If you have no failures,
+run ifconfig and make sure everything looks okay.  Also check that your 
+routing is set up correctly by running route with no argurments.  If 
+everything looks good, then stop ethnet.  /etc/init.d/ethnet stop
+Again look for any failures and track them down.  Again run route and ifconfig,
+and look for any interfaces that aren't supposed to be there.  If there are no
+interfaces, besides lo, returned by ifconfig and there are no routes set,
+congratulations.  Reboot your system and continue on your path with LFS.
+If you do have failures that you cannot track down.  Please feel free to
+e-mail me <dj_me@swbell.net>  be sure to include the full problem description
+(as much as you understand), the exact error message, and the text of all
+your config files.  If you have problems, you've made a backup of everything, 
+so put the backups back where you got them from.
+
+Another issue has come to surface with the way LFS handles shutdowns and
+restarts.  If the sendsignal script is run in runlevels 0 and 6 prior to
+ethnet, this is a problem because dhcpcd is exacly as it's name implies, a 
+daemon and will receive the kill signal prior to stoping the card correctly.
+In both of these runlevels, sendsignals should be set to run after the ethnet
+script.  This problem might exist on some versions of LFS.  If so.......
+I don't know if this is a good idea or not, but it works for what little I 
+have on my system.  It seems to me that a lot of network services that
+will possibly be installed will be daemons, and that sendsignals should be run 
+after the network is properly shut down. Rename the K???ethnet to a number 
+smaller than K???sendsignals in both /etc/init.d/rc0.d and /etc/init.d/rc6.d.
+I'd appreciate any feedback that anybody could give on this method.
+
+
+7.  Conclusion:  "I hope this helps somebody out there ;)" -- Thinus Pollard
+I'd like to thank Thinus Pollard and Simon Perreault for their versions of
+this hint....which had my LFS system up and running in under an hour.  I'd
+also like to thank the following dedicated LFS users who took the time to track
+down the problems in my previous versions of this hint.
+
+Special thanks to: Robert Smol, Rich Jones, Phil Gendreau, Cli - corrected
+dhcpcd -k $Device, Markku Tikkanen, Tijmen Stam - provided cable modem info,
+Steve Hayashi, Wolfgang Scheicher - provided dhcpcd default gateway and 
+routing info, and Carl Spelkens - corrected the runlevels.   
+
+As always, please send any tips, suggestions, flames...etc, to dj_me@swbell.net
+or just edit this hint yourself.
+
+-- D.J. Lucas <dj_me@swbell.net>

@@ -1,0 +1,111 @@
+AUTHOR: Kevin Annies (kevinannies@hotmail.com)
+
+
+DATE: 2003-08-15
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: Implement squashfs to create a compressed /usr image for a live cd.
+
+DESCRIPTION:
+This hint is a guide to creating a compressed /usr image as /usr usually tends 
+to be the larget directory on a system. The user is then given a quick example 
+of how to implement this on a Live CD by mounting the image at boot time.
+
+ATTACHMENTS:
+http://squashfs.sourceforge.net/
+
+PREREQUISITES:
+A complete LFS system
+The kernel source code
+
+
+HINT:
+
+Introduction
+To start with a full explanation of Squashfs can be found at the following 
+link: http://squashfs.sourceforge.net/ if you have trouble undertanding this hint
+If you are short of space on your 
+machine or would like to create a live cd containing lots of software, this hint is ideal for you
+
+
+				Acquiring Squashfs 
+
+The source code can also be downloaded from this site	
+				http://squashfs.sourceforge.net/
+
+The package used in this hint is squashfs3.2-r2. The document 
+located at www.artemio.net/projects/linuxdoc/squashfs/SquashFS-HOWTO.html was
+refrenced and adapted to the circumstance of the hint.
+
+
+			Patching and recompiling the Kernel
+
+In order to use squashfs, the kernel needs to have a patch applied.Un pack the source tar ball. 
+	tar xvfz squashfs3.2-r2.tar.gz
+
+
+The patch can be found in /linux-2.6.16 of the source code directory. The patch we require 
+is called: linux-2.6.16.27-utf8_input-1.patch 
+
+Move the patch to the directory the kernel source is located at. apply the patch using the following command:
+
+	patch -Np1 -i ../linux-2.6.16.27-utf8_input-1.patch
+
+The menu driven kernel configuration must then be initiated again and squashfs must be 
+selected within the supported file systems menu.
+
+
+			Compiling mksquashfs
+To compile the sourcecode, navigate to the /squashfs-tools directory within the sourcecode 
+and type make. Following compilation, copy the executable file to a more appropriate directory:
+	cp mksquashfs /usr/sbin
+
+To check everything went accordingly, type mksquashfs and the help dialogue associated with 
+the command will be displayed.
+
+
+				Using Squashfs
+On our system, /usr is by far the biggest directory. The most simple and logical approach 
+would be to compress this directory and then uncompress and mount during the system boot. As /usr 
+is not needed early during this boot process and exists generally as a read only directory this is 
+a safe procedure.
+
+A compressed file can be created using the following command from the top level root directory:
+		mksquashfs /usr usr.sqsh
+
+Depending on how large the /usr directory is, this command can take a while to execute so maybe go grab a cofee....
+Once done, the resulting usr.sqsh file can be copied to the Live CD partition. The /usr directory on the CD must 
+then be emptied:
+
+		rm-fr $LIVECD/usr/*
+
+Finally create a small start-up script  in $LIVECD/etc/rc.d/init.d called usr or something similar. 
+ Insert the following text:
+
+#!/bin/bash 
+
+	  	mount /usr.sqsh /usr -o loop
+  
+Make the file executable. Next create a symbolic link:
+
+		ln –l $LIVECD/etc/rc.d/init.d/usr $LIVECD/etc/rc.d/rcsysinitt/S35usr
+
+This will trigger the kernel to mount the usr.sqsh image to the /usr directory during the 
+system boot process. Upon logging on, the /usr directory will be fully populated and appear to be 
+exactly as it was before we compressed it. 
+
+
+Thats all there is to it. Please feel free to contact me if you have an alternative way of doing this.
+
+As a final comment, I implemented this on a CD using an initrd using this procedure.
+
+ACKNOWLEDGEMENTS:
+  * Artemiy I. Pavlov - for writing the SquashFS HOWTO document
+  * Micheal Hernandez - For writing the begginers guide to creating a Live CD hint
+
+CHANGELOG:
+[2007-04-11]
+  * Initial hint.
+
+

@@ -1,0 +1,137 @@
+AUTHOR: Ilja Honkonen <ilja.honkonen@helsinki.fi>
+
+DATE: 2004-06-18
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: How to install Zero Install on LFS
+
+DESCRIPTION:
+This hint describes how I installed Zero Install on my newly created
+Linux From Scratch 5.0 system. Zero Install seems like a very good way of
+(not :)) installing and using software that has been "packaged" by its
+developers, thus eliminating the need for centralized packaging of software
+like Debian and Red Hat have been doing. This hint should be suitable for
+anyone who has built himself a LFS system.
+
+
+PREREQUISITES:
+I installed Zero Install on a Linux From Scratch 5.0 system. You could
+probably use an earlier version of LFS and you should be able to use a later
+version of LFS for this hint.
+
+You will need the following packages:
+
+Zero Install from
+http://prdownloads.sourceforge.net/zero-install/zero-install-0.1.24.tar.gz.gpg?download
+
+LazyFS kernel module from
+http://prdownloads.sourceforge.net/zero-install/lazyfs-linux-0.1.23-smp.tgz.gpg?download
+
+dbus from http://freedesktop.org/Software/dbus/releases/dbus-0.21.tar.gz
+
+These are needed too, but they are also installed in BLFS 5.
+
+wget from http://ftp.gnu.org/gnu/wget/wget-1.9.1.tar.gz
+
+expat from http://prdownloads.sourceforge.net/expat/expat-1.95.7.tar.gz?download
+
+gnupg from http://public.ftp.planetmirror.com/pub/gnupg/gnupg-1.2.4.tar.bz2
+
+glib from http://gd.tuwien.ac.at/graphics/gimp/gtk/v1.2/glib-1.2.10.tar.gz
+
+Python from http://www.python.org/ftp/python/2.3.4/Python-2.3.4.tar.bz2
+
+pkgconfig from
+http://freedesktop.org/Software/pkgconfig/releases/pkgconfig-0.15.0.tar.gz
+
+
+HINT:
+
+Start by installing wget, expat, gnupg, glib, python and pkgconfig as described
+in Beyond Linux From Scratch 5.1. I have repeated the instructions below:
+
+Wget-1.9.1
+./configure --prefix=/usr --sysconfdir=/etc && make && make install
+
+expat-1.95.7
+./configure --prefix=/usr && make && make install
+
+GnuPG-1.2.4
+./configure --prefix=/usr --libexecdir=/usr/lib && make && make install &&
+chmod 4755 /usr/bin/gpg
+
+Glib-1.2.10
+./configure --prefix=/usr && make && make install
+
+pkgconfig-0.15.0
+./configure --prefix=/usr && make && make install
+
+Python-2.3.4
+I have omitted instructions on patching python-2.3.3 as was done in BLFS 5.1
+because I used python version 2.3.4. This worked for me...
+./configure --prefix=/usr --enable-shared && make && make install
+
+
+Then install dbus which is required by zero-install
+dbus-0.21
+./configure --prefix=/usr && make && make install
+
+I used gpg to get zero-install and lazyfs-linux into extractable form:
+gpg lazyfs-linux-0.1.23-smp.tgz.gpg
+unless you have 0install authors key in your keyring gpg will complain but
+that is ok...
+
+Now install the kernel module that is required by 0install
+LazyFS-0.1.23
+./configure && make && make install
+
+Finally install Zero Install 0.1.24
+0install homepage recommends to run zero install as a non root user, which
+seems like a good idea. Below are the commands that I used to create a user
+and a group named zeroinst, adapted from BLFS 5 instructions about apache
+
+groupadd zeroinst &&
+useradd -c 0install -d /dev/null -g zeroinst -s /bin/sh zeroinst
+
+Then 0install itself:
+
+./configure --prefix=/usr --with-user=zeroinst \
+--with-initdir=/etc/rc.d/init.d && make && make install
+
+Now you should have everyting installed and be able to try out 0install.
+First start Zero Install with
+/etc/rc.d/init.d/0install start
+
+then try this command
+cat /uri/0install/zero-install.sourceforge.net/demo/test.txt
+
+If it prints
+It worked!
+then... it worked!!
+
+Now since I had not installed anything else but LFS 5.0 and what is in this
+hint, I could not use many of the packages that have been prepared, but I
+found python and java which seemed to work fine using these commands (note
+I used an Athlon machine, and this may take a while depending on how fat ur
+pipe is)
+/uri/0install/zero-install.sourceforge.net/links/AachenUniversity/python.org/2.3/Linux-ix86/bin/python
+/uri/0install/zero-install.sourceforge.net/links/AachenUniversity/java.sun.com/j2re/Linux-ix86/1.4.2/bin/java
+
+If you have a graphical working environment, gtk and friends installed, you
+can use Zero Progress to monitor the progress of downloads
+/uri/0install/zero-install.sourceforge.net/apps/ZeroProgress/AppRun &
+
+and find many programs like so
+/uri/0install/rox.sourceforge.net/rox /uri/0install/zero-install.sourceforge.net/links
+
+
+For additional information the Zero Install homepage is your friend:
+http://zero-install.sourceforge.net/
+
+Now all that is left to do is to write to the developers of your favourite
+software and ask them to start using/supporting Zero Install...
+
+CHANGELOG:
+[2004-6-18]
+* Initial hint.

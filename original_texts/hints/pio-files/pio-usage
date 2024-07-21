@@ -1,0 +1,118 @@
+The Package Installation Observer, pio, script supplies package 
+management.  It's different because it's one script, albeit a long one.  
+If something goes wrong, you can read the script, hopefully understand 
+it, and fix it if necessary.  
+
+Get to know pio, it's your best friend.  
+
+In short, pio takes a checkpoint of the customary directories before a 
+package is installed, and again afterward to discover what has been 
+installed.  Don't go to another virtual terminal and mess-around, pio 
+can't tell the difference.  It will definitely get confused if the clock 
+is changed (daylight savings time?).  It's best to just let the build 
+scripts and pio do their thing on a "quiet" machine.  
+
+pio's product is a script with a lot of "rm -f ...", "#rm -f ...", 
+"rmdir ...", and "#rmdir ..." statements at its heart, in reverse order.
+
+Understand that as a "timestamper" pio doesn't discover what has changed 
+until after it has happened!  So if some file has been changed, and you 
+remove the package, pio does not, cannot, restore the original file.  
+pio doesn't remove the changed file--pio considers it to be "owned" by 
+the original package that installed it first.  The changed file is left, 
+changed.  Maybe that's not a problem, maybe it is.  You may need to 
+"restore" the original package to get the changed file back to its 
+original state.  (Generally it's not a problem to just have pio restore 
+the whole package.  But it is possible for pathological chains of 
+changes to make that very problematic!)
+
+For repeatability, it's best to create "build scripts" for each of your 
+packages.  In these scripts, do all the preparatory steps, even to 
+"make", first.  Run pio so it can inventory the WATCHDIRS.  Run the 
+steps to install the package, "make install", etc.  Run pio again to see 
+what's new and changed.  It will show you the "removal" script it has 
+made.  Run pio again with the --backup option to capture pristine copies 
+of evrything it saw installed!
+
+I've not been above making minor edits to pio's package removal scripts 
+when necessary!  (That's one reason I like this process!)
+
+Of course, pio can safely remove the files installed.  (If an 
+installation goes awry, usually the best course of action is to tell pio 
+it's finished, then let pio remove the disaster, fix your build script, 
+and start over.)  When a package is removed, deletion of its removal
+script is optional--importantly.
+
+You can tell pio about dependency relationships between packages if you 
+want to.  It's a good idea, but it's not forced upon you.  If you try to 
+remove a package that you've told pio is a dependency of other packages, 
+pio will inform you of that, and ask if you want to continue but it will 
+not prevent you from doing so.
+
+With those two capabilities, to update a package we can have pio remove 
+the files installed by the old package, but have it keep the uninstall 
+script.  Then we can cleanly install the update, and try it out.  If 
+there are any problems we can remove it, then have pio restore the old 
+package, none the worse.  If, during a removal, pio is told to remove 
+its script (don't do that unless you're really sure) along with the 
+installed files, pio can still (in an emergency) restore the backup, but 
+"essential" information will be lost.  pio doesn't remove backup files.
+
+pio can at any time check the existing files against the backup for 
+differences, or replace them all on demand.  Currently it uses a "brute 
+force" process with cmp, md5sum may be better.
+
+Above all, pio tries to be helpful without being overly restrictive.  I 
+have found it more than helpful, essential for building my (B)LFS 
+systems.  I built my very first from the book, one command at a time.  
+That bootstrapped it's doppelganger using build scripts and git/pio 
+right away and was discarded.  I've been using it since LFS-4.1.
+
+# > pio --help
+Usage: 
+pio PKG
+pio command
+	[--cd] [--deps] [--help] [--profile] [--version]
+pio command [argument]
+	[--cwd [...]] [--ls [PKG*]] [--lsbak [PKG*]] [--dirs [PKG*]] 
+pio command argument
+	[--edit PKG] [--remove PKG] [--backup PKG] [--restore PKG] 
+	[--check PKG] [--files PKG] [--files0 PKG] [--list PKG]
+	[--xcheck PKG] [--find FILENAME] 
+pio PKG command argument
+	[PKG --requires PKG2] [PKG --uses PKG2] [PKG --supports PKG2] 
+pio [PKG] --lib [LIBNAME] 
+pio [PKG] [--watch DIR1 DIR2 ...] [--ignore DIR1 DIR2 ...]
+
+i.e.
+  PKG			observe installation start/finish of PKG
+  --backup PKG		create a backup of the files in PKG
+  --cd			change the current directory to /usr/local/pio
+  --check PKG		check current files against backup
+  --cwd [...]		execute with arguments given in [...], but create all
+			working files in ./ (only works as first option)
+  --deps		show all dependencies and usages
+  --dirs [PKG]		show the defaults for --watch and --ignore or the
+ 			values used for the (current) installation of PKG
+  --edit PKG		edit PKG's script preserving the file's timestamp
+  --files PKG		list the files in PKG
+  --files0 PKG		list the files in PKG with null-terminated names
+  --find FILENAME	tell which PKG installed files matching FILENAME
+  --help		display this help and exit
+  --ignore DIRn		paths excluded from being watched during installation
+  --lib [LIBNAME]	tell which programs use libraries matching LIBNAME
+  --list PKG		list information about the files in PKG
+  --ls [PKG]		list all de-installation scripts matching PKG*
+  --lsbak [PKG]		list all backups matching PKG*
+  --profile		print definitions required for option --cd and for a
+ 			variable containing /usr/local/pio
+  --remove PKG		call the de-installation script for PKG
+  --requires PKG2	note the dependency on PKG2
+  --restore PKG		restore files from backup PKG
+  --supports PKG2	note the exclusive use by PKG2
+  --uses PKG2 		note the advantage because of PKG2
+  --version		output version information and exit
+  --watch DIRn		paths to be watched during installation
+  --xcheck PKG		cross-check contents of PKG against all other
+ 			(executable) de-installation scripts to find out
+			whether a file has been installed more than once

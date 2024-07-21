@@ -1,0 +1,19 @@
+#!/bin/bash
+# A much shortened version of the udev init script
+
+source /etc/sysconfig/rc
+source ${rc_functions}
+
+if ! [ -e /sys/block ]; then exit; fi
+
+echo "Populating /dev..."
+mount -t tmpfs -o size=100k udev /dev
+mkdir /dev/pts
+mkdir /dev/shm
+/sbin/udevstart
+ln -snf /proc/self/fd /dev/fd
+ln -snf /proc/self/fd/0 /dev/stdin
+ln -snf /proc/self/fd/1 /dev/stdout
+ln -snf /proc/self/fd/2 /dev/stderr
+ln -snf /proc/kcore /dev/core
+evaluate_retval	

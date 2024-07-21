@@ -1,0 +1,406 @@
+TITLE:		Migrating to the xfs Filesystem
+LFS VERSION:	3.3+ (3.1+ with Kernel >= 2.4.18)
+AUTHOR:		Carsten Menke <bootsy52@gmx.net>
+
+SYNOPSIS:
+	How to migrate LinuxFromScratch to xfs after LFS is installed.
+	
+HINT:
+migrate to xfs hint
+Jan 18th 2003 Ver. 1.0
+
+Intro
+-----
+
+Today everybody is talking of journaling filesystems. This document describes
+how to get your LFS working with journaled filesystem. I have choosen xfs, 
+because I find it reliable and stable.
+
+Changelog
+----------
+Ver 1.0 released Januar 04th 2003:
+ - Added the 'p' option to the tar command so that
+   the file permission are saved and restored.
+ - changed hint to not be only ext2 specific
+ - added note to inform about xfs snapshots
+ - added small faq
+ - added build instructions to install cmd_tar's.
+
+Ver 1.0b released January 13th 2002 - initial release
+
+Requirements
+------------
+
+You need your Host Linux Distribution, you had as well needed for the LFS
+Installation. The procedure described here is for the i386 architecture.
+
+You need the kernel patch, which matches your Kernel version. e.g. for the
+3.3 Book you need xfs-2.4.18-all.patch.bz2. Look that you download
+the package named xfs-kernelversion-all-architecture.bz2 and *NOT* the splitted
+ones. 
+
+You can download the kernel patches at:
+
+ftp://oss.sgi.com/projects/xfs/dowload/patches
+for a 2.5 kernel
+ftp://oss.sgi.com/projects/xfs/download/patches-2.5
+
+NOTE: Releases are normally only available for the kernel version
+which was up to date when the release came out. So the above patches are
+usually snapshots, and not xfs releases. So if you want to be safe you'll
+better download a xfs-RELEASE from (assuming you have the correct kernel):
+
+ftp://oss.sgi.com/projects/xfs/download/Release-*
+
+Further more you'll likely want the xfs tools, which can be downloaded here:
+
+ftp://oss.sgi.com/projects/xfs/download/cmd_tars
+
+Conventions
+-----------
+
+I will use the following conventions in this document, so I explain them here.
+
+$LFS = the Mountpoint to your LFS installation (e.g. /mnt/LFS )
+$MNT = Mountpoint directory (e.g. /mnt )
+$K-VERSION = Your Kernel version
+$XFS-PATCH = the patch you dowloaded for your kernel version. 
+	    (xfs-2.4.18-all-i386.bz2)
+$HOST-DISTRO = Host Distribution, from where you make the changes to LFS.
+	    (Mandrake,SuSE,Redhat or whatever)
+$LFS-DEVICE = The device your LFS Partition is on (e.g. /dev/hda8)
+$HOST-DEVICE = The device your Host Distribution is on (e.g. /dev/hda1)
+
+Description
+------------
+
+1 MIGRATING LINUXFROMSCRATCH TO XFS
+2 BUILDING XFS ADDITIONAL TOOLS
+3 FAQ
+
+1 MIGRATING LINUXFROMSCRATCH TO XFS
+-----------------------------------
+
+1.1	Boot your $HOST-DISTRO system.
+
+1.2	Mounting the LFS partition
+	
+	mount -t ext2 $LFS-DEVICE $LFS
+
+(Replace ext2 with the appropriate filesystem if you have another fileystem
+then ext2 installed)
+---------------------------------------------------------------
+1.3 	!! Enter the chroot'ed area as described in the book !!
+---------------------------------------------------------------
+
+1.4 	Download the necessary packages.
+
+After you have downloaded all packages, copy $XFS-PATCH to the directory
+where your kernel Sources are located. (e.g. /usr/src/linux ) contrary to 
+other kernel patches, you have to copy this patch *INTO* the kernel directory.
+
+1.5 	Patch your kernel by running:
+	
+	bzip2 -dc $XFS-PATCH | patch -p1
+
+If you have dowloaded the correct patch everything should go well.
+
+1.6	Recompile your kernel by running:	
+	
+	make mrproper &&
+	make menuconfig &&
+	make bzImage &&
+	make modules &&
+	make modules_install
+	cp System.map /boot &&
+	cp arch/i386/boot/bzImage /boot/lfs-kernel
+
+** Site Note: mrproper deletes your config settings, so make sure you have them
+  saved somewhere, use "make menuconfig" to enable SGI xfs, in the menu
+  <File Systems> **
+
+To save ourselves some hassle we do compile the xfs filesystem NOT as a module,
+but directly into the kernel. Feel free to change that on your own.
+
+The next step is to build the xfsprogs package, to do so unpack it somewhere
+with:
+
+1.7	Build the XFS Programs
+
+	tar xvfj xfsprogs-version.tar.bz2 
+
+1.8	Compile xfsprogs with (see also section 2.4):
+	
+	./configure --prefix=/usr --exec-prefix=/ --bindir=/usr/sbin \
+	--libexecdir=/usr/libexec --localstatedir=/var \
+	--mandir=/usr/share/man && \
+	make && \
+	make install && \
+	make install-dev
+
+optionally you can run (see FAQ 3.2 why possibly not)
+	make clean
+
+That's it for the first.
+---------------------------------------------- 
+1.9	!!Exit the chroot'ed Area with exit !!
+----------------------------------------------
+
+Now, you have 2 options, either copy your Kernel from
+$LFS to your $HOST-DISTRO or to patch and recompile the kernel of your
+$HOST-DISTRO as well as you have done right before.
+
+I assume you want to copy the kernel from your LFS distribution. To do so:
+
+1.10	Copy the Kernel to the $HOST-DISTRO
+
+	cp $LFS/boot/lfs-kernel /boot
+
+modify /etc/lilo.conf of your $HOST-DISTRO so that you could boot your
+$HOST-DISTRO with your lfs-kernel.
+
+1.11	Modify the $HOST-DISTRO's lilo.conf
+
+	image = /boot/lfs-kernel
+	label = LFS
+	root = $HOST-DEVICE
+	read-only
+   
+after that run /sbin/lilo
+
+Now repeat step 1.8 and compile the xfsprogs package again..
+
+1.12	Repeat Step 1.8
+
+When you have reached so far, you should now be awake, drink enough coffee,
+what now follows is the dangerous part.
+
+Pack your complete partition and save it somewhere where you have enough room
+for the COMPLETE LFS Partition. You should check the amount of disk space
+which LFS uses by:
+
+1.13	Checking for Disk Space
+
+	df -h 
+
+Mine was already 1.2 GB. But fortunatley bzip2 has a strong 
+compression, so that I shrinked it down to 227 MB.
+
+1.14	Pack the $LFS Partition
+
+	tar cfjp /path/to/enough-Room/LFS.tar.bz2 $LFS/*
+
+This will take some time.
+
+When finished, reboot your system with your lfs kernel.
+
+1.15	Rebooting the System
+
+	reboot
+
+1.16	Creating the XFS Filesytem for the $LFS Partition
+	
+	/sbin/mkfs.xfs -f /dev/$LFS-DEVICE
+
+1.17	Mount the newly created Filesystem
+
+	mount -t xfs /dev/$LFS-DEVICE $LFS
+
+1.18	Change to the Mount directory
+
+	cd $MNT
+
+1.19	Unpack the archive containing the $LFS Data, we have packed in 1.14
+
+	tar xvfjp /path/to/LFS.tar.bz2
+
+Head's up your nearly done.....
+edit the fstab from your LFS:
+
+1.20	Editing the $LFS fstab entry using your favorite editor (joe,vi,emacs)
+
+	edit $LFS/etc/fstab
+
+and change ext2 (or whatever the / filesystem is) 
+to xfs
+
+Change your lilo.conf from your $HOST-DISTRO back so that it points
+to the $LFS-DEVICE of your LFS Partition again:
+
+1.21	Changing back lilo.conf of the $HOST-DISTRO
+	
+	image = /boot/lfs-kernel
+	label = LFS
+	root = $LFS-DEVICE
+	read-only
+   
+run /sbin/lilo
+
+
+1.22	Rebooting the System
+	
+	reboot
+
+WELCOME to Journalized LFS :-)
+
+
+2 BUILDING XFS ADDITIONAL TOOLS
+-------------------------------
+
+2.1 Dowload the appropiate packages
+	
+	attr-2.1.1.src.tar.gz
+	acl-2.1.1.src.tar.gz
+	xfsprogs-2.3.6.src.tar.gz
+	dmapi-2.0.5.src.tar.gz
+	xfsdump-2.2.4.src.tar.gz
+
+from
+
+ftp://oss.sgi.com/projects/xfs/download/cmd_tars
+
+alternativley if you build a Release (Release-1.1 for example)
+you could download the cmd_tars also from
+
+ftp://oss.sgi.com/projects/xfs/download/Release-1.1/cmd_tars
+
+if you use the cmd_tars of the Release-1.1 please read also FAQ 3.2
+
+2.2	Building attr-2.1.1
+
+unpack the file by 
+	tar xvfz attr-2.1.1.src.tar.gz
+
+change into the attr directory by
+	cd attr-2.1.1
+and run
+	./configure --prefix=/usr --localstatedir=/var \
+	--mandir=/usr/share/man && \
+	make && \
+	make install && \
+	make install-dev && \
+	cp libattr/.libs/libattr.so.1.0.1 /usr/lib && \
+	(cd /usr/lib;ln -sf libattr.so.1.0.1 libattr.so.1)
+
+optionally you can run (see FAQ 3.2 why possibly not) 
+	make clean
+
+** Here we got a classical case of FAQ 3.2, the make program
+fails to copy all files from libattr/.libs/ and do the 
+correct symlinking. **
+
+2.3	Building acl-2.1.1
+
+unpack the file by
+	tar xvfz acl-2.1.1.src.tar.gz
+change into the directory by
+	cd acl-2.1.1
+and run
+	./configure --prefix=/usr --localstatedir=/var \
+	--mandir=/usr/share/man && \
+	make && \
+	make install && \
+	make install-dev && \
+	cp libacl/.libs/libacl.so.1.0.3 /usr/lib && \
+	(cd /usr/lib;ln -sf libacl.so.1.0.3 libacl.so.1)
+
+optionally you can run (see FAQ 3.2 why possibly not) 
+	make clean
+
+** This is another example for FAQ 3.2 **
+
+2.4	Building xfsprogs-2.3.6
+
+unpack the file by
+	tar xvfz xfsprogs-2.3.6.src.tar.gz
+change into the directory by
+	cd xfsprogs-2.3.6
+and run
+
+	./configure --prefix=/usr --exec-prefix=/ --bindir=/usr/sbin \
+	--libexecdir=/usr/libexec --localstatedir=/var \
+	--mandir=/usr/share/man && \
+	make && \
+	make install && \
+	make install-dev && \
+	cp libdisk/.libs/libdisk.la /usr/libexec && \
+	cp libxfs/.libs/libxfs.la /usr/libexec && \
+	cp libxlog/.libs/libxlog.la /usr/libexec && \
+	cp libxfs/.libs/libxfs.so.0.0.0 /lib && \
+    (cd /lib; ln -sf libxfs.so.0.0.0 libxfs.so.0; ln -sf libxfs.so.0 libxfs.so)
+
+optionally you can run (see FAQ 3.2 why possibly not) 
+	make clean
+
+** This is the worst example of the library copy,linking,moving wirrwarr **
+
+2.5	Building dmapi-2.0.5
+
+unpack the file by 
+	tar xvfz dmapi-2.0.5.src.tar.gz
+change into the directory by
+	cd dmapi-2.0.5
+and run
+	./configure --prefix=/usr --localstatedir=/var \
+	--mandir=/usr/share/man && \
+	make && \
+	make install && \
+	make install-dev
+
+optionally you can run (see FAQ 3.2 why possibly not) 
+	make clean
+
+2.6	Building xfsdump-2.2.4
+
+unpack the file by
+	tar xvfz xfsdump-2.2.4.src.tar.gz
+change into the directory by
+	cd xfsdump-2.2.4
+and run
+	./configure --prefix=/usr --exec-prefix=/ \
+	--localstatedir=/var --mandir=/usr/share/man && \
+	make && \
+	make install && \
+	make install-dev && \
+	rm -f /bin/xfsdump && \
+	rm -f /bin/xfsrestore
+
+optionally you can run (see FAQ 3.2 why possibly not) 
+	make clean
+
+Huuh! That was hard, but finally you got it all
+
+3 FAQ
+-----
+
+3.1	Do I have to modify any boot scripts ?
+	Does fsck still work ?
+		
+	A: You have to modify nothing in your bootscripts :-)
+	Because fsck works in that way that
+	it searches for the corresponding fsck to run for your filesystem
+	(e.g /sbin/fsck.ext2 for an ext2 system and /sbin/fsck.xfs for a
+	xfs based filesystem).
+    	Additionally, the fsck.xfs is only a dummy because fsck'ing happens
+	automatically during boot.
+		
+3.2	After installing the cmd_tar's and additional xfs progs, the installed
+	program complains about not finding a library, how could that be ?
+		
+	A: Unfortunatley (especially in older releases of the cmd_tar's), the
+	"make install" step seems to be a bit buggy. 
+	That means that the symlinks are (or worse only partly)
+	created but it does not copy the actually library file. 
+	To fix this copy the file manually to the destination directory 
+	after "make" finished
+			 
+	Usually you'll find that library in
+			 /path/to/programSourcedir/libdir/.libs/library.so
+	where libdir is libacl,libattr,libxfs for example.
+	
+	IMPORTANT: "make clean" will also delete the content of the .libs 
+	directory so that you have to perform these steps 
+	before issuing "make clean".
+	
+	See also:
+	http://oss.sgi.com/bugzilla/show_bug.cgi?id=205

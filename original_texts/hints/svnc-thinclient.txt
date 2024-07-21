@@ -1,0 +1,737 @@
+AUTHOR:		Csaba Henk <ekho@math-inst.hu>
+
+DATE: 2003-10-27
+
+LICENSE: The MIT License
+
+SYNOPSIS: Setting up a graphical thin client using the svga vncviewer
+
+DESCRIPTION:
+This hints shows how to equip an uClibc-based bootfloppy with the svga
+vncviewer. With this enhanced bootfloppy you can turn even low-end
+computers to thin clients with the functionality of an X terminal. We
+also describe a possible minimalistic server + thin client configuration.
+
+PREREQUISITES:
+This hint should be useable on any not too aged Linux installation with
+a non-broken toolchain. It was tested on a (by and large) LFS-4.0
+system.
+
+ATTACHMENTS:
+http://www.linuxfromscratch.org/hints/downloads/attachments/svnc-thinclient/make_uclibc-libvcauth
+http://www.linuxfromscratch.org/hints/downloads/attachments/svnc-thinclient/make_uclibc-svncviewer
+http://www.linuxfromscratch.org/patches/downloads/svgalib/svgalib-1.9.18-demos_Makefile-1.patch
+http://www.linuxfromscratch.org/patches/downloads/svnc/svnc-0.1-modeforce-1.patch
+
+HINT:
+
+Contents
+========
+
+ Preface
+ Introduction
+ What do we need?
+Completing the bootfloppy
+ Installing more of uClibc
+ Installing svgalib
+ Installing svncviewer
+ Creating the bootdisk
+Setting up the network environment
+ Setting up general server programs
+ Installing the vnc server
+ Connecting from client to server 
+Closing remarks
+ Version notes
+ Bugs and weirdnesses
+ Todo
+
+Preface
+-------
+
+* This hint is co-developed with the uclibc-bootfloppy hint in the
+framework of the lowlife project,
+
+http://www.math-inst.hu/~ekho/lowlife/
+
+This file belongs to lowlife-0.5.1.
+
+* For the most recent version check out 
+
+http://www.math-inst.hu/~ekho/lowlife/svnc-thinclient.txt
+
+* Comments, ideas, critics, flames are welcome.
+
+* (If you are an LFS user, you can skip this.) Although this document is
+formally an LFS hint, you can see use of it without knowing what LFS is
+(I tried to write it keeping this possibility in mind). Anyway, I
+recommend you to check out what LFS is. If you are not familiar with
+compiling source code in unix/linux environment, then there is no use of
+going on without checking out what LFS is. Consult the following docs
+first:
+
+http://www.linuxfromscratch.org/lfs/whatislfs.html
+http://www.linuxfromscratch.org/faq/
+http://www.linuxfromscratch.org/hints/downloads/files/essential_prereading.txt
+http://www.linuxfromscratch.org/lfs/view/stable/preface/prerequisites.html
+
+Introduction
+------------
+
+As the Linux Xterminal mini-HOWTO claims: "Ideally, an XT is silent,
+swift, and deadly". A cheap and great way to achieve this ideal is to
+use old PC's as terminals. Two issues arise here: 
+
+1) How to make them display X?
+2) How to make them silent?
+
+Concerning 2), the possible sources of noise are fans and HD. In case
+of old PC's (486s and old Pentiums) the CPU needs no fan -- if there
+is any fan, you can find it at the power supply, and it's not a big
+risk to plug that out. This is where oldness becomes a feature.
+Concerning the HD: to make the it quiet, you should avoid using it.
+An alternative is using a ramdisk for carrying your root filesystem.
+The most easy way to make the kernel mount a ramdisk as root
+filesystem is booting from a floppy. This is why I use a bootfloppy.
+
+This design implies that in case of an old PC, we will be tight on
+memory. One kind of reaction to this circumstance is trying to trim
+down X for the floppy. I chose an other way, namely, displaying X via
+vnc: we put svgalib + the svga vncviewer to the floppy.
+
+This hint is a continuation of the uclibc-bootfloppy hint (
+
+http://www.linuxfromscratch.org/hints/downloads/files/uclibc-bootfloppy.txt
+http://www.math-inst.hu/~ekho/lowlife/uclibc-bootfloppy.txt
+
+) which describes how to put together a bootfloppy based on recent linux
+kernel, the uClibc C library and busybox. The steps described here
+should be performed when you get to the "Other programs" chapter of the
+uclibc-bootfloppy hint.
+
+This way we get a "bleeding edge" bootfloppy with recent versions of
+the used programs, and this setup needs no more than 7M RAM -- in
+this value kernel mem usage, ramdisk size, svncviewer displaying a
+bunch of graphic programs are all included. This value could still be
+decreased by using older stuff; why do I insist on being at the
+bleeding edge? See the answer in the uclibc-bootfloppy hint.
+
+This hint,additional info and downloadable bootdisk image with svnc
+can be found at my homepage (or at its mirror):
+
+http://www.math-inst.hu/~ekho/lowlife/
+http://www.personal.ceu.hu/students/01/Csaba_Henk/lowlife/
+
+In this hint we the assume that you use an x86 PC (both for making and
+booting the floppy) with gcc. You may try to port it to another
+architecture / compiler. Doing it on another architecture should not
+be hard. Doing it with another compiler depends on how much does
+uClibc support that compiler.
+
+If you copy command from this hint to your shell, be careful that
+line-terminating backslashes (\) will keep their position (no whitespace
+characters should follow them). A possible solution is open this hint in
+the Vim GUI, and copy'n'paste from there.
+
+What do we need?
+----------------
+
+Here I list the programs which we need for the bootfloppy and the ones
+which are used in the particular server + client setup which will be 
+described in the sequel.
+
+Generally you are encouraged to use the most update versions of the
+programs (and your favorite distributions, if there are more of them).
+Still there are some items where I have some additional comment on the
+version/distribution; these are marked with (!). You can find the
+version notes at the end of this hint. 
+
+* The server side:
+
+tightvnc
+ http://prdownloads.sourceforge.net/vnc-tight/tightvnc-1.2.*_unixsrc.tar.bz2
+xinetd
+some kind of telnet daemon
+some kind of tftp daemon
+
+* The client (bootfloppy) side
+
+svgalib-1.9.18 (!)
+ http://www.arava.co.il/matan/svgalib/svgalib-1.9.18.tar.gz
+svnc-0.1 (!)
+ ftp://ftp.FreeBSD.org/pub/FreeBSD/ports/distfiles/svnc-0.1.tgz
+ and the mirrors listed in
+ http://www.realvnc.com/pipermail/vnc-list/2002-June/031178.html
+tightvnc (only needed for compiling svnc)
+
+
+Completing the bootfloppy
+=========================
+
+First you need a bootfloppy development environment. Setting up one is 
+described in the uclibc-bootfloppy hint. Do what the uclibc-bootfloppy 
+hint tells you, until you get to the "Other programs" chapter. 
+
+Then do the following; you are supposed to work as the bootdisk user in
+the present chapter (ie., type
+
+su - bootdisk
+
+if you didn't do it yet).
+
+Installing more of uClibc
+-------------------------
+
+For svgalib we need the math libraries of uClibc. If you installed gpm         
+to the floppy filesystem correctly, you already have them. If you don't        
+have them on the floppy filesystem, type:
+
+cd /usr/i386-linux-uclibc/lib/ &&
+cp -a libm-* libm.so.0 ~/rfloppy/lib
+
+Installing svgalib
+------------------
+
+First some necessary corrections for the 1.9.18 version of svgalib;
+hopefully these will be unnecessary for subsequent releases. You find a
+patch at
+
+http://www.linuxfromscratch.org/patches/downloads/svgalib/svgalib-1.9.18-Makefiles-1.patch
+
+or at
+
+http://www.math-inst.hu/~ekho/lowlife/patches/svgalib-1.9.18-Makefiles-1.patch
+
+or in the patches directory if you read this hint as a file of the
+lowlife tarball avaliable at
+
+http://www.math-inst.hu/~ekho/lowlife
+
+This patch corrects some typos in the Makefiles. Put the patch to the
+svgalib source dir as svgalib-1.9.18-Makefiles-1.patch. Then type
+
+ln -s ../egadrv.c src/drivers &&
+patch -Np1 -i svgalib-1.9.18-Makefiles-1.patch 
+
+(the first command is the correction of a file misplacement).
+
+These were the version-specific corrections. Now let's go for the real
+stuff.
+ 
+Adjust the list of supported drivers in Makefile.cfg according to
+your needs. By carefully choosing the few drivers you need, you can
+decrease the size of the binary with about 100 kb or maybe more! However, 
+our filesystem is big enough for the svga library with all default drivers
+compiled in.
+
+Now we compile svgalib and install it to the directory of the floppy's
+filesystem. In this development version of svgalib the svga-aware
+programs are needed no more to run as setuid root, but a kernel module
+is to be loaded for using svgalib. The commands below also compile and
+install the kernel module. Store the location of your kernel for the
+floppy in the variable KERNEL (eg., KERNEL=$HOME/linux-2.4.22), and then
+type
+
+make shared &&
+cd sharedlib &&
+for q in "" gl; do 
+strip libvga$q.so.1.9.*
+ln -s libvga$q.so.1.9.* libvga$q.so.1 
+ln -s libvga$q.so.1 libvga$q.so
+done &&
+mkdir -p $HOME/rfloppy/usr/lib && 
+cp -a libvga* $HOME/rfloppy/usr/lib &&
+# Now comes the compilation of the module
+cd ../kernel/svgalib_helper &&
+make KDIR="$KERNEL" &&
+mkdir -p $HOME/rfloppy/lib/modules &&
+cp svgalib_helper.o $HOME/rfloppy/lib/modules &&
+cd ../..
+
+Also create the file $HOME/rfloppy/etc/vga/libvga.config, and put into it
+your mouse type at least. Eg., my libvga.config looks like:
+
+mouse IMPS2
+mdev /dev/misc/psaux
+
+If you feel like, you can also compile the svga test suite. It is useful
+if you want to custom-tailor your svga configuration (which means
+adjusting the libvga.config file). To do so, type
+
+cd demos &&
+make "LIBS=../sharedlib/libvga.so ../sharedlib/libvgagl.so" &&
+cd ../threeDKit &&
+make "LIBS=../sharedlib/libvga.so ../sharedlib/libvgagl.so" \
+ "INCLUDES = -I../include -I. -I../src -I../gl" &&
+cd ..
+
+in the svgalib source directory. You will find the executables in the
+demos and threeDKit directories.  
+
+Do not delete the svgalib source dir -- we will need it in the following
+section!
+
+Installing svncviewer
+---------------------
+
+Do not yet extract the svncviewer tarball! The following commands will
+assume that the svgalib source dir, the tightvnc and svncviewer tarballs
+and you (ie., the bootdisk user) are at $HOME.
+
+To get svncviewer compiled, we need the libvncauth.a library form the
+tightvnc distribution. (Thus svncviewer is compiled inside the vnc
+source tree.) The usual way to compile both of libvncauth.a and
+svncviewer is to create makefiles with the xmkmf utility, and then
+running make. 
+
+However, xmkmf will not work with uClibc (unless we build X against
+uClibc, and we don't want to do that). Therefore we compile both of
+libvncauth.a and svncviewer in the following manner:
+
+* run xmkmf (imake) using glibc; 
+
+* run make with options for using uClibc and local svgalib, and for size
+optimization.
+
+In practice this means the following: first we define a variable which
+stores the relative path from the svncviewer source dir to svgalib
+source dir (we need this path as we don't install the uClibc-linked
+svgalib on the development platform). If you follow my setup faithfully,
+it should be:
+
+SVGADIR=../../svgalib-1.9.18
+
+(otherwise find it out by yourself :).
+
+Here I tell you about a patch I made for svncviewer:
+
+http://www.linuxfromscratch.org/patches/downloads/svnc/svnc-0.1-modeforce-1.patch
+http://www.math-inst.hu/~ekho/lowlife/patches/svnc-0.1-modeforce-1.patch
+
+This introduces a -mode option for svncviewer with which you can force
+svncviewer to use a given svga mode (these modes are described in the
+svgalib docs or check out the vgatest executable of the svgalib test
+kit). If you don't apply the patch just execute the following sequence
+of commands, otherwise take a break for patching when its time comes. 
+
+bzcat tightvnc-1.2.*_unixsrc.tar.bz2 | tar xv &&
+cd vnc_unixsrc &&
+tar xvzf ../svnc-0.1.tgz &&
+cd libvncauth &&
+(unset CC; xmkmf) &&
+make "CC=i386-uclibc-gcc" "CDEBUGFLAGS = $CFLAGS -fno-strength-reduce" \
+ "AR = i386-uclibc-ar clq" &&
+cd ../svncviewer &&
+# Now apply patch if you want to
+(unset CC; xmkmf) &&
+make "CC=i386-uclibc-gcc" "CDEBUGFLAGS = $CFLAGS -fno-strength-reduce" \
+ "INCLUDES = -I../include -I. -I$SVGADIR/include -I$SVGADIR/gl" \
+ "SVGALIB = $SVGADIR/sharedlib/libvga.so $SVGADIR/sharedlib/libvgagl.so" &&
+strip svncviewer &&
+mkdir -p $HOME/rfloppy/usr/bin &&
+cp svncviewer $HOME/rfloppy/usr/bin
+
+If you intend to compile svncviewer in an environment without X (ie.,
+you don't have xmkmf), then try to compile libvncauth.a and
+svncviewer with the help of the following scripts (they are simply
+the output of the respective make commands; I give away these and not
+the Makefiles because xmkmf-made Makefiles are huge and illegible):
+find them together among attachments,
+
+http://www.linuxfromscratch.org/hints/downloads/attachments/svnc-thinclient/
+
+or individually at
+
+http://www.math-inst.hu/~ekho/lowlife/non-X/make_uclibc-libvncauth 
+http://www.math-inst.hu/~ekho/lowlife/non-X/make_uclibc-svncviewer 
+
+Creating the bootdisk
+---------------------
+
+Proceed on as it is described in the similarly named chapter of the
+uclibc-bootdisk hint.
+
+
+Setting up the network environment
+==================================
+
+You have the bootdisk with the svga vncviewer. If you know what you want
+to do with it, you have clear ideas that in what network environment you
+will use it, then the rest of the hint is not too interesting for you.
+
+In the sequel we describe a minimalist local network setup: a server
+machine running a vnc server, and a client machine booted with our
+bootfloppy, which can connect to the server in three basic ways: it
+can transfer files via tftp, it can get a character terminal on the
+server via telnet, and it can display X desktops via vnc. Using the
+tftp and telnet services requires that you enabled the respective
+clients when you compiled busybox. (And you will also need ifconfig
+being enabled in busybox.)
+
+We will assume that you connect the two machines directly (without a
+switch or things like that) and that you have a free network interface
+(network card, serial/parallel port) on both machines.
+
+Setting up general server programs
+----------------------------------
+
+Fix an unused IP address for the server and the client side, from
+the private network IP-address range, from the same network class, and
+store it in the $SERVER and $CLIENT variables, respectively. Eg., I
+use 
+
+SERVER=192.168.0.2
+CLIENT=192.168.0.1
+
+Then you should install xinetd (or alternatively, inetd), some telnet
+daemon, and some tftp daemon. These are covered by the BLFS book
+(available at
+
+http://beyond.linuxfromscratch.org
+
+). Choose a directory for tftp transfers, store its value in the
+variable $TRANSFER. (That is, tftp clients can download files located in
+$TRANSFER, and can upload files to $TRANSFER.) Choose carefully the
+list of those users/groups which can write to $TRANSFER.
+
+Configure xinetd to run telnetd and tftpd bound to $SERVER like this
+(the names of the executables may be different on your system; and
+consider that by the settings below tftp is ran by a specific user):
+
+echo "
+	service telnet
+{
+       socket_type             = stream
+       wait                    = no
+       user                    = root
+       server                  = /usr/sbin/in.telnetd
+       bind                    = $SERVER
+       only_from               = $CLIENT
+       log_on_failure += USERID
+}
+
+	service tftp
+{
+       socket_type             = dgram
+       protocol                = udp
+       wait                    = yes
+       user                    = tftpd
+       server                  = /usr/sbin/tftpd
+       server_args             = $TRANSFER
+       bind                    = $SERVER
+       only_from               = $CLIENT
+}" >> /etc/xinetd.conf
+
+Note that binding these services to $SERVER is essential for security --
+telnet transfers data unencrypted and tftp transfers data without asking
+for password.
+
+Now you can configure the network interface on the server -- in the
+following example we use plip:
+
+ifconfig plip0 $SERVER pointopoint $CLIENT
+
+(It's your homework to find out how to get it executed at startup.)
+
+Restart xinetd; in an "official" LFS/BLFS system it is done with
+
+/etc/rc.d/init.d/xinetd restart
+
+Installing the vnc server
+-------------------------
+
+In this setup we will install the vnc server in a standalone way, that
+is, it won't be handled by xinetd so you will have to start it manually.
+(One benefit of this approach that in this case the vnc session remains
+alive after a viewer disconnects, so you can use it as a portable X
+desktop, "the screen of X".) If you would like a "vnc + xinetd"-ish vnc
+setup, check out the tightvnc hint (
+
+http://www.linuxfromscratch.org/hints/downloads/files/tightvnc.txt
+
+).
+
+Install tightvnc with the following commands:
+
+xmkmf &&
+make World &&
+cd Xvnc &&
+./configure &&
+make &&
+cd .. &&
+sed '/^ *\$fontPath/s%^%#%' vncserver > vncserver.tmp &&
+mv vncserver.tmp vncserver &&
+./vncinstall /usr/bin /usr/share/man
+
+[Explanation:
+
+"sed '/^ *\$fontPath/s%^%#%' vncserver [...]" : 
+
+this command comments the $fontPath variable out, as I see no effect of
+setting it other than getting error messages (it may be different on
+your system).]
+
+Note: the above commands do not cover the installation of the java
+viewer, which enables java-supporting browsers to display vnc desktops.
+The java viewer is shipped with the tightvnc source code in a
+precompiled form; however, if you want to act according to LFS spirit,
+*do not* install it, rather download the tightvnc-1.2.*_javasrc package
+from the tightvnc site, and compile it yourself. That's pretty
+straightforward.  
+
+Connecting from client to server 
+--------------------------------
+
+Now its time to boot the floppy on the client machine. We will use the
+$SERVER, $CLIENT variables with the same values on the client machine as
+well.
+
+When you get the prompt on the client, set up the network -- eg.,
+continuing the above example with plip:
+
+ifconfig plip0 $CLIENT pointopoint $SERVER
+
+* If all is nice, you can get a prompt of the server on the client simply by
+typing
+
+telnet $SERVER
+
+* Transferring files between the server and client is as follows:
+
+- downloading the file foo from server to client: on the server, put foo
+into $TRANSFER, make it world-readable, then on the client: get sure that
+foo does not exist in the current directory, then type:
+
+tftp -g -r foo $SERVER 
+
+- uploading the file foo from client to server: on the server type
+
+ > $TRANSFER/foo &&
+chmod a+w $TRANSFER/foo
+
+then on the client type
+
+tftp -p -l foo $SERVER 
+
+-- its primitive, but saves your floppy from the bloat.
+
+* And getting an X desktop via vnc: at the server, login as the user
+whose desktop is to be reached from the client (you can use the telnet
+of the client). Then type:
+
+vncserver
+
+(you may need to pass -geometry and -depth options to be compatible with
+the video capabilities of the client).
+
+On the client, type:
+
+insmod /lib/modules/svgalib_helper.o &&
+svncviewer $SERVER:1
+
+and see the desktop of the server. 
+
+Customizations:
+
+* pass the "-interface $SERVER" option to the vnc server if you worry
+for security and you want to make sure that only the client has access to
+the vnc server;
+
+* pass the "-compatiblekbd" option to the vnc server if you want to use
+non-standard characters; eg., this way typing Alt+i in an xterm gives
+you an acuted e. This is the way to go for people whose language uses
+nonstandard characters, as vnc does not support xmodmap well.
+
+There is a more tricky way of using vnc: with the help of ssh tunneling
+you can reach any vnc server from the client which is reachable from the
+server. Say you run a vnc server at pistike.org, on display 1 (port
+5901), as user steve. On the server type
+
+ssh -g -L 5902:localhost:5901 steve@pistike.org
+
+This forwards port 5902 of the server to port 5901 of pistike.org. Thus
+when you type 
+
+svncviewer $SERVER:2
+
+on the client, you will be connected to the vnc server of pistike.org.
+Moreover, the connection between the server and pistike.org will be
+secured. 
+
+So that's the story.
+
+Closing remarks
+===============
+
+Version notes
+-------------
+
+* svgalib-1.9.18:
+
+As it can be read in the svgalib.org site, "Pre releases of svgalib-2
+will be called 1.9.x, with no pre, but they are still very
+experimental." Why do we use experimental version? Simply because it
+works much more flawlessly: the stable release (svgalib-1.4.3) was also
+willing to compile, but it gave me segmentation faults. Note that the
+1.9.18 version has some lesser bugs which are corrected in this hint;
+these corrections are likely to become unnecessary with a new release of
+svgalib. Compilation of the svgalib_helper has changed in 1.9.18.  
+
+* snvc-0.1:
+
+You can find two different kind of releases of the svga vncviewer: there
+is the original one, that's used in this hint, and there are the Debian
+releases (see at
+
+http://packages.qa.debian.org/s/svncviewer.html
+
+). For me the deb version seems to be an unclever dirty hack: its
+maintainer changed keyboard handling in way such that you can compile
+the program with an arbitrary keyboard layout (it's shipped with US and
+German layouts), but this way several keyboard combination got disabled:
+eg., killing the viewer with Ctrl+Alt+Backspace does not work; the
+Ctrl+Alt+Left/Right combinations of icewm for changing desktops neither
+work. And the source ships with precompiled libvncauth.a and svncviewer
+and bunch of other unnecessary things; it's quite annoying (the manpage
+is fine, tho). So I sticked with the oldie-but-goldie original version
+of svncviewer.
+
+This hint is co-developed with the uclibc-bootfloppy hint in the
+framework of the lowlife project, thus the following subsections regard
+to the whole lowlife project.
+
+Bugs and weirdnesses
+--------------------
+
+The list below is about both of the uclibc-bootfloppy and the
+svnc-thinclient hints. 
+
+The following weirdnesses are probably due to the respective programs
+and not to doing something wrong in these hints.
+
+* Sometimes when switching to another terminal and then back to the
+svga vncviewer the keyboard gets screwed up. Using serial mouse,
+sometimes the keyboard gets screwed up without any obvious reason.
+However, after restarting the viewer, things behave normally again.
+
+* Using libvgagl-dependent programs (like svncviewer) on my 486
+laptop, I see a horizontal white line at half height of the screen.
+I wonder whether this occurs with other LCD monitors.
+
+Todo
+----
+
+Now it seems that the uclibc-bootfloppy and svnc-thinclient hints got
+quite close to their idea: you set up the development environment, su to
+bootdisk user, type in some commands, finally put a floppy to the drive
+and run the mkbootdisk script, and you have the bootfloppy.
+
+However, I can say only "Now it seems..." but I can't say "Now it is..."
+-- without testing the stuff by many people and getting feedback I
+can't.
+
+So the main TODO is to be done by you, kind reader: test and report!! 
+
+After it happens, these hints can be claimed to be mature.
+
+Another TODO will be in the future to upgrade to newer versions of the
+installed programs, if new versions come out. 
+
+ACKNOWLEDGEMENTS:
+
+(This hint is co-developed with the uclibc-bootfloppy hint in the
+framework of the lowlife project, thus this section regards to the whole
+lowlife project.)
+
+  * Useful information resources:
+	- LFS mailing lists
+	- busybox mailing list
+	- uClibc mailing list archives
+	- vnc mailing list archives
+	- "Creating a Custom Bootdisk" chapter of the BLFS book
+	- Bootdisk HOWTO
+	- PLIP-install HOWTO
+	- http://ebusiness.gbdirect.co.uk/case_studies/xterminal.html
+	- the LODS project (http://www.khk.net/lods/index.html)	
+	- the tomsrtbt project (http://www.toms.net/rb/)
+  * Archaic had some useful advice about trimming the root filesys (/etc).
+  * Following the advice of Bill Maltby, "rdev $DISK 0,0" is used rather
+    than "rdev $DISK $DISK" or "rdev $DISK 2,0".
+
+CHANGELOG:
+
+(This hint is co-developed with the uclibc-bootfloppy hint in the
+framework of the lowlife project, thus this section regards to the whole
+lowlife project.)
+
+Important changes are tagged with (!)
+Very important changes are tagged with (!!)
+
+[2003-04-13]
+  * VERSION 0.1 
+  * Initial release	
+[2003-04-25]
+  * VERSION 0.1.1 
+  * Removed the loopmnt script. Now the files are just 
+    simply to put into a directory and not to an ext2 filesystem (!!)
+  * Moved gpm from svnc-x_terminal.txt to uclibc-bootfloppy.txt 
+    (as I realized that svgalib does not use gpm)
+  * Got rid of the ugly /usr/i386-linux-uclibc/lib/ ->
+    ../../lib symlink (!!)
+  * Many changes in the mkbootdisk script: 
+	- encorporates functionality of ceased loopmnt script
+	- it does no more belong to a specific bootdisk user
+	- the floppy image can be dumped to stdout 
+   (!)
+  * Now devfs is *the* way to go (!)
+  * Removed /etc/{group,passwd,fstab} 
+  * Fixes, prettifying:
+	- Added Changelog, links to it, VERSION, trivial BUGS file
+	- Reduced egotripping in the 1st paragraph of index.html 
+	- Added some explanation about the devfsd patch in index.html 
+	- Removed the only reference to Micro$oft from the hints ;) (ie.
+	  now there is shown a more common example of mouse settings in
+	  libvga.config, in svnc-x_terminal.txt)
+	- "Closing remarks" in svnc-x_terminal.txt rethought 
+	- Typo fixes; wording developed
+	- Applied the changes in the hints to the distributed floppy
+	  image 
+	- Minor changes in index.html
+[2003-06-11]
+  * VERSION 0.5
+  * Got rid of hacking system files -- now after putting together 
+    the development environment all stuff is done non-privileged (!!)
+  * Added modeforce patch of svncviewer
+  * Eliminating sed hacks -- rather using make with options (!)
+  * Fixes of typos in svgalib-1.9.17 Makefiles are collected in a 
+    patch
+  * svgalib compilation streamlined
+  * Using rdev as "rdev $DISK 0,0" (!)
+  * The mkbootdisk script now: 
+  	- supports safe tempfile creation 
+  	- hopefully work with all possible filenames
+    (!)
+  * Fixes, prettifying:
+	- Fixed some quite confusing typos
+	- Changelog reorganized
+	- mkbootdisk now has more transparent indentation
+	- Homepage domainname changed to www.math-inst.hu from
+	  www.renyi.hu (same domain, another alias) 
+[2003-10-31]
+  * VERSION 0.5.1
+  * Reorganized according to new LFS hint format (see
+    http://www.linuxfromscratch.org/hints/submit.html) (!)
+  * Changed license to MIT (!)
+  * First compiled piece is kernel, thus uClibc can use correct headers
+    (!)
+  * Upgraded to uClibc-0.9.21, svgalib-1.9.18
+  * Demofloppy got updated as well and put to a disctinct package
+  * Fixes, prettifying:
+	- Some instructions got more streamlined
+	- Added chroot test of the filesystem
+	- The filename svnc-x_terminal.txt changed to svnc-thinclient.txt
+	- index.html updated and made more readable
+[2003-11-01]
+	- Added list of all attachments to both of uclibc-bootfloppy
+	  and svnc-thinclient hints
+  	- More BLFS-friendly intro text in uclibc-bootfloppy hint  
+	- Added fdformat advice

@@ -1,0 +1,89 @@
+TITLE:		Ximian Evolution 1.0.5
+LFS VERSION:	LFS version 3.0 (possibly others, untested as yet)
+AUTHOR:		Jason Cooper <my_e-mail_address(at)att(dot)net>
+
+SYNOPSIS:
+
+	Ximian Evolution 1.0.5 is a graphical e-mail client for Linux boxes.  It
+also has calendar, tasks, and contacts built in.  Evolution reportedly connects 
+to Microsoft Exchange Servers, but I have not tested this, nor am I able to.
+
+	Unfortunately, LFS users cannot download and install (binaries only)
+the Evolution program because the binaries available are *very* distro 
+specific.  Besides, we prefer to compile from source anyway.
+
+	There are two ways to do this:
+		1) Evolution with the Gnome GUI.
+		2) Evolution only.
+
+	For the first version of this hint, I will stick to option 1 although I
+personally did option 2.  Regretably, I did not document the experience because
+I did not realize how complex it would become.
+
+HINT:
+
+	OPTION 1 (Evolution on the Gnome GUI)
+
+Follow the Gnome.txt hint, then return here. 
+
+1) Get the source tarballs.
+
+	bonobo-conf-0.14.tar.gz
+	evolution-1.0.5.tar.gz
+	gal-0.19.2.tar.gz
+	gtkhtml-1.0.2.tar.gz
+
+	From <ftp://ftp.ximian.com/pub/source/evolution/>
+
+2) Unpack the sources.
+
+	cd /usr/src			# or your directory of choice
+	tar -xzvf <package-name> 	# Repeat for each package
+
+3) Compile packages in the following order:
+
+	cd bonobo-conf-0.14
+	./configure
+	make 
+	make install		# You must be root
+	ldconfig		# It only takes a second, it doesn't hurt,
+				#   and it saves a lot of frustration.
+
+	cd ../gal-0.19.2
+	./configure
+	make
+	make install
+	ldconfig
+
+	cd ../gtkhtml-1.0.2
+	./configure
+	make
+	make install
+	ldconfig
+
+	cd ../evolution-1.0.5
+	./configure --with-db3=/usr/local/BerkeleyDb.3.1 	
+	make		# WARNING: Evolution requires BerkeleyDb 3.1.17
+	make install	# If this does not work, upgrade to 3.1.17, specifically.
+	ldconfig	# Refer to the Gnome.txt hint for BerkDb install.
+			# If it gets to be intricate, record exactly what you did
+			# and send it to me, I'll add it in here.
+			# This is what caused me the most problems when I did it
+			# with no Gnome UI.
+	
+4) Pray to your diety of choice, or sit pensively.  Refer to the document 
+
+	evolution-1.0.5/README
+
+to seek insight.  Gnome/Ximian are doing an outstanding job of making clean, easy
+to compile source (No, I don't work for them, nor do I use the Gnome UI, I prefer
+fvwm2).  Unfortunately, all the libraries are in such a state of flux, it makes 
+getting to the end result a pain in the ass.  
+
+	Personally, the one weak point seems to be the BerkeleyDb non-standard
+compiling issues...  If you get it to work, please let me know so the hint can be
+improved.  
+
+Jason Cooper
+22MAY2002
+

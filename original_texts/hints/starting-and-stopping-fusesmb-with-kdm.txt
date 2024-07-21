@@ -1,0 +1,201 @@
+AUTHOR: Stef Bon <stef at bononline dot nl>
+
+DATE: 2006-04-15
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: Starting and stopping Fusesmb at a KDE-session using KDM.
+
+DESCRIPTION: 
+This hint is about starting the sessionpart of the fusesmb. 
+
+This is based on my hint 
+"Execute scripts at begin and end of a KDE-session using KDM".
+
+In this hint is described in general how scripts and commands are 
+started at the begin and end of a KDE session using KDM.
+
+
+ATTACHMENT:
+
+PREREQUISITES:
+This hint requires sufficient knowledge of LINUX in general, and scripts in particular.
+Futher sudo should be installed, and you should start KDE via KDM.
+
+
+HINT:
+
+Content:
+
+1. Browsing the network using FUSE, fusesmb and PAM
+1.1 Installation of FUSE and FuseSMB.
+1.2 Starting fusesmb.
+1.3 Stopping fusesmb.
+
+
+---------------------------------------------------
+1. Browsing the network using FUSE, fusesmb and PAM
+---------------------------------------------------
+
+Very new is FUSE. At this moment the FUSE package contains a kernelmodule, a library and utilities.
+Soon the module will be standard in the kernel. For more information see the website of course.
+
+-------------------------------------
+1.1 Installation of FUSE and FuseSMB.
+-------------------------------------
+
+Get FUSE from the projectsite:
+
+http://fuse.sourceforge.net
+
+Installing FUSE:
+
+cd fuse-2.3.0
+./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var --enable-kernel-module --enable-lib --enable-util
+make
+make install
+
+A module is installed, fuse.
+
+To load it:
+
+modprobe fuse
+
+and add it to /etc/sysconfig/modules.
+
+Note:
+
+In the newest kernels (>=2.6.14) the kernelmodule is included in the kernel. You still
+need the package above, because of the library and the utilities.
+
+Configuration of fuse goes via the fuse.conf file in the /etc directory:
+
+cat >> /etc/fuse.conf << "EOF"
+
+mount_max = 999
+
+user_allow_other
+EOF
+
+Get fusesmb:
+
+Look for a link at :
+
+http://freshmeat.net/projects/fusesmb/
+
+Installing fusesmb:
+
+cd fusesmb-0.8.3
+./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var
+make
+make install
+
+It requires samba-3.0.*.
+
+
+
+---------------------
+1.2 Starting fusesmb.
+---------------------
+
+
+Now the actual scripts:
+
+cd /etc/session.d/kdm/startup
+
+cat >> fusesmb.sh << "EOF"
+#!/bin/bash
+
+retcode=0;
+
+userid=$1
+userproperties=$(getent passwd | grep -m 1-E "^$userid")
+homedir=$(echo $userproperties | cut -d ":" -f 6);
+gidnr=$(echo $userproperties | cut -d ":" -f 4);
+uidnr=$(echo $userproperties | cut -d ":" -f 3);
+
+if [ -d $homedir ]; then
+
+    if [ ! -d $homedir/network ]; then
+	mkdir -p $homedir/network
+	chown $uidnr:$gidnr $homedir/network
+    fi
+
+    if [ $(id -u) -eq 0 ]; then
+ 	sudo -H -u $userid /bin/sh -c "fusesmb $homedir/network -o fsname=fusesmb,default_permissions,allow_other"
+	retcode=$?
+    elif [ $(id -u) -eq $uidnr ]; then 
+    	fusesmb $homedir/network -o fsname=fusesmb,default_permissions,allow_other
+	retcode=$?
+    fi	
+
+fi;
+
+if [ $retcode -ne 0 ]; then
+    echo "An error with fusesmb ($retcode)."
+fi;
+
+exit $retcode
+EOF
+
+
+Now with fusesmb running you can access your SMB(Windows)
+network environment via a filesystem in userspace, with
+**any** (not only KDE apps with kio's or GNOME with vfs) 
+application, like MC or vi.
+
+This configuration allows other users to enter the fusesmb filesystem. If you don't want this, you should remove 
+the "allow_other" flag.
+
+
+------------------------
+1.3 Stopping of fusesmb.
+------------------------
+
+And the logout script:
+
+cd /etc/session.d/kdm/reset
+
+cat >> fusesmb.sh << "EOF"
+#!/bin/bash
+
+retcode=0;
+
+userid=$1
+userproperties=$(getent passwd | grep -m 1 -E "^$userid")
+homedir=$(echo $userproperties | cut -d ":" -f 6);
+gidnr=$(echo $userproperties | cut -d ":" -f 4);
+uidnr=$(echo $userproperties | cut -d ":" -f 3);
+
+if [ -d $homedir ]; then
+
+    if [ -n "$(mount | grep $homedir/network)" ]; then
+
+	fusermount -u $homedir/network
+
+    fi;
+
+fi;
+
+
+if [ $retcode -ne 0 ]; then
+    echo "An error with fusesmb ($retcode)."
+fi;
+
+exit $retcode
+EOF
+
+
+
+
+ACKNOWLEDGEMENTS:
+
+
+CHANGELOG:
+[2006-01-24]
+  * Initial hint.
+[2006-01-30]
+  * fixed some typos
+[2006-04-16]
+  * deleted everything about PAM
+

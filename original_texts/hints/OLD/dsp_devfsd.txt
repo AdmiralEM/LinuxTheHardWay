@@ -1,0 +1,126 @@
+TITLE:		dsp+devfsd
+LFS VERSION:	all
+AUTHOR:		Joris Vankerschaver <Joris.Vankerschaver@rug.ac.be>
+
+
+SYNOPSIS:
+	When using a regular /dev directory, all 
+	one needs to do to allow non root users access
+	to sound is to set permissions on the audio
+	devices.  Devfsd, however, creates devices 
+	on the fly and so we need a way of telling 
+	devfsd when and how to create these devices.
+
+	This hint describes how to set up devfsd to 
+	automatically 
+	1) set permissions on /dev/dsp appropriately
+	   to allow non root users access to /dev/dsp.
+	2) load the relevant modules (if any) when
+	   an application tries to open /dev/dsp.
+
+	This hint does not cover setting up esd or any
+	other sound daemon.  It might, though, if someone
+	wants to write an update :)
+
+	You need: devfsd and a kernel compiled with
+	sound support (either module or compiled in).
+
+THANKS TO:
+	Robert Bracewell, for pointing out an inaccuracy in 
+	step 1. 
+
+HINT:
+1) Add a group 'audio' and a user 'audio':
+	groupadd audio
+	useradd -g audio audio
+
+2) Add every user that requires audio access to the 
+   audio group.  Open /etc/group and just add the
+   login names (separated by commas) to the line
+   that starts with 'audio'
+
+3) Load /etc/devfsd.conf in your favourite editor 
+   and append the following line:
+
+   REGISTER sound/.*	PERMISSIONS	audio.audio rw-rw----
+
+   When using the default namespace, devfs keeps all the
+   audio related files under /dev/sound.  The above command
+   will cause devfsd to change the permissions on /dev/sound/*
+   from root.root and rw------- to audio.audio, rw-rw----.
+   To maintain compatibility, devfs creates a symlink from 
+   /dev/dsp to /dev/sound/dsp (That is, if you haven't messed
+   with the options in /etc/devfsd.conf.  But then you don't
+   need this hint :)).   
+
+   This line instructs devfsd to change the permissions on
+   every file in the /dev/sound/ directory, every time a
+   driver registers these devices (that is, every time the sound
+   module or the kernel is loaded).
+
+   Note: the line says 'sound/.*' and NOT '/dev/sound/.*'!  
+   Devfs will not issue a warning if you make a mistake there and
+   you will spend many hours hunting bugs (that aren't).
+
+4) If you have compiled sound support into the kernel, you're done.
+   Just send a SIGHUP signal to devfsd (killall -HUP devfsd) and 
+   you are ready to play.
+
+   If you're like me and you have compiled sound support as a
+   module, the trouble begins.  Apparently, the lookup of /dev/dsp
+   isn't enough to trigger the module autoloader.  So you need
+   to have the relevant modules already in place to have devfsd
+   automatically create all the necessary devices and links.
+
+   First of all, you need to know what your soundcard module is called.
+   If you don't know, go check in 
+   /lib/modules/2.4.[minor]/kernel/drivers/sound.  In my case, this
+   module is called 'sb.o'.  It's very important that you pick the 
+   actual module itself, and not some support module.  If you're
+   not sure, modprobe 'em all and then inspect the output of 
+   lsmod to check for a sound module that doesn't depend on the others.
+
+5) Create a shell script with approximately the following contents:
+   
+   --BEGIN--
+   #!/bin/sh
+
+   sound_mod=[YOUR MOD NAME HERE]
+
+   pres=`lsmod | grep "^$sound_mod\ " | tr -d '[:space:]'`
+   if [ -z $pres ]; then
+   	   modprobe $sound_mod
+   fi
+   --END--
+
+   I called this script 'safe_sb_load' and put it in /usr/sbin.
+   Of course, you might think of something better.
+
+   Don't forget to make this script executable 
+   (chmod +x /usr/sbin/safe_sb_load)
+
+   Note: the name of the module is the name as listed by lsmod.  So
+   in my case, it's 'sb', and NOT 'sb.o', NOT '/lib/modules/.../sb.o',
+   etc.  This is also very important.
+
+6) Add the following line to /etc/devfsd.conf:
+
+   LOOKUP	dsp		EXECUTE		safe_sb_load
+
+   This, of course, assumes that safe_sb_load is in a default path.
+
+   As a matter of fact, step 5 is somewhat redundant, since we 
+   might have put in 'EXECUTE modprobe sb' instead of redirecting
+   it to safe_sb_load.  With a script however, you can do some
+   error checking (as we do in step 5), or add other commands
+   (logging, loading of other programs).  Do as you wish.
+
+7) Restart devfsd.  If all goes well, you will now have sound
+   without suid-root scripts and without unsafe permissions in
+   your /dev directory.
+
+Finally) You can improve upon this scenary in many ways.  For
+   example, you might want to create two groups in step one,
+   one with read/write access and one with read access only.
+
+   Happy tweaking!

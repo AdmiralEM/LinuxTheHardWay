@@ -1,0 +1,196 @@
+TITLE:          ¤uro.txt
+LFS VERSION:    Tested on LFS-3.0
+AUTHOR:         Ivo Schaap <ivo@thecourtofeden.org>
+                        or <i.schaap@hccnet.nl>
+
+SYNOPSIS:       How to render euro signs on your lfs box in case you wondered
+                how to do it.
+
+
+HINT:
+version 1.0 (01/06/2002)
+
+
+
+TABLE OF CONTENTS
+=================
+
+1. Introduction.
+2. Get euro's on a virtual console (tty[1-6])
+3. Get euro's in a xterm.
+4. Other issues.
+
+
+
+1. Introduction.
+================
+
+This hint was born while i tryed to search for the euro on my lfs system.
+It is more simple than i tought it would be. But in some apps i still dont know
+how to get things done like opera. If you have valuable information you can
+mail me and i can put it in this hint.
+
+
+
+2. Get euro's on a virtual console (tty[1-6]) 
+=============================================
+
+First the keyboard map has to be known.
+Put this in /etc/sysconfig/keyboard
+
+LAYOUT=/usr/share/kbd/keymaps/i386/include/euro1.map.gz
+
+
+Than use a latin 9 character set:
+vi /etc/sysconfig/font
+
+---<snip>---
+# Begin /etc/sysconfig/font
+
+FONTMAP=/usr/share/kbd/consolefonts/lat9u-08.psfu.gz
+
+# End /etc/sysconfig/font
+---</snip>---
+
+
+To let this be your default font, put this at the end in /etc/init.d/loadkeys
+
+---<snip>---
+echo -n "Loading font..."
+/usr/bin/setfont $FONTMAP 2>/dev/null
+evaluate_retval
+---<snip>---
+
+
+What you've basicly have done is: 
+
+loadkeys euro1 &&
+setfont /usr/share/kbd/consolefonts/lat9u-08.psfu.gz
+
+
+So open an editor, and test it by pressing <alt gr> e
+this is the alt key right of the spacebar.
+
+Or say:
+
+printf "\xa4\n"
+
+Example: ¤ ¤ ¤ ¤ ¤ ¤ ¤ ¤
+
+There suposed to be 8 eurosigns above.
+
+
+And an other trick is to type:
+   <ctrl> v
+to say 'here comes a special char', and than:
+   <alt gr> <shift> 4
+
+It gives \224 as one escaped character.
+   
+Like in:
+
+echo "This is the \244"
+
+To get this:
+
+This is the ¤
+
+
+
+3. To get euro's in an xterm.
+=============================
+
+First see what you have that you can use:
+
+xlsfonts | grep iso8859-15
+
+Than pick one you like and put in .Xdefaults
+
+*VT100.font: -misc-fixed-medium-r-semicondensed--0-0-75-75-c-0-iso8859-15
+
+and put in .xinitrc before anything else is executed
+
+xmodmap -e 'keycode 26 = e E EuroSign'
+
+
+Oke fire up your X and xterm and start an editor and for example vi.
+I had to push <shift> <alt gr> 4 to get one.
+
+or type this on your xterm:
+
+printf "\xa4\n"
+
+And again to test it, here some euro's: ¤ ¤ ¤ ¤ ¤ ¤ ¤ 
+
+
+
+
+4. Other Issues.
+================
+
+For all other apps try to let them use a latin 9 (iso8859-15) character set.
+
+Try to experiment:
+
+grep -irn iso8859 /etc/
+grep -irn font /etc/
+
+and change iso8859-1 in iso8859-15 ( AND MAKE BACKUPS FIRST !!! ) 
+
+There still a few things unclear to me, like to get them in webpages, so that
+everyone can see them. The best solution I now use is having a little 
+gif/png/jpg instead so every one can see what currency i mean. The real solution
+is that you use ;euro& as an escaped html character to render an euro.
+If you apsolutely dont know what to do any more you can always put EUR before 
+a price and that should be oke too.
+
+Opera have let me down, well i think it shal be fixed in the next versions ;)
+Gvim too altough vi is working properly.
+
+And then there is the issue that some people want to use there own language.
+So as Marco Rinck (marco@romulus23.de) states in his email, 
+   
+http://archive.linuxfromscratch.org/mail-archives/blfs-support/2001/12/0472.html
+
+---<snip>---
+> First of all: the normal console. I have the following set in my
+> /etc/profile:
+
+LC_ALL   = de_DE.ISO-8859-15
+LC_CTYPE = de_DE.ISO-8859-15
+RC_LANG  = de_DE.ISO-8859-15
+
+export LC_ALL LC_CTYPE RC_LANG
+
+> Of course thats for germany. The "de_DE" you have to change to your
+> local settings. Now the only you must do is to set a default font wich
+> contains the euro. The preinstalled font lat0-16.psfu.gz should suit
+> your needs. Look in the LFS book how to set it as default. After this
+> I had no problems with euro on console. I had to press "Alt-GR" (the
+>  key right of space) and E and it worked.
+---</snip>---
+
+Well you are free to do that but personaly dont like responses in dutch from my
+computer ;) 
+
+To get realy into the locale things here are some things that might get you running
+locale --help
+
+give all availeble locales
+locale -v -a
+
+give all availeble charmaps
+locale -m 
+
+man 1 localedef
+
+man 5 locale
+
+man 5 charmap
+
+man 7 iso_8859-15   
+
+To close this hint i like to say that you are free to ask me how to do stuff and
+if you have any usefull additions i like too put them up here. Thanks goes to 
+everyone that helped me on #lfs.
+

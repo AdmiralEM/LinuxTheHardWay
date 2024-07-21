@@ -1,0 +1,186 @@
+AUTHOR:	Alex Kloss <alex@22-music.com>
+
+DATE: 2003-08-20
+
+LICENSE: GNU Free Documentation License
+
+SYNOPSIS:	Ardour is a multitrack sound recorder/editor/mixer.
+
+DESCRIPTION:
+Ardour is somewhat like ProTools(tm), high quality multitracker. It's
+pretty easy to install, but needs a lot of additional fiddling 
+(RT-Kernel patch, Jack Server and Ladspa).
+
+PREREQUISITES:
+
+Downloads:
+==========
+
+ardour		http://ardour.sourceforge.net -> release or CVS version
+JACK		http://jackit.sourceforge.net -> release version
+glib/gtk+	http://www.gtk.org -> 1.2.8 or newer, but not 1.3 or 2.0!
+libxml2		http://www.xmlsoft.org -> 2.5.X
+libart_lgpl	on your local GNOME mirror, see BLFS section
+libsndfile	http://www.zip.com.au/~erikd/libsndfile -> 1.0 or higher
+libsamplerate	http://www.mega-nerd.com/SRC/ -> 0.0.13 or newer
+LADSPA SDK	http://www.ladspa.org -> SDK and plugins of your liking
+raptor		http://www.redland.opensource.ac.uk/raptor -> release
+liblrdf		http://plugin.org.uk/lrdf/ -> 0.3.1 or higher
+
+and the	RT-Scheduling-Patch for your kernel version:
+		http://www.zip.com.au/~akpm/linux/schedlat.html
+
+Ardour requires to use ALSA as sounddriver.
+
+HINT:
+
+Installation order:
+===================
+
+ - Kernel Patch for RealTime Scheduling
+ - ALSA sounddriver (if not already available, remember that the
+   reinstallation of the kernel removes everything in the modules
+   directory, so you may have to reinstall the driver)
+ - glib
+ - gtk+
+ - libxml2
+ - libsndfile
+ - libsamplerate
+ - LADSPA SDK (plus the plugins you want)
+ - JACK
+ - raptor
+ - liblrdf
+ - ardour
+
+There are already hints and/or BLFS sections for ALSA, glib, gtk,
+libxml2, so these packages will not be discussed again. Please refer to
+their instructions.
+
+Discussion: Starting Jack/Ardour as root or patching the kernel:
+================================================================
+
+If your system is faster than the average (and even a slow hdd can
+kill that advantage) or you don't think you need Realtime scheduling,
+you can leave all following instructions about the kernel undone.
+
+There are 2 ways of starting JACK (and thusly ardour) with realtime
+latency, once your kernel is patched:
+
+ - start jack as root (need to start ardour as root, too; insecure)
+ - apply givertcap patch:
+
+   edit /usr/src/linux/include/linux/capability.h:
+
+   where it says:
+
+#define CAP_INIT_EFF_SET    to_cap_t(~0 & ~CAP_TO_MASK(CAP_SETPCAP))
+#define CAP_INIT_INH_SET    to_cap_t(0)
+
+   change the lines so it will read:
+
+#define CAP_INIT_EFF_SET    to_cap_t(~0)
+#define CAP_INIT_INH_SET    to_cap_t(~0)
+
+   and go on with patching your kernel for RT scheduling.
+
+I myself prefer the last way, but you may choose yourself.
+
+Patching your kernel:
+=====================
+
+cd /usr/src/linux # (or wherever you have your kernel sources)
+bzcat <patch> | patch -Np1 # fill in the appropriate name for "<patch>"
+make menuconfig # and select real time scheduling
+make dep
+make clean
+make bzImage
+make modules
+make modules_install
+
+now copy the bzImage in arch/<arch*>/boot/ to /boot, edit your
+/etc/lilo.conf to your needs and run lilo [*fill in whatever is
+appropriate, this will be i386 in most cases]. Now restart your system.
+
+
+Install ALSA, glib, gtk+ and libxml2 (when in doubt, look at the related
+BLFS section/hints).
+
+Installing every other package:
+===============================
+
+all those packages are easy enough installed with
+
+./configure --prefix=/usr &&
+make &&
+make install
+
+Starting ardour:
+================
+
+To start ardour, you need to ensure no other process is holding the
+sound devices, start the jack server and then ardour and don't forget to
+remove the jack server afterwards. Because we're a lazy bunch, well do
+that with a script. You'll have to edit it to your needs
+
+--snip
+#!/bin/bash
+#
+# Ardour Startscript
+#
+# Variable declarations
+JACKD=jackstart
+JACKOPTS="-a -R -d alsa -d ice1712 -p 512"
+# replace "ice1712" with your soundcard's identifier!
+JACKD_ALREADY_RUNNING=0
+
+# find out whether jackd is already running
+for i in /proc/*/cmdline; do
+ CMDLINE=$(<$i)
+ if [ "$CMDLINE" != "${CMDLINE#$JACKD}" ]; then
+  JACKD_ALREADY_RUNNING=1
+ fi
+done
+
+# if jackd isn't yet running, we start it
+if [ "$JACKD_ALREADY_RUNNING" = "0" ]; then
+# but first we need to kill all processes that locks sound devices
+ fuser -k /dev/admmidi? /dev/adsp? /dev/amidi? /dev/audio* /dev/dmfm* \
+  /dev/dmmidi? /dev/dsp* /dev/dspW* /dev/midi0? /dev/mixer? /dev/music \
+  /dev/patmgr? /dev/sequencer* /dev/sndstat >/dev/null 2>&1
+ if [ -d /proc/asound/dev ]; then
+  fuser -k /proc/asound/dev/* >/dev/null 2>&1
+ fi
+ if [ -d /dev/snd ]; then
+  fuser -k /dev/snd/* >/dev/null 2>&1
+ fi
+# and now start jack
+ $JACKD $JACKOPTS &> /dev/null &
+fi
+
+# now we are ready to start ardour with all options we were called with
+ardour -n "$@"
+
+# afterwards, if jack wasn't already running (we presume that would be
+# for a reason), kill the jackd.
+
+if [ "$JACKD_ALREADY_RUNNING" = "0" ]; then
+ for i in /proc/*/cmdline; do
+  if [ "$(<$i)" = "$JACKD$(echo $JACKOPTS | sed s/\ //g)" ]; then
+   pidbackup=${i#/proc/}
+   pid=${pidbackup%/cmdline}
+   kill -9 $pid
+  fi
+ done
+fi
+
+# end of ardour-start
+
+--snap
+
+copy that script to /usr/bin/ardour-start and run
+
+chmod 755 /usr/bin/ardour-start
+
+CHANGELOG:
+[2003-08-20]
+  * Initial hint.

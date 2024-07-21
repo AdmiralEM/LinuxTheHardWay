@@ -1,0 +1,80 @@
+TITLE:		w3m hint
+LFS VERSION:	3.1
+AUTHOR:		Michiel Terpstra <vlaflip@hotmail.com>
+
+SYNOPSIS:
+	Installation of w3m, wich is a text only www browser supporting frames
+
+HINT:
+version 1.0 (dec 11th 2002)
+
+I decided to install w3m instead of lynx, because it supports frames
+nd lynx lacks frame support. I've heard there is another browser out there
+wich is a lynx clone with frame support, this one is called links.
+Anyway, this is a hint for w3m.
+
+w3m supports:
+   zlib       (see openssh hint)
+   openssl    (see openssh hint)
+   gpm        (see gpm hint)
+   ncurses    (installed defaultly in LFS 3.1)
+   
+
+
+you can get the w3m source from
+ftp://ei5nazha.yz.yamagata-u.ac.jp/w3m/
+
+this is the primary ftp site, wich is REALLY slow
+if it actually exists. I couldn't make a connection
+to this box at all... So I've got my copy from
+ftp://ftp.st.ryukoku.ac.jp/pub/network/www/w3m/
+
+By the way... there is a sourceforge project at
+http://sourceforge.net/projects/w3m
+
+
+now for the installation hint...
+
+first we unpack the sourcefiles
+   
+   tar xvfs w3m-0.2.2.tar.gz
+   
+then we enter the source dir
+
+   cd w3m-0.2.2
+   
+and we start confiuring w3m
+
+   ./configure
+   
+   answer all questions according to your LFS setup
+   I've accepted the default values most of the time, but:
+   
+   My destination dirs are in /usr/... instead of /usr/local/...
+   because i think a www browser should be a default tool in a
+   linux distribution.
+   
+   Be sure to choose the English language (unless you speak Japanese)
+   
+   Say yes to ANSI color, if you like color support
+   
+   I've builded the custom model, because i wanted OpenSSL support,
+   but didn't needed the mouse support. you are free to choose whatever
+   model you like.
+   
+   If you like compiler optimizations you can enter them in your favorite
+   C flags (eg. my opt: -O3 -march=i586)
+   
+   I choose to use the ncurses library instead of the other libs.
+   
+after configuration we can build the binaries
+
+   make
+   
+and we can install them
+
+   make install
+   
+   
+and we're done...
+Happy WWW-ing

@@ -1,0 +1,90 @@
+TITLE:		WindowMaker-0.80.0 (WM)
+LFS VERSION:	3.1
+AUTHOR:		Corbin Bates <dracolinux@softhome.net>
+
+SYNOPSIS:
+	Here is how one can install WindowMaker-0.80.0 on your 
+	LFS system.
+
+HINT:
+Lets get a few items out of the way and make sure that you have 
+all of the required packages and the ones you would like to 
+include.
+
+Requirements:
+=============
+- X11R6.x
+- gcc suite
+
+Symbolic link from /usr/include/X11 to /usr/X11R6/include/X11
+
+Options:
+========
+These options are not required but it will make WindowMaker more 
+pleasurable to use. 
+
+Note: use the versions listed or newer.
+- libXPM  	4.7
+	Available @ ftp://sunsite.unc.edu/pub/Linux/libs/X/
+- libpng  	0.96
+	Available @ http://cdrom.com/pub/png
+- libtiff 	3.4
+	Available @ ftp://ftp.sgi.com/graphics/tiff
+- libjpeg 	6.0.1
+	Available @ http://www.ijp.org
+- libgif  	2.2
+	Available @ ftp://prtr-13.ucsc.edu/pup/libungif
+- libHermes	1.3.2
+	Available @ http://www.clanlib.org/hermes
+- GNU xgettext
+	Available @ ftp://ftp.gnu.org
+
+Building WindowMaker:
+=====================
+Now lets get started with the build of WindowMaker. You don't need
+to be a rocket scientist to compile this program. It is strait 
+forward. 
+
+Here is the simple build:
+
+./configure
+make
+make install
+ldconfig
+
+=================================================================
+Now lets add some options:
+
+./configure --prefix=/opt/wm \
+--with-appspath=/opt/wm \
+--enable-debug=no &&
+make &&
+make install
+
+add /opt/wm/lib to the /etc/ld.so.conf file and run ldconfig
+
+--prefix=/opt/wm  
+
+  Installs WM in its own directory. This also lets you remove
+  WindowMaker if you don't want it. If you don't like this 
+  location pick one of your suiting.
+
+--with-appspath=/opt/wm 
+
+  Makes sure WPrefs.app installs in the right place
+
+--enable-debug=no
+
+  This removes the debuging symbols
+
+==================================================================
+
+One last thing before starting your newly installed Window 
+Manager.
+
+Logon as each of your users and switch to their home directory. 
+Run the wmaker.inst program to install WindowMakers 
+configurations.
+
+Finally your finished. Type startx and  and you should be greeted
+with WindowMaker's desktop.

@@ -1,0 +1,36 @@
+TITLE:		Midnight Commander
+LFS VERSION:	any
+AUTHOR:		Lee Harris <mr.1ee@ntlworld.com>
+
+SYNOPSIS:
+	The release version (4.1.36) of Midnight Commander (mc) fails to compile giving an error : mountlist.c:105: parse error before `__extension__'
+
+HINT:
+The beta versions of mc are supposed to have fixed this but the link on the 
+official download page has been broken every time I've checked.
+
+http://canvas.gnome.org:65348/mc/download.html
+
+Update
+You can find the beta's here (thanks to Andreas Huebner for pointing this out) 
+ftp.gnome.org/pub/GNOME/stable/sources/mc
+
+I'll still leave the instructions on compiling version 4.1.36 though it looks 
+as if all development has stopped on the 4.1.xx line and it would probably be 
+better to consider using the beta's.
+
+The way i fixed the release version was simply to comment out the
+offending line.
+
+In mountlist.c find 
+
+char *strstr (const char *haystack, const char *needle);
+
+and comment it out ie :
+
+/*char *strstr (const char *haystack, const char *needle);*/
+
+The function strstr is already exists in the string library I've since 
+discovered
+
+mc should compile ok now.

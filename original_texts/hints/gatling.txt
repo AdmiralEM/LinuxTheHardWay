@@ -1,0 +1,89 @@
+AUTHOR: Richard A Downing FBCS CITP <richard at linuxfromscratch dot org>
+
+DATE: 2005-10-09
+
+LICENSE: Creative Commons Deed (Attribution-NonCommercial-ShareAlike 2.0)
+
+SYNOPSIS: Gatling - an easy, superfast, http and ftp server.
+
+DESCRIPTION:
+
+Gatling, by Felix von Leitner, is small, superfast and is very easy to set up.  For the arguments for and against, see the website http://www.fefe.de/gatling. Gatling is built using the dietlibc and libowfat libraries, which we will also build. The executable is statically linked and about 120 Kbytes in size (i686 gcc-4).
+
+PREREQUISITES:
+
+I assume you have a working LFS of recent vintage (say, LFS-6.1).  You could probably use this hint with any other modern Linux too.
+
+DISCLAIMER:
+
+I don't take any responsibility for what you do with these instructions.  They are meant to be helpful, but you take full responsibilty for any action you take after reading them.  The internet is a dangerous place.
+
+HINT:
+
+I came across Gatling by accident (I was looking for a small getty), an hour later it was my webserver.  If you like elegant solutions, you'll like it too.
+
+The work divides into four parts.
+1) Install dietlibc
+2) Install libowfat
+3) Install gatling
+4) Test gatling with your website
+
+1) Dietlibc.
+============
+
+Dietlibc is a very small, static-link only, libc.  It's actually a major subset of the full libc, but it has all the important things in it.  It's designed to be fast, and to reduce the size of executables.  It's worthy of some study.
+
+Download the latest dietlibc from http://www.fefe.de/dietlibc/ (I don't give a version as it will be out of date in 3 months).  Unpack this and change to the dietlibc directory.  These are not GNUautotool packages, so if you want to change the installation directory - edit the Makefile.  A regular build will install dietlibc in /opt/diet, this is a good place for it.  Install dietlibc:
+
+make
+make install (as a user with write access to /opt, I use root)
+
+Note: There WILL be a number of errors during the 'make install' phase, these are, and can be, ignored.
+
+2) Libowfat.
+============
+
+Libowfat is von Leitner's collection of simple APIs.  It collects together the subroutines that he uses in many of his programs, and makes them available with under the GPL.
+
+Download the latest libowfat from http://www.fefe.de/libowfat.  Unpack it and build it with:
+
+make
+make install (as, say, root)
+
+Note: This installs libowfat in the /opt/diet hierarchy, neatly keeping all your von Leitner stuff on one place.  Note also that the regular Makefile will build libowfat.a linked statically to dietlibc.
+
+3) Gatling.
+===========
+
+Gatling is von Leitner's other http/ftp server (The other one is fnord, but you need daemontools or runit for that.)  Gatling is described as 'experimental', but I've seen lots of so called 'stable' applications that are a lot less stable than gatling.  A gatling server offers both ftp and http access from one server at the same time.
+
+Download the latest gatling from http://www.fefe.de/gatling.  Unpack it and build it with:
+
+make
+make install (as, say, root)
+
+Note: This installs gatling in the /opt/diet hierarchy.  Access it as:
+
+/opt/diet/bin/gatling.
+
+4) Test the gatling installation.
+=================================
+
+Warning: Don't do this on an internet-connected box without a firewall (you don't run one of those, do you?).  Think about your security, and don't trust me blindly.  At least get iptables installed and set up (see BLFS).  Know which ports you have open. End-Warning.
+
+As an unprivileged user: change to a directory containing some html files.  As an ex-apache user mine are in ~richard/public_html.  Run the following command:
+
+/opt/diet/bin/gatling
+
+Gatling will start up with the http server on port 8000 and the ftp server on port 2121 - you will also get a useful log output to the tty.  Run a browser and check out http://localhost:8080.  Run an ftp client and checkout ftp://localhost:2121.  For everything else the gatling man page is in /opt/diet/man/man1/gatling.1 ('man gatling' should work with a regular /etc/man.conf setup).
+
+There is a mailing list for Gatling, see the website for details.
+
+ACKNOWLEDGEMENTS:
+
+  * Felix von Leitner wrote all the software.  He writes cool code.
+
+CHANGELOG:
+
+[2005-10-09]
+  * Initial hint.

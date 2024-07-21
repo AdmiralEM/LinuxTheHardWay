@@ -1,0 +1,184 @@
+AUTHOR: Daniel Baumann <daniel.baumann@panthera-systems.net>
+
+DATE: 2004-09-08
+
+LICENSE: GNU General Public License
+
+SYNOPSIS: How to install cdrecord-ProDVD on LFS.
+
+PRIMARY URI: http://archive.daniel-baumann.ch/linux-from-scratch/hints/cdrecord-prodvd/
+
+DESCRIPTION:
+How to install cdrecord-ProDVD on your LFS-system.
+
+PREREQUISITES:
+A complete LFS-system.
+
+HINT:
+--------------------------------------------------------------------------------
+
+cdrecord-ProDVD 2.01b31
+=======================
+
+
+1. Introduction to cdrecord-ProDVD
+==================================
+
+cdrecord-ProDVD creates home-burned CDs/DVDs with a CD/DVD recorder. It works
+as a burn engine for several applications. It supports CD/DVD recorders from
+many different vendors; all SCSI-3/mmc- and ATAPI/mmc-compliant drives should
+also work. Supported features include IDE/ATAPI, parallel port, and SCSI drives,
+audio CDs/DVDs, data CDs/DVDs, and mixed CDs/DVDs, full multi-session support,
+CDRWs/DVD+-RWs (rewritable), TAO, DAO, RAW, and human-readable error messages.
+
+
+1.1. Package information
+========================
+
+  * Download (HTTP): http://ftp.berlios.de/pub/cdrecord/ProDVD/cdrecord-prodvd-2.01b31-i686-pc-linux-gnu
+
+  * Download (FTP): ftp://ftp.berlios.de/pub/cdrecord/ProDVD/cdrecord-prodvd-2.01b31-i686-pc-linux-gnu
+
+  * MD5 Sum: 49fb219f265244e6701c694ee700ccca
+
+  * Download size: 373 KB
+
+  * Estimated build time: none
+
+
+1.2. Additional downloads
+=========================
+
+Required:
+
+  * Wrapper script
+
+    cdrecord-ProDVD needs a key to unlock unlimited writing. It is free for
+    research or educational and private non-commercial purposes. If you like to
+    get a non-expiring and/or commercial license, read the file README.key.
+
+    Download: http://ftp.berlios.de/pub/cdrecord/ProDVD/cdrecord-wrapper.sh
+
+
+Optional:
+
+  * Documentation
+
+    Download: http://ftp.berlios.de/pub/cdrecord/ProDVD/README
+    Download: http://ftp.berlios.de/pub/cdrecord/ProDVD/README.key
+
+
+2. Installation of cdrecord-ProDVD
+==================================
+
+
+2.1. Main cdrecord-ProDVD installation
+======================================
+
+Install cdrecord-ProDVD by running the following commands:
+
+   __________________________________________________________________________
+  |                                                                          |
+  |  cp cdrecord-prodvd-2.01b31-i686-pc-linux-gnu /opt/bin                   |
+  |  cp cdrecord-wrapper.sh /opt/bin/cdrecord-prodvd                         |
+  |  chmod 755 /opt/bin/cdrecord-prodvd-2.01b31-i686-pc-linux-gnu            |
+  |__________________________________________________________________________|
+
+
+2.2. Documentation installation
+===============================
+
+If you downloaded the optional documentation, install it using the following
+commands:
+
+   __________________________________________________________________________
+  |                                                                          |
+  |  mkdir /opt/doc/cdrecord-prodvd                                          |
+  |  cp README /opt/doc/cdrecord-prodvd                                      |
+  |  cp README.key /opt/doc/cdrecord-prodvd                                  |
+  |__________________________________________________________________________|
+
+
+2.3. Uninstall script
+=====================
+
+   __________________________________________________________________________
+  |                                                                          |
+  |  cat > /opt/bin/uninstall_cdrecord-prodvd.sh << "EOF"                    |
+  |  #!/bin/sh                                                               |
+  |                                                                          |
+  |  echo -n "Uninstalling cdrecord-ProDVD:                                  |
+  |  rm -f /opt/bin/cdrecord-prodvd                                          |
+  |  rm -f /opt/bin/cdrecord-prodvd-2.01b31-i686-pc-linux-gnu                |
+  |  echo "done."                                                            |
+  |                                                                          |
+  |  echo -n "Uninstalling cdrecord-ProDVD documentation:                    |
+  |  rm -f /opt/doc/cdrecord-prodvd/README                                   |
+  |  rm -f /opt/doc/cdrecord-prodvd/README.key                               |
+  |  rmdir /opt/doc/cdrecord-prodvd                                          |
+  |  echo "done."                                                            |
+  |  EOF                                                                     |
+  |                                                                          |
+  |  chmod 755 /opt/bin/uninstall_cdrecord-prodvd.sh                         |
+  |__________________________________________________________________________|
+
+
+3. Command explanations
+=======================
+
+cdrecord-ProDVD is non-free software. To separate it from the main system,
+installing in /opt is choosen.
+
+
+4. Configuring cdrecord-ProDVD
+==============================
+
+
+4.1. Wrapper script
+===================
+
+Adjusting the cdrecord-ProDVD binary name:
+
+   __________________________________________________________________________
+  |                                                                          |
+  |  sed -i -e 's/exec cdrecord-ProDVD "$@"/\                                |
+  |	exec cdrecord-prodvd-2.01b31-i686-pc-linux-gnu "$@"/' \              |
+  |	/opt/bin/cdrecord-prodvd                                             |
+  |__________________________________________________________________________|
+
+
+5. Contents
+===========
+
+The cdrecord-ProDVD packages contains cdrecord-prodvd and
+uninstall_cdrecord-prodvd.sh.
+
+
+6. Description
+==============
+
+  * cdrecord-prodvd
+
+    cdrecord-ProDVD creates home-burned CDs/DVDs with a CD/DVD recorder.
+
+
+  * uninstall_cdrecord-prodvd.sh
+
+    Uninstall routine to remove cdrecord-ProDVD.
+
+--------------------------------------------------------------------------------
+
+CHANGELOG:
+[2004-09-08]
+  * Formal changes.
+  * Minor text changes.
+  * Added Uninstall script.
+  * Added Command explanations, Contents and Description.
+[2004-07-17]
+  * Location changed to /opt.
+  * Typographic mistakes corrected.
+[2004-07-10]
+  * Updated to cdrecord-ProDVD-2.01b31.
+  * Typographic mistakes corrected.
+[2004-06-06]
+  * Initial revision.

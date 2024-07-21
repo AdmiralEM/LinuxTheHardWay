@@ -1,0 +1,239 @@
+TITLE:		Spanish characters on a US International keyboard
+
+LFS VERSION:	3.1 (should apply to all)
+
+AUTHOR:		David Ayers <fogey@mindspring.com>
+
+SYNOPSIS:
+
+My default keyboard is US International. I want to be able to write
+Spanish text, using a keyboard modifier key (like Alt, Ctrl, etc) to,
+for example, cause the "a" to become "á" (accent) by using the a key
+in combination with a modifier key. This hint describes how I remapped
+my Microsoft keyboard to use the Menu key as the modifier key. The
+same general procedure should apply to any keyboard and any desired
+mapping. Pressing the Menu Key in combination with certain letter or
+symbol keys yields: á Á é É í Í ó Ó ú ü ñ Ñ ¡ ¿.
+
+HINT:
+
+Changelog
+---------
+
+Revision 1.1 2002/06/25 dca
+Miscellaneous wording and format changes.
+
+Information sources
+-------------------
+
+   Linux Keyboard and Console How-To (essential)
+
+   X Window System User's Guide, Volume Three, Part Two, Chapter 14,
+   "Modifier Key and Pointer Customization: xmodmap
+
+   xmodmap(1)
+
+My LFS system
+-------------
+
+   LFS Version CVS-20020131
+   Linux 2.4.17 
+   XFree86 4.2
+   XFce desktop
+   XF86Config (keyboard-pertinent portions):
+
+   Section "ServerLayout"         
+        Identifier     "XFree86 Configured"         
+        Screen         "Screen0" 0 0         
+        InputDevice    "Mouse0" "CorePointer"         
+        InputDevice    "Keyboard0" "CoreKeyboard" 
+   EndSection
+
+   Section "InputDevice"
+        Identifier  "Keyboard0"
+        Driver      "keyboard"
+   EndSection
+
+(Earlier versions of X may have Section "Keyboard" instead of Section
+"InputDevice")
+
+The X keyboard 
+-------------- 
+
+The Linux keyboard and console is handled one way but X substitutes
+its own handling. This hint considers only the X keyboard mapping.
+
+The XFree86 keymap mechanism is much more limited than the Linux
+mechanism. Since version 2.1, XFree86 will initialize its keymap from
+the Linux keymap as far as possible. However, Linux presently has 256
+possible entries per key, while X has only 4 entries per key (one for
+each combination of Shift, Mod), so some information is necessarily
+lost .
+
+First, X reads the XF86Config file, where definitions of LeftAlt,
+RightAlt, etc. might be found. - see XFree86kbd(1). In my system there
+are no key definitions in the config file.  Next, the kernel keymap
+is read and the usually obvious keybindings are made. The X keymap
+duplicates the kernel keymap as closely as it can.
+
+Xmodmap is your friend
+----------------------
+
+Save your current X keymap.
+
+   $ xmodmap -pke > keytable
+
+This will tell you how your keyboard is presently mapped. You can
+easily correlate the listed keycodes with the keys on your keyboard by
+looking at what the key does. For example, in my keytable I find lines
+like
+
+   keycode   8 =
+   keycode   9 = Escape
+   keycode  10 = 1 exclam
+   keycode  11 = 2 at
+   keycode  12 = 3 numbersign 
+   ...
+
+The above tells me that pressing the unshifted 1 key produces the
+numeral 1, and <shift>-1 produces the exclamation mark.
+
+To see the current the modifier keys assignment
+
+   $ xmodmap
+
+which displays something like
+
+   xmodmap:  up to 2 keys per modifier, (keycodes in parentheses):
+ 
+   shift       Shift_L (0x32),  Shift_R (0x3e)
+   lock        Caps_Lock (0x42)
+   control     Control_L (0x25),  Control_R (0x6d)
+   mod1        Alt_L (0x40),  Alt_R (0x71)
+   mod2 
+   mod3
+   mod4 
+   mod5
+
+This says that both left and right shift keys produce the shift
+function, etc., and the Alt keys produce the mod function. 
+
+Keysyms
+-------
+
+In the keymap, each physical key is associated with a keycode and with
+one or more keysyms that describe what you get when you press the
+key. Some obvious keysyms are 1, 2, 3, a, b, c, etc. Also, exclam, at,
+and numbersign are keysyms for the characters !, @, and #.
+
+To discover which additional keysyms are available for use beyond the
+ones used in the current keymap,
+
+   $ less /usr/X11R6/include/X11/keysymdef.h
+
+Look in the "Latin 1" section  of keysymdef.h to see lines like
+
+   #define XK_exclamdown          0x0a1 
+
+The keysym name is "exclamdown". Its function is to print the
+upside-down exclamation mark that is one of the Spanish symbols
+needed. I decided to add these keysyms to my keyboard:
+
+   aacute, Aacute
+   eacute, Eacute
+   iacute, Iacute
+   oacute, Oacute
+   uacute, udiaeresis
+   ntilde, Ntilde
+   questiondown
+   exclamdown 
+
+The /etc/keys.es file 
+---------------------
+
+Create a file containing the keycodes that are to be remapped. The
+file can have any name and be located anywhere. Mine is named
+/etc/keyes.es, mod 644 and owned by the user.
+
+My keys.es file looks like this:
+
+   keycode 117 = Mode_switch
+   keycode 38 = a A aacute Aacute
+   keycode 26 = e E eacute Eacute
+   keycode 31 = i I iacute Iacute
+   keycode 32 = o O oacute Oacute
+   keycode 30 = u U uacute udiaeresis
+   keycode 57 = n N ntilde Ntilde
+   keycode 61 = slash question slash questiondown
+   keycode 10 = 1 exclam 1 exclamdown
+
+The first line, keycode 117, assigns my "Menu" key to be the mod
+key. For non-Microsoft keyboards, any unused key or perhaps one of the
+Alt keys might be used as the mod key. You can get the appropriate
+keycodes from your saved keytable file.
+
+The remaining lines each have four keysyms listed, corresponding to
+unshifted, shifted, mod-unshifted, and mod-shifted.
+
+Final configuration
+-------------------
+
+Try it out. run
+
+   $ xmodmap /etc/keys.es
+
+then
+
+   $ xmodmap -pke 
+
+to see that the new keysyms were added to the keymap. If it looks
+good, add 'xmodmap /etc/keys.es' as the next-to-last command in your X
+startup script. I use startx to run X and XFce from the command line,
+so the xmodmap command goes in ~/.xinitrc. The last two commands in my
+.xinitrc are:
+
+   # Modify keyboard mapping to add Spanish special characters
+   /usr/X11R6/bin/xmodmap /etc/keys.es
+ 
+   # Finally, launch XFce window manager
+   exec xfwm.
+
+The console
+-----------
+
+When I remapped my X keyboard, the keymapping worked as expected in
+all of my editors and wp applications. The same keymapping would also
+be desirable for non-X apps like emacs and vim. It should be a simple
+matter of editing the Linux keymap. I haven't done this yet. Perhaps
+Real Soon Now.
+
+---
+
+
+
+
+ 
+
+
+
+
+
+
+ 
+
+   
+
+
+
+
+
+
+
+   
+
+
+
+
+
+
+

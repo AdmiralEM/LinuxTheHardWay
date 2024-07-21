@@ -1,0 +1,52 @@
+#!/bin/sh
+########################################################################
+# Begin $rc_base/init.d/apcupsd
+#
+# Description : Starting apcupsd
+#
+# Authors     : Based on scripts by Gerard Beekmans and templates in 
+#		LFS-6.1.1.
+#		Modified for apcupsd by John McSwain -
+#		jmcswain@infoave.net - based on scripts in apcupsd
+#		source package.
+#
+# Version     : 00.00
+#
+# Notes       : S30 in /etc/rc.d/rc{2,3,4,5}.d and K98 /etc/rc.d/rc{1,6}.d 
+#
+########################################################################
+
+. /etc/sysconfig/rc
+. ${rc_functions}
+
+case "${1}" in
+	start)
+		boot_mesg "Starting apcupsd power management..."
+		# House keeping if this were a restart from powerfail
+		rm -f /etc/apcupsd/powerfail
+		rm -f /etc/nologin
+		loadproc /sbin/apcupsd
+		;;
+
+	stop)
+		boot_mesg "Stopping apcupsd power management..."
+		killproc /sbin/apcupsd
+		;;
+
+	restart)
+		${0} stop
+		sleep 1
+		${0} start
+		;;
+
+	status)
+		statusproc /sbin/apcupsd
+		;;
+
+	*)
+		echo "Usage: ${0} {start|stop|restart|status}"
+		exit 1
+		;;
+esac
+
+# End $rc_base/init.d/apcupsd

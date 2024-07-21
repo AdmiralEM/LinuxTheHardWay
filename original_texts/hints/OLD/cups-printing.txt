@@ -1,0 +1,228 @@
+TITLE:		Printing on LFS using CUPS
+LFS VERSION:	any
+AUTHOR:		Alex Kloss <l.x.@gmx.de>
+
+SYNOPSIS:
+	Short Guide how to set up the necessary software to print using
+	ghostscript, psutils, a2ps, foomatic and CUPS, Samba and Gimp-
+	Print as an Option.
+
+HINT:	
+	This is a short Hint based on other printing hints, which did
+	not work for me properly. Another reason for using CUPS instead
+	of LPRng is the better KDE integration since 2.2. I don't claim
+	to deliver a perfect hint, but with you help, we can get it
+	there. Gimp Print is an useful addition if you're using Inkjet
+	Color Printers, because you'll get better quality in some cases.
+
+DOWNLOADS:
+	Your favourite flavour of Ghostscript:
+	look at http://www.cs.wisc.edu/~ghost/, check mirror sites.
+
+	I prefer using AFPL Ghostscript 8.00, obtainable on
+	ftp://mirror.cs.wisc.edu/pub/mirrors/ghost/, but any other
+	Version should do, too. You should also obtain a package of the
+	necessary type1-fonts, e.g. GNU-ghostscript-fonts.
+
+	Since Version 1.1.15, CUPS no longer includes the PS RIP filter
+	called pstoraster. So you need some ghostscript version that
+	provides as cups raster driver. ATM, GNU ghostscript DOES NOT
+	HAVE such a backend. So you're better off with AFPL or EPS
+	ghostscript.
+
+	You'll also need 
+	libjpeg (http://www.ijg.org, ftp://ftp.uu.net/graphics/jpeg),
+	and libpng (http://libpng.sourceforge.net, 
+	ftp://swrinde.nde.swri.edu/pub/png)
+
+	psutils:
+	ftp.dcs.ed.ac.uk/pub/ajcd/
+
+	a2ps:
+	http://www.inf.enst.fr/~demaille/a2ps/
+	ftp://ftp.enst.fr/pub/unix/a2ps/
+
+	foomatic:
+	http://www.linuxprinting.org/download/foomatic/
+
+	libxml2:
+	http://ftp.gnome.org/pub/GNOME/sources/libxml2/2.4/
+	or search your local gnome mirror.
+
+	cups:
+	www.cups.org
+	look on this page for your nearest mirror.
+
+	samba:
+	http://www.samba.org
+	look on this page for your nearest mirror.
+
+	and, if you want it
+
+	gimp-print:
+	http://gimp-print.sourceforge.net
+
+INSTALL:
+	Ghostscript:
+	
+	Actual Versions (AFPL 8.00, GNU 7.05, ESP 7.05.5) have a
+	./configure script that enables Ghostscript to use the system
+	libraries, so you don't need their sources to be around on the
+	Ghostscript installation anymore. Just type:
+
+	./configure --prefix=/usr &&
+	make &&
+	make install
+	
+	If you encounter problems about HAVE_SYS_TIME_H to be rede-
+	fined, run the following script. Never versions of Ghostscript
+	shouldn't show that behaviour anymore, but you never know:
+
+	for file in src/*.c
+        do
+	  timeinc=`cat $file | grep time_.h`
+	  if [ -n "$timeinc" ]
+	  then
+	    mv $file $file.old
+	    cat $file.old | \
+	    sed $'/#include "time_.h"/a \\\n#include "time.h"' \
+	    > $file
+	  fi
+	done
+
+	and retry "make && make install". It should work now.
+
+	Afterwards, install the fonts into the right dir (if you've
+	chosen the prefix "/usr", it should be "/usr/share/ghostscript",
+	otherwise read the docs	of your ghostscript release to find out 
+	which).
+
+
+	psutils:
+
+	cp Makefile.unix Makefile
+
+	Edit the Makefile for preferred prefix, includedir and mandir.
+
+	make &&
+	make install
+
+	if mkdir gives errors about being unable to create existent
+	directories, don't mind.
+
+
+	a2ps:
+
+	./configure --prefix=/usr --enable-paths=yes && 
+	make && 
+	make install
+
+	did the job for me.
+
+
+	foomatic:
+
+	foomatic will require libxml2. Since this is bl**dy easy to
+	install, I won't lose a word on it, here.
+
+	./configure --prefix=/usr &&
+	make &&
+	make install
+
+	Look on http://www.linuxprinting.org for documentation about
+	how to configure it.
+
+
+	cups:
+
+	./configure && 
+	make && 
+	make install
+
+	should be enough. You can add options like --with-openssl if
+	you want (then you need to read the openssh hint before).
+
+	I dislike the start/stop script cups comes with. So I remade it
+	and composed a new one loosely after it, but w/o unnecessary
+	stuff. It looks like that:
+
+#!/bin/sh
+#
+# "$Id: cups-printing.txt,v 1.1 2003/09/13 16:18:12 tushar Exp $"
+#
+#   Startup/shutdown script for the Common UNIX Printing System (CUPS).
+#
+#   Copyright 1997-2001 by Easy Software Products, all rights reserved.
+#
+#   Slightly changed by Alex Kloss to fit into the LFS bootup
+#
+#
+# Start or stop the CUPS server based upon the first argument to the script.
+#
+
+source /etc/init.d/functions
+
+case $1 in
+	start)
+		echo -n "Starting CUPS Printserver..."
+		loadproc /usr/sbin/cupsd
+		;;
+ 	stop)
+                echo -n "Stopping CUPS Printserver..."
+                killproc cupsd
+                ;;
+
+        reload)
+                echo -n "Reloading CUPS Printserver..."
+                reloadproc /usr/sbin/cupsd
+                ;;
+
+        restart)
+                $0 stop
+                /usr/bin/sleep 1
+                $0 start
+                ;;
+
+        status)
+                statusproc cupsd
+                ;;
+
+        *)
+                echo "Usage: $0 {start|stop|reload|restart|status}"
+                exit 1
+		;;
+esac
+
+# end of cups startup script.
+
+	You don't need to replace the script, but I like it better like
+	this. So I added it to the hint.
+
+
+	samba:
+
+	You can install samba yourself. Look at "./configure --help",
+	there are some nice options, you possibly want to select. To
+	use CUPS for printing on a samba printer you need to
+
+	ln -s `whereis smbspool` /usr/lib/cups/backend/smb
+
+	Next, you can install samba printers.
+
+	If you need help on CUPS, try http://localhost:631
+
+
+	gimp-print:
+
+	Remember you only need that if you want the advanced drivers
+	(especially a quality improvement for inkjet printers).
+
+	./configure --prefix=/usr --with-cups --with-ghost &&
+	make &&
+	make install
+
+	/etc/init.d/cups restart
+
+Hope this was helpful.
+Thanks to the help of the #lfs channel.
+Alex Kloss (LX on #lfs on irc.linuxfromscratch.org)

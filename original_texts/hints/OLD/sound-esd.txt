@@ -1,0 +1,20 @@
+TITLE:		ESD compilation problems
+LFS VERSION:	any
+AUTHOR:		Wan <unknown>
+
+SYNOPSIS:
+	Compiled normally, ESD doesn't work. Here is how to make it work (this problem has been fixed in esd 0.2.19)
+
+HINT:
+Ok, I was having werido problems with esd, but with recompiling 20 times
+(really) I got it!  At least it works, I'm not sure why it works and
+would like to hear opinions.  I did this on esound-0.2.18.
+
+./configure --enable-shared=no
+make
+make install
+
+The strange part is on my original distro (Mandrkae 7) they use shared
+and it works fine.  Anyways, it's rockin.
+
+Wan

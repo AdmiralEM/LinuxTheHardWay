@@ -1,0 +1,344 @@
+TITLE:		Iproute2 and traffic shaping
+LFS VERSION:	Kernel 2.4.20 and later versions
+AUTHOR:		Marcos Zapata <zeta11@hotpop.com>
+VERSION:		2003/08/20
+
+SYNOPSIS:
+    How to compile iproute2 and some basic traffic shaping scripts for your LFS.
+
+HINT:
+Most linux distributions are starting to provide the iproute2 package,
+because of the new redesigned network subsystem implemented in kernels 2.2 and
+up. The old comands 'ifconfig' and 'route' are now been deprecated because of
+their faulty and unexpected behaviour under these kernels.
+It was written by Alexey Kuznetsov, who also wrote the routing code of the
+kernels 2.2 and up. This new routing and filtering code provides many advantages
+and features that weren't available before, and ip/tc are the tools to handle
+it. I won't be explaining traffic shaping with CBQ and HTB, just how to get them
+for your LFS. You'll find some links in references.
+
+
+This package requires db. If you don't have it, you can get it at
+www.sleepycat.com. For example: db-4.1.25 (actually, I've been using db-4.0.14
+without any problem), from:
+
+http://www.sleepycat.com/update/snapshot/db-4.1.25.tar.gz
+
+tar -zxvf db-4.1.25.tar.gz
+cd db-4.1.25/dist
+./configure --prefix=/usr --enable-compat185
+make
+make install
+
+now, we can continue with iproute2.
+
+
+Where to download it?
+ftp://ftp.inr.ac.ru/ip-routing/
+
+For the purposites of this hint, I'll be using:
+iproute2-2.4.7-now-ss020116-try.tar.gz and kernel-2.4.20.
+
+Starting with kernel-2.4.20 you can find HTB and CBQ packet schedulers. If you
+plan to use an older kernel (not recommended) you'll need to apply a patch to
+support it. Either way we'll need to get the patch for iproute to handle HTB:
+
+http://luxik.cdi.cz/~devik/qos/htb/v3/htb3.6-020525.tgz
+
+The compiling and instalation of these tools is very strait-forward:
+
+tar -zxvf htb3.6-020525.tgz
+tar -zxvf iproute2-2.4.7-now-ss020116-try.tar.gz
+cd iproute2
+
+#apply the patch
+patch -Np1 < ../htb3.6_tc.diff
+
+#if you want, edit Makefile to change some values like KERNEL_INCLUDE or
+#SBINDIR. You shouldn't need to if you've built LFS.
+
+make
+make install
+
+If you didn't edit Makefile, the tools should be in /sbin, the conf. files in
+/etc/iproute2 and the docs in /usr/doc/iproute2. Sadly, it doesn't include any
+man pages, you'll need latex and sgmltools to read the docs. I advised you to
+read them, to fully understand and use these powerful tools.
+
+Ok, now that we have ip and tc with HTB support we need to recompile the kernel.
+With 'make menuconfig' under 'Networking options', enable netlink and filtering
+support, also tunneling and multicasting. To enable traffic shaping, enable all
+the options in 'Qos and/or fair queueing' as modules. The exact options names
+may vary for the different kernel versions. Compile the bzImage and modules,
+install, and remember to add this new kernel to your lilo or grub conf. to start
+with this new configuration.
+
+If you built LFS 3.1 (I guess it could work with previous versions) you need to
+change the boot scripts: localnet and network in /etc/rc.d/init.d.
+
+localnet:
+
+look  for 'loadproc ifconfig lo 127.0.0.1' in start), replace it with:
+ip addr add 127.0.0.1/8 dev lo
+ip link set lo up
+
+look for 'loadproc ifconfig lo down' in stop), replace it with:
+ip link set lo down
+ip addr del 127.0.0.1 dev lo
+
+look for 'ifconfig lo' in status), replace it with:
+ip addr show lo
+
+network:
+
+look for 'route add default gateway $GATEWAY metric 1 dev $GATEWAY_IF',...:
+ip route add default via $GATEWAY dev $GATEWAY_IF
+
+look for 'route del -net default', replace it with:
+ip route del default
+
+Also, the scripts in /etc/sysconfig/network-devices: ifdown and ifup.
+
+ifdown:
+
+look for 'ifconfig $1 down', replace it with:
+ip addr flush dev $1
+ip link set $1 down
+
+ifup:
+
+look for 'ifconfig $1 $IP netmask $NETMASK broadcast $BROADCAST',....:
+ip link set $1 up
+ip addr add $IP/$NETMASK broadcast $BROADCAST dev $1
+
+As you can see the ip command is very simple to use, and it's very similar to
+ifconfig and route. The only thing that changes is the NETMASK.
+
+You need to change NETMASK in /etc/sysconfig/network-devices/ifconfig.eth* :
+from 255.255.255.255 to 32
+ ..  255.255.255.0   to 24
+ ..  255.255.0.0     to 16
+ ..  255.0.0.0       to 8
+
+so that ifconfig.eth0 (for example) looks something like this:
+ONBOOT=yes
+IP=192.168.100.254
+NETMASK=24
+BROADCAST=192.168.100.255
+
+
+Now, let's start with some traffic shaping scripts: cbq.init and/or htb.init
+and wondershaper.
+Both CBQ and HTB help you to control the use of the outbound bandwidth on a
+given link. Both allow you to use one physical link to simulate several slower
+links and to send different kinds of traffic on different simulated links.
+
+cbq.init:
+You can get it at http://sourceforge.net/projects/cbqinit. From one of the
+mirrors at:
+
+http://heanet.dl.sourceforge.net/sourceforge/cbqinit/cbq.init-v0.7.2
+
+mv cbq.init-v0.7.2 cbq.init
+chmod a+x cbq.init
+cp cbq.init /etc/rc.d/init.d
+mkdir /etc/sysconfig/cbq
+
+Remeber to add the symlinks in /etc/rc.d/rc*.d. All the explanations of this
+tool are in script: how it works, parameters, and a sample.
+
+htb.init:
+It's derived from cbq.init that allows for easy setup of HTB-based traffic
+control on Linux. You can get it at http://sourceforge.net/projects/htbinit. One
+of the mirros:
+
+http://keihanna.dl.sourceforge.net/sourceforge/htbinit/htb.init-v0.8.4
+
+mv htb.init-v0.8.4 htb.init
+chmod a+x htb.init
+cp htb.init /etc/rc.d/init.d
+mkdir /etc/sysconfig/htb
+
+Remember to add the symlinks in /etc/rc.d/rc*.d. Just like cbq, you can find all
+you need inside the script.
+
+You can use either one of them. CBQ is older, but it's still widely used. HTB is
+easier and more accurate.
+
+Wondershaper:
+I have a very crapy dsl conection and it really help me: mantaining low latency
+for interactive traffic and surfing while uploading.
+We can get it at:
+
+http://lartc.org/wondershaper/wondershaper-1.1a.tar.gz
+
+tar -zxvf wondershaper-1.1a.tar.gz
+cd wondershaper-1.1a
+
+There are two versions of the script, for CBQ and HTB. To start, you'll need to
+modify at the beginning: DOWNLINK, UPLINK and DEV. You'll also find a README in
+the same directory, please read it, it will help you understand what it really
+does and how to fine tunning it. Afterwards, to get them ready:
+
+cp wshaper wshaper.htb /usr/sbin
+
+That's it. You can reboot now and start using your LFS with these new tools.
+You shouldn't have much trouble setting it up. Good luck.
+
+
+REFERENCES:
+http://lartc.org/lartc.txt	Linux Advanced Routing & Traffic Control:
+http://luxik.cdi.cz/~devik/qos/htb/	HTB Home page
+
+
+THANKS:
+Daniel Thaler <daniel@dthaler.de>:	db headers, tc (wondershaper)
+lfs@vs.megalink.ru:	db headers
+DJ Lucas <dj_me@swbell.net>:	db headers
+Samual Walters <saltwater@madasafish.com>: db headers
+Diego Saravia <dsa@unsa.edu.ar>
+( Sorry for taking so long to correct the hint. )
+
+
+
+EXTRA: Automatic generation of broadcast addresses with LFS
+I was not sure to include this but here it goes, if it can be of any use...
+I was tired of calculating broadcast addresses, so i decided to modify the ifup
+script from LFS to do just that. It's not very clean and surely not the
+paradigm of programming but it works just fine. You've been warned!
+
+You need bc. Get it at:
+
+ftp://ftp.gnu.org/gnu/bc/bc-1.06.tar.gz
+
+tar -zxvf bc-1.06.tar.gz
+cd bc-1.06
+./configure --prefix=/usr
+make
+make install
+
+and rpncalc at:
+
+http://ftp.debian.org/debian/pool/main/r/rpncalc/rpncalc_1.33.3.tar.gz
+
+tar -zxvf rpncalc_1.33.3.tar.gz
+cd rpncalc-1.33.3
+./configure --prefix=/usr
+make
+make MKINSTALLDIRS=mkinstalldirs install
+
+The script:
+
+---/etc/sysconfig/network-devices/ifup---
+
+#!/bin/sh
+
+source /etc/sysconfig/rc
+source $rc_functions
+source $network_devices/ifconfig.$1
+
+if [ -f $network_devices/ifup-$1 ]
+then
+	$network_devices/ifup-$1
+else
+	if [ -z $IP ]
+	then
+		echo "IP variable missing for ifconfig.$1, cannot continue"
+		exit 1
+	fi
+
+	if [ -z $NETMASK ]
+	then
+		echo -n "NETMASK variable missing for ifconfig.$1, "
+		echo "using 255.255.255.0"
+		NETMASK=255.255.255.0
+	fi
+
+        if [ "`echo "$NETMASK" | grep "\."`" ]; then
+	  MASK=0
+	  for i in `seq 1 4`; do
+	    OC=`echo "$NETMASK" | cut -d'.' -f$i`
+	    for j in `seq 0 7`; do
+	      BIN=`echo "256-2^$j" | bc`
+	      if [ $BIN == $OC ]; then
+	        k=`echo "8-$j" | bc`
+		let MASK=MASK+$k
+		break
+	      fi
+	    done
+	  done
+	else
+	  MASK=$NETMASK
+	fi
+
+	if [ -z $BROADCAST ]
+	then
+	    if [ $MASK -lt 24 ]; then
+		# Good luck!
+		NETMASK=""
+		MSK=$MASK
+		DIF=`echo "256-2^(8-$MASK%8)" | bc`
+		for i in `seq 1 4`; do
+	          let MSK=MSK-8
+		  if [ $MSK -gt -1 ]; then
+		    NETMASK=$NETMASK.255
+		  else
+		  if [ $MSK -lt -8 ]; then
+		    NETMASK=$NETMASK.0
+		  else
+		    NETMASK=$NETMASK.$DIF
+		  fi
+		fi
+		done
+		NETMASK=`echo "$NETMASK" | sed -e "s/^.//"`
+
+		BROADCAST=""
+		for i in `seq 1 4`; do
+		    OC=`echo "$IP" | cut -d'.' -f$i`
+		    OC2=`echo "$NETMASK" | cut -d'.' -f$i`
+		    BROADCAST="$BROADCAST.`echo "$OC 255 $OC2 xor or" | rpncalc | cut -d' ' -f3`"
+		done
+		BROADCAST=`echo "$BROADCAST" | sed -e "s/^.//"`
+	    else
+		# Calculo automatico solo para redes C
+		CAN=`echo "2^($MASK-24)" | bc`
+		OCTIP=`echo "$IP" | cut -d'.' -f4`
+		OCT3IP=`echo "$IP" | cut -d'.' -f-3`
+		BROADCAST=""
+
+		for i in `seq 1 $CAN`; do
+		  RED=`echo "256/$CAN*($i-1)" | bc`
+		  BROAD=`echo "$RED+256/$CAN-1" | bc`
+		  if [ $OCTIP -gt $RED -a $BROAD -gt $OCTIP ]; then
+		      BROADCAST="$OCT3IP.$BROAD"
+		      break
+		  fi
+		done  
+	    fi
+	fi
+	if [ -z $BROADCAST ]
+	then
+		echo "Cannot calculate broadcast for ifconfig.$1, something is wrong"
+		echo "Please check your IP=$IP and NETMASK=$MASK variables"
+		exit 1
+	fi
+
+	echo "Bringing up the $1 interface..."
+	ip link set $1 up
+	ip addr add $IP/$MASK broadcast $BROADCAST dev $1
+	evaluate_retval
+fi
+
+---/etc/sysconfig/network-devices/ifup---
+
+
+This script will calculate the correct broadcast address from the ip address
+and netmask. It will work with all kinds of classes: A, B and C. Although,
+it will only "check" for a valid broadcast address from /24 to /32 and as you
+can see, you can now use NETMASK in ifconfig.eth* with a full address like
+255.255.255.192 or 26. To use it just comment out BROADCAST in ifconfig.eth*.
+Good luck.
+
+
+
+Zeta

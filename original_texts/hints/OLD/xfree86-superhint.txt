@@ -1,0 +1,623 @@
+TITLE:		XFree86
+LFS VERSION:	4.0+
+AUTHORS:	Sam Halliday <fommil AT yahoo DOT ie>
+
+SYNOPSIS:
+        This hint covers the building and initial configuration of an XFree86
+server and client (XWindows). The setup of DRI (graphics acceleration) is also
+shown for those who have such a capable card (for a recent list of supported
+cards, see http://dri.sourceforge.net/doc/feature_table.html)
+
+ACKNOWLEDGEMENTS:
+	This hint is a combination of hints x11.txt, xfree86_41.txt,
+xfree86_42.txt, xfree86_4.2.0_dri.txt, nvidia_glx and dri.txt. For that
+reason, credits are due to
+		Matthias Benkmann <m DOT s DOT b AT gmx DOT net>
+		Marc Heerdink <marc AT koelkast DOT net>
+		Dave Ayers <fogey AT mindspring DOT com>
+		Luke Guest <laguest AT nebulas DOT demon DOT co DOT uk>
+		Ryan Strayer <rstrayer AT kc DOT rr DOT com>
+		manaveru <manaveru AT manaveru DOT net>
+		Sergey Ostrovsky <sostrovsky AT snip DOT net>
+Further credit must be given to
+		Jim Gifford <jim AT jg555 DOT com>
+for the bison fix.
+
+CHANGELOG:
+0.01	first release.
+0.02	suggestions by Matthias Benkmann.
+0.03	suggestions by Marc Heerdink.
+0.04	building of glut added, more from Matthias Benkmann.
+0.05	updated ttmkfdir, cleaned configuration, better xfs initscript.
+0.06    fixed typo in the host.def file which breaks compilation :(
+        added note about newer XFree86 version.
+
+WHY YOU MIGHT WANT THIS HINT:
+	Unless you really, _really_ want XFree86-4.2.1 for some specific
+reason, do NOT use this hint. XFree86-4.3 is (almost) out and you should
+use that instead. This hint exists simply as a legacy hint as it explains
+a lot of detail in setting up an X server, which is still applicable.
+
+
+HINT:
+
+Software you need
+=================
+
+XFree86-4.2.0:
+ftp://ftp.xfree86.org/pub/XFree86/4.2.0/source/X420src-*.tgz
+	This is the 3-part source code for XFree86, uncompress all 3 tarballs
+from the same location.
+
+XFree86 patch from 4.2.0 to 4.2.1:
+ftp://ftp.xfree86.org/pub/XFree86/4.2.1/patches/4.2.0-4.2.1.diff.gz
+	This will update your source to the bugfixed patch release 4.2.1. This
+is highly reccomended.
+
+SHM Security Fix:
+ftp://ftp.xfree86.org/pub/XFree86/4.2.1/fixes/4.2.1-mit-shm-security.patch
+	This patch applies to the 4.2.1 tree and fixes a security issue with
+xdm, X's graphical login.
+
+Jim Gifford's bison syntax patch:
+http://www.jg555.com/cvs/cvsweb.cgi/patches/xfree/xfree-4.2.x.-bison.fixes.patch
+	This fixes some syntax issues in the source code which are only picked
+up by more recent versions of bison. It is a good idea to use this patch, even
+if you have an older version of bison.
+
+The ttmkfdir tool, soon to be obsoleted in XFree86-4.3
+http://people.redhat.com/yshao/ttmkfdir2.20021109.tar.bz2
+	This is needed for making a fonts.scale file for TTF fonts.
+
+MesaLib and MesaDemos (for glut)
+http://sourceforge.net/project/showfiles.php?group_id=3
+
+
+SECURITY
+========
+Make sure you check all the MD5SUMs against the ones you download. Most trojan
+attempts of late have failed to do this, and this is therefore our only weapon
+against such attacks (which is flawed anyway if there is no GPG signature)
+ad43a8e9e39703322005cd6f7145b77f  X420src-1.tgz
+dae33268a9f2735b9678a81fb23e8d3e  X420src-2.tgz
+560899e175a02ab592185b69756f539e  X420src-3.tgz
+38adc94a4953a6b29e8619c25dda4887  4.2.0-4.2.1.diff.gz
+18eb56110c7f66895111bd9f3513b54e  4.2.1-mit-shm-security.patch
+79e0401393c9728865aa73bb2bd68dd4  ttmkfdir2.20021109.tar.bz2
+ebfac20c7fe7943243bc54a4b755f50d  MesaDemos-5.0.tar.bz2
+df44d99ae97c5c0df631575757a96d86  MesaLib-5.0.tar.bz2
+
+Apply all the patches before proceeding
+
+
+ORDER
+=====
+
+This hint will start by showing how to quickly build XFree86, then how to
+configure the X server and check that it works. Next we set up the font
+server and add truetype font support and build glut. For those lucky ones
+out there, we set up graphics acceleration. The graphics acceleration
+appears in several sections; standard DRI, bleeding edge DRI, bad news about
+voodoo cards and finally setting up NVidia cards.
+
+
+Building XFree86
+================
+
+XFree does not use the standard GNU tools for building and installing. It uses
+a load of C header files to allow us the power to define the parts which we
+need to compile...  good for future re-compiles. The many options are clear
+from browsing the files in config/cf. But for most peoples needs, the following
+should suffice.
+
+You may wish to tailor the DefaultGcc2i386Opt define to reflect your hardware,
+if you have a different architecture altogether from i*86, use DefaultGcc2AxpOpt
+or DefaultGcc2PpcOpt to define the optimisation flags for an Alpha or PPC,
+respectively. Set HasMTRRSupport, HasMMXSupport, HasKatmaiSupport and
+Has3DNowSupport to YES if you have a CPU capable of those instructions.
+You can see if your CPU has MTRR, MMX, or Katmai support by looking at the
+'flags' section of /proc/cpuinfo.
+
+This will add support for all graphics cards, feel free to choose only the
+modules you require if you are sure about your choice. If your card is not
+supported under DRI (graphics acceleration), then you should say NO to
+BuildXF86DRI and BuildXF86DRM. Please note this is a C header file not a
+bash script, so the # are not comments but the /* comments */ are.
+
+cat > config/cf/host.def << "EOF"
+/* LFS HINT XFree86-4.2.1 0.02 */
+#define DefaultGcc2i386Opt     -s -O3 -fomit-frame-pointer
+#define GccWarningOptions      -w -pipe
+#define TermcapLibrary         -lncurses
+#define HasZlib                YES
+#define HasNCurses             YES
+#define HasMTRRSupport         NO	/* Also to be enabled in the kernel */
+#define HasMMXSupport          NO       /* Any i586 or above                */
+#define HasKatmaiSupport       NO       /* PIII SSE instuctions             */
+#define Has3DNowSupport        NO       /* AMD instructions                 */
+#define XInputDrivers          mouse void
+			       /* build all drivers available */
+#define XF86CardDrivers        mga glint nv tga s3 s3virge sis rendition \
+                               neomagic i740 tdfx savage cirrus vmware \
+                               tseng trident chips apm GlideDriver fbdev \
+                               i128 ati AgpGartDrivers DevelDrivers ark \
+                               cyrix siliconmotion vesa vga \
+                               XF86OSCardDrivers XF86ExtraCardDrivers
+#define BuildXF86DRI           YES
+#define BuildXF86DRM           YES
+#define DriDrivers             gamma tdfx mga i810 i830 r128 radeon sis
+#define BuildLinuxDocHtml      NO
+#define BuildLinuxDocPS        NO
+#define BuildAllSpecsDocs      NO
+#define BuildHtmlManPages      NO
+#define BuildSpecsDocs         NO
+/* future `update' compiles do not need these, in that case say NO */
+#define InstallXinitConfig     YES
+#define InstallXdmConfig       YES
+#define InstallFSConfig        YES
+EOF
+
+OK.. thats the hard bit out of the way! Now we compile it and have a cuppa!
+
+	make World >xcompile.stdout 2>xcompile.stderr
+
+(some people may prefer to watch the screen tick by, but as the console is
+a slow device, this will actually slow down the compile, but if you insist
+then type 'make World 2>&1 | tee World.LOG' instead )
+
+For some bizarre reason, if make fails on any file in make World, the
+compile continues, and problems only manifest themselves in the make install.
+This is quite annoying as it may lead to an old 'working' X being overwritten
+by a new 'broken' one. For that reason I suggest anyone with an X install
+present already, make a backup of /usr/X11R6 at this stage. You could also run
+
+	grep error xcompile.std*
+
+to see if there are any early signs of things going wrong.
+Once that is all done, type
+
+	make install 
+
+and then (optionally)
+
+	make install.man
+
+I recommend you look at the hint on man pages, since default man pages are
+uncompressed. Unfortunately it is not as simple as typing 'gzip -9 *' to
+compress the pages as there are symbolic links to consider also.
+
+At this stage, you are required to add the line '/usr/X11R6/lib' to
+/etc/ld.so.conf and run ldconfig. This updates the dynamic linker cache to
+respect the new X install. You should also add /usr/X11R6/bin to the global
+variable PATH in /etc/profile.
+
+Recent versions of XFree86 (such as this release) no longer require seperate
+compilation of Mesa or Freetype... which is good news! In fact, as those
+libraries are entangled into the standard XFree86 package, it is reccomended
+not to upgrade unless the XFree86 people do, as conflicts have and may still
+arise! (you have been warned)
+
+
+Configuring and Starting XFree86
+================================
+
+This is the important stage where you set the configuration file for XFree86,
+/etc/X11/XF86Config-4. It is quite tricky to get right the first time, and
+you are recommended to use the file from your host system. If you do not have
+the luxury of a previous config file, you may generate one called
+XF86Config.new by typing
+
+        XFree86 -configure
+
+and after browsing it, test it by typing
+
+        XFree86 -xf86config /root/XF86Config.new
+
+You won't get anything but a flimmering 640 x 480 screen with an
+annoying pattern and an X-shaped mouse cursor that you can move (if
+the mouse works). Press Ctrl-Alt-Backspace to exit, then move your
+config file to its final location
+
+        mv XF86Config.new /etc/X11/XF86Config-4
+
+Congratulations! You have just installed X. Now read the XFree86-HOWTO you get
+from linuxdoc.org. It will give you an overview of how X is started. Read the
+scripts /usr/X11R6/bin/startx and /usr/X11R6/lib/X11/xinit/xinitrc which
+determine what happens when you type 'startx'. You will quickly notice that
+you may create your own user-custom .xinitrc file.
+
+You may also want to type
+
+        man /usr/X11R6/man/man{1,5,7}/*
+
+which will let you read all manpages in a row (just press q to go to the
+next manpage). Once you're through you know more about X than 99% of the
+people out there ;-)
+
+You'll probably want to do some more configuring in XF86Config-4, you
+should read /usr/X11R6/lib/X11/XF86Config.eg which is a well-commented
+example.
+
+The mouse setup is very important as incorrect settings result in a crashing
+(or freezing!) of X.
+[I was once at a conference where the only person who gave their talk using
+linux had removed their laptop mouse just for that startup...
+X crashed instantly.]
+It is most iportant that the Protocol and Device are true for your machine.
+This setup is for an IMPS/2 mouse. The Device should be /dev/ttyS0 if you
+have a COM1 style mouse
+
+Section "InputDevice"
+    Identifier  "Mouse0"
+    Driver      "mouse"
+    Option "Protocol"    "IMPS/2"
+    Option "Device"      "/dev/psaux"
+# uncomment the next line and edit if you want more 'action' from your mouse...
+#   Option "Resolution" "300"
+# uncomment the next 2 lines to enable the wheel on most mice...
+#    Option "Buttons" "5"
+#    Option "ZAxisMapping" "4 5"
+EndSection
+
+Some other things you will surely want to set are
+
+Section "InputDevice"
+ Identifier  "Keyboard0"
+ Driver      "keyboard"
+ Option "XkbModel" "pc102"
+ Option "XkbLayout" "<your layout>"
+ Option "AutoRepeat"  "250 30"
+EndSection
+
+and
+
+Section "Monitor"
+ Identifier   "Monitor0"
+ VendorName   "Iiyama"
+ ModelName    "VisionMaster 450"
+ HorizSync    27-102
+ VertRefresh  50-160
+EndSection
+
+Of course you will need to enter the correct values for your monitor. You
+should check the labels on the back of the monitor if you do not know the
+exact model, then go to your manufacturer's website and get the Horz/Vert
+rates. If you set the right values you don't need to fiddle with modelines
+(what a relief!) because XFree86 will choose an appropriate VESA mode with 
+a high refresh rate. Just specify what mode you want like this:
+
+Section "Screen"
+ Identifier "Screen0"
+ Device     "Card0"
+ Monitor    "Monitor0"
+
+ DefaultDepth 16
+ SubSection "Display"
+  Depth     16
+  Modes   "1024x768"
+ EndSubSection
+EndSection
+
+This is all it takes to get a nice screen of 1024x768!
+
+After finishing off the X configuration and optional sections, your next
+task will be finding a Window Manager you like using. XFree86 comes with a
+standard (and not user friendly) Window Manager called 'twm'. I personally
+recommend 'blackbox' (http://blackboxwm.sourceforge.net), which is a very
+light-weight program and is efficient to use. A lot of people prefer a
+totally integrated Desktop environment, such as KDE or Gnome.
+It is your choice!
+
+
+X Font Server (optional, recommended)
+=============
+
+The best way to utilise fonts under XFree86 is with a font server, which
+handles all the font aliases and matching instead of the actual X server
+itself. This server should be started in the initscripts, and it is left
+to your own discression as to when to load the font server.
+
+cat > /etc/rc.d/init.d/xfs << "EOF"
+#!/bin/bash
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+case "$1" in
+        start)
+                echo "Starting X font server..."
+                rm -fr /tmp/.font-unix
+                loadproc /usr/X11R6/bin/xfs -port -1 -daemon
+                ;;
+
+        stop)
+                echo "Stopping X font server..."
+                killproc xfs
+                ;;
+
+        restart)
+                echo "Sending reload signal to X font server..."
+		kill -s SIGHUP `pidof xfs`
+		evaluate_retval
+                ;;
+
+        reload)
+                $0 stop
+                sleep 1
+                $0 start
+                ;;
+
+        status)
+                statusproc xfs
+                ;;
+
+        *)
+                echo "Usage: $0 {start|stop|restart|reload|status}"
+                exit 1
+                ;;
+esac
+EOF
+chmod 755 /etc/rc.d/init.d/xfs
+
+Now we setup the font server. The default config files /etc/X11/XftConfig
+and /etc/X11/fs/config keep all the font configuration. The defaults will work
+fine with this install, but I invite you to browse those files. It should
+be obvious how to add extra font directories.
+
+To make use of xfs, just add the FontPath line to your X config file something
+like...
+
+Section "Files"
+	...
+        FontPath     "unix/:-1"
+	...
+EndSection
+
+
+TrueType Fonts (optional)
+==============
+
+This is trivial to set up, all you require are some ttf fonts, and the tool
+ttmkfdir. Build and install the ttmkfdir (version 2) tool with:
+
+	make CXX=$CXX CXXFLAGS="$CXXFLAGS -pedantic \
+		-I/usr/X11R6/include/freetype2" FREETYPE_BASE=/usr/X11R6 \
+		FREETYPE_LIB="-L/usr/X11R6/lib -lfreetype"
+	install ttmkfdir /usr/X11R6/bin/
+
+(NOTE: on building, you may get an error related to exceptions, in which case
+retype the above with -fno-exceptions just after -pedantic). You may now
+prepare any ttf folder for XFree86 by typing entering it and typing
+
+	ttmkfdir -o fonts.scale
+	mkfontdir 
+
+In order to preserve cleanliness, you may wish to lower-case the names of all
+your ttf fonts. You may lower-case the names of all .ttf/.TTF files in the
+current directory by typing (use with care)
+
+	for A in *.TTF *.ttf
+	do
+	 echo "Renaming $A"
+	 echo -n "      to "
+	 NEWNAME=`echo $A |  tr [:upper:] [:lower:]`
+	 echo "$NEWNAME"
+	 /bin/mv -i "$A" "$NEWNAME" 2>/dev/null ;
+	done
+
+Now your fonts should be ready to use. Just make sure your X config has the
+freetype module loaded, something like
+
+Section "Module"
+        ...
+	Load  "freetype"
+	...
+EndSection
+
+
+Glut (optional, recommended)
+====
+
+Unfortunately not everything we need comes with X. Almost all programs that
+use OpenGL need the glut library as well, so we'll install it. We'll use the
+version of glut that comes with Mesa, because it has been adapted to work with
+X. Mesa is a huge download though, especially since we're only using the glut
+library from it. Once you unpack both the Mesa files, enter the root directory
+and build _only_ glut by typing
+
+	./configure --prefix=/usr/X11R6
+	cd src-glut
+	make
+	make install
+	ldconfig
+
+There are some other useful things included with Mesa, such as the demos. If
+you want to build them to measure performance, run the following commands to
+build them, this is an example of how to build the 'gears' program using glut,
+there are many to choose from, building in a similar fashion:
+
+	cd ../demos
+	make -f Makefile.X11 CFLAGS="$CFLAGS -L/usr/X11R6/lib" gears
+
+
+Accelerated Graphics [DRI] (optional)
+==========================
+
+The direct rendering infrastructure, also known as the DRI, is a framework for
+allowing direct access to graphics hardware in a safe and efficient manner. It
+includes changes to the X server, to several client libraries, and to the
+kernel. The first major use for the DRI is to create fast OpenGL implementations.
+
+Bleeding edge users may use the latest CVS version of DRI, details at the end,
+but most will be fine using the more stable XFree86. I have found CVS DRI to be
+quite buggy. (Although a debug build and gdb hanging around does a world of
+help for the developers!) You must have AGP compiled into your kernel, and
+there must be support for your AGP chipset as well as the graphics card itself.
+
+This is easy to get running (in theory), just ensure the lines
+
+Section "Module"
+	...
+        Load  "glx"
+        Load  "dri"
+	...
+EndSection
+
+are present in your /etc/X11/XF86Config-4. You may optionally set
+
+Section "DRI"
+     Mode 0666
+EndSection
+
+so that you can control the permissions of DRI to users. The default is root
+access only, but we obviously want to use it as users.
+
+One last very important thing about DRI. Stock linux kernels come only prepared
+for XFree86-4.1, so we must copy our new kernel module (the DRM) to allow
+dynamic loading. If you built DRM, all the modules will be in
+
+	ls programs/Xserver/hw/xfree86/os-support/linux/drm/kernel
+
+For example, for a radeon card the relevant file is "radeon.o", this you must
+copy to your kernel modules directory under kernel/drivers/char/drm/
+Substitute your requirements for CARD and KERNELVERSION in this command:
+
+	cp programs/Xserver/hw/xfree86/os-support/linux/drm/kernel/CARD.o \
+		/lib/modules/KERNELVERSION/kernel/drivers/char/drm/
+	depmod -a
+
+If you run 'startx', a quick 'glxinfo' on the command line will show if DRI
+is working or not, you can see the acceleration in action by typing 'glxgears'
+
+
+DRI-CVS (optional, unstable, and not recommended)
+=======
+
+This must be downloaded by anonymous CVS.
+
+	mkdir DRI-CVS
+	cd DRI-CVS
+	export CVSROOT=:pserver:anonymous@cvs.dri.sourceforge.net:/cvsroot/dri
+	cvs login
+(hit ENTER when prompted for a password)
+	cvs -z3 co xc
+
+I recommend you make a local tarball of this directory, making use of
+cvs to update it in the future with
+
+	cd DRI-CVS
+	export CVSROOT=:pserver:anonymous@cvs.dri.sourceforge.net:/cvsroot/dri
+	cvs -z3 update -dA xc
+
+The DRI sources are a cut-down version of the latest XFree86, and we build it
+in a parallel linked directory, which we make by typing (from the DRI-CVS
+directory)
+
+	ln -s xc XFree
+	mkdir build
+	cd build
+	lndir -silent -ignorelinks ../XFree
+	cd xc
+
+Observing the original notes about config/cf/host.def, we also build DRI
+with less harsh optimisations and enable debugging symbols.
+
+cat > config/cf/host.def << "EOF"
+#define DefaultGcc2i386Opt           -g -O2
+#define GccWarningOptions            -w -pipe
+#define BuildServersOnly             YES
+#define HasZlib                      YES
+#define HasMTRRSupport               NO
+#define HasMMXSupport                NO         /* Any i586 or above    */
+#define HasKatmaiSupport             NO         /* PIII SSE instuctions */
+#define Has3DNowSupport              NO         /* AMD instructions     */
+#define XInputDrivers                mouse void
+			       /* build all drivers available */
+#define XF86CardDrivers        mga glint nv tga s3 s3virge sis rendition\
+                               neomagic i740 tdfx savage cirrus vmware\
+                               tseng trident chips apm GlideDriver fbdev\
+                               i128 ati AgpGartDrivers DevelDrivers ark\
+                               cyrix siliconmotion vesa vga\
+                               XF86OSCardDrivers XF86ExtraCardDrivers
+#define BuildXF86DRI                 YES
+#define BuildXF86DRM                 YES
+#define DriDrivers             gamma tdfx mga i810 i830 r128 radeon sis
+/* the following are to enable the dri tree to have its dependencies built */
+#define BuildLibrariesForXServers    NO
+#define BuildLibrariesForConfigTools NO
+#define BuildXIE                     NO
+#define BuildPexExt                  NO
+#define XprtServer                   NO
+EOF
+
+	make World >dricompile.stdout 2>dricompile.stderr
+	make install
+
+copy over the kernel module and thats it!
+You may check which files have been updated by typing
+
+	find /usr/X11R6 -cnewer config/cf/host.def
+
+
+Voodoo Cards
+============
+
+If you have a voodoo card, then tough luck as I am afraid support has been
+dropped. I found this out the hard way!
+
+
+NVIDIA ACCELERATED GRAPHICS (recommended... only for NVidia cards)
+===========================
+
+NVidia has never released open sourced code for their 'unified' driver. If you
+have such a graphics card, i pitty you for having to put in proprietory code
+after you have spent so long building your own LFS. Go to http://www.nvidia.com
+and foillow the driver links to get the latest linux driver. You should get
+both the NVIDIA_kernel and NVIDIA_GLX tarballs.
+
+Unpack the NVIDIA-kernel file and enter the created directory.
+
+	make
+
+This will produce a module called NVdriver. Copy it to the appropriate kernel 
+modules directory, replace KERNELVERSION with your appropriate value
+
+	cp NVdriver /lib/modules/KERNELVERSION/drivers/char/agp/
+
+Add the device in /etc/modules.conf and refresh the modules dependencies.
+
+	echo alias char-major-195 NVdriver >> /etc/modules.conf
+	depmod -a
+
+Unpack the NVIDIA-GLX tarball and enter the created directory.
+
+	make
+
+This will install the Nvidia drivers in the correct locations.
+
+You will now edit the /etc/X11/XF86Config-4 file to use the new drivers. Ensure
+the following are present:
+
+	Section "Module"
+		...
+		Load  	"dri"		# Remove/comment this line
+		Load	"glx"		# Add this line if not present
+		....
+	EndSection
+
+	Section	"Device"
+		Driver	"nv"		# Remove/comment this line
+		Driver	"nvidia"	# Add this line
+		....
+	EndSection
+
+If you 'startx' and X locks at startup you'll need to edit os-registry.c and 
+check the comments near lines that start something like '#if 0'.
+
+If 3D acceleration is just not working, you probably have some Mesa libs lying
+around in /usr/lib. Remove the following files /usr/lib/libMesa*
+/usr/X11R6/lib/libMesa* and reinstall the GLX module. If you have 3D apps that
+require Mesa, you can simply create symlinks to GLX lib (libGL.so.1). You
+also need to remove /usr/X11R6/lib/libGL.so.1.2 and symlink it to
+/usr/lib/libGL.so
+

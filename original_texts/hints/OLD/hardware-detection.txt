@@ -1,0 +1,313 @@
+AUTHOR: Alexander E. Patrakov <semzx at newmail dot ru>
+DATE: 2003-12-03
+LICENSE: GNU GPL
+SYNOPSIS: Automatic Detection of PCI and USB Hardware in LFS
+DESCRIPTION:
+Sometimes you don't know exactly what type of hardware you have and don't
+want to guess the correct module. Now you don't have to guess. Software
+needed to automatically detect your hardware at boot time is described in
+this hint.
+
+PREREQUISITES: This hint works for LFS >=4.0, with or without devfs, with
+2.4 or 2.6 kernel.
+
+HINT:
+Currently, LFS users must either compile all relevant device drivers into
+the kernel statically or write some magic lines in /etc/modules.conf.
+Either way, they need to know exactly what hardware thay have. This
+information is not always available for notebooks and "rebranded" devices.
+Fortunately, most of your hardware can be autodetected at boot time. One
+drawback of my solution is that it doesn't work at all with ISA cards.
+Another drawback is a two-second delay during the boot process. The third
+drawback is that modules for not-so-often used hardware are loaded at boot
+time, not on first use as it is the case for the variant with modules.conf.
+
+BIG WARNING:
+
+It has been reported that following this hint results in tons of
+(possibly bogus) messages about overcurrent from USB modules on some
+computers. I will not be responsible for any damaged hardware.
+
+If you see or don't see these messages, please mail the author the output of
+lspci and lsusb commands so that he can formulate the exact conditions
+leading to these messages in the future versions of this hint.
+
+HAVE YOU READ THE BIG WARNING ABOVE?
+
+To make your computer detect hardware automatically, install the following
+software:
+
+1) pciutils
+
+Instructions are in the BLFS book. You will need the patch named
+pciutils-2.1.11-pcimodules-1.patch from the patches project since we will
+use the pcimodules command.
+
+This command should output the list of modules needed to support your PCI
+cards, based on the contents of /lib/modules/`uname -r`/modules.pcimap file.
+
+Test your installation of pciutils:
+
+a) run the lspci command and see if the output is correct. At home I get the
+following:
+
+00:00.0 Host bridge: VIA Technologies, Inc. VT82C693A/694x [Apollo PRO133x]
+(rev c4)
+00:01.0 PCI bridge: VIA Technologies, Inc. VT82C598/694x [Apollo
+MVP3/Pro133x AGP]
+00:07.0 ISA bridge: VIA Technologies, Inc. VT82C686 [Apollo Super South]
+(rev 40)
+00:07.1 IDE interface: VIA Technologies, Inc. VT82C586/B/686A/B PIPC Bus
+Master IDE (rev 06) 00:07.2 USB Controller: VIA
+Technologies, Inc. USB (rev 1a)
+00:07.4 SMBus: VIA Technologies, Inc. VT82C686 [Apollo Super ACPI] (rev 40)
+00:0b.0 Communication controller: Lucent Microelectronics LT WinModem (rev
+02)
+00:0d.0 Multimedia audio controller: Fortemedia, Inc Xwave QS3000A
+[FM801] (rev b2)
+00:0d.1 Input device controller: Fortemedia, Inc Xwave QS3000A [FM801 game
+port] (rev b2)
+01:00.0 VGA compatible controller: nVidia Corporation NV11 [GeForce2 MX]
+(rev b2)
+
+b) run the pcimodules command and see if the results make any sense for the
+running kernel.
+
+I have the following output:
+
+rivafb
+snd-fm801
+usb-uhci
+uhci
+parport_pc
+
+If you want the pci.ids file to be in /usr/share/misc rather than in
+/usr/share, use the patch named pciutils-2.1.11-sharedir-1.patch
+
+2) [optional] usbutils
+
+This package contains lsusb and usbmodules commands. They are the USB
+equivalents of the lspci and pcimodules commands from pciutils. The package
+is, strictly speaking, not needed because the hotplug script will parse
+/proc/bus/usb/*/* files and detect USB devices even without usbutils. That
+works for me. But the authors of the hotplug package write that the process
+will be more reliable with usbutils.
+
+Download location:
+http://wwwbode.cs.tum.edu/Par/arch/usb/download/usbutils/usbutils-0.11.tar.gz
+
+Installation instructions:
+
+./configure --prefix=/usr
+make
+make install
+rm /usr/lib/libusb.*
+rm /usr/include/libusb.h
+
+Explanation of the last two commands: the libusb libraries installed by the
+usbutils package are not used. The relevant code is linked statically into
+lsusb and usbmodules programs. A newer, incompatible version of libusb is
+available separately and it provides files /usr/lib/libusb-0.1.* and
+/usr/include/usb.h. Other applications such as SANE use that newer version.
+
+If you want the usb.ids file to be in /usr/share/misc rather than in
+/usr/share, add the --datadir=/usr/share/misc switch to the ./configure
+command.
+
+Now test the package:
+
+- insert modules that correspond to your USB controller. If in doubt, consult
+the output of the pcimodules command. E.g.:
+
+modprobe uhci
+
+- mount the usb filesystem:
+
+mount -t usbfs usbfs /proc/bus/usb
+
+- run the lsusb command. On my system, the output is:
+
+Unknown line at line 1809
+Duplicate HUT Usage Spec at line 2650
+Bus 001 Device 001: ID 0000:0000 Virtual Hub
+Bus 001 Device 002: ID 05d8:4002 Ultima Electronics Corp. Lifetec LT9385
+Scanner
+
+(really this is Mustek 1200 UB plus)
+
+- run the usbmodules command for one of the devices, e.g.:
+
+usbmodules --device /proc/bus/usb/001/002
+
+The output on my computer is:
+
+scanner
+
+Note that the usb.ids file shipped with the usbutils package is old and
+incomplete. This is not a problem because the usbmodules command uses
+another file, /lib/modules/`uname -r`/modules.usbmap to map devices to
+module names.
+
+3) hotplug
+
+Download:
+http://www.kernel.org/pub/linux/utils/kernel/hotplug/hotplug-2003_08_05.tar.b
+z2
+
+The scripts in this package react to the hotplug events sent by kernel, and
+also to the synthetic "coldplug" events at boot time. They use programs from
+pciutils and usbutils to load the correct modules and execute specific
+actions.
+
+The scripts contained in the hotplug package have to be modified a bit to
+conform to LFS standards. Do the following with etc/rc.d/init.d/hotplug:
+
+a) [required] After the line "start|restart|status)" add:
+[ -d /var/run/usb ] || mkdir -m 700 /var/run/usb
+
+b) [required] Remove all lines that refer to /var/lock/subsys/hotplug - the
+/var/lock/subsys directory is not used in LFS.
+
+c) [cosmetic] Change all lines of the form "$RC $1" or "$RC start" to:
+
+            HW=`basename $RC .rc | tr [:lower:] [:upper:]`
+            echo "Detecting $HW hardware..."
+            $RC $1
+        (or $1 start)
+            report_status success
+
+Do similar changes to lines of the form "$RS stop":
+
+            HW=`basename $RC .rc | tr [:lower:] [:upper:]`
+            echo "Stopping $HW hardware support..."
+            $RC stop
+            report_status success
+
+Now copy all scripts contained in the hotplug package to their final places
+and chown them to root:root. Make the following symlinks:
+
+ln -s ../init.d/hotplug /etc/rc.d/rc3.d/S15hotplug
+ln -s ../init.d/hotplug /etc/rc.d/rc4.d/S15hotplug
+ln -s ../init.d/hotplug /etc/rc.d/rc5.d/S15hotplug
+
+4) Linux kernel
+
+Compile one kernel supporting all hardware on all target computers, with
+lots of modules. Also compile ALSA, DRI and whatever packages that contain
+modules. Don't forget the following:
+
+a) Compile in "Support for hot-pluggable devices"
+
+b) Compile in support for "Preliminary USB filesystem". My kernel has this
+compiled in statically. It has been reported that compilation of it as a
+module does not work as expected. I am too lazy to verify this.
+
+c) Never compile your root device and filesystem as modules.
+
+d) Don't forget that sometimes there are two drivers for the same device.
+Compile only one of them, ok blacklist all modules except one (see below).
+
+5) Configuration
+
+a) /etc/modules.conf
+
+Comment out all lines of the form "alias eth0 8139too" that specify the
+driver explicitly. The modules will be loaded from the hotplug script. Note
+that the order of your ethernet adapters may change if you have two of
+different types.
+
+b) /etc/fstab
+
+Add the following line:
+
+usbfs /proc/bus/usb usbfs defaults 0 0
+
+FIXME: maybe this doesn't work on old computers without USB.
+
+c) /etc/hotplug/blacklist
+
+Add names of modules that you don't want to load automatically. Good
+candidates are:
+- duplicate drivers (e.g. e100 vs eepro100)
+- unstable drivers (e.g. scanner in linux-2.4.21, my scanner worked well only
+  with libusb; the problem went away in 2.4.22)
+- framebuffers (e.g. rivafb) if you primarily use X
+- often-misdetected modules (e.g. i810_rng gives false positives)
+
+d) Specific actions for specific hardware (aka quirks)
+
+(you are lucky if you don't need them)
+
+If you have anything specific to do with your USB hardware, create a script
+in /etc/hotplug/usb. E.g., before one-endpoint scanners were well supported
+by the scanner kernel module, I had to change permissions on the pseudofile
+in /proc/bus/usb corresponding to my Mustek 1200 UB Plus scanner, so that I
+could work with it as a user, not as root. This script accepts the name of
+the pseudofile in the DEVICE environment variable. The complete
+documentation concerning other variables is at the top of
+/etc/hotplug/usb.agent. So I wrote this:
+
+cat >/etc/hotplug/usb/mustek1200ubplus <<"EOF"
+#!/bin/sh
+chmod 666 $DEVICE
+EOF
+chmof 755 /etc/hotplug/usb/mustek1200ubplus
+
+Then add a line to /etc/hotplug/usb.usermap, as described in the comment at
+the top of file. I added the following (sorry for wrapping):
+
+mustek1200ubplus     0x0003      0x05d8   0x4002    0x0000       0x0000
+0x00         0x00            0x00            0x00            0x00
+0x00               0x00000000
+
+The idVendor and idProduct fields (0x05d8 and 0x4002) can be taken from the
+output of lsusb. The first field is a logical OR of the following flags:
+
+USB_MATCH_VENDOR=0x0001
+USB_MATCH_PRODUCT=0x0002
+USB_MATCH_DEV_LO=0x0004
+USB_MATCH_DEV_HI=0x0008
+USB_MATCH_DEV_CLASS=0x0010
+USB_MATCH_DEV_SUBCLASS=0x0020
+USB_MATCH_DEV_PROTOCOL=0x0040
+USB_MATCH_INT_CLASS=0x0080
+USB_MATCH_INT_SUBCLASS=0x0100
+USB_MATCH_INT_PROTOCOL=0x0200
+
+So my line basically says "Check for vendor and product IDs and ignore
+everything else. If they are equal to 0x05d8 and 0x4002, the execute
+the mustek1200ubplus script".
+
+Of course, now there is no this line because linux-2.4.22 supports this
+scanner well without libusb.
+
+Apparently there is some support for such specific actions (e.g. firmware
+loading) for PCI hardware. See the top of /etc/hotplug/pci.agent. I can't
+say more because I don't need such actions.
+
+6) Testing
+
+Reboot and see if all needed modules are loaded by the hotplug script.
+
+7) Problems
+
+In my case, LT WinModem remains undetected. I resorted to
+having a line for that modem in /etc/modules.conf:
+
+alias /dev/tts/LT0 lt_serial
+
+A different approach is to create a script named /etc/hotplug/hidden.rc that
+executes modprobe commands for each undetectable module. Or you can edit
+/lib/modules/`uname -r`/modules.pcimap.
+
+Manual editing of /lib/modules/`uname -r`/modules.pcimap is also one of the
+ways to deal with misdetections when the wrong module gets loaded (the other
+way is blacklisting the wrong module).
+
+8) Todo
+
+- Add autoconfiguration of the X server
+- Add something for ISA PNP cards
+
+CHANGELOG:
+2003-12-04: Initial submission

@@ -1,0 +1,1078 @@
+TITLE:		Setting up XFree86 4.0+ DRI.
+LFS VERSION:	Any
+AUTHOR:		Marc Heerdink <marc@koelkast.net>
+
+SYNOPSIS:
+	This hint explains how 3D rendering in X can be enabled.
+
+HINT:
+version 3.0 01/23/2002
+
+
+=================
+TABLE OF CONTENTS
+=================
+
+1 Introduction
+2 Required Files
+3 3Dfx Cards
+  3.1 3Dfx Specific Files
+  3.2 Link-Only X Installation
+  3.3 Installing Glide 3
+  3.4 3Dfx Troubleshooting
+4 Matrox Cards
+  4.1 Matrox Specific Files
+  4.2 Preparing X
+5 The Final X Installation
+  5.1 Zlib Installation
+  5.2 X Installation
+6 The Glut Library
+7 Configuration
+  7.1 Kernel Configuration
+      7.1.1 DRI
+      7.1.2 AGP
+      7.1.3 MTRR
+      7.1.4 Check If It Works
+  7.2 XFree Configuration
+8 Testing
+9 Generic Troubleshooting
+10 What next?
+   10.1 Image Libraries
+        10.1.1 Needed Files
+	10.1.2 Libpng
+	10.1.3 Jpeg
+	10.1.4 Libungif
+	10.1.5 Tiff
+        10.1.6 Lcms
+        10.1.7 Libmng
+   10.2 Freetype
+        10.2.1 Needed files
+	10.2.2 Freetype 1
+	10.2.3 Freetype 2
+        10.2.4 Ttmkfdir
+   10.3 Choosing A Window Manager
+   10.4 Get Some Applications
+   10.5 Where To Go Next?
+11 Outroduction
+
+
+===============
+1. INTRODUCTION
+===============
+
+  Since XFree86 4.0, DRI is included with the normal XFree86 releases. It
+provides a way to access the 3D graphics cards found in many modern Personal
+Computers, such as the Matrox G-series, ATI Radeon/Rage cards and the 3Dfx
+Voodoo-series cards. Installing DRI can be quite a pain (especially obtaining
+and building the required helper liraries), so I decided to write a hint on
+it. This document is, AFAIK, the only in-depth manual on how to set up DRI
+rendering with XFree86 4.0 and up.
+  Unfortunately, Direct Rendering isn't available for all 3D video cards out
+there. Generally, any recent 3Dfx, Matrox, ATI or Intel on-board video card
+is more or less supported. An up-to-date list can always be found on
+http://www.xfree86.org/. Every card has a slightly different installation
+procedure, but the 3Dfx procedure is by far the most complicated.
+  This hint contains detailed instructions on how to set up DRI for 3Dfx cards
+using CVS software. I can't guarantee that everything will work smoothely if
+you follow these instructions, because I don't own a 3Dfx card anymore. If you
+have additions, comments, success reports or any other information that you
+feel would make a good addition to this hint, please mail me at
+<marc@koelkast.net>.
+  The only card this hint is currently tested on, is a Matrox G400 Singe Head
+with 32 MB onboard memory. It should work on other cards that do not require
+special steps (such as ATI cards), but if you had any complications with these
+cards, please mail me the steps to overcome the trouble so I can include them
+in this hint.
+
+
+=================
+2. REQUIRED FILES
+=================
+
+Sources for X:
+
+  ftp://ftp.xfree86.org/pub/XFree86/4.2.0/source/X420src-1.tgz
+  ftp://ftp.xfree86.org/pub/XFree86/4.2.0/source/X420src-2.tgz
+  ftp://ftp.xfree86.org/pub/XFree86/4.2.0/source/X420src-3.tgz
+
+Sources for Zlib:
+
+  ftp://ftp.info-zip.org/pub/infozip/zlib/zlib-1.1.3.tar.gz
+
+DRI host.def:
+
+  http://www.linuxfromscratch.org/~gimli/host.def
+
+Sources for Mesa3D:
+
+  http://prdownloads.sourceforge.net/mesa3d/MesaDemos-4.0.1.tar.bz2
+  http://prdownloads.sourceforge.net/mesa3d/MesaLib-4.0.1.tar.bz2
+
+
+=============
+3. 3DFX CARDS
+=============
+
+  It took me a week to figure out how to enable DRI on 3Dfx cards, because it
+isn't the most easy procedure one can think of. We'll build X twice for the
+3Dfx cards, so it's a good idea to use a fast machine to do the compiling.
+
+
+=======================
+3.1 3DFX SPECIFIC FILES
+=======================
+
+  You can either get my glide3x source tarball, or the latest sources from
+CVS. To get them from CVS, you'll have to install the cvs program available
+from http://www.cvshome.org/. Installing it is beyond the scope of this
+document. The tarball containing today's (01-23-2002) CVS sources (2.8 MB) is
+available from:
+
+ http://www.linuxfromscratch.org/~gimli/glide3x-cvs-20020123.tar.bz2
+
+  If you want the CVS sources and if you have CVS installed, run the following
+commands to get the required files and to set up the directory for building
+Glide:
+
+ cvs -d:pserver:anonymous@cvs.glide.sourceforge.net:/cvsroot/glide login &&
+ cvs -d:pserver:anonymous@cvs.glide.sourceforge.net:/cvsroot/glide -z3 co glide3x &&
+ cvs -d:pserver:anonymous@cvs.glide.sourceforge.net:/cvsroot/glide -z3 co swlibs &&
+ cvs -d:pserver:anonymous@cvs.glide.sourceforge.net:/cvsroot/glide logout &&
+ mv swlibs/ glide3x/
+
+
+============================
+3.2 LINK-ONLY X INSTALLATION
+============================
+
+  We'll have to build a minimal X installation to link Glide against. Glide is
+needed for a properly working DRI driver for 3Dfx cards. Since it should be a
+very minimal installation, you just need the sources in the first tarball for X.
+Extract the sources with this command (while you're in the /usr/src directory):
+
+ tar xzvf /path/to/X420src-1.tgz
+
+  To build X, we'll need a special host.def. I suggest you copy paste this file
+because it's pretty long. Put this in /usr/src/xc/config/cf/host.def (NOTE: The
+"#"s at the beginning of lines are _not_ comments):
+
+(TODO: Does this still work with 4.2.0?)
+
+-------------------------------------------------
+#define DefaultCCOptions		-w
+#define TermcapLibrary			-lncurses
+
+#define XF86CardDrivers			vga
+#define XInputDrivers			void
+
+#define BuildServersOnly		YES
+#define XVirtualFrameBufferServer	NO
+
+#define BuildFontServer			NO
+#define BuildFonts			NO
+
+#define BuildMITMiscExt			NO
+#define BuildTestExt			NO
+#define BuildSyncExt			NO
+#define BuildXF86MiscExt		NO
+#define BuildXF86RushExt		NO
+#define BuildBigReqsExt			NO
+#define BuildEVI			NO
+#define BuildDBE			NO
+#define BuildDBElib			NO
+#define BuildDPMS			NO
+#define BuildFontCache			NO
+#define BuildXIE			NO
+#define BuildXIElib			NO
+#define BuildXKB			NO
+#define BuildRECORD			NO
+#define BuildRECORDlib			NO
+#define BuildXCSecurity			NO
+#define BuildAppgroup			NO
+#define BuildCup			NO
+#define BuildDPSLibraries		NO
+#define BuildRenderLibrary		NO
+#define BuildXF86DRI			NO
+#define BuildPexExt			NO
+#define BuildGlxExt			NO
+#define BuildXinerama			NO
+#define BuildRender			NO
+#define BuildScreenSaverLibrary		NO
+#define BuildXvLibrary			NO
+#define BuildGLXLibrary			NO
+#define BuildXF86VidModeExt		NO
+#define BuildXF86MiscLibrary		NO
+#define BuildXF86BigfontExt		NO
+#define BuildFreeType			NO
+#define BuildXTrueType			NO
+#define BuildCID			NO
+#define BuildType1			NO
+#define BuildSpeedo			NO
+
+#define LinuxFBDevSupport		NO
+#define UseX86Emu			NO
+
+#define XF1Bpp				NO
+#define XF4Bpp				NO
+#define XF8_32Bpp			NO
+#define XF8_16Bpp			NO
+#define XF24_32Bpp			NO
+#define XFShadowFB			NO
+#define XF86VgaHw			NO
+#define XF86FBDevHw			NO
+#define XF86XAA				NO
+#define XF86Ramdac			NO
+#define XF86I2C				NO
+#define XF86DCC				NO
+#define XF86RAC				NO
+#define XF86Int10			NO
+#define XF86AFB				NO
+-------------------------------------------------
+
+  Now that we have the host.def, it's time to build X. Enter the following
+commands to build X:
+
+ cd /usr/src/xc &&
+ make World
+
+  The build will take about 10 minutes on a fast system. Note that the build
+isn't functional since some essential stuff was removed from it. It serves
+our purposes though. Enter the following commands to prepare the environment
+for compiling Glide:
+
+ cd /usr &&
+ ln -s src/xc/exports X11R6 &&
+ cd include &&
+ ln -s ../X11R6/include/X11 &&
+ echo "/usr/X11R6/lib" >>/etc/ld.so.conf &&
+ ldconfig
+
+NOTE: Don't remove /usr/src/xc yet! We'll do that later.
+
+
+======================
+3.3 INSTALLING GLIDE 3
+======================
+
+  There is a bug in Glide 3 which forces you to use automake < 1.5. If you're
+using a newer version, like 1.5 which is currently used in the book, you
+should install automake 1.4-p5 next to it. First, get the older automake from
+ftp://ftp.gnu.org/gnu/automake/automake-1.4-p5.tar.gz Extract the tarball,
+and run these commands to install automake in a temporary location:
+
+ ./configure --prefix=$HOME/automake-temp &&
+ make INSTALL="install -c -D" install &&
+ cp /usr/share/aclocal/libtool.m4 ~/automake-temp/share/aclocal
+
+  Copy the glide3x directory that was created during the CVS checkout over to
+/usr/src, and put the swlibs directory (from the checkout) in the glide3x
+directory. Enter the /usr/src/glide3x directory and enter the following
+commands to generate a configure script:
+
+ ~/automake-temp/bin/aclocal &&
+ ~/automake-temp/bin/automake &&
+ autoconf
+
+  Now we can configure glide. Replace <card type> with "h3" for a Voodoo Banshee
+or Voodoo 3, or with "h5" for the Voodoo 4/5 series. Run these commands:
+
+ ./configure --prefix=/usr --enable-fx-glide-hw=<card type> \
+             --enable-fx-build-dri --enable-shared --enable-static &&
+ ./ltconfig ltmain.sh
+
+  The final step is to compile glide. Replace <arch> with your machine type.
+To find out what machine you are using, run "uname -m". Run these commands
+to compile and install glide:
+
+ make GLIDE_DEBUG_GCFLAGS="-O3 -march=<arch>" -f makefile.autoconf all &&
+ make GLIDE_DEBUG_GCFLAGS="-O3 -march=<arch>" -f makefile.autoconf install
+
+  Now we have glide compiled and installed, we can trash the symlinks created
+in chapter 3.2 and the temporary automake installation:
+
+ rm -f /usr/X11R6 &&
+ rm -f /usr/include/X11 &&
+ rm -rf ~/automake-temp
+
+  Make sure you remove the /usr/src/xc and /usr/src/glide3x directories as
+well, we won't need them any more.
+
+
+========================
+3.4 3DFX TROUBLESHOOTING
+========================
+
+* Q1: I get this message when I build Glide:
+------------------------------------------------------------------
+linhwc.c:64: X11/Xlib.h: No such file or directory
+linhwc.c:65: X11/extensions/xf86dga.h: No such file or directory
+linhwc.c:66: X11/extensions/xf86vmode.h: No such file or directory
+------------------------------------------------------------------
+* A1: Either you forgot to create the symlink from /usr/include/X11 to
+/usr/X11R6/include/X11 in chapter 3.2, or you removed the /usr/src/xc directory
+before you started building glide. In the first case, scroll back to chapter
+3.2 and create the link, in the second case you'll have to build the link-only
+X installation again :(.
+
+* Q2: Building Glide fails with the --enable-amd3d flag!
+* A2: Yes it does. Remove it to build Glide without problems. This problem is
+due to a missing .S file, because 3Dnow! support for Glide hasn't been ported
+to Linux (yet?).
+
+
+===============
+4. MATROX CARDS
+===============
+
+  A friend of mine had a G400 long before I had one. I had some experience
+installing DRI for that card before I got mine, so it took me only 60 minutes
+(the X build) to set it up.
+  The Matrox DRI drivers are listed on dri.sourceforge.net as
+development/unstable. Don't let this mislead you, because I found them pretty
+fast (80 fps in Q3A) and pretty stable as well (crashed only afted 8 hours of
+spinning the XMMS OpenGL Plugin). We'll use the Matrox HAL library in our X
+build. This library is not opensource, but it's a library that enables some
+features that are not supported by default with the stock X drivers, such as
+multi head and flat panel output. This library is not required for 3D
+rendering.
+
+
+=========================
+4.1 MATROX SPECIFIC FILES
+=========================
+
+Matrox HAL Library:
+
+  ftp://ftp.matrox.com/pub/mga/archive/linux/2001/beta_133_143/mga-133_143-source.tgz
+
+
+===============
+4.2 PREPARING X
+===============
+
+  Start by extracting all three source tarballs for X into /usr/src. We'll have
+to modify the source tree somewhat to enable the HAL library. Extract
+mga-133_143-source.tgz to /usr/src as well. Now run the following commands to
+install the HAL library (from the /usr/src directory):
+
+ cp mgasource/mga-1.4.3/mga/HALlib/* \
+    xc/programs/Xserver/hw/xfree86/drivers/mga/HALlib
+
+
+===========================
+5. THE FINAL X INSTALLATION
+===========================
+
+  We've come to the point that we're ready to install X. If you didn't already
+do so, extract the X420src-1.tgz, X420src-2.tgz and X420src-3.tgz files into
+/usr/src. You should have a /usr/src/xc directory, with the HAL Library
+installed into it if you're using a Matrox card (see chapter 4).
+
+
+=====================
+5.1 ZLIB INSTALLATION
+=====================
+
+  Extract zlib-1.1.3 in /usr/src. Enter the newly created zlib-1.1.3 directory
+and run the following commands to install zlib:
+
+ sed s/\\$\(OBJS\)$/\\$\(OBJS\)\ \\$\(OBJA\)/ Makefile.in >tmp~
+ mv tmp~ Makefile.in
+ cp contrib/asm<arch>match.S .
+ CFLAGS="-O3 -march=<machine type> -DASMV" ./configure --prefix=/usr &&
+ make OBJA=match.o &&
+ make install &&
+ CFLAGS="-O3 -march=<machine type> -DASMV" ./configure --prefix=/usr --shared &&
+ make OBJA=match.o &&
+ make install
+
+  Notes: Replace <arch> with your architecture, such as 586 for an Intel
+Pentium 1 or 686 for a Pentium II/III or Athlon. Replace <machine type> with
+your machine type. You can find out both these values by running "uname -m";
+<machine type> is the full output, <arch> is the output minus the first "i".
+
+
+==================
+5.2 X INSTALLATION
+==================
+
+  Copy the host.def you downloaded in chapter 2.1 to the X configuration
+directory (/usr/src/xc/config/cf/) and open it in a text editor. Read through
+the file and adjust the settings as necessary. If you want more control (the
+defines included in this host.def should normally suffice), use xf86site.def
+as a starting point. When you've finished editing host.def, you can start
+the build process for XFree86. Enter the /usr/src/xc directory, and run the
+following command to build X:
+
+ make World |tee -i World.LOG
+
+  By using tee, we can both save the output of the make command to a file
+(World.LOG) and print the output to the screen at the same time. This allows
+you to follow the build process, but if any errors occured you'll have them
+handy in a file.
+  Building will take about 60 minutes on a fast machine, or 60 hours on a slow
+machine. I suggest you visit slashdot, get yourself a cup of tea or do
+something else interesting instead of following the build process closely. It's
+very annoying watching those lines scroll by and we're creating a log file
+anyway.
+  When the build is finished, open World.LOG in a text pager and search for
+"***". If they're found, you had an error while building X and you'll probably
+want to solve that. If it's not found, add /usr/X11R6/lib to /etc/ld.so.conf
+(if not already present) and run these commands to install X:
+
+ make install &&
+ make install.man &&
+ cd /usr &&
+ ln -s X11R6 X11 &&
+ cd /usr/include &&
+ ln -s ../X11R6/include/X11 &&
+ cd /var &&
+ ln -s ../usr/X11R6/lib/X11 &&
+ ldconfig
+
+  Lucky you! You just built yourself a DRI X installation! Remove the sources
+for X if you like, because we won't need them any more.
+
+
+===================
+6. THE GLUT LIBRARY
+===================
+
+  Unfortunately not everything we need comes with X. About all programs that
+use OpenGL need the library as well, so we'll install it here. We'll use the
+version of glut that comes with Mesa, because it has been adapted to work with
+X. Mesa is a huge download though, especially since we're only using the glut
+library from it. Install the glut library from Mesa using these commands (as
+usual, replace <arch> with your architecture):
+
+ CFLAGS="-O3 -march=<arch>" CXXFLAGS=$CFLAGS \
+ ./configure --prefix=/usr/X11R6 --enable-shared --enable-static &&
+ cd src-glut &&
+ make &&
+ make install &&
+ cd ../include/GL &&
+ install -m 444 -o root glut.h /usr/X11R6/include/GL
+
+  There are some other useful things included with Mesa, such as the demos.
+If you want to build them to measure performance, run the following commands
+to build them:
+
+ cd demos &&
+ for FILE in *.c; do
+   echo $FILE
+   DEMO="`echo $FILE |sed s/\.c$//`"
+   gcc -w -I/usr/X11R6/include -I../util -L/usr/X11R6/lib -lGL -lGLU \
+       -lOSMesa -lglut -o ${DEMO} ${FILE}
+ done
+
+  You'll see that building one of the demos fails, the others work though. Now
+you've got a bunch of accellerated demos.
+
+
+================
+7. CONFIGURATION
+================
+
+  Cool. DRI and the helper libraries are installed. Now what do we have to do to
+make everything working? This chapter explains how you should configure
+essential software for DRI.
+
+
+========================
+7.1 KERNEL CONFIGURATION
+========================
+
+  The kernel provides some options that affect the behaviour of DRI. I'll
+explain the purpose of each of them here. These explanations are based on the
+2.4 kernel series, that should be used for DRI.
+
+
+=========
+7.1.1 DRI
+=========
+
+  The first and most important is kernel support for DRI and the 3Dfx cards.
+The options for this can be found in the section "Character Devices" of the
+kernel configuration (make menuconfig). At the bottom, there's an option:
+
+[ ] Direct Rendering Manager (XFree86 4.1.0 and higher DRI support)
+
+(Taken from the kernel 2.4.17 menuconfig)
+
+  This option has to be enabled for DRI to work. Press space if you don't have
+a "*" between the square brackets. If this option is enabled, you'll get a
+submenu:
+
+< >   3dfx Banshee/Voodoo3+
+< >   3dlabs GMX 2000
+< >   ATI Rage 128
+< >   ATI Radeon
+< >   Intel I810
+< >   Matrox g200/g400
+< >   SiS
+
+(Taken from the kernel 2.4.17 menuconfig)
+
+  Select "3dfx Banshee/Voodoo3+" for a 3Dfx card, and "Matrox g200/g400" for a
+Matrox card. You can compile the driver either as a module ("M") or directly
+into the kernel ("*"); the X server will load the module as needed.
+
+
+=========
+7.1.2 AGP
+=========
+
+  The kernel also provides support for the AGP buses found on many recent
+motherboards. The reason this was implemented relatively late, is that the AGP
+bus is actually a slightly improved PCI bus (that's why AGP cards have a PCI
+device ID). The interface to the AGP bus is called "agpgart". The
+implementation depends on the motherboard chipset you are using. The options
+for agpgart can be found in the "Character Devices" section of the kernel
+configuration. Almost at the bottom, you see this:
+
+< > /dev/agpgart (AGP Support)
+
+(Taken from the kernel 2.4.17 menuconfig)
+
+There should be a "*" between the <> signs, so press space until it's there.
+A submenu will show up:
+
+[ ]   Intel 440LX/BX/GX and I815/I830M/I840/I850 support
+[ ]   Intel I810/I815/I830M (on-board) support
+[ ]   VIA chipset support
+[ ]   AMD Irongate, 761, and 762 support
+[ ]   Generic SiS support
+[ ]   ALI chipset support
+[ ]   Serverworks LE/HE support
+
+(Taken from the kernel 2.4.17 menuconfig)
+
+  Select your chipset from the list, and press "space" so that a "*" appears in
+the square brackets. If you don't know what chipset you're using, enable all of
+these chipsets, the correct one will be recognized at boot time.
+
+** If you're using a PCI type card, you won't (of course) have to do this! **
+
+
+==========
+7.1.3 MTRR
+==========
+
+  MTRR stands for "Memory Type Range Register". This is a register in the
+processor to control processor access to memory ranges, thus it improves
+performance of PCI and AGP cards dramatically. If MTRRs are enabled, X will
+detect them automatically and use them. Intel processors have MTRRs if they
+are Pentium Pro or newer. AMD processors have MTRR support from the K6-2. If
+you don't know what processor you're using, or if it's neither an Intel nor an
+AMD processor, you can safely enable MTRR support, because it won't be used if
+it's not supported by your processor. You can find the MTRR option in the
+"Processor type and features" section of the kernel configuration. The option
+to enable it looks like this:
+
+[ ] MTRR (Memory Type Range Register) support
+
+(Taken from the kernel 2.4.17 menuconfig)
+
+
+=======================
+7.1.4 CHECK IF IT WORKS
+=======================
+
+  If you have modified your kernel configuration at the points I told you
+about, it's time to compile and install the new kernel. When the system has
+booted with the new kernel, we can test if everything works. Let's start by
+running:
+
+ dmesg |less
+
+  This will open the kernel boot messages in the text pager less. For each of
+the modifications that I discussed, search for a specific string in the dmesg
+output. I'll give some examples:
+
+* MTRR Support can be found by searching for "mtrr". My system tells me:
+
+mtrr: v1.40 (20010327) Richard Gooch (rgooch@atnf.csiro.au)
+mtrr: detected mtrr type: Intel
+
+* AGP Support can be found by searching for "agpgart". This is what I get:
+
+Linux agpgart interface v0.99 (c) Jeff Hartmann
+agpgart: Maximum main memory to use for agp memory: 321M
+agpgart: Detected Via Apollo Pro KT133 chipset
+agpgart: AGP aperture is 64M @ 0xd0000000
+
+* DRI Support can only be found if the module for your card is directly
+compiled into the kernel (or if the X server has been started with DRI
+enabled). Search for "drm" to get something like:
+
+[drm] AGP 0.99 on VIA Apollo KT133 @ 0xd0000000 64MB
+[drm] Initialized mga 3.0.2 20000928 on minor 63
+
+for Matrox cards or
+
+[drm] AGP 0.99 on VIA Apollo KT133 @ 0xd6000000 16MB
+[drm] Initialized tdfx 1.0.0 20000928 on minor 63
+
+for 3Dfx cards.
+
+If all of these match, the kernel part is OK.
+
+
+=======================
+7.2 XFREE CONFIGURATION
+=======================
+
+  The next step to get DRI to work, is configuring XFree. This can be done in a
+very fast and easy way. Run (as root):
+
+ XFree86 -configure
+
+  This will detect the video card you're using, the mouse type (if you have a
+/dev/mouse device or symlink), the keyboard and even the monitor if your
+monitor supports that. The configuration file it generates is pretty usable
+(although some people want you to believe it's horrible), but it needs some
+adjustments. The configuration file is temporary saved in /root/XF86Config.new.
+Open this file in a text editor, and make the following changes:
+
+* In Section "Files":
+The default X installation has more FontPaths than there are in this file. Add
+every directory in /usr/X11R6/lib/X11/fonts to the FontPaths listed here.
+
+* In Section "Module":
+Add 'Load  "type1"' and 'Load  "freetype"' to enable support for Type 1 and
+TrueType fonts. Make sure the "GLcore", "dbe", "glx" and "dri" drivers are
+loaded!
+
+* Configure the sections "InputDevice" to fit your preferences.
+
+* In Section "Monitor":
+If these values weren't autodetected, you'll have to add both "HorizSync" and
+"VertRefresh" manually. Consult your monitor handbook for these values. Be
+careful, you might destroy your Monitor when these settings are wrong.
+
+* In Section "DRI":
+Add "Mode 0666" to this section to enable Direct Rendering for everybody, so
+it can be used by other users than only root.
+
+* In Section "Screen":
+Add a definition for "DefaultDepth" to the main section (eg. between the
+"Monitor" definition and the first subsection). !This should be 16 for DRI to
+work! It looks like this:
+
+DefaultDepth 16
+
+Add in each of the subsections "Display" some screen resolutions:
+
+Modes     "1600x1200" "1280x1024" "1280x960" "1024x768" "800x600" "640x480"
+
+The first resolution in the "Modes" definition in the subsection for the
+default color depth is the resolution that's going to be the default.
+
+  If you have made these changes, it's safe to test your configuration. By
+default, a log file will be created under /var/log (usually XFree86.0.log).
+Open this file and browse to the end of it. There should be these lines near
+the end:
+
+(II) TDFX(0): [DRI] installation complete
+(==) TDFX(0): Direct rendering enabled
+
+or
+
+(II) MGA(0): [DRI] installation complete
+(==) MGA(0): Direct rendering enabled
+
+by now, you can probably guess which one is for which card.
+
+
+=========
+8 TESTING
+=========
+
+  If you have followed this entire hint, you probably want to see it working
+(why would you otherwise go through all this pain). I have made a small
+selection of programs that can be useful in testing the DRI subsystem.
+
+* glxinfo. This utility is part of a standard XFree installation. If you run
+it, you should get "direct rendering: Yes" as the second line of the output.
+
+* xdpyinfo. This program comes with the standard XFree installation. Check in
+the output for "GLX", "SGI-GLX" and "XFree86-DRI". If all three are preset,
+the extensions were loaded successfully.
+
+* The OpenGL Spectrum Analyzer that comes with XMMS (http://www.xmms.org/).
+This doesn't work in 3dfx fullscreen mode on the 3Dfx cards since Glide 2
+isn't installed. You can have phun with it in a small window too, so who cares.
+
+* Tuxracer (http://tuxracer.sourceforge.net/). A must-have for every 1337 h4x0r
+and for everybody who likes a funny game. I love it! You'll need some additional
+libraries (SDL, SDL_mixer and tcl) to get this to work, but it's really worth
+it... :PP
+
+* Quake III Arena. It heavily uses the OpenGL subsystem, so this is both a very
+good test and a very good benchmark. If you have the windows version, get the
+linux version @ ftp://ftp.idsoftware.com/pub/idstuff/quake3/linux/ (~12 MB).
+Untar it into a directory (/usr/games/quake3, /opt/quake3 or whatever) and add
+the pak0.pak from the CD and the pak1.pak and pak2.pak from Quake III 1.17.
+Then run quake3.x86 and let the fragging begin :)
+
+* The OpenGL screensavers in the xscreensaver distribution
+(http://www.jwz.org/xscreensaver/). You'll need the GLE library
+(http://www.linas.org/gle/) for an optimal working xscreensaver.
+
+* The Mesa demo programs; for instructions see chapter 6.
+
+
+==========================
+9. GENERIC TROUBLESHOOTING
+==========================
+
+* Q1: The XFree logfile tells me that DRI is disabled, but I've done everything
+right and I'm using 24 bit colors by default!
+* A1: You need 16 bit color for most cards for DRI to work.
+
+* Q2: Compiling X fails with a message about undefined/missing targets. What
+should I do??
+* A2: This problem is caused by a broken imake. It will be recompiled next time
+you start the build. So the only thing you can do is restart the build and pray
+that imake will work this time...
+
+* Q4: I have another problem!
+* A4: Mail me <marc@koelkast.net> I'll do my best to provide you with a
+solution.
+
+
+==============
+10. WHAT NEXT?
+==============
+
+  I have received some complaints from people who didn't know what to do next,
+after they have finished this hint. I'll try to give you some guidelines what
+you can do with your brand new X installation. This section is mainly intended
+for newbies, eg. it has nothing to do with the main subject of this hint:
+setting up DRI. If you don't feel like a newbie and you've set up a full X
+workstation before, don't even try to read this because it will probably be
+very boring for you.
+  This part is mainly intended to fill the gap between this hint and other
+hints, that deal with specific applications and libraries. Those applications
+and libraries depend on some very common libraries, such as a font handling
+library and image libraries. These are the libraries you'll be installing in
+this chapter, because some of them are not really straightforward to install.
+  Another problem many newbies are facing is that they don't know what window
+manager they should use. I'm not going into detail here (because if I did, this
+part would be much longer than the hint itself), but I'll try to give you some
+ideas.
+  Last but not least, I'll try to give you some references to other hints which
+you will probably find useful. These references are stated between the lines,
+but I'm sure you'll notice them if you read carefully. Good luck, soldier! :)
+
+
+====================
+10.1 IMAGE LIBRARIES
+====================
+
+  Image libraries are, as the name suggests, libraries that have to do with
+reading from, writing to and manipulating images. Each format has it's own image
+library. The libraries we'll be installing are the ones for the most common
+image types and the ones that are usually found on all linux systems. If a
+library is not listed here, don't think your linux system will be unable to read
+them! Specific libraries are only needed for images that are a) complicated or
+b) that have Afganic licenses, so they can't be easily copy-pasted in any
+program. One useful addition to this list might be "libmng," a library for
+animated PNG images if you're planning to install KDE.
+
+
+===================
+10.1.1 NEEDED FILES
+===================
+
+ http://www.libpng.org/pub/png/src/libpng-1.2.1.tar.gz
+ http://www.ijg.org/files/jpegsrc.v6b.tar.gz
+ http://www.ibiblio.org/pub/Linux/libs/graphics/libungif-4.1.0.tar.gz
+ ftp://ftp.remotesensing.org/pub/libtiff/tiff-v3.5.7.tar.gz
+ http://www.littlecms.com/lcms-1.08.tar.gz
+ http://www.libmng.com/download/libmng-1.0.3.tar.gz
+
+
+=============
+10.1.2 LIBPNG
+=============
+
+  Extract the libpng-1.2.1.tar.gz tarball into /usr/src. Now enter the
+following commands to install libpng:
+
+ sed -e 's&ZLIBLIB=\.\./zlib&ZLIBLIB=/usr/lib&' \
+     -e 's&ZLIBINC=\.\./zlib&ZLIBLIB=/usr/include&' \
+     scripts/makefile.linux >Makefile &&
+ make &&
+ make install
+
+
+===========
+10.1.3 JPEG
+===========
+
+  Extract the jpegsrc.v6b.tar.gz tarball into /usr/src. Enter the newly created
+/usr/src/jpeg-6b directory. Enter the following commands to install jpeg:
+
+ ./configure --enable-shared --enable-static &&
+ make &&
+ make install
+
+
+===============
+10.1.4 LIBUNGIF
+===============
+
+  Extract the libungif-4.1.0.tar.gz tarball into /usr/src. Enter the newly
+created /usr/src/libungif-4.1.0 directory. Enter the following commands to
+install libungif:
+
+ ./configure &&
+ make &&
+ make install
+
+
+===========
+10.1.5 TIFF
+===========
+
+  Extract the tiff-v3.5.5.tar.gz tarball into /usr/src. Enter the newly created
+/usr/src/tiff-v3.5.5 directory. Open configure in a text editor and find these
+lines:
+
+DIRS_LIBINC=                            # dirs to search for ancillary includes
+DIR_JPEGLIB=                            # dir for IJG -ljpeg
+DIR_GZLIB=                              # dir for zlib -lgz
+
+  Change them to:
+
+DIRS_LIBINC=/usr/local/include          # dirs to search for ancillary includes
+DIR_JPEGLIB=/usr/local/lib              # dir for IJG -ljpeg
+DIR_GZLIB=/usr/lib                      # dir for zlib -lgz
+
+  Now find these:
+
+JPEG=no                                 # configure JPEG support
+ZIP=no                                  # configure ZIP/Deflate support
+
+  And change to:
+
+JPEG=yes                                # configure JPEG support
+ZIP=yes                                 # configure ZIP/Deflate support
+
+  Finally, find this line in Makefile.in:
+
+@${ECHO} "= "man; cd man; ${MAKE} -${MAKEFLAGS} install
+
+  and remove it. Now run these commands to install tiff:
+
+ ./configure (press enter when promped "are these ok?")
+ make &&
+ make install &&
+ install -m 0755 -o root libtiff/libtiff.so.3.5.7 /usr/local/lib/libtiff.so.3.5.7
+
+  As always, run "ldconfig" to initialize the new libraries (make sure
+/usr/local/lib is in /etc/ld.so.conf).
+
+
+===========
+10.1.6 LCMS
+===========
+
+  Extract the lcms-1.08.tar.gz tarball into /usr/src. Now enter the
+following commands to install lcms:
+
+ make BASEDIR=/usr/local &&
+ make BASEDIR=/usr/local install &&
+ mkdir /usr/local/include/lcms &&
+ ln -s ../lcms.h /usr/local/include/lcms
+
+
+=============
+10.1.7 LIBMNG
+=============
+
+  Extract the libmng-1.0.3.tar.gz tarball into /usr/src. Now enter the
+following commands to install lcms:
+
+ ./configure &&
+ make &&
+ make install &&
+ rm -r /usr/local/include/lcms
+
+
+=============
+10.2 FREETYPE
+=============
+
+  Freetype is the true-type font handling library. These true-type fonts are the
+fonts that are used on Windows systems. They provide excellent scalability with
+a decent quality. Freetype comes in two flavours, freetype 1 and freetype 2.
+These two versions are not compatible, freetype 2 is an entirely new project. To
+make sure every program can find the freetype version it requires, it's a good
+idea to install them both.
+
+
+===================
+10.2.1 NEEDED FILES
+===================
+
+ http://prdownloads.sourceforge.net/freetype/freetype-1.3.1.tar.gz
+ http://prdownloads.sourceforge.net/freetype/freetype-2.0.6.tar.gz
+ http://www.joerg-pommnitz.de/TrueType/ttmkfdir.tar.gz
+
+
+=================
+10.2.2 FREETYPE 1
+=================
+
+  Extract the freetype-1.3.1.tar.gz tarball into /usr/src. Enter the newly
+created /usr/src/freetype-1.3.1 directory and enter the following commands to
+install freetype 1:
+
+ ./configure --enable-static --enable-shared &&
+ make &&
+ make install
+
+
+=================
+10.2.3 FREETYPE 2
+=================
+
+  Extract the freetype-2.0.6.tar.gz tarball into /usr/src. Enter the newly
+created /usr/src/freetype-2.0.6 directory and enter the following commands to
+install freetype 2:
+
+ make setup &&
+ make &&
+ make install
+
+  Don't forget to run ldconfig after you've installed a library! Make this a
+habit!
+
+
+===============
+10.2.4 TTMKFDIR
+===============
+
+  To be able to use TTF fonts with XFree86, you'll have to create fonts.scale
+files to be able to generate the fonts.dir files. A nice utility to create
+these fonts.scale files is ttmkfdir. Extract the tarball into /usr/src, and
+run the following commands to install ttmkfdir into /usr/X11R6/bin:
+
+ mkdir ttmkfdir &&
+ tar xzvf /path/to/ttmkfdir.tar.gz &&
+ cd ttmkfdir &&
+ make clean &&
+ make FREETYPE_INCL="/usr/local/include/freetype" \
+      FREETYPE_LIB="-L/usr/local/lib -lttf" &&
+ install -m 0755 -o root ttmkfdir /usr/X11R6/bin
+
+  When you've added TTF files to the TTF folder, you can run the following
+commands to update the fonts.dir file:
+
+ ttmkfdir >fonts.scale &&
+ mkfontdir
+
+
+==============================
+10.3 CHOOSING A WINDOW MANAGER
+==============================
+
+  In this chapter I'm going to help you choose a WM (Window Manager). A WM is,
+as the name suggests, a program that manages your windows. To be more specific,
+a WM takes care all window handling issues, such as creating a window on the
+screen, drawing the window on the screen, and destroying it. Many window
+managers have much additional functionality, such as the ability to launch your
+programs or set the background.
+
+  Before you start thinking that everything is a wm, I'll give you some theory.
+In Linux, two sorts of "Window Managers" exist: the real WMs and the Desktop
+Environments (DEs from now on). These DEs do a lot more than just managing your
+windows. A little list:
+
+DE features:
+- taskbar ala Windows
+- integrated configuration program
+- desktop look'n'feel
+- own program collection
+
+  A DE consists of many different programs and libraries, while a WM generally
+consists of only one or two programs that depend on other, common libraries.
+There are currently two big DEs that you should take a look at: Gnome and KDE.
+KDE provides a feeling just like Windows, has its own toolkit and a variety of
+programs, has its own office suite, has its own browser and is the stabler of
+the two. Gnome on the other hand, does not have its own window manager (this is
+a pro - freedom of choice), is more slick in presentation, is faster and is
+based on a more widely used toolkit. I personally prefer Gnome, because it's the
+least Windows-like of the two. As always, make your own choice. There are hints
+available for both DEs at the LFS hint section.
+
+  So far the DEs. Now we get to the real stuff, the WMs. If you didn't run away
+searching for a DE hint, you're my friend. DEs are for lamers and weenies, real
+1337 h4x0rs use real window managers ;-). There is a wide variety of window
+managers available (search freshmeat for an idea) so I'll discuss the most
+common window managers.
+  A good WM for newbies to start with is IceWM. It's not hard to install,
+features a taskbar and fine themeability. It's pretty fast and easy to use. Use
+this one if you want to focus on learning linux, not on learning to use a WM.
+  Another wide-spread WM is WindowMaker. This one is also a very popular
+newbie-WM, although many more experienced linux users seem to like it too. This
+WM doesn't work very straightforward but is not hard to learn. It features a
+program launch menu, multiple desktops and slick graphics.
+  A similar graphics implementation is used by BlackBox. This WM is very well
+known for its speed. Additionally, it's often referred to as the second most
+beautiful so it may be the right WM for you. It's not the easiest WM though,
+because the WM is very limited; you'll have to edit menus with a text-editor for
+example. Some features: multiple desktops, themeability and speed.
+  The last in row is the king of them all, IMO: Enlightenment. This WM is the
+most beautiful of all WMs in the world. The whole environment consists of
+pictures, the themes are built from pictures. Many great artists have put
+together astonishing themes for this WM. A list of features: launch menu,
+iconbox (minimized-apps-collector), desktop pagers, multiple desktops, virtual
+screens, own configuration dialogs, advanced session control and image
+backgrounds. Don't let this list of pros convince you easily, there are also
+many downsides to Enlightenment. To name a few: you need a _very_ fast pc to
+keep things going smoothly, hard to learn, application menus have to be manually
+edited and too many configuration options to learn them all. Many features can
+only be accessed through the keyboard. This one is both a beaty and a beast.
+
+
+==========================
+10.4 GET SOME APPLICATIONS
+==========================
+
+  This section is not written yet.
+
+
+======================
+10.5 WHERE TO GO NEXT?
+======================
+
+  This section is not written yet.
+
+
+================
+11. OUTRODUCTION
+================
+
+  Because this didn't really fit in the other chapters, I'll put it here. If
+you have a 3Dfx card, you can run:
+
+ export FX_GLIDE_SWAPINTERVAL=0
+
+  to have the frame send rate of your videocard not in sync with the your
+monitors refresh rate. This may increase framerate, but decrease smoothness of
+gameplay. It's worth a try...
+
+  Now it's time to play with your DRI X server ;) I won't put any more annoying
+stuff in here, but I want you to know that I'd like to get some feedback on
+this hint. It isn't easy to write it, because I don't know if what works here,
+works on other systems too. If you completed this hint successfully, I'd like
+you to drop me a line, and if you have encountered errors, please feel free to
+annoy me with them. The E-Mail address still is:
+
+<marc@koelkast.net>
+
+- Have fun!
+  Marc

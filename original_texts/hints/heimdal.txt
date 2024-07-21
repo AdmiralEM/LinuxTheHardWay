@@ -1,0 +1,1260 @@
+AUTHOR:   Randy McMurchy <LFS-User_at_mcmurchy_dot_com>
+
+DATE:     2004-05-10
+
+LICENSE:  Creative Commons Attribution-NonCommercial-ShareAlike License
+          http://creativecommons.org/licenses/by-nc-sa/1.0/
+ 
+SYNOPSIS: How to deploy Heimdal Kerberos 5 on your network
+
+DESCRIPTION:
+
+This hint provides detailed instructions for deploying Heimdal Kerberos 5 on
+your network. You'll find instructions for creating the master KDC server,
+how to configure kerberized daemon servers, how to configure client machines
+and a brief section on how to use Kerberos. The hint will be updated soon to
+include a section on creating and deploying slave KDC servers.
+
+ATTACHMENTS:
+
+http://www.linuxfromscratch.org/patches/downloads/heimdal/heimdal-0.6.2-fhs-compliance-1.patch
+http://www.linuxfromscratch.org/patches/downloads/heimdal/heimdal-0.6.2-cracklib-1.patch
+
+PREREQUISITES:
+
+This hint requires you have root access to every machine you'll be installing
+and/or configuring Heimdal on. A basic understanding of Linux based
+authentication is desireable as well having knowledge about your system's
+(x)inetd configurations.
+
+HINT:
+
+=========
+CONTENTS:
+=========
+
+        1. Introduction
+        2. Package Dependencies
+            Required
+            Recommended
+            Optional
+            Notes on dependencies
+        3. Package Installation
+            Download the package
+            Download the patches
+            Patch the package
+            Configure the build
+            Build the package
+            Checking the build
+            Install the package
+            Stripping the binaries
+            Installation modifications
+            Update /etc/ld.so.cache
+        4. Master KDC Server Configuration
+            Creating the /etc/heimdal directory
+            Creating /etc/heimdal/krb5.conf
+            Creating /var/lib/heimdal/m-key
+            Creating the KDC database
+            Starting the KDC daemon
+            Getting and listing a TGT
+            Creating /etc/heimdal/krb5.keytab
+            Testing the keytab file
+            Notes about the keytab file
+            Creating the admin access control list (ACL)
+            Remote access to the master KDC server
+            Notes about the kpasswdd daemon
+            Creating the KDC server init script
+        5. Kerberized Daemon Server Configuration
+            Install the package
+            Creating /etc/heimdal/krb5.keytab
+            Notes about the keytab file
+            Configuring the kxd daemon
+        6. Using Kerberized Client Programs
+        7. Installing the pam_krb5 PAM Module Package
+            Introduction
+            Download the package
+            Configure the build
+            Build the package
+            Checking the build
+            Install the package
+            Strip the binary
+            Configuring PAM
+            Configuring /etc/heimdal/krb5.conf
+        8. Issues, Gotchas and Other Sundry Items
+        9. To Do List
+       10. Closing
+
+================
+1. INTRODUCTION:
+================
+
+These instructions should allow you to build, configure and deploy a working
+Heimdal Kerberos 5 installation for your network. I've tested everything
+documented below and everything works for me. YMMV.
+
+First off, please be sure you want a kerberos installation. This is not a
+package to install "just for the fun of it". A kerberos installation will
+make changes to the authentication mechanisms on your network and will
+overwrite several GNU inetutil and shadow package programs and daemons. You
+could modify the configure script to not overwrite these programs and
+daemons, but I'll leave it up to you to figure out how. (I'll outline a
+method to place the daemon programs in their own directory, preserving your
+existing daemon programs, but it's not recommended.)
+
+========================
+2. PACKAGE DEPENDENCIES:
+========================
+
+---------
+Required:
+---------
+
+OpenSSL-0.9.7d, Berkeley DB-4.1.25 
+
+------------
+Recommended:
+------------
+
+Linux-PAM-0.77, pam_krb5-1.3-rc7, cracklib-2.7
+
+---------
+Optional:
+---------
+
+tcpwrappers-7.6, readline-4.3, xinetd-2.3.13, NTP-4.2.0,
+X.org-6.7.0 or XFree86-4.4.0
+
+Additionally, an optional dependency of Heimdal is OpenLDAP-2.1.30, however,
+there's a caveat I should explain. There's a circular dependency with the
+Heimdal package and the OpenLDAP package. Each package is an optional 
+dependency of each other. If you plan on integrating Heimdal with OpenLDAP,
+you need to decide the order of installation.
+
+I finished an installation integrating PAM/SASL/Heimdal/LDAP and I decided
+the best method is to first install Heimdal without LDAP. Then install
+Cyrus-SASL and then LDAP (with LDAP configured to use the GSSAPI
+functionality of Cyrus/SASL-Heimdal). After LDAP is installed, go back and
+install Heimdal again with the following additional options to ./configure:
+
+--with-openldap=/usr/bin \
+--with-openldap-lib=/usr/lib \
+--with-openldap-include=/usr/include
+
+I never did put the Heimdal database into LDAP as I don't feel comfortable
+enough with my knowledge of LDAP to trust my LDAP ACL security setup with
+something as critical as a Heimdal Kerberos database.
+
+----------------------
+Notes on Dependencies:
+----------------------
+
+Linux-PAM is not a compile time dependency. However, you'll need it if you
+want to use Kerberos authentication for non-native Kerberos applications such
+as the xdm, gdm and kdm X display managers. If you decide to install
+Linux-PAM, you should also reinstall the Shadow package. See the Shadow
+section in the BLFS book for details.
+
+The pam_krb5-1.3-rc7 module is used with Linux-PAM to provide authentication
+for non-native Kerberos applications. Additionally, the pam_krb5 module once
+installed and properly configured almost eliminates the need for a user to
+manually acquire a Kerberos TGT (ticket-granting-ticket).
+
+To utilize the cracklib library for strong password checking, you'll need to
+have installed the cracklib library following the BLFS instructions. The BLFS
+cracklib installation instructions allows you to install a special version of
+the cracklib library to work with Heimdal.
+
+The tcpwrappers package can be installed before or after Heimdal. Heimdal
+does not compile against the package.
+
+The readline package must be installed before Heimdal should you wish to
+utilize this library.
+
+The xinetd package may be installed before or after Heimdal. There is no
+compile time dependency. If you have plans on using xinetd, you should
+install it first however, as the you'll be modifying the (x)inetd
+configuration file during these instructions.
+
+NTP is listed as a dependency, though there is no compile-time dependency.
+Heimdal requires time-syncronization between the KDC server and clients.
+NTP is perfect for this.
+
+The X package should be installed before Heimdal if you wish to use the 
+Heimdal kxd programs.
+
+========================
+3. PACKAGE INSTALLATION:
+========================
+
+---------------------
+Download the Package:
+---------------------
+
+The current stable package is heimdal-0.6.2 and can be downloaded from the
+Heimdal FTP site at ftp://ftp.pdc.kth.se/pub/heimdal/src/. The complete URL
+to download the source tarball is:
+
+ftp://ftp.pdc.kth.se/pub/heimdal/src/heimdal-0.6.2.tar.gz
+
+---------------------
+Download the Patches:
+---------------------
+
+There are two patches for the package.
+
+heimdal-0.6.2-fhs-compliance-1.patch
+heimdal-0.6.2-cracklib-1.patch
+
+Download the patches from:
+http://www.linuxfromscratch.org/patches/downloads/heimdal/
+
+------------------
+Patch the Package:
+------------------
+
+After you unpack the tarball and change to the heimdal-0.6.2 directory, you
+must make a change to a library header file, the configure script and
+several documentation files so that the installation does not look for some
+files in a /var/heimdal directory. To make the installation FHS compliant
+and use /var/lib/heimdal instead, you can use a sed script or a patch. I've
+provided both.
+
+To make the required changes using sed, here's the command:
+
+sed -i -e "s@var/heimdal@var/lib/heimdal@g" configure.in configure \
+    doc/setup.texi doc/heimdal.info-1 kadmin/kadmind.8 kdc/kdc.8 \
+    lib/hdb/hdb.h lib/krb5/krb5.conf.5 lib/krb5/krb5.conf.cat5
+
+To make the required changes using a patch, here's the command:
+
+patch -Np1 -i ../heimdal-0.6.2-fhs-compliance-1.patch
+
+To have the Heimdal package link against the cracklib library, you must apply
+a patch. Install the patch with the following command:
+
+patch -Np1 -i ../heimdal-0.6.2-cracklib-1.patch
+
+--------------------
+Configure the Build:
+--------------------
+
+Next run the configure script. I used many options to the script, some of
+which may not have been necessary. Omit any as you see fit.
+
+./configure --prefix=/usr \
+    --sysconfdir=/etc/heimdal \
+    --datadir=/var/lib/heimdal \
+    --libexecdir=/usr/sbin \
+    --sharedstatedir=/usr/share \
+    --localstatedir=/var/lib/heimdal \
+    --enable-shared \
+    --with-openssl=/usr \
+    --with-readline-lib=/usr/lib \
+    --with-readline-include=/usr/include/readline
+
+Here's my reasoning.
+
+--prefix=/usr will install the libraries in /usr/lib and the programs in
+/usr/bin
+
+--sysconfdir=/etc/heimdal insures that the krb5.conf and the keytab file will
+be looked for in /etc/heimdal. We use /etc/heimdal so that all the Heimdal
+configuration files are located in one directory.
+
+--datadir=/var/lib/heimdal is there as a "just in case" thing. I'm not even
+sure there's anything Heimdal uses requiring the "datadir".
+
+--libexecdir=/usr/sbin installs the daemon programs into /usr/sbin.
+*****NOTE***** If you want to preserve all your existing inetutil package
+daemons, install the Heimdal daemons into /usr/sbin/heimdal (or whatever you
+want). Since these programs will be called from (x)inetd or rc scripts, it
+really doesn't matter where they live, as long as they are correctly
+specified in the /etc/(x)inetd.conf file and rc scripts. If you choose
+something other than /usr/sbin, you may want to move some of the user
+programs (such as kadmin) to /usr/sbin manually.
+
+--sharedstatedir=/usr/share is there as a "just in case" thing.
+
+--localstatedir=/var/lib/heimdal is there as a "just in case" thing.
+
+--enable-shared builds the shared libraries.
+
+--with-openssl=/usr allows configure to find the Open-SSL package.
+
+--with-readline-lib (and include) Configure won't find readline without them.
+
+Towards the end of configure's output, there's a line that says:
+
+"checking which authentication modules should be built... none"
+
+This confused me at first. I thought it had something to do with it not
+finding OpenSSL, but apparently it's normal.
+
+------------------
+Build the Package:
+------------------
+
+Simply running the "make" command will build the package.
+
+-------------------
+Checking the Build:
+-------------------
+
+Issuing "make check" will run an extensive test suite on the build. My
+experience is negative however, as way deep into the tests, it sometimes
+would fail during the "xnlock" test. The "xnlock" program is a stupid little
+locking screen saver (secure, though, when it transmits the unlocking
+password) and it works just fine after installation.
+
+You may try "make -k check" and see if it will run through. I did this and
+it skipped the rest of the "appl" directory after the error on the "xnlock"
+program. Be sure to log your output if you want to view the results (unless
+you have an extraordinary amount of scroll buffer on your terminal).
+
+After installing cracklib, and linking with the cracklib library, the "make
+check" tests never failed on me again. I'm not sure what's up with that.
+
+--------------------
+Install the Package:
+--------------------
+
+Before installing the package, I found I needed to preserve the ftp program
+from the inetutil package. If you're using NcFTP or something else that
+isn't called /usr/bin/ftp, then you can omit the next step. But, if you're
+using /usr/bin/ftp, you should move this to another name before starting
+the installation.
+
+Why is this?
+
+My experience using the Heimdal ftp program to connect to non kerberized
+ftp servers was not good. It will allow you to connect (letting you know
+that transmission of the password is clear text) but will have problems
+doing puts and gets. Mget will work but get won't. Go figure. A get will
+actually segfault. So, I move my /usr/bin/ftp to /usr/bin/ftpn (the "n" is
+for "normal") before overwriting it with the kerberized version. This way,
+a "normal" ftp program is available when I need it.
+
+<editorial>I'm not sure if this problem is enough to sway someone from using
+the Heimdal package in favor of the MIT package, but I thought I'd let you
+know! I'll mention that I think the Heimdal package is very good and this
+problem is not enough to make me think the package is faulty.</editorial>
+
+****************************************************************************
+*****                                                                  *****
+*****  The remainder of this hint must be performed by the root user   *****
+*****                                                                  *****
+****************************************************************************
+
+So, if you want to preserve your old /usr/bin/ftp program, do this:
+
+mv /usr/bin/ftp /usr/bin/ftpn
+
+Then simply issue a "make install" command to install the package.
+
+-----------------------
+Stripping the Binaries:
+-----------------------
+
+Heimdal doesn't strip the binaries during the build phase and uses -g as a
+build option. So, the binaries are quite large. If desired, strip the
+unnecessary symbols by issuing the following commands:
+
+DIR=`pwd`
+cd /usr/sbin
+strip --strip-all ipropd-slave ipropd-master dump_log truncate_log \
+    replay_log hprop ktutil kstash kdc hpropd kpasswdd kadmind kadmin \
+    ftpd rshd push popper telnetd kxd kfd
+
+cd /usr/bin
+strip --strip-all kinit klist kdestroy kgetcred string2key kpasswd afslog \
+    pagsh ftp login otp otpprint rsh rcp su xnlock telnet kx kf mk_cmds \
+    verify_krb5_conf
+
+cd /usr/lib
+strip --strip-debug libroken.so.16.0.3 libroken.a libss.so.0.1.4 libss.a \
+    libsl.so.0.1.2 libsl.a libeditline.a libasn1.so.6.0.2 libasn1.a \
+    libkrb5.so.17.3.0 libkrb5.a libkafs.so.0.4.0 libkafs.a libhdb.so.7.0.7 \
+    libhdb.a libkadm5srv.so.7.0.6 libkadm5srv.a libkadm5clnt.so.4.2.4 \
+    libkadm5clnt.a libotp.so.0.1.4 libotp.a libgssapi.so.1.4.0 libgssapi.a
+cd $DIR
+
+---------------------------
+Installation Modifications:
+---------------------------
+
+The /usr/bin/login and /usr/bin/su programs installed by Heimdal belong in
+/bin, so I preserve the originals and move/copy the new ones into /bin. The
+login program is copied because Heimdal is expecting to find it in /usr/bin.
+You could get away with simply renaming (mv) the old /bin/login file and
+letting the system fall back to /usr/bin, but /usr might not be mounted at
+some point when the login program is required. Hence, I copy it to /bin.
+
+mv /bin/login /bin/login.SAVE
+mv /bin/su /bin/su.SAVE
+cp /usr/bin/login /bin
+mv /usr/bin/su /bin
+
+Because the login and su programs have been moved to /bin, the libraries
+linked to these programs should be moved to /lib in order to satisfy FHS
+doctrines. Use the following commands to accomplish this:
+
+mv /usr/lib/lib{otp.so.0,otp.so.0.1.4,kafs.so.0,kafs.so.0.4.0} /lib
+mv /usr/lib/lib{krb5.so.17,krb5.so.17.3.0,asn1.so.6,asn1.so.6.0.2} /lib
+mv /usr/lib/lib{roken.so.16,roken.so.16.0.3,crypto.so.0.9.7} /lib
+mv /usr/lib/lib{com_err.so.2,com_err.so.2.1,db-4.1.so} /lib
+ln -sf /lib/lib{otp.so.0,otp.so.0.1.4,kafs.so.0,kafs.so.0.4.0} /usr/lib
+ln -sf /lib/lib{krb5.so.17,krb5.so.17.3.0,asn1.so.6,asn1.so.6.0.2} /usr/lib
+ln -sf /lib/lib{roken.so.16,roken.so.16.0.3,crypto.so.0.9.7} /usr/lib
+ln -sf /lib/lib{com_err.so.2,com_err.so.2.1,db-4.1.so} /usr/lib
+
+------------------------
+Update /etc/ld.so.cache:
+------------------------
+
+Update the linker's library cache file by issuing the "ldconfig" command:
+
+ldconfig -v
+
+===================================
+4. MASTER KDC SERVER CONFIGURATION:
+===================================
+
+------------------------------------
+Creating the /etc/heimdal Directory:
+------------------------------------
+
+Create the /etc/heimdal configuration directory with the following command:
+
+install -d -m 755 /etc/heimdal
+
+--------------------------------
+Creating /etc/heimdal/krb5.conf:
+--------------------------------
+
+Create the kerberos configuration file with the following command:
+
+cat > /etc/heimdal/krb5.conf << "EOF"
+[libdefaults]
+    default_realm = LFS.ORG
+    encrypt = true
+
+[realms]
+    LFS.ORG = {
+        kdc = belgarath.lfs.org
+        admin_server = belgarath.lfs.org
+        kpasswd_server = belgarath.lfs.org
+    }
+
+[domain_realm]
+    .lfs.org = LFS.ORG
+
+[logging]
+    kdc = FILE:/var/log/kdc.log
+    admin_server = FILE:/var/log/kadmin.log
+    default = FILE:/var/log/krb.log
+
+EOF
+
+You will need to substitute your domain and proper hostname for the
+occurances of the belgarath and lfs.org names. Here's an explanation of the
+krb5.conf parameters.
+
+default_realm should be the name of your domain changed to ALL CAPS. This
+isn't required, but both Heimdal and MIT recommend it. Should you desire a
+name other than capitalized domainname, well, YOYO.
+
+encrypt = true provides encryption of all traffic between kerberized clients
+and servers. It's not necessary and can be left off. If you leave it off, you
+can encrypt all traffic from the client to the server using a switch on the
+client program instead. You decide how you want it.
+
+The [realms] parameters tell the client programs where to look for the KDC
+authentication services.
+
+The [domain_realm] section maps a domain to a realm.
+
+The [logging] section is optional. I'm a log freak, so I want it in there.
+
+--------------------------------
+Creating /var/lib/heimdal/m-key:
+--------------------------------
+
+Store the master password in a key file using the following commands:
+
+install -d -m 755 /var/lib/heimdal
+kstash
+
+You'll be prompted to enter, then verify the password. The key file should
+be created and have 600 (root read/write only) permissions.
+
+--------------------------
+Creating the KDC database:
+--------------------------
+
+Create the KDC database by "connecting" to the as-yet-not-created database
+in "local" mode. What I mean by this is, we are going to run the kadmin
+program, which "connects" to the KDC database and allows administrative 
+updates and modifications. But there's no database yet! Running kadmin with
+a "-l" switch allows us to "connect" to the database (from the local host
+only), even if the database doesn't exist. Run the following commands, and
+choose the defaults for now. You can go in later and change the defaults,
+should you feel the need.
+
+kadmin -l
+
+At the "kadmin>" prompt, issue the following statement:
+
+init LFS.ORG
+
+Of course, substitute the realm name you identified in the "default_realm"
+parameter of the [libdefaults] section of the krb5.conf file you created 
+earlier.
+
+After accepting the defaults about the realm ticket life, you will be back
+at the "kadmin>" prompt. You've now created the database. You can open up
+another terminal and look in the /var/lib/heimdal directory to confirm this.
+
+Now we need to populate the database with principles (users). You should 
+create at least one for now. Use your regular login name or "root". You need
+to decide what you want to use as an admin user for the day-to-day admin
+duties of the KDC. It's not important now, just something to think about for
+when the time comes to create the ACL's. For now, just use your regular
+login name or root. (you should still be at the "kadmin>" prompt)
+
+add loginname
+
+Of course, substitute some valid login name. Just press enter to choose the
+default choices during the add user routine (or, if you're bold and know 
+what you're doing, modify the defaults). Choose a password carefully, this
+will be the password you'll use to authenticate to the KDC. You can always
+change your password later, however.
+
+There's enough done now to test the installation. So, exit the kadmin
+program (use quit or exit) and return back to the unix prompt.
+
+------------------------
+Starting the KDC Daemon:
+------------------------
+
+We'll start the KDC daemon manually right now, just to test out the 
+installation. After you're convinced you want to use kerberos, you can 
+install and use the init script provided later in the instructions. Start
+the daemon with the following command:
+
+/usr/sbin/kdc &
+
+A "ps -ef | grep kdc" listing should show the daemon running.
+  
+--------------------------
+Getting and Listing a TGT:
+--------------------------
+
+Attempt to get a TGT (ticket-granting-ticket) with the following command:
+
+kinit loginname
+
+Of course, use the login name you used when you added it into the database.
+You will be prompted for the password you created. After you get your ticket,
+you can list it with the following command:
+
+klist
+
+Information about the ticket should be displayed on the screen.
+
+----------------------------------
+Creating /etc/heimdal/krb5.keytab:
+----------------------------------
+
+The KDC server and any machine running kerberized server daemons must have a
+host key installed. To create the host key (keytab file), issue the following
+commands:
+
+kadmin -l
+
+This connects to the database again in "local" mode. At the "kadmin>" prompt:
+
+add --random-key host/belgarath.lfs.org
+
+Of course, substitute the proper hostname and domainname. *Do* leave the
+word "host" as it is. Only substitute the "belgarath.lfs.org". Again, choose
+the defaults when prompted. You will return back to the "kadmin>" prompt. To
+actually export the data to a keytab file, type the following at the 
+"kadmin>" prompt:
+
+ext host/belgarath.lfs.org
+
+Of course, make the appropriate substitutions. This should have created two
+files in /etc/heimdal; krb5.keytab (kerberos 5) and srvtab (kerberos 4). BOTH
+FILES SHOULD HAVE 600 (root rw only) PERMISSIONS. Keeping the keytab files
+from public access is crucial to the overall security of the kerberos
+installation.
+
+------------------------
+Testing the keytab file:
+------------------------
+
+To test the functionality of the keytab file, issue the following command
+from the unix prompt:
+
+ktutil list
+
+This should dump a list of the host principal, along with the encryption
+methods used to access the principal.
+
+At this point, if everything has been successful so far, you can feel fairly
+confident in the installation and configuration of the package.
+
+There's still plenty more to do to complete the overall network installation,
+though it's downhill from here.
+
+----------------------------
+Notes about the keytab file:
+----------------------------
+
+Eventually, you'll want to add server daemon principles to the database and
+extract them to the keytab file. You do this in the same way you created the
+host principles. Below is an example (after you connect to the database using
+kadmin). 
+
+add --random-key ftp/belgarath.lfs.org
+
+(choose the defaults)
+
+ext ftp/belgarath.lfs.org
+
+Of course, make the appropriate substitutions for the hostname and 
+domainname.
+
+---------------------------------------------
+Creating the Admin Access Control List (ACL):
+---------------------------------------------
+
+This step isn't necessary if you have no plans on remotely administering the
+KDC server. If all you'll ever do is connect to the KDC database locally
+using the "kadmin -l" command, you don't need to create an ACL file. Though
+you should keep one thing in mind.
+
+Any machine acting as a kerberos server (not just the KDC server, but any
+server running kerberized daemons) must have a keytab file installed. We've
+already created a basic keytab file for the KDC server, but no others. You
+can create a keytab file for another machine locally using "kadmin -l", but
+you must transmit it to the other machine using some sort of encrypted 
+method (or floppy disk, tape, CD or other media). If a keytab file is
+transmitted from the KDC server to another server without encryption, the
+keytab file can be compromised, leading to an entirely compromised kerberos
+installation.
+
+Now, in a home network environment, this isn't too big a deal. But if you 
+are installing kerberos in a production environment where security is
+important (it must be, why else install kerberos?), then anyone with a
+packet sniffer can compromise your keytab file during transit if it's not
+encrypted.
+
+The solution is to remotely connect to the KDC database and extract a keytab
+file for the remote server, or use scp, ssh or something along those lines.
+
+'Nuff said.
+
+Anywho, back to an ACL file.
+
+Create a basic Access Control List (ACL) file with the following command:
+
+cat > /etc/heimdal/krb5.acl << "EOF"
+loginname@LFS.ORG   all
+
+EOF
+
+Of course, substitute a valid principal and realm name. You may name the ACL
+file anything you wish. It doesn't have to be krb5.acl. Heimdal, however, is
+specific in the filename it uses as an ACL file. We put the ACL file in the
+/etc/heimdal configuration directory, as this is more FHSish. To satisfy
+Heimdal, we need to create a symbolic link with the following command:
+
+ln -s /etc/heimdal/krb5.acl /var/lib/heimdal/kadmind.acl
+
+Insure that whatever name you used for the acl file in /etc/heimdal is the
+name of the file in the symlink. Note /var/lib/heimdal/kadmind.acl is not
+optional.
+
+This is the most very basic ACL as possible. As you create user principals,
+you may provide different access levels to each. For now, the principle you
+identified above will have full remote administrative access to the KDC
+database. You'll probably want to create "admin" principals. Read the man
+pages and do some googleing on kerberos administration to find out more about
+ACL's and the "admin" principles.
+
+-----------------------------------------
+Remote Access to the Master KDC Database:
+-----------------------------------------
+
+Remote access to the KDC database is provided by the kadmin program. The
+kadmin program requires the kadmind daemon to be functional on the KDC
+server. The kadmind daemon is spawned on the KDC server by (x)inetd. I use
+the following configuration in my /etc/xinetd.conf file (note - I use
+tcp-wrappers).
+
+service kerberos-adm
+{
+    flags           = REUSE NAMEINARGS
+    socket_type     = stream
+    wait            = no
+    user            = root
+    instances       = UNLIMITED
+    server          = /usr/sbin/tcpd
+    server_args     = /usr/sbin/kadmind
+}
+
+The kerberos-adm service port is identified in a standard LFS /etc/services
+file.
+
+You can remotely connect to the master KDC database by the principle you have
+already created (and provided access via the ACL) with the following command:
+
+kadmin -p loginname
+
+(this assumes Heimdal is installed, and /etc/heimdal/krb5.conf exists on the
+remote machine)
+
+After you create "admin" principles, you can remotely connect and administer
+the database by simply using the "kadmin" command without a -p option.
+
+--------------------------------
+Notes about the kpasswdd Daemon:
+--------------------------------
+
+Heimdal provides a front end program (kpasswd) to the KDC database which
+allows end users (principals) to change their kerberos password. This program
+relies on the kpasswdd daemon to be running on the KDC server. The init
+script below will automatically start the kpasswdd daemon. The kpasswdd
+daemon should not be run from (x)inetd.
+
+------------------------------------
+Creating the KDC Server Init Script:
+------------------------------------
+
+To create an init script, issue the following command:
+
+cat > /etc/rc.d/init.d/heimdal << "EOF"
+#!/bin/sh
+# Begin $rc_base/init.d/heimdal
+
+# Based on sysklogd script from LFS-3.1 and earlier.
+# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+# Heimdal bootscript submitted by Randy McMurchy <LFS-User at mcmurchy.com>
+
+. /etc/sysconfig/rc
+. $rc_functions
+
+case "$1" in
+        start)
+                echo "Starting KDC Server Daemon..."
+                /usr/sbin/kdc &
+        		evaluate_retval
+                echo "Starting KDC kpasswdd Daemon..."
+                /usr/sbin/kpasswdd &
+	        	evaluate_retval
+                ;;
+
+        stop)
+                echo "Stopping KDC kpasswdd Daemon..."
+                killproc /usr/sbin/kpasswdd
+                echo "Stopping KDC Server Daemon..."
+                killproc /usr/sbin/kdc
+                ;;
+
+        restart)
+                $0 stop
+                sleep 1
+                $0 start
+                ;;
+
+        status)
+                statusproc /usr/sbin/kdc
+                statusproc /usr/sbin/kpasswdd
+                ;;
+
+        *)
+                echo "Usage: $0 {start|stop|restart|status}"
+                exit 1
+                ;;
+esac
+
+# End $rc_base/init.d/heimdal
+
+EOF
+
+Change the permissions of the init script so that it is executable using the
+following command:
+
+chmod 754 /etc/rc.d/init.d/heimdal
+
+I don't use the canned LFS bootscripts. I've created my own with a slightly
+different directory structure and number ordering scheme. So I'm not really
+in a position to create the necessary symlinks. Simply copy the format of
+your existing symlinks and substitute the number of your choice for startup
+and shutdown order.
+
+You may also install the init script *and* associated symlinks by using the
+instructions in the BLFS book. You'll find this in the heimdal-0.6.2 section.
+
+This wraps up the installation and configuration of the master KDC server. If
+the KDC server will also be used to run kerberized daemons, some of the
+following instructions will apply.
+
+==========================================
+5. KERBERIZED DAEMON SERVER CONFIGURATION:
+==========================================
+
+These instructions are for creating a server which will run kerberized
+daemons. A kerberized daemon is a Heimdal installed daemon which will
+authenticate using a KDC server on the network. The kerberized daemons
+installed by Heimdal include telnetd, rshd, ftpd and kxd. There are others,
+but those aren't really used for general network connectivity.
+
+First off, a warning. Installing Heimdal using these instructions will
+overwrite several of the inetutil package daemon programs. You may specify
+--libexecdir=/usr/sbin/heimdal, or some other location, but this is not
+recommended. Additionally, Heimdal will overwrite several of the inetutil
+package programs installed in /usr/bin. But you already know this if you've
+read all the instructions up to this point.
+
+So, onward we go.
+
+--------------------
+Install the Package:
+--------------------
+
+First, decide if the server you are going to install Heimdal on will ever
+become a slave KDC server. If not, you don't need to install Berkeley DB or
+cracklib. You can specify --disable-berkeley-db as an option to ./configure
+and Heimdal will be okay with this. Open-SSL is a requirement. All the other
+optional dependencies listed above in the main installation section apply.
+
+Install Heimdal according to the instructions above. Here's the abbreviated
+list:
+
+sed -i -e "s@var/heimdal@var/lib/heimdal@g" configure.in configure \
+    doc/setup.texi doc/heimdal.info-1 kadmin/kadmind.8 kdc/kdc.8 \
+    lib/hdb/hdb.h lib/krb5/krb5.conf.5 lib/krb5/krb5.conf.cat5
+
+*****OR*****
+
+patch -Np1 -i ../heimdal-0.6.2-fhs-compliance-1.patch
+
+patch -Np1 -1 ../heimdal-0.6.2-cracklib-1.patch (only if a slave KDC server)
+
+./configure --prefix=/usr \
+    --sysconfdir=/etc/heimdal \
+    --datadir=/var/lib/heimdal \
+    --libexecdir=/usr/sbin \
+    --sharedstatedir=/usr/share \
+    --localstatedir=/var/lib/heimdal \
+    --enable-shared \
+    --with-openssl=/usr \
+    --with-readline-lib=/usr/lib \
+    --with-readline-include=/usr/include/readline
+
+make
+
+make check
+
+mv /usr/bin/ftp /usr/bin/ftpn
+
+make install
+
+DIR=`pwd`
+cd /usr/sbin 
+strip --strip-all ipropd-slave ipropd-master dump_log truncate_log \
+    replay_log hprop ktutil kstash kdc hpropd kpasswdd kadmind kadmin \
+    ftpd rshd push popper telnetd kxd kfd
+
+cd /usr/bin
+strip --strip-all kinit klist kdestroy kgetcred string2key kpasswd afslog \
+    pagsh ftp login otp otpprint rsh rcp su xnlock telnet kx kf mk_cmds \
+    verify_krb5_conf
+
+cd /usr/lib
+strip --strip-debug libroken.so.16.0.3 libroken.a libss.so.0.1.4 libss.a \
+    libsl.so.0.1.2 libsl.a libeditline.a libasn1.so.6.0.2 libasn1.a \
+    libkrb5.so.17.3.0 libkrb5.a libkafs.so.0.4.0 libkafs.a libhdb.so.7.0.7 \
+    libhdb.a libkadm5srv.so.7.0.6 libkadm5srv.a libkadm5clnt.so.4.2.4 \
+    libkadm5clnt.a libotp.so.0.1.4 libotp.a libgssapi.so.1.4.0 libgssapi.a
+cd $DIR
+
+mv /bin/login /bin/login.SAVE
+mv /bin/su /bin/su.SAVE
+cp /usr/bin/login /bin
+mv /usr/bin/su /bin
+mv /usr/lib/lib{otp.so.0,otp.so.0.1.4,kafs.so.0,kafs.so.0.4.0} /lib
+mv /usr/lib/lib{krb5.so.17,krb5.so.17.3.0,asn1.so.6,asn1.so.6.0.2} /lib
+mv /usr/lib/lib{roken.so.16,roken.so.16.0.3,crypto.so.0.9.7} /lib
+mv /usr/lib/lib{com_err.so.2,com_err.so.2.1,db-4.1.so} /lib
+ln -sf /lib/lib{otp.so.0,otp.so.0.1.4,kafs.so.0,kafs.so.0.4.0} /usr/lib
+ln -sf /lib/lib{krb5.so.17,krb5.so.17.3.0,asn1.so.6,asn1.so.6.0.2} /usr/lib
+ln -sf /lib/lib{roken.so.16,roken.so.16.0.3,crypto.so.0.9.7} /usr/lib
+ln -sf /lib/lib{com_err.so.2,com_err.so.2.1,db-4.1.so} /usr/lib
+
+ldconfig -v
+
+cat > /etc/heimdal/krb5.conf << "EOF"
+[libdefaults]
+    default_realm = LFS.ORG
+    encrypt = true
+
+[realms]
+    LFS.ORG = {
+        kdc = belgarath.lfs.org
+        admin_server = belgarath.lfs.org
+        kpasswd_server = belgarath.lfs.org
+    }
+
+[domain_realm]
+    .lfs.org = LFS.ORG
+
+[logging]
+    kdc = FILE:/var/log/kdc.log
+    admin_server = FILE:/var/log/kadmin.log
+    default = FILE:/var/log/krb.log
+
+EOF
+
+(you may remove the [logging] section if you know the server will never
+become a slave KDC server)
+
+----------------------------------
+Creating /etc/heimdal/krb5.keytab:
+----------------------------------
+
+If you followed the instructions during the KDC server installation to create
+an ACL, this step should be simple. First, as the root user (we're going to
+create a file in /etc/heimdal and hopefully only the root user has write
+access), connect to the KDC server using the kadmin program.
+
+kadmin -p loginname
+
+Use the login name you created earlier in the KDC server installation and
+gave access via the ACL. (If you didn't create an ACL, you'll need to connect
+to the database locally using the kadmin -l command. The steps are the same,
+but you'll need to transfer the keytab file from the KDC server to the remote
+server.) At the "kadmin>" prompt, issue the following command:
+
+add --random-key host/remoteserver.lfs.org
+
+Of course, substitute a valid hostname and domainname. Leave the word "host"
+as is. Accept the default values when prompted. When you're back at the 
+"kadmin>" prompt, issue the following command:
+
+ext host/remoteserver.lfs.org
+
+Of course, substitute .......
+
+This should create a keytab and srvtab file in /etc/heimdal. Insure the
+permissions are 600.
+
+----------------------------
+Notes about the keytab file:
+----------------------------
+
+Eventually, you'll want to add server daemon principles to the database and
+extract them to the keytab file. You do this in the same way you created the
+host principles. Below is an example (after you connect to the database using
+kadmin). 
+
+add --random-key ftp/remoteserver.lfs.org
+
+(choose the defaults)
+
+ext ftp/remoteserver.lfs.org
+
+Of course, substitute ....... 
+
+Heimdal should now be installed and ready for use as a kerberized server.
+There's really not much to do to get the kerberized daemons running. Telnetd,
+rshd and ftpd should not need anything in order for them to work if they were
+previously running. Simply send a SIGHUP to the (x)inetd process (kill -1 pid)
+so it will reread the configuration file. This isn't really necessary, but it
+will complain if something is amiss.
+
+If you haven't previously configured the telnetd, rshd, and ftpd daemons on
+the machine, do so now by making the appropriate entries in (x)inetd.conf and
+starting/signalling (x)inetd.
+
+---------------------------
+Configuring the kxd Daemon:
+---------------------------
+
+To me, one of the coolest things with the Heimdal kerberos package is its
+ability to securely forward X requests. The Heimdal rxterm and rxtelnet
+programs are really cool. Using them, you can securely request an X session
+by any user on any host. Logged in as user A on host A, you can request an X
+session started by user B on host B to be displayed on user A's display.
+These programs rely on the Heimdal kxd daemon.
+
+The kxd daemon needs some configuration. First, there's no service port
+assigned to the kx service in the /etc/services file. The port used in most
+of the stuff I found while googleing about kerberos kxd is spoken for by the 
+IANA database information. So, you'll have to pick one. I used 1001. Whatever
+port you choose, make the appropriate entry in the /etc/services file.
+
+Next, edit the (x)inetd.conf file to include an entry for the kx service. I
+have the following entry and it works just fine (I use tcp-wrappers).
+
+service kx
+{
+    flags           = REUSE NAMEINARGS
+    socket_type     = stream
+    wait            = no
+    user            = root
+    instances       = UNLIMITED
+    server          = /usr/sbin/tcpd
+    server_args     = /usr/sbin/kxd
+}
+
+Send a SIGHUP to (x)inetd and things should be good. This completes a basic
+server setup.
+
+====================================
+6. USING KERBERIZED CLIENT PROGRAMS:
+====================================
+
+To use the kerberized client programs (telnet, ftp, rsh, rxterm, rxtelnet,
+rcp, xnlock) they must be installed on the client machine. You can probably
+copy the programs and libraries from a machine that has had a Heimdal install
+if the architecture is similar. Maybe someone will try it out. To me, it's
+easier to just do an install of the package. Slow cpu machines
+notwithstanding. The make alone on my production KDC server, an ancient AMD
+P5-133mhz machine that Linux thinks is an i486 took over 3 1/2 hours! I
+didn't cross-compile as I wasn't pressed for time and felt the workout was a
+good test of the machine.
+
+Ah hell, just do an install on the machine if you haven't already.
+
+You can omit installing Berkeley-DB and cracklib and then use the
+--disable-berkeley-db switch to ./configure if the machine will never be a
+kerberos slave server.
+
+After the programs are installed you need an /etc/heimdal/krb5.conf file. The
+instructions for creating the file earlier in the hint are valid again. You
+can omit the logging section, if applicable (not a slave server).
+
+That's all there is to it.
+
+To run a kerberized program, you must first get a TGT. Use the "kinit"
+program to get the ticket. After you've acquired the ticket, you can use the
+kerberized programs to connect to any kerberized server on the network. You
+will not be prompted for authentication until your ticket expires (default
+is one day), unless you specify a different user as a command line argument
+to the program. You may get tickets for several principals (users), if you
+know the passwords, and bop along the network running program after program,
+never having to provide authentication.
+
+The kerberized programs will connect to non kerberized daemons, warning you
+that authentication is not encrypted. As mentioned earlier, only the ftp
+program gave any trouble connecting to non kerberized daemons.
+
+=============================================
+7. INSTALLING THE pam_krb5 PAM MODULE PACKAGE
+=============================================
+
+-------------
+Introduction:
+-------------
+
+There's a Linux-PAM module available that works with the Heimdal Kerberos 5
+package. This module is used to provide secure authentication using PAM in
+conjunction with Kerberos 5. This authentication method is handy for
+authenticating non-native Kerberos applications such as the xdm, gdm and kdm
+X display managers. The following information is my understanding of the xdm
+login process. I could be wrong. Please research this topic further if it is
+of great importance to you.
+
+The xdm X display manager uses the Athena xlogin widget to perform login
+authentication. This method does not use Kerberos for authentication. It uses
+a straight read of the /etc/passwd and /etc/shadow files to perform
+authentication. This is undesireable in a Kerberos environment. To get around
+this, you can use Linux-PAM to assist in authentication.
+
+PAM, by default, does not include a module to support Kerberos. In fact, the
+BLFS book does not mention anything in the PAM, Shadow or X sections about
+using PAM for X display manager authentication. I won't discuss the use of
+the gdm or kdm display managers here. I don't use them. Though I use Gnome
+and KDE, I use xdm as my X display manager. I found I can create an xdm file
+in my /etc/pam.d directory to allow xdm login.
+
+Using the default BLFS setup (other defined very strict), you cannot log into
+your system using xdm without adding an xdm section to your PAM
+configuration. Even with PAM, authentication is clear text using /etc/passwd
+/etc/shadow. To get around this, use the pam_krb5 module.
+
+Lastly, I cannot vouch that the pam_krb5 module is a totally secure method
+of authenticating remote XDMCP requests. I have not checked with a packet
+analyzer to see what happens during the remote authentication process. If
+anyone has solid, verifyable information about this, please send me an email
+as I would like to include that information here.
+
+---------------------
+Download the Package:
+---------------------
+
+The most recent pam_krb5 PAM module package I found available is
+pam_krb5-1.3-rc7 and can be downloaded from:
+
+http://prdownloads.sourceforge.net/pam-krb5/pam_krb5-1.3-rc7.tar.gz?download
+
+--------------------
+Configure the Build:
+--------------------
+
+./configure --prefix=/usr
+
+--prefix=/usr installs the documentation into /usr/man. The actual module is
+installed in /lib/security as the configure script looks for the location of
+the PAM modules.
+
+------------------
+Build the Package:
+------------------
+
+Simply run the "make" command to build the package.
+
+-------------------
+Checking the Build:
+-------------------
+
+There are no "check" or "test" targets to check the build. Omit this step.
+
+--------------------
+Install the Package:
+--------------------
+
+Simply run the "make install" command to install the package.
+
+-----------------
+Strip the Binary:
+-----------------
+
+Issue the following command to strip the debugging symbols from the binary:
+
+strip --strip-debug /lib/security/pam_krb5.so
+
+----------------
+Configuring PAM:
+----------------
+
+There are many examples of PAM configuration files in the pam.d subdirectory
+of the source tree. Additionally, the README file in the source tree is full
+of good information. Please review this information for configuring your PAM
+installation for use with Kerberos.
+
+Correctly configured, the pam_krb5 module will almost eliminate the need to
+manually acquire a TGT.
+
+----------------------------------
+Configuring /etc/heimdal/krb5.conf
+----------------------------------
+
+To fully utilize the pam_krb5 module you should add a section the Heimdal
+configuration file, /etc/heimdal/krb5.conf. Insert the following lines:
+
+[appdefaults]
+    pam = {
+        keytab = /etc/heimdal/krb5.keytab
+        debug = true
+        ticket_lifetime = 36000
+        renew_lifetime = 36000
+        forwardable = true
+        krb4_convert = true
+        afs_cells = FQDN_of_KDC_server
+        hosts = FQDN_of_additional_hosts
+        max_timeout = 30
+        timeout_shift = 2
+        initial_timeout = 1
+    }
+
+You should modify or remove any lines appropriate to your installation.
+Insure you modify the lines containing FQDN.
+
+==========================================
+8. ISSUES, GOTCHAS AND OTHER SUNDRY ITEMS:
+==========================================
+
+As mentioned earlier, there's a glitch in the ftp program. Another thing I
+noticed is that the Heimdal programs don't process the backslashed special
+characters in the /etc/issue file correctly. Additionally, as mentioned in
+the previous section, Heimdal does not have any native way to authenticate
+the xdm, gdm and kdm display manager logins.
+
+There's probably some other small issues I noticed, too small to write down
+when it happened or remember now, but as I find/remember any, I'll update the
+hint.
+
+=========
+9. TODO:
+=========
+
+1. Create instructions for creating/propogating a slave KDC server.
+
+============
+10. CLOSING:
+============
+
+When I realized I was going to integrate Heimdal into a project I was working
+on, Heimdal was not included in the BLFS book. I created this hint from my
+testing and research. Since that time, and my release of this hint as a
+"draft", Heimdal has been added to the BLFS book. I've tried to go back and
+make sure this hint and the BLFS book instructions contain the same
+information.
+
+If you discover errors and/or omissions in this hint, please let me know. I
+was  mainly interested in providing the instructions for a clean build and
+configuration. I hope I've succeeded. Enjoy!
+
+
+ACKNOWLEDGEMENTS:
+
+DJ Lucas <dj_at_lucusit_dot_com> for assistance with the cracklib integration
+
+
+CHANGELOG:
+
+[2004-05-10]
+    * Modified package dependency list to include pam_krb5
+    * Added a section describing the pam_krb5 dependency
+    * Modified pam_krb5 installation instructions
+    * Minor wording changes
+
+[2004-05-07]
+    * Updated package software version number due to package upgrade
+    * Changed reference to libcom_err library moves and symlinks
+
+[2004-05-05]
+    * Added a note about the Linux-PAM dependency
+
+[2004-05-02]
+    * Changed Synopsis to more properly reflect the scope of the document
+    * Reformatted the layout IAW the LFS hint submission guideline
+    * Minor wording changes
+
+[2004-05-01]
+    * Added pam_krb5 PAM Module section
+    * Changed cracklib patch filename references
+    * Minor wording changes
+
+[2004-04-29]
+    * Slight modification to cracklib integration instructions
+
+[2004-04-28]
+    * Added cracklib integration
+    * Added notes about dependencies
+    * Moved sysconfdir to /etc/heimdal
+    * Simplified --with-openssl switches
+    * Modified the "make check" explanation
+    * Moved some libraries to /lib to stay FHS compliant
+    * Modified the krb5.conf file
+    * Removed instructions to create kdc.conf
+    * Moved ACL file and created symlink to original location
+    * Minor wording changes
+
+[2004-04-21]
+    * Original draft
+

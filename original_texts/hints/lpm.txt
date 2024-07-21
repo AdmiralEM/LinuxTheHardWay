@@ -1,0 +1,209 @@
+AUTHOR:		Daniel Zilli (daniel@zilli.gulinuxsul.org)
+
+DATE:		2004-12-07
+
+LICENSE:      	GNU Free Documentation License Version 1.2
+
+SYNOPSIS:   	LPM - Linux from scratch Package Manager.
+
+PREREQUISITES: 	NA
+
+DESCRIPTION:
+The great thing about source code is the control that you have about it, and
+install software by source code is a must for any LFS user, but uninstall it is
+big a problem. I had severals searches for a easy and efficient method to
+uninstall a program by source, unfortunately i didn't have successful with my
+quest. So i decided make this hint. I sure that the LPM will be useful not just
+for the LFS folks, but to everyone that want to control your codes.
+
+ATTACHMENTS:
+
+Install-log software
+
+		http://ioioio.net/devel/install-log/install-log-cvs.tar.bz2
+
+LPM script:
+		http://www.zilli.gulinuxsul.org/lpm/lpm
+
+
+HINT:
+
+Contents
+========
+
+    1. Introduction
+    2. Notes
+    3. Downloading and Installing
+    4. How this works
+    5. How to use
+    6. End
+
+
+1. Introduction
+====================================
+
+Everyone know  that there is no package management system on LFS and for me, must keep this way. 
+A package management system is not obligatorily (just RPM if you plan make your system LSB compatible)
+but, that it can make our life easier there is no doubt, specialty if you prefer binary packages than 
+source codes packages. Unfortunately the packages management like rpm, dpkg and pkgtool don't handle with
+source codes. So here where I get in. My work here is produce a simple (I like this word!) and 
+efficient environment to work with source code. This works is based on the Installwatch and 
+Install-log hints and other things.
+
+
+2. Notes
+====================================
+
+a) In an attempt to make this easier to read, all "code blocks" that you should
+execute on the command line start with "##--BEGIN-CODE--##" and end with
+"##--END-CODE--##".
+
+b) Do not use this hint before the chapter 6.  Reason: No test !
+
+
+3. Downloading and Installing
+====================================
+
+Configuration, building, and installation of install-log is very simple.
+
+	##--BEGIN-CODE--##
+	./configure 
+	make 
+	make install
+	##--END-CODE--##
+
+
+The LPM script is easier.
+
+	##--BEGIN-CODE--##
+	chmod +x lpm
+	mv lpm /usr/sbin
+	##--END-CODE--##
+
+
+4. How this works
+==================================
+
+The install-log is a simple shell script to aid in package management when
+installing from source code.  Run "install-log <package-name>" immediately after
+you type "make install" (or whatever you do to install something), and it'll
+make a list of all the changes to your filesystem to a file and store in
+/var/log/install-log, for you uninstal, upgrad, or just simply taking account 
+of your system.
+
+
+5. How to use
+===========================
+
+#Loggin#
+
+When you are reading installation instructions for something, and you see "make
+install", after this you made:
+
+	##--BEGIN-CODE--##
+	lpm -l
+	##--END-CODE--##
+
+Example:
+
+Every time when you going to compile a software generally you make :
+
+	##--BEGIN-CODE--##
+	./configure && make && make install
+	##--END-CODE--##
+
+Now you will make
+
+	##--BEGIN-CODE--##
+	./configure && make && make install && lpm -l
+	##--END-CODE--##
+
+By default LPM will record the name of current dirctory as the log file name in
+/var/log/install-log. If you want to change this, just pass as the second
+argument the name that you want. Example:
+
+	##--BEGIN-CODE--##
+	./configure && make && make install && lpm -l superfoo
+	##--END-CODE--##
+
+That is it!
+
+#Erase#
+
+Uninstalling software is extremely easy with LMP, you simply give it a log file
+name from /var/log/install-log, and it will remove the software from your
+system. Lets say for example, you wanted to uninstall a program called 'foobar
+1.0'. Since we have the foobar-1.0 log file, we can simply do this:
+
+	##--BEGIN-CODE--##
+	lpm -e foobar-1.0
+	##--END-CODE--##
+
+And LPM will produce some output like this:
+
+	##..Uninstalling foobar-1.0 is done!..##
+
+
+#Report#
+
+I already showed you how to use it to uninstall software, now I'm going to show
+you how to use it to simply see what files got installed with each program.
+All you have to do is add  "-r" to LMP's argument list. See:
+
+	##--BEGIN-CODE--##
+	lpm -r foobar-1.0
+	##--END-CODE--##
+
+Now LPM will show all the files that the program installed
+
+If you want to see all the log files into the /var/log/install-log directory 
+just don't pass any argument to the "-r" option, or simply do this:
+
+	##--BEGIN-CODE--##
+	lpm -r 
+	##--END-CODE--##
+
+
+6. End
+==================
+
+Yes! Is just it! This is all you need to control your softwares installed by
+source. Some hints show how create a binary package using the source
+installation. I don't see any reason to this. If you installed a package by
+source, why do you want make a binary package? Anyway, your problems with 
+source code is over! 
+
+It's just the begin, but I will try make this hint best as I can.
+
+Any suggestion is welcome, so please let me know.
+
+
+ACKNOWLEDGEMENTS:
+
+Robert Park <rbpark@ualberta.ca> - Installwatch
+Andy Goth <unununium@openverse.com> - Install-log
+
+
+CHANGELOG:
+[2004-05-19]
+  * Initial release
+[2004-05-20]
+  * Add the official intall-log url.
+  * Remove the old section 2.
+  * Made the hint's text more clean.
+  * Improve the LPM scritp(v.1.1). Now the option -l works!
+[2004-05-21]
+  * LPM scritp(v.1.2). Now you can pass a second argument as a new name to the
+    log file.
+  * Fix some typos and make the hint' text better.
+[2004-05-22]
+   * Improve the layout of the hint. Now the 80 columns is on!
+   * Fix some typos.
+[2004-05-24]
+   * LPM script(v.1.3). Now if you don't pass any argument to the "-r" option,
+     it will show a list of all the logfiles from /var/log/install-log.
+   * Improve the comments on the LPM script.      
+   * Fix some typos.
+[2004-12-07]
+   * Made the hint's text more easy to understand.
+   * Updated the urls.

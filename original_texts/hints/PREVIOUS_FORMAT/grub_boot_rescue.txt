@@ -1,0 +1,91 @@
+TITLE:		GRUB Boot & Rescue Disk - HOWTO
+LFS Version:	All
+AUTHOR:		Daniel Armstrong <daniel_armstrong@sympatico.ca>
+
+SYNOPSIS:
+	GRUB is the GRand Unified Bootloader, a boot loader program with many
+cool features for the PC. It serves as a replacement for the more traditional
+LILO. This hint shows how to use GRUB to make a combined boot loader and rescue 
+disk for your LFS system.
+
+HINT:
+If you do not currently have GRUB installed on your system, you will need to 
+download the most recent version (ftp://alpha.gnu.org/gnu/grub/grub-0.90.tar.gz)
+and install it into your chosen working directory.
+
+Now we unpack GRUB and install it on our system with the following commands:
+
+tar xvzf grub-0.90.tar.gz
+cd grub-0.90
+./configure --prefix=/usr
+make
+make install
+
+This will create the necessary executables and support files to create our boot
+and rescue disk.
+
+Grab a spare floppy and do a fresh format and install a filesystem:
+
+fdformat /dev/fd0
+mkfs -t ext2 /dev/fd0
+
+Now we need to mount our soon-to-be GRUB disk:
+
+mount -t ext2 /dev/fd0 /mnt
+
+Create the directory and install the files GRUB will need to serve as your boot
+loader:
+
+mkdir -p /mnt/boot/grub
+cp /usr/share/grub/i386-pc/stage1 /mnt/boot/grub
+cp /usr/share/grub/i386-pc/stage2 /mnt/boot/grub
+
+Now we are going to setup our GRUB floppy to do double-duty as a rescue disk 
+for our LFS system, by placing a copy of the kernel on our floppy. This way if 
+kernel on the hard drive is ever corrupted or trashed, we can use our GRUB boot
+and rescue disk to get our system up and running again.
+
+Copy your kernel to the GRUB floppy:
+
+cp /boot/vmlinuz-2.4.7 /mnt/boot	#Your kernel and location may vary.
+
+The final step before we reboot and test our GRUB boot and rescue disk is to 
+install the GRUB tools in the Master Boot Record (MBR) of the floppy. Unmount 
+the floppy but leave it in the drive:
+
+umount /dev/fd0
+
+Now type at the command prompt:
+
+grub
+
+This starts up the GRUB shell environment and changes your # prompt to "grub>".
+Now enter:
+
+root (fd0)
+setup (fd0)
+quit
+
+Your GRUB boot and rescue disk is now complete. Leave the floppy in the drive 
+and reboot. When the GRUB shell returns type:
+
+root (fd0)
+kernel /boot/vmlinuz-2.4.7 root=/dev/hda3	#Replace MY boot image and root
+						#partition with your own
+boot
+
+Voila! Your LFS system should be up and running now.
+
+For a more complete description of GRUB's many features, configuration, and 
+installing GRUB on your hard drive's MBR, see the "Grub-HOWTO" hint at the 
+LFS-Hints website and/or type "info grub" at your command prompt.
+
+Thanks to Fabio Fracassi, the author of the "GRUB-Howto" hint, for getting me 
+started with GRUB.
+
+August 2, 2001 Daniel Armstrong <daniel_armstrong@sympatico.ca>
+
+
+  
+
+          

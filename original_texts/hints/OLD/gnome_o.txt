@@ -1,0 +1,863 @@
+GENERAL OUTLINE
+===============
+
+TITLE:		GNOME
+LFS VERSION:	Latest 3.0-preX (gcc 3.0 will NOT work)
+AUTHOR:		roryo and mca <gnomeATlinuxfromscratchDOTorg>
+
+SYNOPSIS:
+	From LFS to gnucash.
+
+HINT:
+
+First things first
+==================
+
+The developers of the assorted gnome applications are churning new releases 
+out at a rate for about 10 per week, it is therefore recommended that you get
+the latest version of this hint and the new patches.  These are available via
+anonymous CVS at roryo.dynup.net.
+
+cvs -d:pserver:anonymous@roryo.dynup.net:/home/cvsroot login
+
+Press <return> at the password prompt.
+
+cvs -d:pserver:anonymous@roryo.dynup.net:/home/cvsroot co gnome-hint
+
+This hint has proven quite stable for us, but your mileage will vary.  Consider
+this hint somewhat pre-alpha for now.  By using this hint, you agree to
+provide us with any and all information concerning build failures, runtime
+failures, and/or any other "feedback" you feel we need.  We want to know.  You
+can either email us at the address above or find us on irc.linuxfromscratch.org,
+whichever you prefer.
+
+We have created a wget list for all of the packages covered in this hint.  It
+is available at http://www2.linuxfromscratch.org/gnome/wget.list and is quite
+current (well, usually).  Save this list wherever you want, cd into the
+directory you'd like to save these packages, and run the following:
+
+    wget -ci /path/to/wget.list
+
+Now sit and wait.  ;)
+
+The URLs are listed in the order they appear in this hint, so you should be
+able to start compiling as soon as the first file finishes.
+
+
+Pre-build instructions
+**********************
+
+    The build instructions (and a few of the patches) in this hint rely on the
+    following procedures.  This is not optional.
+
+    $GNOME_ROOT, the prefix in which gnome will be installed, is completely up
+    to you.
+
+      (this assumes you are using bash/sh)
+
+      export GNOME_ROOT=/opt/GNOME
+      export PATH=$PATH:$GNOME_ROOT/bin
+      echo $GNOME_ROOT/lib >> /etc/ld.so.conf
+
+      export GNOME_OPTS="--prefix=$GNOME_ROOT --with-gnu-ld --disable-static"
+      alias gcfg='./configure $GNOME_OPTS'
+
+    If you wish, you can add --disable-nls to the above $GNOME_OPTS.  This will
+    prevent the international messages (.po files) from being installed, and will
+    save quite a bit of space.  Some packages' configure script will fail with an
+    error about not finding intl/libgettext.h.  If so, apply the intl.diff
+    included in the patch tarball.
+
+    Assuming you used the wget list, you should have a patches-GNOME.tar.bz2.
+    If not, grab it from:
+        http://www2.linuxfromscratch.org/gnome/patches-GNOME.tar.bz2
+
+    Unpack (tar yxvf) this file and it will create a patches/ directory.  In
+    this directory, the patches are named <package>-<version>.diff.  They are
+    probably quite version specific.  The *.wtf files are brief explanations
+    of what and why the patch was needed.
+
+    To apply:
+        unpack <package>-<version>.tar.gz
+        patch -p0 -i /path/to/<package>-<version>.diff
+
+    These patches are created from outside the source tree, so you may have to
+    play with -p options depending on where you are.
+
+
+
+Miscellaneous Notes
+===================
+
+    * New packages
+
+        If a new version of any package in this hint is available, please use
+        it.  We will attempt to keep this hint as current as possible, but we
+        may fail.  If a new package is available and is causing problems, we
+        will make a note of it.  Also, if you don't mind, drop us an email
+        about the new package, and whether or not our build instructions were
+        ok with it.
+
+        WARNING:  They are leaking a few pre-2.0-alpha packages, most notably
+                  control-center.  We are not using these yet as they rely on
+                  unstable glib/gtk+ versions.  Anything requiring pkg-config
+                  should be ignored for now.
+
+    * FHS Compliance
+
+        This hint is entirely (?) FHS (www.pathname.com/fhs/) compliant.
+        You are by no means bound to these instructions, but we cannot
+        guarantee the same results if you do stray.
+
+        GNOME is quite large and scattered.  Choosing /usr as the
+        $GNOME_PREFIX above will be a very messy decision.
+
+    * Compiler Optimizations
+
+        If you don't know what these are, you'll be better off ignoring this.
+        The large majority of these packages will honor the $CFLAGS variable.
+        Those that don't (off the top of my head) are libpng, openssl, libdb,
+        and python.  There were some others, but they had to be patched for
+        other reasons so that 'feature' was added.  If you have problems with
+        any packages at runtime, please recompile it without *any*
+        optimizations before telling us about it.
+
+    * Symlinks
+
+        These symlinks are here to provide other applications easy access to
+        the package's libraries and headers.  This saves us (and you) much
+        time and effort in hacking Makefiles and such in an attempt to find
+        them.  If you don't follow the symlinking instructions, you are on
+        your own with the detection of these packages by others.
+
+    * Objective C
+
+        Several GNOME packages/applications can make use of the objective C
+        compiler, if available.  Some packages will fail if you don't install
+        the proper packages to make use of it, others will fail because you
+        don't have it.  It is not required in any way.
+
+        To install the objc compiler, follow the directions for GCC in the
+        shared section of the LFS book (chapter 6, as of 3.0).  Make the
+        following change:
+            Instead of:  --enable-languages=c,c++
+            Use:  --enable-languages=c,c++,objc
+
+        Install gcc per the instructions and continue your quest.
+
+    * TODO - Known bugs/issues
+
+        *  Add dependency notes.  GnuCash is a good example.  If you wish to
+           skip it, you can skip at least three other packages too.
+
+        *  The default session is ugly.  We (or someone) need to replace it
+           with something better.
+
+        *  We need to create a list of what you miss out on by not having an
+           objc compiler.
+
+        *  Rid of the MISSING's.
+
+        *  Esound is a piece of crap and needs rewritten/replaced.
+
+
+
+Software installation
+=====================
+
+
+Prerequisites not covered here
+******************************
+
+    In addition to a base LFS system, you will need the following:
+
+        X11:  http://www.xfree86.org/
+        zlib: ftp://ftp.uu.net/graphics/png/src
+
+    See the X11 hint for their installation.
+
+
+Pre-GNOME packages
+******************
+
+Berzerkeley DB: (3.3.11 specific)
+    UCB's database library.
+        cd build_unix/
+        ../dist/configure \
+          --prefix=/usr \
+          --enable-compat185 \
+          --enable-static \
+          --enable-shared
+        make docdir=/usr/doc/Berkeley-DB all install
+        cd /usr/lib/ && ln -s libdb-3.3.a libdb.a
+        sed 's/^DB185/DB/' /usr/include/db_185.h > /usr/include/db_185.h.new
+        mv /usr/include/db_185.h.new /usr/include/db_185.h
+
+readline:
+    GNU readline.  Command line history and editing.
+        ./configure \
+          --prefix=/usr
+        make all install
+        cd shlib/
+        make all install
+
+bc:
+    GNU calculator.
+        ./configure \
+          --prefix=/usr \
+          --with-readline
+        sed 's|\(^_PR.*readline.*$\)|/* \1 */|' bc/scan.l > new-scan.l &&
+        mv new-scan.l bc/scan.l
+        make all install
+
+openssl:
+    Open source SSL library.
+
+    *** See FHS note!
+    *** See symlink note!
+
+        export OPENSSL_ROOT=/opt/OpenSSL
+        ./config \
+          --prefix=$OPENSSL_ROOT \
+          --openssldir=$OPENSSL_ROOT \
+          shared
+        make && make install
+        cd /usr/lib
+        for file in lib{crypto,ssl}.{a,so.0.9.6}
+        do
+            ln -s $OPENSSL_ROOT/lib/$file
+        done
+        ln -s libcrypto.so.0.9.6 libcrypto.so.0
+        ln -s libssl.so.0.9.6 libssl.so.0
+        ln -s libcrypto.so.0 libcrypto.so
+        ln -s libssl.so.0 libssl.so
+        cd /usr/include &&
+        ln -s $OPENSSL_ROOT/include/openssl
+        unset OPENSSL_ROOT
+
+Python: (optional)
+    The Python interpreted programming language.
+
+        ./configure \
+          --prefix=/usr \
+          --with-threads
+        make all install
+
+    *** FHS note - if installed anywhere else a symlink must be made from
+        the python binary to /usr/bin/python eg
+        ln -s <path-to-python> /usr/bin/python
+
+PostGreSQL: (optional)
+    The most advanced open source SQL server.
+    You should probably read the documentation, but this is how I like it.
+
+    *** See FHS note!
+    *** See symlink note!
+
+        export PGSQL_ROOT=/opt/PostGreSQL
+        ./configure \
+          --prefix=$PGSQL_ROOT \
+          --with-ssl=/usr \
+          --disable-static
+        make all install
+        cd /usr/lib
+        for file in lib{pq,pgeasy}.so.2.1; do
+            ln -s $PGSQL_ROOT/lib/$file
+        done
+        ln -s libpq.so.2.1 libpq.so.2
+        ln -s libpgeasy.so.2.1 libpgeasy.so.2
+        ln -s libpq.so.2 libpq.so
+        ln -s libpgeasy.so.2 libpgeasy.so
+        cd /usr/include &&
+        ln -s $PGSQL_ROOT/include/postgresql
+        unset PGSQL_ROOT
+
+MySQL: (optional)
+    A fast open source SQL server.
+    You should probably read the documentation, but this is how I like it.
+
+    *** See FHS note!
+    *** See symlink note!
+
+        export MYSQL_ROOT=/opt/MySQL
+        ./configure \
+          --prefix=$MYSQL_ROOT \
+          --disable-static \
+          --enable-thread-safe-client \
+          --without-debug \
+          --without-docs \
+          --without-bench \
+          --without-readline \
+          --with-berkeley-db=./bdb
+        make all install
+        cd /usr/lib &&
+        ln -s $MYSQL_ROOT/lib/libmysqlclient.so.10.0.0 &&
+        ln -s libmysqlclient.so.10.0.0 libmysqlclient.so.10 &&
+        ln -s libmysqlclient.so.10 libmysqlclient.so
+        cd /usr/include &&
+        ln -s $MYSQL_ROOT/include/mysql
+        unset MYSQL_ROOT
+
+libjpeg:
+    Library for accessing jpeg images.
+        ./configure \
+          --prefix=/usr \
+          --enable-shared
+        make && make install
+
+libpng:
+    Library for accessing png images.
+        cp scripts/makefile.linux Makefile
+        make ZLIBINC=/usr ZLIBLIB=/usr prefix=/usr all install
+
+libungif:
+    Library for accessing gif images.
+        ./configure \
+          --prefix=/usr
+        make all install
+
+libtiff:
+    Library for accessing tiff images.
+        ./configure --prefix=/usr --noninteractive
+        make all install
+        (optionally) make install.man
+
+lcms:
+    Color correction/management library. 
+        Apply the patch
+        cd src/
+        make all install
+
+libmng:
+    Library for accessing mng (animated) images.
+    mng is the Open Source alternative to animated gifs
+        ./configure \
+          --prefix=/usr \
+          --with-zlib=/usr \
+          --with-jpeg=/usr \
+          --with-lcms=/usr
+        make all install
+
+libiconv:
+    An iconv() implementation that properly supports UTF-*.
+        ./configure \
+          --prefix=/usr \
+          --enable-static \
+          --enable-shared
+        make all install
+
+glib:
+    An extension library to glibc.
+        ./configure \
+          --prefix=/usr/X11R6 \
+          --enable-threads \
+          --enable-debug=no
+        make all install
+
+    NOTE:  If you don't like the above prefix, feel free to change it.  glib
+           has nothing to do with X, and probably doesn't belong where we put
+           it.  Everything that depends upon it will have no trouble locating
+           it as long as it's prefix/bin is in your $PATH, and the prefix/lib
+           is in your /etc/ld.so.conf.
+
+GTK+:
+    The Gimp Toolkit.. an X11 widget library.
+        ./configure \
+          --prefix=/usr/X11R6 \
+          --enable-debug=no
+        make all install
+
+ORBit:
+    A CORBA implementation.
+        ./configure \
+          --prefix=/usr/X11R6
+        make all install
+
+libxml:
+    The gnome-xml library.
+        ./configure \
+          --prefix=/usr/X11R6 \
+          --with-zlib=/usr \
+          --with-buffers
+        make all install
+
+libxml2:
+    The xml library.
+        ./configure \
+          --prefix=/usr/X11R6 \
+          --with-zlib=/usr \
+          --with-readline=/usr \
+          --with-buffers
+        make all install
+
+GhostScript:
+    The GhostScript package.  Used for post-script and network printing.
+
+        Apply the patch
+        cd ghostscript-6.51
+        tar zxvf <path-to-jpeg6bsrc.tar.gz>
+        mv jpeg-6b jpeg
+        ln -s src/unix-gcc.mak Makefile
+        make 
+        make install
+
+    If you are using glibc 2.2.2 or higher, this build will fail.  Edit
+    src/time_.h, insert #include <time.h> on line 35.
+
+GhostScript Fonts:
+    GhostScript Fonts.
+        cd /usr/X11R6/share/ghostscript
+        tar zxvf <path-to-gnu-gs-fonts.std-6.0.tar.gz>
+
+    This will create the fonts directory, there are other GhostScript fonts available if
+    you feel so inclined.
+
+ImageMagick:
+    Provides many useful image manipulation functions, plus a few handy
+    executables.
+        sed \
+          's/-lxml2/-lxml2 -liconv/g' \
+          configure > configure~
+        sed \
+          's|<lcms.h>|<lcms/lcms.h>|g' \
+          configure~ > configure
+        ./configure \
+          --prefix=/usr/X11R6 \
+          --enable-shared \
+          --disable-static \
+          --without-perl \
+          --with-ttf-fontpath=/usr/X11R6/lib/X11/fonts/TrueType
+        make all install
+
+    NOTE: if you have the TrueType fonts installed in a different
+	      path you will have to changes the --with--ttf-fontpath.
+
+imlib:
+    Library providing access to all of the above image formats.
+        ./configure \
+          --prefix=/usr/X11R6 \
+          --disable-static
+        make all install
+
+audiofile:
+    Library providing access to several different audio formats.
+        ./configure \
+          --prefix=/usr/X11R6 \
+          --disable-static
+        make all install
+
+esound:
+    The enlightened sound daemon.
+        Apply the patch
+        ./configure \
+          --prefix=/usr/X11R6 \
+          --disable-static 
+        make all install
+
+gtk-engines:
+    GTK+ themes and theme libraries.
+        ./configure --prefix=/usr/X11R6
+        make all install
+
+
+GNOME core packages
+*******************
+    MISSING:  mc/nautilus
+
+popt:
+    Red hat's getopt()-ish replacement.
+        gcfg --enable-static
+        make all install
+
+libunicode:
+    Gnome's Unicode interface.
+        gcfg
+        make all install
+
+gnome-libs:
+    The core GNOME libraries.
+        Apply the patch
+        gcfg
+        make all install
+
+gdk-pixbuf:
+    The gtk+ pixbuf library.
+        gcfg
+        make all install
+
+oaf:
+    Object Activation Framework for GNOME.
+        Apply the patch
+        gcfg --enable-oaf-debug=no
+        make all install
+
+libghttp:
+    Library for speaking the http protocol.
+        gcfg
+        make all install
+
+scrollkeeper:
+    Scrollkeeper Open Documentation Cataloging System.
+        sed 's|=lib/scrollkeeper|=scrollkeeper|g' configure > configure~
+        cp configure~ configure
+        gcfg
+        make all install
+
+gnome-print:
+    GNOME print library.
+        gcfg --with-zlib=/usr
+        make all install
+
+bonobo:
+    GNOME component and compound document system.
+        gcfg
+        make all install
+
+guile:
+    GNU scheme implementation.
+        Apply the patch
+        gcfg --with-threads
+        make all install
+
+slib:
+    Scheme library extension.
+        make prefix=$GNOME_ROOT
+        make prefix=$GNOME_ROOT install
+        GUILE_LOAD_PATH=$GNOME_ROOT/share/guile/slib \
+        guile -c "(use-modules (ice-9 slib)) (require 'new-catalog)"
+
+GConf:
+    A configuration database system.
+        Apply the patch
+        gcfg --enable-debug=no
+        make all install
+        mv $GNOME_ROOT/etc/gconf/1/path.example $GNOME_ROOT/etc/gconf/1/path
+
+gnome-vfs:
+    GNOME virtual file system.
+        Apply the patch
+        gcfg
+        make all install
+
+control-center:
+    GNOME configuration tool.
+        gcfg
+        make all install
+
+libglade:
+    Library for loading glade interface files at runtime.
+        gcfg --enable-bonobo --disable-bonobotest
+        make all install
+
+bug-buddy:
+    Gnome front-end to bugzilla for submitting bug reports.
+        gcfg
+        make all install
+
+pygtk:
+    GTK+ python bindings.
+        ./configure --prefix=/usr
+        make all install
+
+gal:
+    GNOME Application library.
+        gcfg
+        make all install
+
+w3c-libwww:
+    w3c's www-ish libraries.
+        Apply the patch
+        gcfg \
+          --with-zlib \
+          --with-md5 \
+          --with-ssl
+        make all install
+
+glibwww:
+    Glib extension for access to w3c-libwww
+        gcfg
+        make all install
+
+gtkhtml:
+    An html parsing library.
+        Apply the patch
+        gcfg \
+          --with-bonobo \
+          --without-gconf
+        make all install
+
+libgtop:
+    Library for accessing /proc.
+
+    (If build fails because of ISDN_MAX_CHANNELS, add #define
+    ISDN_MAX_CHANNELS 64 to the .c file that failed and recompile.
+    This is a kernel issue.  2.4.6 has fixed it.)
+
+        gcfg
+        make all install
+
+gmp:
+    GNU's precision math library.
+         gcfg
+         make all install
+
+gdbm:
+    GNU's dbm replacement library.
+        gcfg
+        make BINOWN=root BINGRP=root all install
+
+librep:
+    Lisp implementation.
+        Apply the patch.
+        gcfg --with-readline
+        make all install
+
+rep-gtk:
+    Lisp bindings for GTK+.
+        gcfg \
+          --with-libglade \
+          --with-gdk-pixbuf \
+          --with-gnome-canvas-pixbuf
+        make all install
+
+gob:
+    GTK+ Object Builder.
+        gcfg
+        make all install
+
+libxslt:
+    XSLT support for libxml.
+        gcfg
+        make all install
+
+libgda:
+    Library to interface SQL servers.
+        sed 's/libmysqlclient.a/libmysqlclient.so/g' configure > conf.new
+        sed 's/\(ORB.*\)which\(.*\)/\1type -p\2/' conf.new > configure
+        gcfg \
+          --with-mysql=/opt/MySQL \
+          --with-postgres=/opt/PostGreSQL
+        make all install
+
+sawfish:
+    The Sawfish window manager.
+        gcfg \
+          --with-gdk-pixbuf \
+          --disable-linguas
+        make all install
+        cp Sawfish.desktop $GNOME_ROOT/share/gnome/wm-properties/
+
+gnome-core:
+    Core GNOME applications.
+        Apply the patch
+        gcfg \
+          --with-window-manager=sawfish \
+          --enable-gtkhtml-help
+        make all install
+
+gnome-common:
+    Autoconf/make files for GNOME.
+        gcfg
+        make all install
+
+gnome-objc: (optional)
+
+    *** See the OBJC note
+
+    Objective C bindings for GNOME.
+        gcfg
+        make all install
+
+gnome-admin:
+    Administration utilities.
+        gcfg --with-messages=/var/log/sys.log
+        make all install
+
+gnome-applets:
+    Many different GNOME applets.
+        gcfg
+        make all install
+
+gnome-audio:
+    Sounds.
+        make install
+
+gnome-python: (optional)
+    Python binding for GNOME
+        gcfg --with-gtkhtml
+        make all install
+
+gnome-games:
+    Games!
+        gcfg
+        make all install
+
+gnome-media:
+    Multimedia applications.
+        gcfg
+        make all install
+
+gnome-network:
+    Network applications/utilities.
+        If you don't have objc (see note), apply the patch.
+        gcfg
+        make all install
+
+gnome-pim:
+    Personal information manager for GNOME.
+        gcfg
+        make all install
+
+gnome-utils:
+    Several miscellaneous utilities.
+        Apply the patch
+        gcfg --with-messages=/var/log/sys.log
+        make all install
+
+xscreensaver:
+    Screensavers!
+        gcfg \
+          --with-gtk \
+          --with-gnome \
+          --enable-subdir=xdemos
+        make all install
+
+gnome-user-docs:
+    GNOME Documentation.
+        gcfg
+        make all install
+
+users-guide:
+    More GNOME documentation.
+        gcfg
+        make all install
+
+
+GNOME applications
+******************
+  MISSING:  Evolution, Galeon
+        
+dia:
+    Diagram creation application.
+        gcfg \
+          --enable-gnome \
+          --enable-bonobo \
+          --enable-debug=no \
+          --with-python
+        make all install
+
+g-wrap:
+    Glib scheme bindings.
+        gcfg
+        make all install
+
+libole2:
+    MS OLE library.
+        gcfg
+        make all install
+
+gb:
+    GNOME-basic.  (Yes, kinda like visual-basic).
+        Apply the patch
+        gcfg --without-runtime-debug
+        make all install
+
+gnumeric:
+    GNU Spreadsheet application.
+        Apply the patch
+        gcfg \
+          --with-bonobo \
+          --with-guile \
+          --with-gb \
+          --with-python
+        make all install
+
+Guppi:
+    Library for creating/drawing graphs and charts.
+        gcfg --enable-gnumeric
+        make all install
+
+glade:
+    A quick GUI IDE.
+        gcfg \
+          --with-gnome \
+          --with-bonobo \
+          --disable-gnome-db
+        make all install
+
+gnucash:
+    GNU money management program.. quite similar to quickbooks and such.
+        Apply the patch
+        gcfg (add --enable-sql if you have postgres)
+        make all install    
+
+abiword:
+    GNU Word processor. 
+        Apply the patch
+        cd abiword/abi/src/
+        make \
+          prefix=$GNOME_ROOT \
+          ABI_OPT_GNOME=1 \
+          ABI_OPT_BONOBO=1 \
+          OPTIMIZER="$CFLAGS \
+            -L/usr/X11R6/lib -I/usr/X11R6/include \
+            -L$GNOME_ROOT/lib -I$GNOME_ROOT/include \
+            -L/usr/local/lib -I/usr/local/include"
+        make install \
+          prefix=$GNOME_ROOT \
+          ABI_OPT_GNOME=1 \
+          ABI_OPT_BONOBO=1 \
+          OPTIMIZER="$CFLAGS \
+            -L/usr/X11R6/lib -I/usr/X11R6/include \
+            -L$GNOME_ROOT/lib -I$GNOME_ROOT/include \
+            -L/usr/local/lib -I/usr/local/include"
+
+
+Other apps
+**********
+
+  There are many more gnome applications out there, but most are a fairly
+simple build and aren't (yet) covered in this hint.  A few you may wish to
+check out are:
+
+    * GTM - Gnome Transfer Manager (a nice little download manager)
+    * PAN - Pimp Ass Newsreader
+    * Encompass - gtkhtml based browser
+    * xChat - the best GUI irc client, 'nuff said
+    * gnotepad - gvim owns, but nice for mutilple docs at once
+    * Balsa - nice stable GUI mail app, based on Pine
+    * xmms - if you dont know what it is, when we give up ;)
+    * Pharmacy - Gnome CVS front end
+    * Gimp - the root of it all, graphics app, total ownage
+    * EOG - Eye of Gnome.. an image viewer
+    * GQView - a better gtk+ based image viewer
+
+
+
+Frequently Asked Questions
+==========================
+
+    Q:  How do I properly start gnome?
+    A:  You do one of the following:
+            echo gnome-session > ~/.xinitrc
+        or, if you wish to enable those annoying little sounds,
+            echo gnome-session --enable-sound > ~/.xinitrc
+
+    Q:  I'm trying to build packageXXX from CVS sources, or just regenerate
+        its configure script from configure.in, but autoconf bitches about not
+        having some other gnome package installed.  WTF?
+    A:  Autoconf is dumb and can/will only use one search directory for the
+        .m4 files these packages install.  You should probably do the
+        following:
+
+            mv $GNOME_PREFIX/share/aclocal/* /usr/share/aclocal/ &&
+            rm -r $GNOME_PREFIX/share/aclocal && cd $GNOME_PREFIX/share &&
+            ln -s /usr/share/aclocal
+
+    Q:  Am I stupid?
+    A:  Obviously, yes.
+
+============
+End of hint.
+
+

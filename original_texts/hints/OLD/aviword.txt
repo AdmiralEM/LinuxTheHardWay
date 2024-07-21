@@ -1,0 +1,126 @@
+TITLE:		Abiword
+LFS VERSION:	any
+AUTHOR:		J. E. Garrott Sr <johnga@primenet.com>
+
+SYNOPSIS:
+	How to install Abiword shared.
+
+HINT:
+Abiword is quite easy to install, but there are a couple of
+gotcha's.  Note that I did not install the gnome version.
+
+The URL for the sources is:
+
+	http://www.abisource.com/downloads/Version-x.y.zz/lf/
+
+	where x.y.zz is currently 0.7.13
+
+or, if you prefer:
+
+	ftp.abisources.com/releases/x.y.zz/src/lf
+
+
+The required files and approximate sizes (for Linux only :)
+(Actually, you have a choice.  You can download .zip versions
+of the following. . .if you wish.)
+
+    abi-x.y.zz.tar.gz           4.4M  
+    abidistfiles-x.y.zz.tar.gz  546k  
+    expat-x.y.zz.tar.gz          65k  
+    libiconv-x.y.zz.tar.gz      1.4M  
+    libpng-x.y.zz.tar.gz        228k  
+    unixfonts-x.y.zz.tar.gz     1.8M  
+    wv-x.y.zz.tar.gz            1.1M  
+    zlib-x.y.zz.tar.gz          168k  
+
+
+You don't have to download anything, such as zlib or libpng that
+you already have, except xpat.  It is likely that your don't have
+anything else.  It is also important that the other
+files are untarred and unzipped in the same directory as abi-x.y.zz
+
+In addition, you must have XFree86 installed.  I used 3.3.6, 4.01,
+and 4.02.
+
+Also gtk, glib, gdk, etc.  Version 2.2 or higher.
+
+After downloading the necessary files, untar and unzip them 
+in whatever directory you wish.  (I build everything in /usr/src,
+but this is arbritrary.)
+
+BUILD_DIR=/usr/src   (You don't have to set a shell variable.  Just
+substitute the value whereever $BUILD_DIR occurs below.)
+
+Preparation:
+
+	Now, because I know you didn't read the Developer's FAQ . . .:-)
+	I will tell you how to build the shared version.  (You didn't make
+	static versions of everything, including XFree86, did you?)
+
+	First, cd to $BUILD_DIR/abi/src/config/platforms
+	(Below 0.7.13, cd to $BUILD_DIR/abi-x.y.zz/src/config/platforms)
+
+	Then edit the file linux.mk, changing "UNIX_CAN_BUILD_STATIC=1"
+	to "UNIX_CAN_BUILD_STATIC=0".  (Without the quotes, naturally :)
+
+	
+	No, you are not done yet.  We now come to the reason I decided to
+	write this little note.  The following edit is not in the FAQ.
+
+	cd to $BUILD_DIR/abi/src/config/require/unix and
+	(Below 0.7.13, cd to $BUILD_DIR/abi-x.y.zz/src/config/require/unix and)
+	edit the Makefile.
+
+	Change all occurances of "libz.a" to "libz.so".
+	Change all occurances of "libpng.a" to "libpng.so".
+	Again without the quotes in both cases.
+
+	Note:	For version 0.7.13, you must also edit the file
+			$BUILD_DIR/psiconv/psiconv/generate_layout.c
+			Line 81 contains the C++ comment "// Unknown byte".
+			Delete this line or wrap it in a C comment.
+	
+Compiling:
+
+	You may wish to install the binaries somewhere else.
+	INSTALL_DIR=/usr/local  (See the comment to BUILD_DIR above.)
+
+	cd $BUILD_DIR
+	
+	for versions below 0.7.13, ln -s abi-x.y.zz abi
+
+	cd abi
+	
+	Simple way:
+		make
+		make install
+
+	Harder, but nicer:
+		make distribution prefix=$INSTALL_DIR \
+			ABI_BUILD_VERSION=x.y.zz ABI_DIST_TARGET=<fmt>
+		where <fmt> is one of 'tgz', 'rpm', 'deb', 'slp', 'pkg'.
+		This will place the appropriate file(s) in abi/dist.  They
+		may then be installed in the normal manner.  If you want to
+		install in /usr/local, then leave out the prefix= argument.
+
+		Well, since this is a hint, in abi/dist there is a file,
+		abisuite-x.y.zz-Linux_i386_shared.tar.gz.  Untar this somewhere,
+		enter the resulting abisuite-x.y.zz-Linux_i386_shared directory
+		and run install.sh.  You should now be up and running.
+
+		Try typing "abiword &".  It should come up.  (What?  You didn't
+		forget to put $INSTALL_DIR in your path, I hope.)
+
+		NOTE:	I had to compile as root.  When I compiled as a user,
+				the compile bombed out at the file ev_UnixToolbar.cpp.
+				Haven't traced this down yet.
+
+Now save $BUILD_DIR/abi-x.y.zz/dist/abisuite-x.y.zz-Linux_i386_shared.tar.gz
+to whereever you save such things.  (If you're not going to save it,
+why did you create it in the first place?)
+
+If you have any problems, the best place to air them is at
+lfs-apps@linuxfromscratch.org, so others can possibly benefit from
+the answers.  However, I will certainly try to answer any questions
+on this install that are directed to me privately.
+Just remember, it may be a case of the blind leading the blind.

@@ -1,0 +1,41 @@
+TITLE:		Compiler Optimization
+LFS VERSION:	2.3.5
+AUTHOR:		Per Liden <per@fukt.hk-r.se>
+
+SYNOPSIS:
+		How to optimize the compilation for a certain CPU.
+
+HINT:
+To optimize for a specific architecture you can add the -m<cpu>
+-march=<cpu> options when compiling. If you want to optimize for, say PII,
+then you could do someting like this:
+
+before running ./configure, type:
+
+(if you use bash)
+
+        export CFLAGS="-02 -mpentiumpro -march=pentiumpro"
+        export CXXFLAGS="-02 -mpentiumpro -march=pentiumpro"
+
+(or if you use tcsh)
+
+        setenv CFLAGS "-02 -mpentiumpro -march=pentiumpro"
+        setenv CXXFLAGS "-02 -mpentiumpro -march=pentiumpro"
+
+the -O2 option could be set to something higher than 2, but 2 is a safe
+choice. If the package in question doesn't have a ./configure script you
+sometimes (depending on how the Makefile is written) have to edit the
+Makefile by hand.
+
+Note that when using the -march=<cpu> option, the compiler will make use
+of architecture specific instructions, and therefor the binary will not
+run on older architectures, in this case pentium, i486, etc.
+
+The -m<cpu> option does not cause the compiler to generate archetecture
+specific instructions, however, the compiler schedules the code to perform
+best on the specified cpu.
+
+Valid cpu (Intel and compatables) types in gcc 2.95.2 are:
+486, pentium, pentiumpro, k6
+
+/pli

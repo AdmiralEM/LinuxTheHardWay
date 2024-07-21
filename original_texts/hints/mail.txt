@@ -1,0 +1,1019 @@
+AUTHOR:         Jim Gifford <lfs-hints@jg555.com>
+
+DATE: 		2003-10-09
+
+LICENSE: 	GNU Free Documentation License Version 1.2
+
+SYNOPSIS: 	Howto setup a complete email system.
+
+DESCRIPTION:	This hint will show you how to completly set
+		up an email system under LFS
+
+PREREQUISITES:	Files listed in hint must be downloaded
+
+HINT:
+
+Introduction to Complete Email
+
+This hint will help you configure a complete email system. One that supports
+IMAP and POP3 requests. It will also filter SPAM and remove harmfull HTML code
+from messages. This is a very long hint, but in order to get everything to work
+you must follow all steps.
+
+Programs Used
+
+Program Name		Postfix
+Download location		http://www.postfix.org
+Version used		2.0.15
+
+Program Name		Procmail
+Download location		http://www.procmail.org
+Version used		3.22
+
+Program Name		Courier Imap
+Download location		http://www.courier-mta.org
+Version used		2.1.1
+
+Program Name		Avmailgate
+Download location		http://www.hbedv.com
+Version used		2.0.1.16
+
+Program Name		Gotmail
+Download location		http://ssl.usu.edu/paul/gotmail
+Version used		0.7.10
+
+Program Name		Fetchmail
+Download location		http://www.tuxedo.org/~esr/fetchmail
+Version used		6.2.4
+
+Program Name		Anomy Mail Sanitzer
+Download location		http://mailtools.anomy.net
+Version used		1.6.3
+
+Program Name		Spam Assassin
+Download location		http://www.spamassassin.org
+Version used		2.55
+
+Program Name		Razor
+Download location		http://razor.sourceforge.net
+Version used		2.36
+
+Program Name		Imap Filter
+Download location		http://imapfilter.hellug.gr
+Version used		0.9.2
+
+Program Name		FCRON
+Download location		http://fcron.free.fr
+Version used		2.0.0
+
+Program Name		Berkeley DB
+Download location		http://www.sleepycat.com
+Version used		4.0.14
+
+Program Name		Wget
+Download location		http://www.gnu.org/software/wget/wget.html
+Version used		1.8.2
+
+Program Name		Nail
+Download location		http://omnibus.ruf.uni-freiburg.de/~gritter
+Version used		10.5
+
+Program Name		Openssl
+Download location		http://www.openssl.org
+Version used		0.9.7b
+
+Program Name		Pop-before-smtp
+Download location		http://www.trestle.com/unix/pop-before-smtp
+Version used		0.91
+
+---
+Assumptions Made in this document
+
+	I have made the following assumptions in this document.
+	File have been downloaded.
+	The use of tar.
+	Openssl is installed. Install information is located in this document also.
+
+---
+Important
+	
+	The complete mail system will not be functional until you have
+	completed all the steps. You can skip the steps that are optional,
+	without any problems
+
+	DO NOT USE DB 4.1.25 IT DOES NOT WORK WITH THIS CONFIGURATION.
+
+---
+Postfix
+
+	Before you can setup Postfix you will need to setup Berkeley DB.
+
+	Setup of Berkeley DB
+	
+		To Compile Berekely DB you can use the following commands.
+
+		Change to the /usr/src/db-4.014/dist directory
+		In the directory issue the following commands
+
+		./configure --prefix=/usr --enable-shared -- enable-compat185
+		make docdir=/usr/doc/BerkeleyDB-4 all install
+
+	This completes the Setup of Berkeley DB. You can remove the db-4.0.14
+	file and directory.
+
+Before Compiling
+
+	Before compiling postfix you will need to create a user and a group.
+
+	In /etc/passwd add : postfix:x:101:101::/dev/null:/bin/false
+
+	In /etc/group add : postfix:x:101: postdrop:x:102:
+
+Compiling
+
+	Change to /sr/src/postfix-1.1.11 directory
+	In the directory issue the following commands
+
+	make 
+
+	Now if you have never installed Postfix before the next command you
+	will issue is the following command. You may want to look at the
+	configuration information beelow, it may help you answer some of
+	question that postfix will ask you.
+	
+	make install
+	
+	If you have installed Postfix before the next command you will issue
+	is the following command
+
+	make upgrade
+
+Configuration
+
+	You will need to change postfix's configuration to work with the
+	courier-imap server. The configuration below is my working config. I
+	have added *** *** lines where changes are needed
+
+	Configuration File Main.cf - /etc/postfix/main.cf
+
+	queue_directory = /var/spool/postfix
+	command_directory = /usr/sbin	
+	daemon_directory = /usr/libexec/postfix
+	mail_owner = postfix
+	myhostname = mail.server.com *** Change this to your mail server DNS Name ***
+	mydomain = server.com *** Change this to your domain name ***
+	myorigin = $mydomain
+	inet_interfaces = all
+	mydestination = $myhostname, localhost.$mydomain, $mydomain,
+		mail.$mydomain, www.$mydomain, ftp.$mydomain
+	mynetworks_style = subnet
+	mynetworks = 192.168.0.0/24, 127.0.0.0/8 *** Change this to your Network IP -- Do not Change the 127.0.0.0/8 ***
+	relayhost = [ smtp.isp.com ]  *** Change this to your ISP's smtp server ***
+	allow_percent_hack = yes
+	append_at_myorigin = yes
+	append_dot_mydomain = yes
+	empty_address_recipient = MAILER-DAEMON
+	masquerade_classes = envelope_sender, header_sender, header_recipient
+	masquerade_domains = server.com *** Change this to your domain name ***
+	masquerade_exceptions =
+	swap_bangpath = yes
+	transport_maps = hash:/etc/postfix/transport
+	alias_maps = hash:/etc/postfix/aliases
+	alias_database = hash:/etc/postfix/aliases
+	home_mailbox = Maildir/
+	mail_spool_directory = /var/mail
+	mailbox_command = /usr/bin/procmail -d "$USER"
+	smtpd_banner = $myhostname ESMTP $mail_name ($mail_version)
+	debug_peer_level = 2
+	debugger_command =
+	 	PATH=/usr/bin:/usr/X11R6/bin
+		 xxgdb $daemon_directory/$process_name $process_id & sleep 5
+	sendmail_path = /usr/sbin/sendmail
+	newaliases_path = /usr/bin/newaliases
+	mailq_path = /usr/bin/mailq
+	setgid_group = postdrop
+	manpage_directory = /usr/share/man
+	sample_directory = /etc/postfix/sample
+	readme_directory = no
+	content_filter = smtp:127.0.0.1:10024
+	maps_rbl_reject_code = 571 
+	maps_rbl_domains = dynablock.wirehub.net, blackholes.wirehub.net, relays.ordb.org
+	smtpd_sender_restrictions = hash:/etc/postfix/access, reject_maps_rbl
+
+	Configuration File Master.cf - /etc/postfix/master.cf
+
+	Use the file that is in /etc/postfix directory and add the following
+	line after smtp
+
+	localhost:smtp-backdoor	 	inet	n	-	n	-	-	smtpd -o content_filter=
+
+	Configuration File Aliases - /etc/postfix/aliases
+
+	You will need to configure the aliases file to your needs, the default
+	should be fine. The import thing to remember is after you make changes
+	to this file, you will need to run the newaliases command for that file
+	to be in effect. Important note: You will need to create a user for the
+	root email account. By using procmail we have disabled the root mail
+	account. I suggest the account name of admin. Add the following to your
+	aliases file.
+
+	root: admin
+
+	Configuration File Transport - /etc/postfix/transport
+
+	This file is how every mail is handled by your domain. You will need to
+	change *** *** lines where changes are needed. The import thing to remember
+	is after you make changes to this file,	you will need to run the postmap
+	/etc/postfix/transport command for that file to be in effect.
+	.server.com              local:  *** Change this to your domain name ***
+	localhost			local:
+
+	Configuration File Access - /etc/postfix/spam_access_list
+
+	This file I made a cron event. If you have already installed FCRON or
+	another cron program all you need to do is run the following script.
+	This file is for a spam protection. At the end of this file I have
+	added a fcron and wget instructions. You will need to run this file
+	manually one time. This will create the first access file.
+
+	#!/bin/bash
+
+	clear
+	cd /tmp
+	echo "Getting SPAM Access list..."
+	wget http://basic.wirehub.nl/spamlist-extended.txt
+	echo "Moving SPAM Access list to Postfix Directory..."
+	mv /tmp/spamlist-extended.txt /etc/postfix/access
+	echo "Enabling SPAM Access list in Postfix..."
+	postmap /etc/postfix/access
+
+	Start-up Script
+
+	#!/bin/bash
+	# Begin $rc_base/init.d/postfix
+
+	# Based on sysklogd script from LFS-3.1 and earlier.
+	# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+
+	source /etc/sysconfig/rc
+	source $rc_functions
+
+	case "$1" in
+		start)
+			echo "Starting Postfix..."
+			/usr/sbin/postfix start > /dev/null 2>&1
+			evaluate_retval
+			;;
+
+		stop)
+			echo "Stopping Postfix..."
+			/usr/sbin/postfix stop > /dev/null 2>&1
+			evaluate_retval
+			;;
+
+		reload)
+			echo "Reloading Posfix..."
+			/usr/sbin/postfix reload > /dev/null 2>&1
+			evaluate_retval
+			;;
+
+		restart)
+			$0 stop
+			sleep 1
+			$0 start
+			;;
+		*)
+			echo "Usage: $0 {start|stop|reload|restart}"
+			exit 1
+			;;
+	esac
+
+	# End $rc_base/init.d/postfix
+
+	Runlevels - You will need to select the runlevel you want to run
+	postfix at. Use the the following command to achieve this. Change
+	the ?? to the # you want to use.
+
+	ln -sf /etc/rc.d/init.d/postfix /etc/rc.d/init.d/rc0.d/K??postfix
+	ln -sf /etc/rc.d/init.d/postfix /etc/rc.d/init.d/rc3.d/S??postfix
+	ln -sf /etc/rc.d/init.d/postfix /etc/rc.d/init.d/rc4.d/S??postfix
+	ln -sf /etc/rc.d/init.d/postfix /etc/rc.d/init.d/rc5.d/S??postfix
+	ln -sf /etc/rc.d/init.d/postfix /etc/rc.d/init.d/rc6.d/K??postfix
+
+---
+Procmail
+	
+	Compiling
+	
+	You will need to edit the autenticate.c file before compiling. This
+	will make procmail work	with Maildir style mailboxes.
+
+	Change to the /usr/src/procmail-3.22/src directory
+
+	cp authenticate.c authenticate.c.backup
+	sed -e 's|#define MAILSPOOLHOME "/.mail"|#define MAILSPOOLHOME "/Maildir/"|g' \
+              authenticate.c.backup > authenticate.c
+
+	Change to the /usr/src/procmail-3.22 directory
+	echo "" | make BASENAME=/usr install
+
+	More information will be discussed in the Procmail Recipes section
+
+---
+Courier-Imap
+	
+	Compiling
+	
+	Change to the /usr/src/courier-imap-1.4.6 directory
+
+	These commands need to be run by a user other than root.
+
+	./configure --prefix=/usr/courier \
+                  --sysconfdir=/etc/courier \
+                  --with-piddir=/var/run \
+                  --with-authshadow \
+                  --without-authpam \
+			--without-authuserdb \
+	            --without-authmysql \
+                  --enable-workarounds-for-imap-client-bugs
+	make
+
+	These commands need to be run by the root users
+
+	make install
+	make install-configure
+
+	Configuration Files
+	
+	Configuration File - /etc/courier/imapd
+
+	Edit this file. The last line of the file has the following information in it.
+	
+	IMAPDSTART=NO
+	
+	Change this to =YES
+
+	If you also want a POP3 server edit - /etc/courier/pop3d
+
+	The last line of the file has the following information in it.
+
+	POP3DSTART=NO
+
+	Change this to =YES
+
+	Configuration File - /etc/courier/authdaemonrc
+
+	Verify that the authmodulelist="authshadow"
+
+	Start-up Scripts
+
+	cp /usr/courier/libexec/imapd.rc /etc/rc.d/init.d/courier-imap
+	cp /usr/courier/libexec/pop3d.rc /etc/rc.d/init.d/courier-pop3
+
+	Runlevels - You will need to select the runlevel you want to run
+	courier at. Use the following command to achieve this. Change the
+	?? to the # you want to use.
+
+	ln -sf /etc/rc.d/init.d/courier-imap /etc/rc.d/init.d/rc0.d/K??courier-imap
+	ln -sf /etc/rc.d/init.d/courier-imap /etc/rc.d/init.d/rc3.d/S??courier-imap
+	ln -sf /etc/rc.d/init.d/courier-imap /etc/rc.d/init.d/rc4.d/S??courier-imap
+	ln -sf /etc/rc.d/init.d/courier-imap /etc/rc.d/init.d/rc5.d/S??courier-imap
+	ln -sf /etc/rc.d/init.d/courier-imap /etc/rc.d/init.d/rc6.d/K??courier-imap
+
+	ln -sf /etc/rc.d/init.d/courier-pop3 /etc/rc.d/init.d/rc0.d/K??courier-pop3
+	ln -sf /etc/rc.d/init.d/courier-pop3 /etc/rc.d/init.d/rc3.d/S??courier-pop3
+	ln -sf /etc/rc.d/init.d/courier-pop3 /etc/rc.d/init.d/rc4.d/S??courier-pop3
+	ln -sf /etc/rc.d/init.d/courier-pop3 /etc/rc.d/init.d/rc5.d/S??courier-pop3
+	ln -sf /etc/rc.d/init.d/courier-pop3 /etc/rc.d/init.d/rc6.d/K??courier-pop3
+
+---
+Avmailgate
+	
+	For security reasons this package cannot be compiled. This will give you
+	complete antivirus protection.
+
+	You can get a free license for this program. You apply for it at 
+	http://www.antivir.de/order/privreg/order_e.htm
+
+	This will get you a key file. 
+
+	Installation
+
+	Change to the /usr/src/avmailgate-2.0.0.6-Linux-glibc directory
+
+	./avinstall.pl
+
+	This will ask you a series of questions. These questions relate to
+	you specific system setup.
+
+---
+Gotmail
+
+	This is an optional program that will pull mail from Hotmail. 
+
+	Installation
+
+	Change to the /usr/src directory
+
+	mv gotmail-0.7.0 gotmail
+	mv gotmail /usr
+	cd /usr/gotmail
+	mv *.1 /usr/share/man/man1
+
+	In the Cron section I will show you how to use this program.
+
+---
+Fetchmail
+
+	This is an optional program that will pull mail from a POP3 server.
+
+	Compiling
+
+	Change to the /usr/src/fetchmail-5.9.13 directory
+
+	./configure --prefix=/usr \
+                  --enable-fallback=procmail \
+		      --with-ssl=/usr \
+                  --sysconfdir=/etc
+	make
+	make install
+
+	Configuration Files
+
+	Config File - /~/fetchmail.rc
+
+	# Begin /~/.fetchmailrc
+
+	# Global Options
+
+	set logfile /var/log/fetchmail.log
+
+	# Get mail from ISP.com
+
+	poll ISP.com
+	proto pop3
+	user "isp_username"
+	pass "isp_password"
+	flush
+	is local_username here password local_password 
+
+	# End /~/.fetchmailrc
+
+	In the Cron section I will show you how to use this program.
+
+	More information will be discussed in the Procmail Recipes section
+
+---
+Anomy Mail Sanitzer
+
+	Installation
+	
+	Change to the /usr/src directory
+
+	mv anomy /usr
+	chmod 750 /usr/anomy
+
+	Configuration File
+	
+	# Configuration file for Anomy Sanitizer 
+	#
+
+	# Do not log to STDERR:
+	feat_log_stderr = 0
+
+	# Don't insert log in the message itself:
+	feat_log_inline = 0
+
+	# Advertisement to insert in each mail header:
+	header_info = X-Sanitizer: This mail was sanitized
+	header_url = 0
+	header_rev = 0
+
+	# Enable filename based policy decisions:
+	feat_files = 1
+
+	# Protect against buffer overflows and null values:
+	feat_lengths = 1
+
+	# Replace MIME boundaries with our own:
+	feat_boundaries = 1
+
+	# Fix invalid and ambiguous MIME boundaries, if possible:
+	feat_fixmime = 1
+
+	# Trust signed and/or encrypted messages:
+	feat_trust_pgp = 1
+	msg_pgp_warning = WARNING: Unsanitized content follows.\n
+
+	# Defang shell scripts:
+	feat_scripts = 0
+
+	# Defang active HTML:
+	feat_html = 1
+
+	# Defang UUEncoded files:
+	feat_uuencoded = 0
+
+	# Sanitize forwarded content too:
+	feat_forwards = 1
+
+	# Testing? Set to 1 for testing, 0 for production:
+	feat_testing = 0
+
+	## Warn user about unscanned parts, etc.
+	feat_verbose = 1
+
+	# Force all parts (except text/html parts) to
+	# have file names.
+	feat_force_name = 1
+
+	# Disable web bugs:
+	feat_webbugs = 1
+
+	# Disable "score" based mail discarding:
+	score_panic = 0
+	score_bad = 0
+
+	msg_file_drop  = \n*****\n
+	msg_file_drop += NOTE: An attachment named %FILENAME was deleted from 
+	msg_file_drop += this message because was a windows executable.
+	msg_file_drop += Contact the system administrator for more information.
+
+	##
+	## File attachment name mangling rules:
+	##
+
+	file_name_tpl       = /var/quarantine/att-$F-$T.$$
+
+	# Number of rulesets we are defining:
+	file_list_rules = 2
+	file_default_policy = defang
+
+	# Delete probably nasty attachments:
+	file_list_1 = (?i)(winmail.dat)|
+	file_list_1 += (\.(vb[se]|exe|com|cab|dll|ocx|msi|cmd|bat|pif|lnk|hlp|ms[ip]|reg|asd))$
+	file_list_1_policy = drop
+	file_list_1_scanner = 0
+
+	# Allow known "safe" file types and those that can be 
+	# scanned by the downstream virus scanner:
+	file_list_2 = (?i)\.(doc|dot|rtf|xls|ppt|xlw|jpg|gif|png|tiff?|txt|zip|tgz|gz)
+	file_list_2_policy = accept
+	file_list_2_scanner = 0
+
+	# Any attachment not listed above gets renamed.
+
+	More information will be discussed in the Procmail Recipes section	
+
+---
+Spamassassin and Razor
+	
+	Change to the /usr/src/razor-agents-2.14 directory
+
+	perl Makefile.PL
+	make
+	make -s install
+
+	Change to the /usr/src/Mail-SpamAssassin-2.31 directory
+
+	perl Makefile.PL
+	make
+	make -s install
+
+	Configuration File
+	
+	/etc/mail/spamassassin/local.cf file you may need to specify email
+	addresses that are exempt from spam checking. Example to allow all
+	emails from joe@isp.com you would add the following line to the
+	local.cf file
+
+	whitelist_from joe@isp.com
+
+---
+Creating Maildirs
+
+	I will be using the user admin as the example here. You will need to
+	do this for all the users that you want to give mail access to. If
+	you run this command as root you will need to change the file
+	permissions to the maildir manually, using the following chmod
+	utilizing 700 and chown user.user -R
+
+	Now we are getting to the actual mail directories. First you will
+	need to create a default mail directory. 
+
+	maildirmake /home/admin/Maildir
+
+	This will create the main mail directory. Since we are also using
+	spam checking I would also create a Spam folder. Type it exactly
+	like this.
+
+	maildirmake /home/admin/Maildir/.Spam
+
+--- 
+Procmail Recipes
+
+	The procmail recipe I use will sort the mail, sanitize, and spam
+	check all the emails that enter the system. This file will need
+	to be in all of the users home directory. Permissions on this
+	file must be set with the chmod utilizing 644.
+
+	.procmailrc
+
+	# Begin /~/.procmailrc
+	
+	# Prelimiaries
+	SHELL=/bin/bash
+	MAILDIR=$HOME/Maildir/
+	DEFAULT=$MAILDIR
+	ORGMAIL=$MAILDIR
+	LOGFILE=/var/log/procmailrc.log
+	VERBOSE=yes
+	LOGABSTRACT=all
+	ANOMY=/usr/anomy
+
+	:0:
+	* ^From:.*\<*@server.com> # Change server.com to your domain. This will bypass all
+	$DEFAULT                  # check if the mail is from the localdomain.
+
+	:0fw
+	| /usr/anomy/bin/sanitizer.pl /usr/anomy/anomy.conf
+
+	:0fw
+	* < 256000
+	| spamassassin
+
+	:0:
+	* ^X-Spam-Status: Yes
+	$MAILDIR.Spam/
+
+	# Accept all the rest to default mailbox
+	:0
+	$DEFAULT
+
+	# End /~/.procmailrc
+
+	You can also have it sort email that come in from the gotmail and
+	fetchmail script. Here is a modified procmailrc file that will sort
+	emails from gotmail and fetchmail. You will have to issue an additonal
+	makemaildir command. Here is the command line for the examples I show.
+
+	maildirmake /home/admin/Maildir/.Hotmail
+	maildirmake /home/admin/Maildir/.isp
+	maildirmake /home/admin/Maildir/.isp2
+
+	After you have made the Maildir directories make sure that the user
+	that owns then is the same user that the mail is intended for. In
+	this case
+
+	chown admin.admin /home/admin/Maildir -R
+	chmod 700 /home/admin/Maildir -R
+
+	Here is the recipe
+	
+	# Begin /~/.procmailrc
+	
+	# Prelimiaries
+	SHELL=/bin/bash
+	MAILDIR=$HOME/Maildir/
+	DEFAULT=$MAILDIR
+	ORGMAIL=$MAILDIR
+	LOGFILE=/var/log/procmailrc.log
+	VERBOSE=yes
+	LOGABSTRACT=all
+	ANOMY=/usr/anomy
+
+	:0:
+	* ^From:.*\<*@server.com> # Change server.com to your domain. This will bypass all
+	$DEFAULT                  # check if the mail is from the localdomain.
+
+	:0fw
+	| /usr/anomy/bin/sanitizer.pl /usr/anomy/anomy.conf
+
+	:0fw
+	* < 256000
+	| spamassassin
+
+	:0:
+	* ^X-Spam-Status: Yes
+	$MAILDIR.Spam/
+
+	:0:
+	* ^TO_user@hotmail.com
+	$MAILDIR.Hotmail/
+
+	:0:
+	* ^TO_user@isp.com
+	$MAILDIR.isp/
+ 
+	:0:
+	* ^TO_user@isp2.com
+	$MAILDIR.isp2/
+
+	# Accept all the rest to default mailbox
+	:0
+	$DEFAULT
+
+	# End /~/.procmailrc
+
+---
+Imap Filter
+
+	This program will allow you to filter IMAP messages like procmail,
+	but that is not why I use it. It also allows you to delete emails
+	that are old. The imapfilterrc file must chmod with 700 and belong
+	to the user who's home dir it is in.
+
+	Compiling
+		
+	Change to the /usr/src/imapfilter-0.7.3 directory
+
+	cp Makefile Makefile.org
+	sed -e 's|/usr/local|/usr|g' \
+		 Makefile.org > Makefile
+	make
+	make install
+
+	Configuration File
+
+	The only catch to this configuration file is that it requires a
+	username and password. It lives in the home directory of the users.
+	This will only delete the messages older than 7 days from the Spam
+	folder only. It will not touch the INBOX
+
+	###########
+	# Options #
+	###########
+	#
+	# Some program options, such as log file and non-response server timeout.
+	#
+	logfile = /var/log/imapfilter.log
+	set timeout = 120
+	expunge = yes
+	subscribe = no
+
+	##########################
+	# Accounts and mailboxes #
+	##########################
+	#
+	# Each account has a number of folders/mailboxes which are grouped under
+	# an alias name. Folders belong to the last preceding account. A mailbox
+	# can belong to many mailbox groups.
+	#
+	
+	#
+	# Connects to "imap1.mail.server" at port 143, as "user1" and
+	# using password "secret1".
+	#
+	# Mailboxes that exist at "imap1.mail.server" include: "INBOX", "woody",
+	# "linux-mailist", etc. and are grouped in various ways.
+	#
+	account account1 username:password@mail.server.com:143
+	  folder inbox INBOX
+	  folder spam Spam
+
+	###########
+	# Filters #
+	###########
+	#
+	# Filters are completely independent from any account or folder settings.
+	# The mask command may be ommited. If no masks are declared inside
+	# a filter entry, then all messages are matched.
+	#
+	
+	filter 7days
+	older 7
+	action delete
+	
+	########
+	# Jobs #
+	########
+	#
+	# Last, there is the definition of the jobs where user combines
+	# folders and filters _already_ defined, and specifies which filters
+	# should be applied to which folders.
+	#
+	
+	job 7days spam
+
+---
+Wget
+
+	This will give a basic setup for wget.
+
+	./configure --prefix=/usr \
+                  --sysconfdir=/etc/wget
+	make
+	make install
+
+	Some users may need to change the #passive_ftp = off to passive_ftp = on
+
+---
+Nail
+
+	This will give a basic setup for nail. Do to the setup, this is only
+	used to send email and not to receive. Nail is not Maildir compatible.
+	You can use mutt or pine to read emails from a IMAP folder
+
+	./configure --prefix=/usr \
+                  --with-sendmail=/usr/sbin/sendmail
+	make
+	make install
+	ln -sf /usr/bin/nail /usr/bin/mail
+
+
+---
+Fcron
+
+	This will give a basic setup for fcron. Follow the fcron instruction
+	during the fcron installation process
+
+	Compiling
+
+	./configure --prefix=/usr \
+                  --enable-shared \
+                  --with-sendmail=/usr/sbin \
+                  --with-piddir=/var/run \
+ 		  --sysconfdir=/etc/fcron
+	make
+	make install
+
+	Mail Related Cron Events
+
+	To update the spamlist use the following commands as root
+
+	fcrontab -u root -e
+	
+	add the following line
+
+	%hourly 01	/etc/postfix/spam_access_list
+
+	To use gotmail to get Hotmail and fetchmail to get other ISP's mail
+
+	fcrontab -u user -e
+	
+	add the following line
+
+	%hourly 02	/usr/gotmail/gotmail -u username -p password -f linuxusername@server.com --delete --silent
+	%hourly 03	/usr/bin/fetchmail
+
+	To use imapfilter to delete old messages
+	
+	fcrontab -u user -e
+	
+	%nightly 00 01	/usr/bin/imapfilter
+
+	
+--- 
+Openssl
+	
+	This will setup openssl to work with Courier and Fetchmail
+
+	Change to /usr/src/openssl-0.9.6d directory
+
+	./config --prefix=/usr --openssldir=/etc/openssl shared
+	make MANDIR=/usr/man
+	make MANDIR=/usr/man install
+
+---
+Optional program pop-before smtp
+
+	This program allow your remote users to send email from a remote
+	location. It allows this by capturing their current IP after they
+	have done a POP or IMAP transfer from courier. The IP only stays
+	active for a time that you have setup.
+
+	Here is the basic compile and configuration for pop-before-smtp
+
+	make -s
+	make -s install
+	cd /etc/postfix
+	cp pop-before-smtp.conf pop-before-smtp.conf.org
+	sed -e 's|grace = 2h|grace = 30m|g' \ 
+	    -e 's|log_file = /var/log/mail.log|log_file = /var/log/mail.log|g' \ # Change to your log file 
+	    pop-before-smtp.conf.org > pop-before-smtp.conf
+	rm -rf pop-before-smtp.conf.org
+
+	Now you will need to configure postfix to use the file	
+	
+	You will need to edit your main.cf file and add the following line
+	smtpd_recipient_restrictions = permit_mynetworks, check_client_access hash:/etc/postfix/pop-before-smtp, check_relay_domains
+
+	Start-up Script
+
+	#!/bin/bash
+	# Begin $rc_base/init.d/pop-before-smtp
+
+	# Based on sysklogd script from LFS-3.1 and earlier.
+	# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+
+	source /etc/sysconfig/rc
+	source $rc_functions
+
+	case "$1" in
+		start)
+			echo "Clearing POP Before SMTP File..."
+			rm -rf /etc/postfix/pop-before-smtp
+			evaluate_retval
+			echo "Starting POP Before SMTP..."
+			/usr/bin/pop-before-smtp &
+			evaluate_retval
+			;;
+
+		stop)
+			echo "Stopping Pop Before SMTP..."
+			killproc /usr/bin/pop-before-smtp
+			;;
+
+		restart)
+			$0 stop
+			sleep 1
+			$0 start
+			;;
+
+		status)
+			statusproc
+			;;
+
+		*)
+			echo "Usage: $0 {start|stop|restart|status}"
+			exit 1
+			;;
+	esac
+
+	# End $rc_base/init.d/pop-before-smtp
+
+
+	Runlevels - You will need to select the runlevel you want to run
+	pop-before-smtp at. Use the following command to achieve this.
+	Change the ?? to the # you want to use.
+
+	ln -sf /etc/rc.d/init.d/pop-before-smtp /etc/rc.d/init.d/rc0.d/K??pop-before-smtp
+	ln -sf /etc/rc.d/init.d/pop-before-smtp /etc/rc.d/init.d/rc3.d/S??pop-before-smtp
+	ln -sf /etc/rc.d/init.d/pop-before-smtp /etc/rc.d/init.d/rc4.d/S??pop-before-smtp
+	ln -sf /etc/rc.d/init.d/pop-before-smtp /etc/rc.d/init.d/rc5.d/S??pop-before-smtp
+	ln -sf /etc/rc.d/init.d/pop-before-smtp /etc/rc.d/init.d/rc6.d/K??pop-before-smtp
+	
+---
+Notes
+
+	--- Outlook Express ---
+	
+	If you are using Outlook Express Clients. Here is how you would
+	configure them.
+	
+	Setup an IMAP account. Follow the prompts until you get a message.
+	Would you like to Download folders from the mail server you added.
+	Click on NO. If you have not exited from the account creation screen
+	you can continue to the next step.
+
+	Then go to Tools -=> Accounts -=> Select the Account You just made -=> Properties
+	
+	Go to the IMAP tab. In the Root folder path type INBOX.
+
+	--- Pine 4.10 or greater ---
+
+	Go to Pine's Main Menu. Select Setup then Configure. Go down to "inbox-path" setting
+	set it (hostname) INBOX
+
+	--- Netscape Messenger ---
+	
+	Uncheck the opton Show only subscribed folders in the Advanced tab.
+
+	Under "Personal Namespace" enter "INBOX."
+
+	--- Shared Folders ---
+
+	If you are using shared folders the same steps apply, but I would create
+	a separate account and using the above information. All you have to do
+	is change INBOX to SHARED.
+
+---
+Common Problems
+
+	Here are the necessary permissions needed for some of the rc files
+	and the commands to correct them.
+
+	chmod 600 .procmailrc
+	chmod 710 .fetchmailrc
+	chmod 600 .imapfilterrc
+
+	Here are the necssary permissions for unifed logging of all of the 
+	programs listed
+
+	chmod 666 /var/log/procmail.log
+	chmod 666 /var/log/imapfilter.log
+	chmod 666 /var/log/fetchmail.log
+	chmod 666 /var/log/anomy.log
+
+VERSION:        1.7
+
+CHANGELOG:     	1.7 Update CVS Information
+		1.6 Update to New Hint Format Completed
+                1.5 Updated Email Address
+                1.4 Updated to New Hint Format
+                1.3 Updated versions
+                1.2 Fixed Typos
+                1.1 Fixed listed permissions
+                1.0 Initial Version
+
+ New Version of this document can be viewed from http://cvs.jg555.com/viewcvs.cgi/lfs-hints

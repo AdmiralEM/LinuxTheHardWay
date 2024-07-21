@@ -1,0 +1,141 @@
+TITLE:		Fancy boot scripts
+LFS VERSION:	2.3.5
+AUTHOR:		Gabriel Sandor <gabriel@elvikingo.com.ar>
+
+SYNOPSIS:
+	How to have fancy boot scripts, with green OKs and red FAILEDs, much like RedHat's bootscripts. (This is now part of the standard LFS, as of version 2.3.7)
+
+HINT:
+Whoever used Red Hat or Mandrake will be missing those fancy boot
+scripts withe the green [  OK  ] for successful service or the red
+[FAILED] for the (obviously) failed service, all perfectly aligned in
+one column.
+I was trying to hack those scripts to incrporate them to my LFS, but
+those scripts are very complex, because they do a lot of checking that
+we really don't need  (after all, we are configuring all by hand), and
+also, I didn't want to put something I really don't understand. So I
+extracted the cosmetics, and put them into the original LFS boot scripts
+with almost no change.
+
+Try it out:
+First back-up your /etc/init.d directory
+
+Create a new file  /etc/init.d/funcions, with the same permitions of the
+other boot scripts
+
+#!/bin/sh      Begin /etc/init.d/funcions
+#
+# First set up a default search path.
+export PATH="/sbin:/usr/sbin:/bin:/usr/bin:/usr/X11R6/bin"
+
+# Get a sane screen with
+[ -z "$COLUMNS" ] && COLUMNS=80
+
+# Set some variables  (not all are necessary by now)
+BOOTUP=color
+RES_COL=65
+MOVE_TO_COL="echo -en \\033[${RES_COL}G"
+SETCOLOR_SUCCESS="echo -en \\033[1;32m"
+SETCOLOR_FAILURE="echo -en \\033[1;31m"
+SETCOLOR_WARNING="echo -en \\033[1;33m"
+SETCOLOR_NORMAL="echo -en \\033[0;39m"
+LOGLEVEL=1
+
+# New version of check_status
+
+check_status() {
+  if [ $? = 0 ]
+  then
+        echo_success
+        echo
+  else
+        echo_failure
+        echo
+  fi
+}
+
+#  This are the new functions
+
+echo_success() {
+  [ "$BOOTUP" = "color" ] && $MOVE_TO_COL
+  echo -en "[   "
+  [ "$BOOTUP" = "color" ] && $SETCOLOR_SUCCESS
+  echo -en "OK"
+  [ "$BOOTUP" = "color" ] && $SETCOLOR_NORMAL
+  echo -en "   ]"
+  echo -ne "\r"
+  return 0
+}
+echo_failure() {
+  [ "$BOOTUP" = "color" ] && $MOVE_TO_COL
+  echo -en "[   "
+  [ "$BOOTUP" = "color" ] && $SETCOLOR_FAILURE
+  echo -en "FAILED"
+  [ "$BOOTUP" = "color" ] && $SETCOLOR_NORMAL
+  echo -en "   ]"
+  echo -ne "\r"
+  return 1
+}
+
+# This one is not used by now, may be next version.........
+
+echo_passed() {
+  [ "$BOOTUP" = "color" ] && $MOVE_TO_COL
+  echo -en "[   "
+  [ "$BOOTUP" = "color" ] && $SETCOLOR_WARNING
+  echo -en "PASSED"
+  [ "$BOOTUP" = "color" ] && $SETCOLOR_NORMAL
+  echo -en "   ]"
+  echo -ne "\r"
+  return 1
+}
+
+# End /etc/init.d/functions
+
+For this to work, you need to include this file in every boot script
+that invokes the function "check_status" like this
+
+# Begin /etc/init.d/bootscript
+# Include the funtions file     Note the space between the dot and the
+name of the file
+. /etc/init.d/functions
+
+rest of script
+
+# End /etc/init.d/bootscript
+
+
+Of course you need to remove the original function check_status from all
+the boot scripts
+And voila.......
+
+Check they are working correctly with the command
+
+/etc/init.d/bootscript stop | start | reload | restart
+You can do something else to change the face of tour LFS
+The gettys are able to display a message banner before the login prompt.
+This banner text is taken from the file /etc/issue.
+So, create a new file /etc/issue and put the following, leaving a first
+line blank: (No comments here, everything is displayed)
+
+
+Welcome to myhostname.mydomain
+
+ This is Linux From Scrath  release 1.3 (A_Name_you_Like)
+ Kernel 2.2.14 on an i686 on \l
+
+
+Reboot. Then you'll see the banner in each console, before the login
+prompt.
+The escaped caracter "\l" will display the number of console you are in
+as you have it in the inittab (/dev/tty?)
+so if you want to strip the "/dev/" part, strip it from the inittab file
+like this
+
+1:2345:respawn:/sbin/agetty tty1 9600
+
+
+Enjoy!
+
+Gabriel
+

@@ -1,0 +1,482 @@
+TITLE:          Boot-CD
+LFS VERSION:    All
+AUTHOR:	        Nicholas Dille <webmaster@rakshas.de>
+
+SYNOPSIS:
+	How to create a bootcd from a working LFS system
+
+HINT:
+ver 1.4
+25/07/2001
+
+Contents
+--------
+
+    0. Preface
+    1. Why create a boot cd
+    2. Kernel customization
+    3. LFS system preparation
+        3.1 Introduction
+        3.2 Linking /tmp and /var to harddisk
+             3.2.1 Handling of /tmp
+             3.2.2 Handling of /var
+        3.3 Linking /tmp and /var to ramdisk
+             3.3.1 Handling of /tmp
+             3.3.2 Handling of /var
+        3.4 Boot script(s)
+    4. Installation script
+    5. Creating a boot disk
+    6. Burning
+    7. Listings
+        7.1  /
+        7.2  /etc/init.d
+        7.3  /etc/rc0.d
+        7.4  /etc/rc1.d
+        7.5  /etc/rc2.d
+        7.6  /etc/rc3.d
+        7.7  /etc/rc4.d
+        7.8  /etc/rc5.d
+        7.9  /etc/rc6.d
+        7.10 /etc/rcS.d
+        7.11 /etc/inittab
+    8. History
+
+
+1. Why create a boot cd
+   ---------------------
+
+    Although I'm not that long with LFS I already read several threads on lfs-
+    discuss about people having problems compiling certain parts of an LFS sys-
+    tem due to beta version of gcc or other important packages shipped with
+    their favorite distribution.
+    In addition I don't like the idea of installing a "commercial" distribution
+    in order to install a customized LFS system. That ain't right ;-)
+
+    So I figured that we should be able to create a bootable cd with some kind
+    of linux system on it which will provide a proper environment for the in-
+    stallation.
+
+    And what fits better than LFS itself? (I'll leave that one to you ...)
+
+    It also gives some clues about automatically starting the installation
+    which then is left to you to hack/figure out. But we should probably start
+    using alfs (to give them testers?).
+
+    So that's what it's all about.
+
+
+2. Kernel customization
+   ---------------------
+
+    Since we are about to boot from a cd and use the cd image as root partition
+    we certainly need ISO9660 support compiled in. This part is absolutly vi-
+    tal!
+    When trying to mount the root partition the kernel does not have access to
+    any kind of modules (since they are on the root partition which is to be
+    mounted) so it has to rely on compiled-in support.
+
+    After the system has booted up we also want to partition our harddrive.
+    Therefore you should include any filesystems you might need during instal-
+    lation.
+
+    [So far I have not tested including those additional filesystems as module
+     but I guess that should work just fine]
+
+
+3. LFS system preparation
+   -----------------------
+
+3.1 Introduction
+    -------------
+
+    The major problem which arises when having a read-only root partition is
+    that some part of the system may be relying on writable access in certain
+    directories.
+
+    Let us have a quick look at the content of $LFS of a typical system:
+
+        drwxr-xr-x   2 root     root         1603 Oct 15 22:16 bin
+        drwxr-xr-x   4 root     root         4096 Dec  5 00:12 boot
+        drwxr-xr-x   8 root     root        44096 Feb 11 10:02 dev
+        drwxr-xr-x  45 root     root         5334 Feb 11 11:02 etc
+        drwxr-xr-x  13 root     root          250 Jan  9 00:39 home
+        drwxr-xr-x   5 root     root         1869 Jan  4 23:58 lib
+        drwxr-xr-x   5 root     root           95 Aug 27 22:12 mnt
+        dr-xr-xr-x  54 root     root            0 Feb 11 11:02 proc
+        drwx--x--x  20 root     root          679 Jan 30 17:27 root
+        drwxr-xr-x   5 root     root         5068 Jan  4 23:58 sbin
+        drwxrwxrwt   5 root     root          200 Feb 11 10:03 tmp
+        drwxr-xr-x  27 root     root          663 Dec 13 17:34 usr
+        drwxr-xr-x  26 root     root          541 Sep  5 23:53 var
+
+    The following directories should not cause any problems:
+        bin, boot, etc, lib, root, sbin, usr
+    [Need explanation why no problem?]
+    The content of those directories should be static and seldomly changed.
+
+    Mount points for other filesystems won't cause a problem because you can
+    mount a filesystem with writable access on a mount point in a read-only
+    filesystem. I guess the kernel keeps those mappings in memory and not in
+    the inodes.
+    That means we can cancel out problems caused by: dev, home, mnt, proc.
+
+    This leaves us with tmp and var.
+
+
+3.2 Linking /tmp and /var to harddisk
+    ----------------------------------
+
+    So far I've always preferred this version since I intend to build a boot cd
+    that will be usable on almost every system including those with very little
+    ram.
+
+
+3.2.1 Handling of /tmp
+      -----------------
+
+    As implied by the name /tmp is used for storing temporary data. Unfortuna-
+    tely this is not under our control whether this directory is used and,
+    therefore, needs some special handling.
+
+    Since there is no standardized structure for this place we can simply link
+    it to the tmp directory on the partition which we will use for instal-
+    lation.
+
+    For example, if you intend to compile you system in /lfs (which will then
+    be $LFS during the installation) you need to include a symlink for /tmp on
+    the CD pointing to /lfs/tmp.
+    If you decide for the symlink version of handling /tmp you will need to de-
+    cide which directory you will install in before burning the CD!
+
+
+3.2.2 Handling of /var
+      -----------------
+
+    /var usually contains runtime or state stuff and may also be changed [is
+    that right? clumsily expressed?].
+
+    Since /var may contain mail spool directories, pid files and has a prede-
+    fined directory structure, we can't just link it onto our install partition
+    since that could be causing collisions with programs run in our chroot en-
+    vironment or perhaps even earlier.
+
+    Therefore we should tar /var and put it in / which you will do by executing
+    the following command in your CD root directory:
+
+        tar cfz var/ var.tar.gz
+
+    After bootup after we mounted our installation partition (let's say in
+    /lfs), we create a directory "whatever" and untar /var in "whatever".
+
+    The original /var should be a symlink to this directory, eg
+        var -> /lfs/whatever/var
+
+
+3.3 Linking /tmp and /var to ramdisk
+    ---------------------------------
+
+    First of all we need to create the ramdisk which I did with the following
+    commands:
+
+        dd if=/dev/zero of=/dev/rd/0 bs=1k count=4096
+        mke2fs -m 0 /dev/rd/0
+        mount /dev/rd/0 /rd
+
+    Please feel reminded that you need to change the device name to the proper
+    name on your system. This was created using devfs!
+
+    The next two sub-chapters have hardly changed since /tmp and /var are
+    simply linked to /rd/tmp and /rd/var
+
+
+3.3.1 Handling of /tmp
+      -----------------
+
+    Create a link in your root directory to point /tmp to /rd/tmp/.
+
+    During bootup you need to create the directory /rd/tmp/ for the link /tmp
+    to not point to nirvana.
+
+
+3.3.2 Handling of /var
+      -----------------
+
+    Create a link in your root directory to point /var to /rd/var/.
+    You'll also need to create a tarball of your original /var and place it in
+    / which I described in 3.2.2.
+
+    During bootup you will need to unpack the tarball of /var in /rd.
+
+
+3.4 Boot scripts
+    -------------
+
+    I stripped /etc/init.d and /etc/rc?.d off everything that is not absolutly
+    vital.
+    The only task left is loading a keymap.
+
+    Please refer to the directory listing (chapter 5) at the end of the docu-
+    ment.
+
+
+4. Installation script
+   --------------------
+
+    This part is certainly up to you. You might want to include aLFS or some
+    compilation system which you have written yourself. Perhaps you will even
+    leave out this part and manually install the packages.
+    But anyway you will have to put the packages on the CD to have them handy
+    when you need them.
+
+    To give you an idea what my CD does: I put a script in /etc/init.d/install
+    which will be started from inittab during boot. This will ask the user some
+    important stuff, i.e. which partition to install on.
+    It will then startup the compilation.
+
+    You might even want to boot to a bash and leave out any kind of automatic
+    installation. This will happen if you pass an additional kernel parameter
+    from the bootloader "init=/bin/bash".
+
+
+5. Creating a boot floppy
+   -----------------------
+
+    Although some of you might be tempted to ask whether I will now describe
+    the process to create a boot disk using grub I will not start an argument
+    about this. This is a question of belief ;-)
+
+    First you need to get grub from http://www.gnu.org and install it on your
+    system with the following commands:
+
+            ./configure --prefix=/usr &&
+            make &&
+            make install
+
+        a) You then create an ext2 filesystem on a disk.
+            (Please use an empty disk or be sure that you understand that you
+            will loose all your data on this disk. So much for the disclaimer)
+
+        b) Mount this disk to your favorite disk-mount-directory
+            (lets call it $FLOPPY)
+
+        c) Create /boot and /boot/grub on your floppy:
+
+                mkdir -p $FLOPPY/boot/grub
+
+        d) Copy the grub boot loader onto the disk:
+
+                cp /usr/share/grub/i386-pc/stage* $FLOPPY/boot/grub
+
+        e) Put your kernel in $FLOPPY/boot and call it "linux"
+
+        f) Start the grub shell by executing "grub"
+
+        g) Install grub on your boot disk (still in the grub shell):
+
+                install (fd0)/boot/grub/stage1 (fd0) (fd0)/boot/grub/stage2
+
+        h) Now you need to create the file $FLOPPY/boot/grub/menu.lst with the
+            following content:
+
+                default 0
+                timeout 2
+
+                title        template
+                root (fd0)
+                kernel (fd0)/boot/linux devfs=mount root=/dev/cdroms/cdrom0
+
+            If you do not use devfs, please remove "devfs=mount" from the last
+            line in menu.lst and replace "/dev/cdroms/cdrom0" with the name of
+            your cdrom device.
+
+    If you want to keep the resulting bootable cd as generic as possible you
+    do not need to worry about the cdrom device name since you will be able to
+    edit the menu entries of grub at boot time to reflect the underlying
+    system.
+
+    You are now ready to burn your LFS installation onto a CD which will be
+    able to boot using the cdrom.
+
+
+6. Burning
+   --------
+
+    After creating a proper boot floppy with your custom kernel (see 2) put the
+    image in /boot.
+    To do this execute the following command in the root directory of your lfs
+    system:
+
+        dd if=/dev/floppy/0 of=boot/image bs=1024
+
+    The guys of you who are not using devfs will need to substitute
+    /dev/floppy/0 with /dev/fd0.
+
+    To burn the whole stuff on cd I used the following command:
+
+        mkisofs -rlDJLV "LFS" /lfscd -b boot/image -c boot/catalog \
+            | cdrecord -v -eject dev=/dev/cdroms/cdrom0 speed=4 -data -
+
+    Things to check:
+
+        a) Don't use -f. It causes symlinks to be ignored.
+
+        b) substitute dev=... with your cdrom device
+
+
+7. Listing
+   --------
+
+7.1  /
+     --
+
+        drwxr-xr-x   2 root  root    35 Feb  9 21:10 alfs
+        drwxr-xr-x   2 root  root  1250 Feb  9 20:10 bin
+        drwxr-xr-x   3 root  root   295 Feb 10 14:05 boot
+        drwxr-xr-x   3 root  root    54 Feb  9 17:33 dev
+        drwxr-xr-x  12 root  root   795 Feb 12 13:48 etc
+        drwxr-xr-x   2 root  root    35 Feb  9 17:33 home
+        drwxr-xr-x   3 root  root  2494 Feb  9 20:52 lib
+        drwxr-xr-x   2 root  root    35 Feb  9 17:33 mnt
+        drwxr-xr-x   2 root  root    35 Feb  9 17:33 proc
+        drwxr-x---   2 root  root    64 Feb  9 18:13 root
+        drwxr-xr-x   2 root  root  1272 Feb  9 20:10 sbin
+        lrwxrwxrwx   1 root  root     8 Feb 10 21:57 tmp -> alfs/tmp
+        drwxr-xr-x  14 root  root   346 Feb  9 20:10 usr
+        lrwxrwxrwx   1 root  root    14 Feb 10 21:57 var -> alfs/00-rw/var
+        -rw-r--r--   1 root  root  1043 Feb 10 21:56 var.tar.gz
+
+
+7.2  /etc/init.d
+     ------------
+
+    This directory contains a new script "install" which goes through the in-
+    stallation procedure and should be specific for your setup.
+
+        -rwxr-xr--   1 root  root  1734 Jan 26 02:05 checkfs
+        -rwxr-xr--   1 root  root  1118 Jan 26 02:05 ethnet
+        -rwxr-xr--   1 root  root   867 Feb  2 02:46 fcron
+        -rwxr-xr--   1 root  root  4940 Jan 26 02:05 functions
+        -rwxr-xr--   1 root  root    83 Jan 26 02:05 halt
+        -rwxr-xr-x   1 root  root   988 Feb 12 13:51 install
+        -rwxr-xr--   1 root  root   200 Jan 26 02:05 loadkeys
+        -rwxr-xr--   1 root  root   725 Jan 26 02:05 localnet
+        -rwxr-xr--   1 root  root   355 Jan 26 02:05 mountfs
+        -rwxr-xr--   1 root  root  4219 Jan 26 02:05 rc
+        -rwxr-xr--   1 root  root   235 Jan 26 02:05 rcS
+        -rwxr-xr--   1 root  root   123 Jan 26 02:05 reboot
+        -rwxr-xr--   1 root  root   276 Jan 26 02:05 sendsignals
+        -rwxr-xr--   1 root  root   338 Jan 26 02:05 setclock
+        -rwxr-xr--   1 root  root  1062 Jan 26 02:05 sysklogd
+        -rwxr-xr--   1 root  root   696 Jan 26 02:05 template
+        -rwxr-xr--   1 root  root   234 Jan 26 02:05 umountfs
+
+
+7.3  /etc/rc0.d
+     -----------
+
+        lrwxrwxrwx   1 root  root  21 Feb 12 13:44 S80sendsignals
+                                                    -> ../init.d/sendsignals
+        lrwxrwxrwx   1 root  root  14 Feb 12 13:44 S99halt -> ../init.d/halt
+
+
+7.4  /etc/rc1.d
+     -----------
+
+    [empty]
+
+
+7.5  /etc/rc2.d
+     -----------
+
+    [empty]
+
+
+7.6  /etc/rc3.d
+     -----------
+
+    [empty]
+
+
+7.7  /etc/rc4.d
+     -----------
+
+    [empty]
+
+
+7.8  /etc/rc5.d
+     -----------
+
+    [empty]
+
+
+7.9  /etc/rc6.d
+     -----------
+
+        lrwxrwxrwx 1 root  root   21 Feb 12 13:44 S80sendsignals
+                                                   -> ../init.d/sendsignals
+        lrwxrwxrwx 1 root  root   16 Feb 12 13:44 S99reboot -> ../init.d/reboot
+
+7.10 /etc/rcS.d
+     -----------
+
+        lrwxrwxrwx 1 root  root   18 Jan 26 02:11 S30loadkeys
+                                                   -> ../init.d/loadkeys
+
+
+7.11 /etc/inittab
+     -------------
+
+    Please note that I replaced the definition for an agetty on vc/1 with the
+    install script /etc/init.d/install which will only be run once (keyword
+    "once").
+    I also removed 4 of the 5 remaining agetty definitions since this installa-
+    tion will run automatically.
+
+        # Begin /etc/inittab
+
+        id:3:initdefault:
+
+        si::sysinit:/etc/init.d/rcS
+
+        l0:0:wait:/etc/init.d/rc 0
+        l1:S1:wait:/etc/init.d/rc 1
+        l2:2:wait:/etc/init.d/rc 2
+        l3:3:wait:/etc/init.d/rc 3
+        l4:4:wait:/etc/init.d/rc 4
+        l5:5:wait:/etc/init.d/rc 5
+        l6:6:wait:/etc/init.d/rc 6
+
+        ft:06:respawn:/sbin/sulogin
+
+        ca:12345:ctrlaltdel:/sbin/shutdown -t1 -a -r now
+
+        su:S1:respawn:/sbin/sulogin
+        1:2345:respawn:/sbin/agetty vc/1 9600
+        2:2345:respawn:/sbin/agetty vc/2 9600
+
+        # End /etc/inittab
+
+
+8. History
+   --------
+
+    2001-07-25  released version 1.4:
+                According to Gerard's suggestion I added a few lines describing
+                how to get the boot image off the floppy and place it in the
+                lfs tree for the boot cd.
+                Corrections: - The most important was a fix to the instruction
+                               of creating a boot disk where i misspelled the
+                               command to install grub on the floppy.
+                             - I deleted/changed some instructions leftover
+                               from my original CD in 4 and 7.11
+                Additions: - Added some further description to 3.2.1, 3.2.2
+
+    2001-06-22  released version 1.3:
+                I added instructions to create a grub based boot disk.
+
+    2001-03-10  released version 1.2:
+                After I got several mail from people asking for a new version
+                of this howto with some hints how to create the cd with ram-
+                disk support.
+
+    2001-02-12  released version 1.0

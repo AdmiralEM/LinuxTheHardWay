@@ -1,0 +1,108 @@
+AUTHOR: Archaic <archaic at remove-this.indy.rr.com>
+
+DATE: 2003-09-13
+
+LICENSE: GNU Free Documentation License http://www.gnu.org/licenses/fdl.txt
+
+SYNOPSIS: Setting up Mutt and/or Vim to use Aspell.
+
+DESCRIPTION: With this hint you can configure Vim to spell check your documents
+and emails or you can set up Mutt if you use a different editor.
+
+PREREQUISITES: None
+
+HINT: This hint will be split into two parts. The first part will be
+configuring Vim to spell check, the other will be for Mutt alone.
+
+You do not need to do both, but it won't hurt if you do. You will just have two
+different ways of spell-checking.
+
+### Setting up Vim to use Aspell ###
+
+Install aspell as per the BLFS book:
+http://beyond.linuxfromscratch.org/view/cvs/general/aspell.html
+
+Edit your vimrc to include:
+
+map ^T :w!<CR>:!aspell check %<CR>:e! %<CR>
+
+NOTE: ^T is <ctrl-t>, but in Vim you have to type <ctrl-v> to type control
+characters. Thus you need to replace ^T with <ctrl-v><ctrl-t>
+
+Once you save your vimrc, any time you are in Vim's command mode, typing
+<ctrl-t> will cause the screen to split showing the aspell commands at the
+bottom.
+
+If you use Vim as your editor in Mutt, you're all set to spell-check.
+
+But wait! There's more!
+
+If you are replying to an email and you hit <ctrl-t> aspell will attempt to
+spell-check the headers, signature, and all the quoted lines in addition to
+what you actually wrote. There is a nifty little app called newsbody that will
+allow us to copy just the body of the message to a temporary file, edit it
+(spell-check it), then put it back into the original message, leaving headers
+and sigs alone. It also allows us to ignore quoted lines.
+
+You can get newsbody in a package called spellutils here:
+http://home.worldonline.dk/byrial/spellutils/spellutils-0.7.tar.bz2
+
+./configure &&
+make &&
+install -m755 newsbody /usr/bin
+install -m644 newsbody.1 /usr/share/man/man1
+
+NOTE: spellutils also builds a file pospell if you're interested in
+spell-checking .po files.
+
+Now that newsbody is installed add the following lines to your vimrc:
+map ^R \1\2<CR>:e! %<CR>
+map \1 :w!<CR>
+map \2 :!newsbody -qs -n % -p aspell check \%f<CR>
+
+These lines simply let you run aspell without having to check the sig, headers,
+or quoted text. Treat ^R the same as ^T above. You can also change the letter
+to suit your needs.
+
+Now you have a way to spell-check regular documents and emails with either
+<ctrl-t> or <ctrl-r>. You can stop here, or optionally continue on. There is no
+added functionality below. Just a different way of doing the same thing.
+
+### Setting up Mutt to use Aspell ###
+
+NOTE: I use Vim in mutt but the following should work on your editor of choice
+as these are mutt-specific, not editor-specific.
+
+The default command to spell-check in Mutt is "i". There are 2 ways in which to
+invoke newsbody and aspell in mutt. We can either call a simple script, or we
+can write a macro. I will discuss both.
+
+Script method:
+
+cat >/usr/bin/spellcheck <<"EOF"
+newsbody -hqs -n $2 -p aspell check %f
+EOF
+chmod 755 /usr/bin/spellcheck
+
+add the following to your muttrc:
+
+set ispell="/usr/bin/spellcheck"
+
+-or-
+
+Macro method:
+
+add the following to your muttrc:
+
+macro compose i \
+        "<filter-entry>newsbody -hqs -n - -p aspell check %f<enter>" \
+        "run aspell on the selected part"
+
+I hope you've found this useful. Please email any suggestions or corrections to
+the above address. Remove the "remove-this." from my address.
+
+CHANGELOG:
+[2004-05-24]
+ * Created hint
+[2003-09-13]
+ * Updated to new hints format

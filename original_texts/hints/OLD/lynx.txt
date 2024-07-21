@@ -1,0 +1,36 @@
+TITLE:		Lynx compilation problems
+LFS VERSION:	up until 2.4.4
+AUTHOR:		Lee Harris <mr.1ee@ntlworld.com>
+
+SYNOPSIS:
+	When you try to compile lynx on systems running glibc version 2.1.3 you may get an error.
+
+HINT:
+This is caused because glibc and ncurses both have a symbol Called ERR 
+defined in their header files and lynx includes both files while compiling. 
+The remedy is quite simple though, as lynx only actually uses the one in the 
+ncurses header .
+
+Look in /usr/include/sys/ucontext.h for this :-
+
+                 # define TRAPNO TRAPNO 
+                  ERR, 
+                 # define ERR    ERR 
+                  EIP, 
+
+And comment it out, eg
+
+                 /*# define TRAPNO TRAPNO 
+                  ERR, 
+                 # define ERR    ERR 
+                  EIP, */
+
+Now it should be possible to compile lynx.
+
+Remember to return ucontext.h to its original state after compilation.
+
+-- 
+
+Lee Harris
+
+

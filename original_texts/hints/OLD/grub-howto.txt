@@ -1,0 +1,167 @@
+TITLE:		GRUB-HOWTO
+LFS VERSION:	Any
+AUTHOR:		Fabio Fracassi <f.fracassi@gmx.net>
+			Modified for GRUB 0.93 by Raphael J. Schmid <raphael@arrivingarrow.net>
+
+SYNOPSIS:
+	GRUB is an alternative to LILO. This explains how to make it work.
+
+HINT:
+
+GRUB is the GNU GRand Unified Bootloader, a project which intends to solve all 
+bootup problems once and for all.
+
+One of the most interesting features, is that you don't have to install a new 
+partition or kernel, you can change all parameters at boottime via the GRUB 
+console, since it knows about the filesystems.
+
+Required software
+  ftp://alpha.gnu.org/pub/gnu/grub/grub-0.93.tar.gz
+  http.us.debian.org/debian/pool/main/g/grub/grub_0.93+cvs20030224-2.diff.gz
+  
+When you've downloaded all of the above sources, let's get to work.
+  
+  (1a) Extract GRUB itself:  tar -xvzf grub-0.93.tar.gz
+  (1b) Extract the patch:    gunzip grub_0.93+cvs20030224-2.diff.gz
+  
+  (2)  Apply the patch:      patch -Np1 -i grub_0.93+cvs20030224-2.diff
+  
+  (3)  Build GRUB (as root): 
+         ./configure --prefix=/usr \
+           && make all install      \
+           && mkdir /boot/grub      \
+           && cp /usr/share/grub/i386-pc/stage{1,2} /boot/grub
+       
+       If you want, you can copy one of the stage1_5 files as well. (More on 
+       that later).
+       
+  (4)  Starting GRUB
+  
+       Now there are two ways of going on. You can start the GRUB Console 
+       directly:
+         /sbin/grub
+       
+       Or via a floppy disk, after which you have to reboot:
+         cat /boot/grub/stage{1,2} >> /dev/fd0
+
+  (5)  Cofiguration
+  
+    First GRUB wants to know on which partition it is installed. Its way of 
+    naming them is a little differently than done Linux's:
+      (hd<BiosNr>,<PartitionNr>)
+      
+    For example: /dev/hda is (hd0), /dev/hda1 (hd0,0), /dev/hdb2 (hd1,1), and 
+    so forth. Hopefully you'll get the clue. Otherwise try 'man grub'/'info 
+    grub'.
+
+    If you dont know the partition you can issue on the GRUB console: 
+    'find /boot/grub/stage1'
+    
+    Next, you tell GRUB where it is installed: 'root (hd0,1)' (In this case, 
+    /dev/hda2)
+
+    Install GRUB in the master boot record of the drive you just specified: 
+    'setup (hd0)'
+
+    Your could start your system after a reboot now, using the command
+    'kernel (hd0,1)/boot/bzImage root=/dev/hda2'
+
+    There is the posibility to "teach" GRUB knowlage of the filesystem, that 
+    way GRUB doesn't need a block map for the stage2 file and is thus more 
+    robust against filesystem changes. This is archieved by means of the 
+    stage1_5 files:
+    
+    After issuing 
+      root (hd0,1)
+    type
+      embed /boot/grub/reiserfs_stage1_5 (hd0) # or e2fs_stage1_5
+    and note the number of sectors.
+    Now say
+      setup (hd0)
+    or 
+      install /boot/grub/stage1 (hd0)           \
+      (hd0)1+<number of sectors embed returned> \
+      p /boot/grub/stage2 /boot/grub/menu.lst
+    
+  (6) Installing a Bootmenu:
+  
+    Simply put a file named 'grub.conf' into the /boot/grub directory. Most 
+    GRUB Console commands can be used in that file -- check the info page!
+
+    Here is my setup for reference:
+
+    ---< snip >---
+    # File /boot/grub/menu.lst - Bootmenu definition
+    #
+ 
+    # Start Entry 0 by default
+    default 0
+    timeout 10
+ 
+    # makeing it nicer ;)
+    color green/black light-green/black
+ 
+    # If you have the Pixmap patch applied you can 
+    # define a Background Picture here
+    # The nice LFS image can be found at
+    # http://linuxfromscratch.org/~gerard/lfslogos/lfs-grub-splash.xpm
+    splashimage (hd0,1)/boot/grub/lfs-grub-splash.xpm
+ 
+    #German keyboard
+    setkey y z
+    setkey z y
+    setkey Y Z
+    setkey Z Y
+    setkey equal parenright
+    setkey parenright parenleft
+    setkey parenleft asterisk 
+    setkey doublequote at
+    setkey plus bracketright
+    setkey minus slash
+    setkey slash ampersand
+    setkey ampersand percent
+    setkey percent caret
+    setkey underscore question
+    setkey question underscore
+    setkey semicolon less
+    setkey less numbersign
+    setkey numbersign backslash
+    setkey colon greater
+    setkey greater bar
+    setkey asterisk braceright  
+  
+    #Standard Linux
+    title LFS-Linux 2.4
+    kernel (hd0,1)/boot/bzImage root=/dev/hda2
+ 
+    #Old Linux
+    title Old Suse Linux 6.4
+    kernel (hd1,0)/bzImage root=/dev/hdb2
+ 
+    #Windows 98
+    title Windows 98
+    chainloader (hd0,0)+1
+ 
+    #install grup
+    title (Re)Install grup
+    root (hd0,1)
+    embed /boot/grub/reiserfs_stage1_5
+    install /boot/grub/stage1 (hd0) (hd0)1+19 \
+    p /boot/grub/stage2 /boot/grub/menu.lst
+    ---< snap >---
+    
+This hint should have given you an idea of how powerful a tool GRUB is, yet 
+a very comfortable one to use. I don't know much more about GRUB than what 
+I wrote here check the Documentation (especially 'info grub') for more 
+information.
+
+Thanks to:
+ - the German C't Magazin for their great article about GRUB
+ - Gerard Beekmans for creating Linux From Scratch
+
+ChangeLog:
+ - Update: 08/May/2003 Raphael J. Schmid
+     Changed the hint to work with GRUB 0.93.
+     Also took the liberty of cleaning up formatting and wording a little,
+     although I'm not a native speaker either. Please bear with me :-)
+ - Update: 17/Apr/2002 Fabio Fracassi

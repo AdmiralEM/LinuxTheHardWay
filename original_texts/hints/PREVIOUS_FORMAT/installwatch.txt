@@ -1,0 +1,308 @@
+TITLE:		Using Installwatch as a Package Manager
+LFS VERSION:	Any
+AUTHOR:		Robert Park <rbpark@ualberta.ca>
+
+SYNOPSIS: 
+	Use installwatch to keep track of what files got installed when you compiled
+	something from source. Includes an easy method for removing those files,
+	packaging those files up, and installing said packages.
+
+HINT:
+
+Changelog
+---------
+
+Revision 1.14  2003/01/22 07:52:43  feztaa
+Fixed URL to the nuke script.
+
+Revision 1.13  2002/09/15 05:39:34  feztaa
+Changed email address, among other fixes.
+
+Revision 1.12  2002/08/08 02:23:05  feztaa
+Nuke script updated to version 1.13; major rewrite to enhance readability
+and to reflect new features.
+
+Revision 1.11  2002/07/31 07:14:50  feztaa
+Updated nuke script to version 1.12
+
+Revision 1.10  2002/07/27 01:06:27  feztaa
+Updated nuke script to version 1.11
+
+Revision 1.9  2002/06/15 18:03:12  feztaa
+Updated nuke script to version 1.9
+
+Intro
+-----
+
+One big problem with LFS is that there is no package management system.  This
+means that it is a *HUGE* pain in the butt to uninstall something, since there
+is no record of what got installed where, and by what program.
+
+There are lots of other ways to implement "package management" in LFS; but this
+is the one that I use ;)
+
+Notes
+-----
+
+In an attempt to make this easier to read, all "code blocks" that you should
+execute on the commandline start and end with "##--CODE--##". Quoted text,
+such as the output of a program, is prefixed with four spaces.
+
+Also, if you're trying to use this during the early stages of Chapter 6 in the
+LFS book, it will fail miserably for you. The reason is that installwatch needs
+programs to be dynamically linked for it to work; in Chapter 6, all of your
+programs are statically linked. Installwatch *might* work for you near the end
+of chapter 6 when most of the static stuff is gone, but I advise not using it
+until chapter 6 is finished and you're installing other stuff. I've yet to find
+a program that wouldn't install properly with installwatch, just as long as
+your stuff is dynamically linked.
+
+Requirements
+------------
+
+You'll need to download installwatch, which you can get from one of these
+locations:
+
+http://asic-linux.com.mx/~izto/checkinstall/installwatch.html
+http://proyectos.glo.org.mx/checkinstall/installwatch.html
+
+If both these sites are down, try this one (but only as a last resort):
+
+http://www.google.ca/search?hl=en&q=installwatch+izto+0.6.3&meta=
+
+I used version 0.6.3 to write this hint, but other versions should work as well
+(just as long as their logfiles are in the same format).
+
+You'll also need my 'nuke' script, which is used for uninstalling software,
+among other things. You can get that here:
+
+http://www.ualberta.ca/~rbpark/projects/nuke
+
+You'll need to download that into /usr/sbin, and chmod it to 750 (rwxr-x---).
+Yep, it finally grew too large to be included within this hint itself ;)
+
+Instructions
+------------
+
+1. Install Installwatch.
+
+Unpack and compile installwatch. Compilation is done like so:
+
+##--CODE--##
+make &&
+make install
+##--CODE--##
+
+2. Fix Make.
+
+Make must be owned by the root group:
+
+##--CODE--##
+chgrp root /usr/bin/make
+##--CODE--##
+
+I've also heard that installwatch will not work if make is setgid. I'm not sure
+if this is true, but you might want to make sure it isn't:
+
+##--CODE--##
+chmod -s /usr/bin/make
+##--CODE--##
+
+3. Prepare the Filesystem.
+
+To use the nuke script, you'll need the /var/install, /var/uninstall, and
+/var/packages directories, which will be explained later. Create them like this
+(as root):
+
+##--CODE--##
+mkdir /var/{install,uninstall,packages}
+chmod 750 /var/{install,uninstall,packages}
+##--CODE--##
+
+The install directory will be where we put installwatch's logfiles, and the
+uninstall directory will be where we put the log of what we deleted with the
+"nuke" script that I am going to show you next. The packages directory is where
+we'll store the packages that we can create from installed software.
+
+4. Using Installwatch.
+
+Now I'm going to show you how to use installwatch to create the logfiles that
+will be used by the nuke script.
+
+When you are reading installation instructions for something, and you see "make
+install", you'll want to replace that with this:
+
+##--CODE--##
+installwatch -o /var/install/programname-version make install
+##--CODE--##
+
+But, if you're too lazy and don't want to remember all that, create an alias
+similar to this one:
+
+##--CODE--##
+alias iw='installwatch -o /var/install/$(basename $(pwd))'
+##--CODE--##
+
+This will take the name of the current directory, and use that as the logfile
+name to use in /var/install. The idea is that the name of the directory you are
+compiling source in is descriptive of the software you are compiling. For
+example, I compiled XMMS in /usr/src/xmms-1.2.7, and this alias created the
+logfile named "/var/install/xmms-1.2.7". You'll want to put this alias into
+your bashrc, so that you won't have to recreate the alias every time you start
+a new shell.
+
+If you're going to use this alias as-is, then wherever you see "make install"
+in the installation instructions for something, you'll have to prefix it with
+"iw". For example, instead of the standard "./configure && make && make
+install", you'd type this:
+
+##--CODE--##
+./configure && make && iw make install
+##--CODE--##
+
+5. Using Nuke.
+
+The nuke script has many uses, the first and foremost of which is to
+uninstall software by analyzing installwatch logfiles.
+
+Uninstalling software is extremely easy with the nuke script, you simply give
+it a logfile from /var/install, and it will remove the software from your
+system, and then create a logfile in /var/uninstall telling you how the
+uninstall went.
+
+Lets say for example, you wanted to uninstall a program called 'foobar 1.0'.
+Since we have the foobar-1.0 logfile, we can simply do this:
+
+##--CODE--##
+nuke foobar-1.0
+##--CODE--##
+
+And nuke will produce some output like this:
+
+    Processing foobar-1.0 ... done.
+    Uninstalling foobar-1.0 ... successful.
+
+The first line simply means it was processing the logfile to determine what
+files to delete, and the second line means that it deleted them.
+
+It also keeps a logfile of what got deleted. This is in /var/uninstall, and has
+the same name as the logfile in /var/install. This new logfile will look
+something like this:
+
+    Removed Files/Directories
+    -------------------------
+    
+    /usr/share/man/man1/foobar.1
+    /usr/bin/foobar
+
+This file is in the format of one filename per line, and if there were any
+errors removing files, the filename will be followed by " -- " and the error
+message. So you might see something like this:
+
+    Removed Files/Directories
+    -------------------------
+    
+    /usr/share/foobar/foo -- Permission denied
+    /usr/share/foobar -- Directory not empty
+
+Which means that neither were removed.
+
+Once you are satisfied that the program was uninstalled properly, you can
+remove the logfile from /var/uninstall. The nuke script will automatically
+remove the logfile from /var/install if all of the files were removed properly.
+
+6. Nuke's 'Report' Mode.
+
+As I mentioned before, nuke has many uses. I already showed you how to use
+it to uninstall software, now I'm going to show you how to use it to simply
+see what files got installed with each program.
+
+All you have to do is add "--report" (or "-r") to nuke's argument list, like
+so:
+
+##--CODE--##
+nuke --report foobar-1.0
+##--CODE--##
+
+Now nuke won't remove the program. Instead, it will produce output like this:
+
+    Processing foobar-1.0 ... done.
+    Files/Directories installed by foobar-1.0
+    -----------------------------------------
+    
+    /usr/share/man/man1/foobar.1:  open, chown, and chmod
+    /usr/bin/foobar:  open, chown, and chmod
+
+And this simply means that both of the listed files were created (open),
+chown'ed, and chmod'ed.
+
+7. Nuke's 'Package' Mode.
+
+Nuke now has an experimental method of producing packages from logfiles.  These
+packages are not intended for general distribution (and aren't meant as a
+replacement for RPMs or anything fancy like that). They don't store any
+dependancy information, and in fact they are just tarballs.
+
+The primary use of these tarballs would be for easily installing a program onto
+many identical systems (compile once, install everywhere), or as backups for
+users with lots of HD space, but little processing power (for them, it's easier
+to install the package than to recompile it).
+
+Anyway, to make a package, first you must have installed something with
+installwatch, and you must have the installwatch logfile (in /var/install).
+Then you just call nuke with the "--package" (or "-p") option, and it creates
+the package for you, like this:
+
+##--CODE--##
+nuke --package foobar-1.0
+##--CODE--##
+
+This will produce output similar to the following:
+
+    Processing foobar-1.0 ... done.
+    Packing files from foobar-1.0 into /var/packages/foobar-1.0.fez.pkg ... 
+    /usr/bin/foobar
+    /usr/share/man/man1/foobar.1
+    /var/install/foobar-1.0
+
+The .fez.pkg file itself is just a .tar.bz2 file in reality, but there are
+special options that you have to pass to tar for it to unpack properly,
+and instead of trying to force you to remember them, I just let the nuke
+script handle that as well.
+
+8. Nuke's 'Install' Mode.
+
+The other part of the experimental packaging support in the nuke script
+is it's ability to install the packages that it creates. All you have to
+do is put the .fez.pkg file into /var/packages (it's placed there by default),
+and then run nuke with the "--install" (or "-i") option, like this:
+
+##--CODE--##
+nuke --install foobar-1.0.fez.pkg
+##--CODE--##
+
+This will produce output similar to this:
+
+    Unpacking files from /var/packages/foobar-1.0.fez.pkg ... 
+    /usr/bin/foobar
+    /usr/share/man/man1/foobar.1
+    /var/install/foobar-1.0
+
+Which just tells us which files it unpacked, and to where.
+
+The End
+-------
+
+Congratulations! You now have an extremely easy method of removing software,
+packaging software, and installing packages for software that was compiled from
+source!
+
+If you encounter any problems, please let me know. I want to make this as good
+as it can possibly be ;)
+
+Thanks To
+---------
+
+'Lovechild' (from the linuxjunior.org forums), for the original idea,
+Zenith Lau <zenithlau@sniic.com>, for symlink fixes in the nuke script,
+and everybody who reported problems that they found.

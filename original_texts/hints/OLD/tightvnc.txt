@@ -1,0 +1,401 @@
+TITLE:          Setting up tightvnc with KDM or GDM
+LFS VERSION:    any
+AUTHOR:         Jim Gifford <giffordj@linkline.com>
+
+SYNOPSIS:
+        How to setup tightvnc with KDM or GDM.
+
+HINT:
+$Revision: 1.1 $
+
+PREREQUISITES
+
+	xinetd installed
+	kdm installled or gdm installed
+
+Introduction to tightvnc
+
+Download location	http://osdn.dl.sourceforge.net/sourceforge/vnc-tight
+Version used		1.2.6
+
+VNC (an abbreviation for Virtual Network Computing) is a great client/server
+software package allowing remote network access to graphical desktops. With
+VNC, you can access your machine from everywhere provided that your machine
+is connected to the Internet. 
+
+---
+Installation of tightvnc
+
+Install tightvnc by running the following commands:
+
+        	xmkmf
+        	make World
+        	cd Xvnc 
+		/configure
+        	make -s
+        	./vncinstall /usr/vnc/bin /usr/vnc/man
+        	mkdir /usr/vnc/classes
+        	cp classes/* /usr/vnc/classes
+
+----
+Configuring kdm
+
+Important NOTE:: Files may be in a different location. It depends on your 
+installation.
+
+Config files
+
+/etc/X11/xdm/xdm-config
+
+Comment out the entry "DisplayManager.requestPort: 0" by adding a !.
+The line should look like this "! DisplayManager.requestPort: 0".
+
+/opt/kde3/share/config/kdm
+
+Locate the line XDMCP and change it from false to true.
+
+/etc/X11/xdm/Xaccess
+
+Uncomment out the entry "# * 	#any host can get a login window" by remove the
+first #. The line should look like this " * 	#any host can get a login window".
+
+----
+Configuring gdm
+
+Important NOTE:: Files may be in a different location. It depends on your
+installation.
+
+Config files
+
+/etc/X11/xdm/xdm-config
+
+Comment out the entry "DisplayManager.requestPort: 0" by adding a !.
+The line should look like this "! DisplayManager.requestPort: 0".
+
+Run gdm-config
+
+Start gdmconfig. Select Expert Mode. Ensure that Enable XDMCP is 
+checked
+
+Locate the line XDMCP and change it from false to true.
+
+/etc/X11/xdm/Xaccess
+
+Uncomment out the entry "# * 	#any host can get a login window" by remove the
+first #. The line should look like this " * 	#any host can get a login window".
+
+----
+Configuring xinetd
+
+/etc/services 
+
+Edit the services file and add the following entries.
+
+# VNC Ports
+vnc-640x480x8           5950/tcp
+vnc-800x600x8           5951/tcp
+vnc-1024x768x8          5952/tcp
+vnc-1280x1024x8         5953/tcp
+vnc-1600x1200x8         5954/tcp
+vnc-640x480x16          5960/tcp
+vnc-800x600x16          5961/tcp
+vnc-1024x768x16         5962/tcp
+vnc-1280x1024x16        5963/tcp
+vnc-1600x1200x16        5964/tcp
+vnc-640x480x24          5970/tcp
+vnc-800x600x24          5971/tcp
+vnc-1024x768x24         5972/tcp
+vnc-1280x1024x24        5973/tcp
+vnc-1600x1200x24        5974/tcp
+vnc-640x480x32          5980/tcp
+vnc-800x600x32          5981/tcp
+vnc-1024x768x32         5982/tcp
+vnc-1280x1024x32        5983/tcp
+vnc-1600x1200x32        5984/tcp
+
+/etc/xinetd.conf
+
+Edit the xinetd.conf file and add the following entries.
+
+service vnc-640x480x8
+{
+	disable = no
+	flags = REUSE
+	protocol = tcp
+	socket_type = stream
+	wait = no
+	user = nobody
+	server = /usr/vnc/bin/Xvnc
+	server_args = -inetd -query localhost -once -geometry 640x480 -depth 8
+}
+
+service vnc-800x600x8
+{
+	disable = no
+	flags = REUSE
+	protocol = tcp
+	socket_type = stream
+	wait = no
+	user = nobody
+	server = /usr/vnc/bin/Xvnc
+	server_args = -inetd -query localhost -once -geometry 800x600 -depth 8
+}
+
+service vnc-1024x768x8
+{
+	disable = no
+	flags = REUSE
+	protocol = tcp
+	socket_type = stream
+	wait = no
+	user = nobody
+	server = /usr/vnc/bin/Xvnc
+	server_args = -inetd -query localhost -once -geometry 1024x768 -depth 8
+}
+
+service vnc-1280x1024x8
+{
+	disable = no
+	flags = REUSE
+	protocol = tcp
+	socket_type = stream
+	wait = no
+	user = nobody
+	server = /usr/vnc/bin/Xvnc
+	server_args = -inetd -query localhost -once -geometry 1280x1024 -depth 8
+}
+
+service vnc-1600x1200x8
+{
+	disable = no
+	flags = REUSE
+	protocol = tcp
+	socket_type = stream
+	wait = no
+	user = nobody
+	server = /usr/vnc/bin/Xvnc
+	server_args = -inetd -query localhost -once -geometry 1600x1200 -depth 8
+}
+
+service vnc-640x480x16
+{
+	disable = no
+	flags = REUSE
+	protocol = tcp
+	socket_type = stream
+	wait = no
+	user = nobody
+	server = /usr/vnc/bin/Xvnc
+	server_args = -inetd -query localhost -once -geometry 640x480 -depth 16
+}
+
+service vnc-800x600x16
+{
+	disable = no
+	flags = REUSE
+	protocol = tcp
+	socket_type = stream
+	wait = no
+	user = nobody
+	server = /usr/vnc/bin/Xvnc
+	server_args = -inetd -query localhost -once -geometry 800x600 -depth 16
+}
+
+service vnc-1024x768x16
+{
+	disable = no
+	flags = REUSE
+	protocol = tcp
+	socket_type = stream
+	wait = no
+	user = nobody
+	server = /usr/vnc/bin/Xvnc
+	server_args = -inetd -query localhost -once -geometry 1024x768 -depth 16
+}
+
+service vnc-1280x1024x16
+{
+	disable = no
+	flags = REUSE
+	protocol = tcp
+	socket_type = stream
+	wait = no
+	user = nobody
+	server = /usr/vnc/bin/Xvnc
+	server_args = -inetd -query localhost -once -geometry 1280x1024 -depth 16
+}
+
+service vnc-1600x1200x16
+{
+	disable = no
+	flags = REUSE
+	protocol = tcp
+	socket_type = stream
+	wait = no
+	user = nobody
+	server = /usr/vnc/bin/Xvnc
+	server_args = -inetd -query localhost -once -geometry 1600x1200 -depth 16
+}
+
+service vnc-640x480x24
+{
+	disable = no
+	flags = REUSE
+	protocol = tcp
+	socket_type = stream
+	wait = no
+	user = nobody
+	server = /usr/vnc/bin/Xvnc
+	server_args = -inetd -query localhost -once -geometry 640x480 -depth 24
+}
+
+service vnc-800x600x24
+{
+	disable = no
+	flags = REUSE
+	protocol = tcp
+	socket_type = stream
+	wait = no
+	user = nobody
+	server = /usr/vnc/bin/Xvnc
+	server_args = -inetd -query localhost -once -geometry 800x600 -depth 24
+}
+
+service vnc-1024x768x24
+{
+	disable = no
+	flags = REUSE
+	protocol = tcp
+	socket_type = stream
+	wait = no
+	user = nobody
+	server = /usr/vnc/bin/Xvnc
+	server_args = -inetd -query localhost -once -geometry 1024x768 -depth 24
+}
+
+service vnc-1280x1024x24
+{
+	disable = no
+	flags = REUSE
+	protocol = tcp
+	socket_type = stream
+	wait = no
+	user = nobody
+	server = /usr/vnc/bin/Xvnc
+	server_args = -inetd -query localhost -once -geometry 1280x1024 -depth 24
+}
+
+service vnc-1600x1200x24
+{
+	disable = no
+	flags = REUSE
+	protocol = tcp
+	socket_type = stream
+	wait = no
+	user = nobody
+	server = /usr/vnc/bin/Xvnc
+	server_args = -inetd -query localhost -once -geometry 1600x1200 -depth 24
+}
+
+service vnc-640x480x32
+{
+	disable = no
+	flags = REUSE
+	protocol = tcp
+	socket_type = stream
+	wait = no
+	user = nobody
+	server = /usr/vnc/bin/Xvnc
+	server_args = -inetd -query localhost -once -geometry 640x480 -depth 32
+} 
+
+service vnc-800x600x32
+{
+	disable = no
+	flags = REUSE
+	protocol = tcp
+	socket_type = stream
+	wait = no
+	user = nobody
+	server = /usr/vnc/bin/Xvnc
+	server_args = -inetd -query localhost -once -geometry 800x600 -depth 32
+}
+
+service vnc-1024x768x32
+{
+	disable = no
+	flags = REUSE
+	protocol = tcp
+	socket_type = stream
+	wait = no
+	user = nobody
+	server = /usr/vnc/bin/Xvnc
+	server_args = -inetd -query localhost -once -geometry 1024x768 -depth 32
+}
+
+service vnc-1280x1024x32
+{
+	disable = no
+	flags = REUSE
+	protocol = tcp
+	socket_type = stream
+	wait = no
+	user = nobody
+	server = /usr/vnc/bin/Xvnc
+	server_args = -inetd -query localhost -once -geometry 1280x1024 -depth 32
+}
+
+service vnc-1600x1200x32
+{
+	disable = no
+	flags = REUSE
+	protocol = tcp
+	socket_type = stream
+	wait = no
+	user = nobody
+	server = /usr/vnc/bin/Xvnc
+	server_args = -inetd -query localhost -once -geometry 1600x1200 -depth 32
+}
+
+----
+Final Step
+
+Reboot the machine. After reboot go to another computer and try the following.
+You will need to load the vncviewer on another computer to test. There are clients
+for Windows and Unix. The java viewer is not supported under this configuration.
+
+To connect to your server you will need to start the vncviewer. Enter in the IP address
+or the FQDN of the service with the last two numbers of the port you want to connect
+to. In our suggested installation here is a list of the ports and associated desktop
+configurations.
+
+Example:	vnc.server.com:60 
+Would connect to vnc.server.com at 640x460 16 bit color
+
+Screen		Port #	Last 2 of Port
+640x480x8	5950	50
+800x600x8	5951	51
+1024x768x8	5952	52
+1280x1024x8	5953	53
+1600x1200x8	5954	54
+640x480x16	5960	60
+800x600x16	5961	61
+124x768x16	5962	62
+1280x1024x16	5963	63
+1600x1200x16	5964	64
+640x480x24	5970	70
+800x600x24	5971	71
+1024x768x24	5972	72
+1280x1024x24	5973	73
+1600x1200x24	5974	74
+640x480x32	5980	80
+800x600x32	5981	81
+1024x768x32	5982	82
+1280x1024x32	5983	83
+1600x1200x32	5984	84
+
+
+Mail suggestions to giffordj@linkline.com
+
+New Version of this document can be viewed from
+http://www.jg555.com/cvs

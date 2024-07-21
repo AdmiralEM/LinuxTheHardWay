@@ -1,0 +1,242 @@
+TITLE:		How To Build A DSL-Router
+LFS VERSION:	All
+AUTHOR:		Florin Boariu <florin@bnv-bamberg.de>
+
+SYNOPSIS:
+	This hint explains how to set up your own PPPoE/DSL gateway.
+Or Better: it explains how _I_ did it and assumes that you could
+do it the same ;)
+
+
+HINT:
+You will need three things:
+
+o A Linux System with two configured NICs
+o A Kernel Capable of PPP and PPPoE (PPP-over-Ethernet)
+o A PPP Daemon Capable of PPPoE and DoD (Dial-on-Demand)
+
+
+The Linux System
+----------------
+
+Check the LFS Book, it should explain it quite clearly. What it
+doesn't explain is how to add a second NIC: no problem, just make sure
+you have compiled the correct driver and add the folllowing lines to
+your /etc/inet.d/network (or whatever your network-up-script is).
+
+#
+# these lines should already be present if you
+# have one working network interface
+# for all computers in your network, this will
+# be the router/gateway address.
+#
+ifconfig eth0 10.1.1.200
+route add net 10.1.1.0 netmask 255.255.255.0
+
+#
+# add this line to configure the second interface
+#
+ifconfig eth1 10.10.10.254
+
+
+The Kernel
+----------
+
+Following options should be enabled in the kernel (either 'm' for
+'module' or 'y' for 'yes'):
+
+CONFIG_NETDEVICES=y
+
+CONFIG_PPP=y
+CONFIG_PPPOE=y
+
+You don't need to enable any kind of compression/deflate support for
+PPP, since PPPoE only works with turned-off compression (at least here
+in Germany -- your mileage may vary).
+
+And don't forget to make sure the respective modules get loaded, in
+case you compiled anything as a module.
+
+Of course, the kernel should also have the drivers needed for your
+NICs enabled, for example
+
+CONFIG_ETHERNET=y
+CONFIG_NET_PCI=y
+CONFIG_8139TOO=y
+
+Then you'll have to enable routing support for your kernel. I'm not
+quite sure about all the options, but the following work for me (2.4
+kernel, ipv4). Some of them I knew, others I guessed, probably some
+are superfluous.
+
+If someone knows better, please correct these.
+
+Anyway, here my settings:
+
+CONFIG_PACKET=y
+CONFIG_PACKET_MMAP=y
+CONFIG_NETLINK=y
+CONFIG_RNETLINK=y
+CONFIG_NETLINKDEV=y
+CONFIG_UNIX=y
+CONFIG_INET=y
+CONFIG_IP_ADVANCED_ROUTER=y
+CONFIG_IP_MULTIPLE_TABLES=y
+CONFIG_IP_ROUTE_FWMARK=y
+CONFIG_IP_ROUTE_NAT=y
+CONFIG_IP_ROUTE_MULTIPATH=y
+CONFIG_IP_ROUTE_TOS=y
+CONFIG_NET_IPIP=y
+CONFIG_SYN_COOKIES=y
+
+# Netfilter Configuration 
+<well... I marked everything, partly as
+ built-in, partly as loadable modules.  do whatever fits best to your
+ purposes.  however, CONFIG_IP_NF_TARGET_BALANCE will cause some
+ compile problems as of kernel version 2.4.3, so you might want to
+ choose not to enable it>
+
+
+The PPPoE Daemon with Dial-on-Demand
+------------------------------------
+
+In order to dial-on-demand you will need a pppd-2.4.1, patched with
+the pppoe4 patch. I couldn't find that patch on the net, it was sent
+to me by the author Michal Ostrowski
+<mostrows@styx.uwaterloo.ca>. Note that a pppd-2.4.0-pppoe3 will _not_
+work! It will work for _normal_ pppoe use, but not for dial-on-demand.
+
+As of now (2001-07-01) I wasn't able to find the pppoe4-patched pppd
+available for download, so you might aswell have to email to Michal.
+Alternately, you cold have a look at http://www.linuxfromscratch.org/
+-- it might be available for download there meanwhile...
+
+Just install the new pppd and write the following to your
+/etc/ppp/options file:
+
+#
+# /etc/ppp/options: <cut_here>
+#
+plugin /usr/lib/pppd/plugins/pppoe.so
+
+demand
+connect /bin/true
+ipcp-accept-remote
+ipcp-accept-local
+
+# the idle time in seconds -- you might want to adjust this
+idle 600
+noipdefault
+defaultroute
+user <yourusername@yourprovidersnost.com>
+hide-password
+noaccomp
+nopcomp
+nocrtscts
+lcp-echo-interval 10
+lcp-echo-failure 3
+lock
+nodetach
+#
+# /etc/ppp/options: </cut_here>
+#
+
+You will also need a /etc/ppp/pap-secrets file, with a valid password
+for <yourusername@yourprovidershost.com>.
+
+Next, you'll have to start the daemon as root. Simply call
+
+# pppd eth0
+
+From now on, you should be able to trigger a connect by simply pinging
+an outside host:
+
+# ping 195.30.20.19
+
+If it does not work, you've done something wrong. You might want to
+read the PPP howto or some docs that come with pppd-2.4.1... good
+luck!
+
+If it does work, then the link should be automagically terminated
+after the specified idle time. Then you should be able to connect
+again by ping.  Don't laugh, there's a reason why I'm telling this:
+the 2.4.0 version of pppd, pppoe patched, does not connect for the
+second time. It blocks!  You _need_ pppd-2.4.1-pppoe4 or higher!
+
+Now you might want to trigger the start of your pppd from somewhere in
+/etc/init.d/ (/etc/rcX.d/).
+
+
+Do The Routing
+--------------
+
+Your box can now dial itself into the internet, but it still takes
+some more lines in order to have a router. You have to install
+iptables (http://netfilter.samba.org/).  The installation of Iptables
+seemed quite special to me. It didn't make any trouble, but it looked
+like some software which could lead to trouble -- I happened to guess
+the correct settings, but I'm far from understanding the software
+deeply, so you're basically on your own ... :-/ There's one thing I
+can tell, though: you'll need to start the patch-o-matic ('make
+patch-o-matic') and apply the TCPMSS patch.  This has something to do
+with the MTU (maximum transmit unit) of the clients, but I never
+really understood what.
+
+When you suceeded the installation, execute the following:
+
+--------<cut-here>-----------
+
+#
+# prepare the kernel for ip forwarding and dynamic ip addresses
+#
+/bin/echo "1" /proc/sys/net/ipv4/ip_forward
+/bin/echo "1" /proc/sys/net/ipv4/ip_dynaddr
+
+#
+# enable FORWARD target for all packets comming from 10.x.x.x
+# via eth0 (from the inside) or via ppp0 (outside)
+# aswell as INPUT packets from eth0 (inside)
+#
+/usr/sbin/iptables -A FORWARD -i eth0 -s 10.1.1.0/24 -j ACCEPT
+/usr/sbin/iptables -A FORWARD -i ppp0 -s 10.1.1.0/24 -j ACCEPT
+/usr/sbin/iptables -A INPUT -i eth0 -s 10.1.1.0/24 -j ACCEPT
+
+#
+# set default policy to DROP all other INPUT or FORWARD packets
+#
+/usr/sbin/iptables -P INPUT DROP
+/usr/sbin/iptables -P FORWARD DROP
+
+#
+# enable masquerading for all packets from 10.x.x.x
+#
+/usr/sbin/iptables -t nat -A POSTROUTING -s 10.1.1.0/24 -j MASQUERADE
+
+#
+# set the MTU of the interfaces to the correct size. this is usually
+# smaller than usual, since pppoe does some more encapsulating.  If you
+# don't, ping to the outside world should work, but almost any other
+# TCP connection (like FTP or HTTP) will fail.  Accorting to Daniel
+# Roethlingsberger, this can also be done at interface level (try
+# 'ifconfig mtu XXX'), but there's nothing wrong with taking the
+# following line in your iptables, too.
+#
+/usr/sbin/iptables -I FORWARD -p tcp --tcp-flags SYN,RST SYN -j \
+			TCPMSS --clamp-mss-to-pmtu
+
+-----------</cut-here>-------------
+
+This will give you basic routing support. For troubleshooting and/or
+more advanced iptables flags (if you're interested in making a
+firewall out of your router), see the iptables-HOWTO:
+http://www.linuxgrill.com/anonymous/fire/netfilter/iptables-HOWTO.html.
+
+You might also want to search http://www.linuxdoc.org/ for the keyword
+'iptables' for some more advanced docs on routing and/or transparent
+proxying ;)
+
+Good Luck!
+
+Florin Boariu <florin@bnv-bamberg.de>
+
+

@@ -1,0 +1,278 @@
+TITLE:		After LFS
+LFS VERSION:	2.4.4+
+AUTHOR:		Max Schattauer <smax@smaximum.de>
+
+SYNOPSIS:
+	What to do next when you finished the LFS-Book
+        
+HINT:
+HINT		ver 1.3 13/02/2001
+
+	THIS HINT IS IN THE PROCESS OF BEING WRITTEN. IT IS NOT COMPLETE.
+	IF YOU HAVE ANY SUGGESTIONS, CORRECTIONS AND OTHER COMMENTS FEEL FREE
+	TO MAIL THEM TO ME.
+
+
+TABLE OF CONTENTS
+=================
+
+
+1. Introduction
+2. Sources of Help
+3. Setting up a workstation 
+4. Setting up a server 
+
+
+1. Introduction
+===============
+
+So Far, so Good...
+
+Here we are in confusion, your LFS system is booting and you see the login 
+prompt (if not, you maybe should consult some other docs ;) ). Now you are
+probably asking what to do next. If this is your first contact with linux, you
+should read the newbie hint. It covers the absolute linux basics, so I skip them
+here. What we will cover here are general hints on what is needed to actually 
+GET WORK DONE with your system.
+
+What now?
+
+The next steps depend on what you plan to do with your new system. Depending on
+wether you intend your system to act as a server or a workstation, you'll
+probably want to install X or not, or you want to install additional hardware. 
+Maybe you wanted to switch from Windows to Linux and don't know which software
+is needed to work on the same way.
+
+2. Sources of Help
+==================
+
+For general Linux-related material there are a lot of good information sites,
+http://www.linuxdoc.org being the first. For more LFS-specific help there are
+the sources described here.
+
+2.1 The Hint files
+
+    The hints are probably the best starting point for a certain problem. Since 
+    they deal with problems on LFS-machines, you might have a good chance that 
+    exactly your problem is described here. By the way, if you solve a problem 
+    on your own, feel free to write one, too 8).
+
+2.2 Searching Mailinglist
+
+    Next there is the Mailinglist. It is full with problems and solutions on 
+    even the oddest topic, but, by its nature, not sorted. The best thing to is 
+    to use the search-engine on the LFS-site. I myself solved many problems that
+    way, so give it a shot.
+
+2.3 Filling the Mailinglist
+
+    If you don't find anything, write a mail to the mailinglist. There are a 
+    lot of people who most certainly can help you with your troubles, but please
+    remember that these people do not want to answer the same questions all the 
+    time, so please have a look if your problem has not been discussed before.
+
+2.4 The IRC
+
+    There is an irc-server running at irc.linuxfromscratch.org, channel #lfs. 
+    Feel free to join. Well, lfs is not the topic all the time, but you might 
+    want to give it a try. 
+
+
+3. Setting up a workstation
+===========================
+
+3.1 The mouse
+=============
+
+Some people are in dFire need of the mouse, even before they run X. "Real men 
+use the keyboard!" (Just read somewhere in a mailinglist =) ). The tool you want
+to go for is called gpm and is described in the gpm-hint.
+
+3.2 X
+=====
+
+If you want to use your box as workstation for tasks like reading/writing mail, 
+chatting, playing mp3s you probably want to get a graphical user interface, gui.
+The gui is an add-on for the console, but it doesn't replace it, keep that in 
+mind. On Unix systems, there is the X-Window-system. Here is a difference to 
+what you might be used from windows. The Unix gui consists of two parts, the 
+X-server itself and some sort of Window-manager/Desktop-Environment.  
+
+3.3 Window managers / Desktop Environments
+==========================================
+
+Follow the X11 hint on how to compile the X server on your system. Then deceide 
+which window-manager you want to use. X11 comes with twm, which is probably not 
+what you think a gui was ;). So you probably want a windowmanager that offers a 
+little more options. KDE2 and Gnome are pretty popular desktop environments, or,
+if you are low on system resources, you might want want to try xfce or 
+Window Maker, which are smaller but yet useful and fast. 
+Finally, if you want the multimedia overkill, try out enlightenment which makes
+the whole screen dance, but consumes more system resources and needs several
+libraries.
+There a whole lot more, and it's merely a matter of what suits you better. 
+
+All those can be found at the respective .org or at freshmeat.net
+
+3.4 Applications
+================
+
+So now whe have that done, we have a fully functional gui. Nice, isn't it? Next 
+we need some Applications. The Desktop Environments already come with a bunch of
+those along the way, but lets have a look at it anyway. 
+
+Editors
+=======
+
+vi gets REAL fast when you know more than 50 commands. If that's nothing for you
+try out, FTE, joe or ZED. There are countless others. 
+
+Browsers
+========
+
+That might be a major issue. In my opinion, Microsoft has a an advantage 
+here, Linux is somewhat lacking a killer-browser, but let's discuss that at 
+http://freshmeat.net/articles/view/199/. So let's go with Netscape for the 
+moment, since Mozilla is really too bloated right now. I'll stick to the 
+4.74 version, still available at www.netscape.com. Watch the netscape-hint, and 
+you shouldn't have troubles. When you come from windows, it will probably be 
+familiar to you.
+
+Mail
+====
+
+Netscape comes with a mail-client, but there are better methods of managing mail
+out there. Pine widely used console driven mailer, for X there is balsa for 
+example. See the Mail-hint for further information. 
+
+XMMS
+====
+
+Yeah, we need some sort of playback device, don't we? Luckily there is a clone 
+to a program you will most certainly be familiar with, the X-Multimedia system. 
+Get it from www.xmms.org. It works pretty much like it's windows-pendant, you 
+can even use the windows-skins. 
+
+IRC
+===
+
+Chatting, hum?. No problem. There are two popular IRC-clients, xchat 
+(www.xchat.org) and bitchX (www.bitchx.org). Also, if you like the command line,
+try irssi (irssi.org). ircII is there too, but that's a bit more complicated
+in use.
+
+Burning CDs
+===========
+
+For CD-Toasting look for cdrtools and its frontend, gcombust. These are
+probably the best tools.
+
+3.5 Library Trouble
+===================
+
+Here comes the pain. Setting up libraries and programs depending on these is a 
+major worry for people who come from windows. Especially those graphic utilities
+need a lot of libs that have to be installed and set up correctly or they 
+cowardly refuse to compile. Even more, those major graphic libs (imlib, for 
+instance) depend on a bunch of others. You could go for binaries if nothing else
+helps, but that's not the LFS-spirit ;).
+
+When adding new libs to your system you probably have to edit a lot of
+makefiles, adjust symlinks etc. What makes it even more difficult ist the fact 
+that every lib is installed differently. 
+
+One good advice might be to set up your include directories correctly. If some 
+package complains about a missing file, just try to go searching for it and 
+adjust your include paths.
+
+For example, take X11. Since there was a namechange from X11 to X11R6, you might
+have to set up the symlink 
+
+  ln -s /usr/src/X11R6/include/X11 /usr/src/include/X11
+  
+for some tools.
+
+Also, for some apps you have to edit the Makefile and add 
+  
+  -I/usr/X11R6/include
+
+to the compiler-flags (CFLAGS). This really depends. 
+
+Other libs need the --enable-shared flag added to the ./configure, so that the
+shared part of them is also build correctly (libjpeg, for instance)
+
+>> Anybody got some comments on this? I'm having trouble here and there myself.
+
+
+4. Setting up a server
+======================
+
+So you want your system to act as a server. When saying server here I'm 
+referring not to those software server tasks but to those machines that are not 
+intended to have people actually working on them. (cruel phrase, I know, my 
+english is a bit rusty ;) )
+
+So your server should probably be connected to some sort of network, otherwise
+it would make little sense setting up one. Basic networking is set up in the 
+LFS-Book, so we can skip that here. What we need next is Internet-Connection.
+
+Dial-in Server
+==============
+
+>> Don't wanna brag 'bout my isdn hint :). is there a modem hint? Never had one
+>> so I don't know if one is needed =)
+
+Maybe you want to set up your box in a way that it forwards packages to servers
+running on other servers in your LAN. Basically, go for the Masquerading hint.
+The PPP hint might also be of interest.
+
+Mail Server
+===========
+
+Very common mail servers include Sendmail, but this one is a little heavy in
+configuration. Maybe POSTFIX is a little easier to configure. See the Mail-Hint
+for further information.
+
+Web-Server (HTTP)
+=================
+
+Apache is pretty popular. Read the Apache hint.
+
+FTP-Server
+==========
+
+Read the Ftp-hint.
+
+SSH-Server
+==========
+
+Ssh is used to remotely log into your server. Useful when you ant to administer
+your server from another box. See Openssh hint.
+
+NFS-Server
+==========
+
+Networking file systems are used to use remote file-systems as if they were on
+your machine. Read NFS-server-hint.
+
+>> I'm gonna finish this what-server-to-use-for-what-task when I get my exams 
+>> done. :)
+
+Well, this is just a quick overview of what you might want to do when you got
+your box running. There's a whole lot more out there, and really goes beyond
+the scope of this hint. I hope you found this little hint useful, if you have 
+any comments, additions, corrections please mail them to me.
+
+
+Thanks
+======
+
+Thanks on creating this hint apply to the following people
+
+Gerard
+Shine <shine@shinewelt.de>
+Zertox <zertox@zertox.com>
+joe
+chemical
+The people from #LFS and #Unix
+The people supporting the mailinglist

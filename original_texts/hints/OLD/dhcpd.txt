@@ -1,0 +1,94 @@
+TITLE:		DHCP client daemon
+LFS VERSION:	2.3
+AUTHOR:		Simon Perreault <nomis80@videotron.ca>
+
+SYNOPSIS:
+	How to setup a DHCP client daemon (this is used with cable modems, and possibly others).
+
+HINT:
+I wrote this because the network boot scripts section didn't ever mention
+that it may be done otherwise for those with dhcp-based access (most cable
+modems).
+
+
+How to install and configure the DHCP client daemon according to the LFS
+standards.
+
+1. Get dhcpcd at ftp://ftp.phystech.com/pub/ . Unpack.
+
+2. Execute
+    ./configure --prefix=/usr
+    make
+    make install
+
+    (Optimizations may be used, but as I told Ian Chilton, I disagree with
+the use of the -e switch. Do what you want.)
+
+3. Execute
+    mv /etc/dhcpcd /etc/dhcpc
+    This is done because there is a bug in the installation, and it creates
+the directory as dhcpcd instead of dhcpc. The program needs dhcpc, or else
+it will complain.
+
+4. Add those two lines to /etc/sysconfdir/network
+    IPADDR=$(head -n 1 /etc/dhcpc/dhcpcd-eth0.info | cut -c 8-)
+    NETMASK=$(head -n 2 /etc/dhcpc/dhcpcd-eth0.info | tail -n 1 | cut -c 9-)
+
+    You may also add a BROADCAST value, but I think dhcp-based connections
+don't need those. If you need one, create it yourself. We're learning, and
+head, tail and cut are must-understand tools.
+
+5. Create /etc/init.d/dhcpcd containing the following
+    #!/bin/sh
+    # Begin /etc/init.d/dhcpcd
+    . /etc/init.d/functions
+    case "$1" in
+     start)
+      echo -n "Starting DHCP client daemon..."
+      start-stop-daemon -S -q -o -x /usr/sbin/dhcpcd
+      evaluate_retval
+      ;;
+     stop)
+      echo -n "Stopping DHCP client daemon..."
+      start-stop-daemon -K -q -o -p /var/run/dhcpcd-eth0.pid >/dev/null 2>&1
+      evaluate_retval
+      ;;
+     restart)
+      $0 stop
+      sleep 1
+      $0 start
+      ;;
+     *)
+      echo "Usage: $0 {start|stop|restart}"
+      exit 1
+      ;;
+    esac
+    # End /etc/init.d/dhcpcd
+
+6. Execute
+    chmod 744 /etc/init.d/dhcpcd
+    cd /etc/rc3.d
+    ln -s ../init.d/dhcpcd S05dhcpcd
+
+7. I think the right host version is the "no network card" version (at least
+it works for me), because your IP is not static. I haven't found a way to
+deal with it so that the IP may vary.
+
+8. If you haven't set a BROADCAST value in /etc/sysconfig/network, remove
+the BROADCAST part in /etc/init.d/ethnet, so that it looks like this
+    <snip>
+     echo -n "Bringing up the eth0 interface..."
+     /sbin/ifconfig eth0 $IPADDR netmask $NETMASK
+     evaluate_retval
+    <snip>
+
+9. If your dhcp server assigns you a hostname, you may (should) edit
+/etc/sysconfig/network so that it is based on the
+/etc/dhcpc/dhcpcd-eth0.info file like other variables.
+
+10. I think that's about it. Important info about your connection can be
+obtained in /etc/dhcpc/dhcpcd-eth0.info and can be used easily in scripts.
+
+PLEASE feel free to send me comments and suggestions.
+
+

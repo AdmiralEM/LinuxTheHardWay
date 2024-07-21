@@ -1,0 +1,211 @@
+AUTHOR: Ken Moffat <ken@kenmoffat.uklinux.net>
+DATE: 2005-06-15
+LICENSE: MIT License
+SYNOPSIS: cpu frequency scaling using the kernel or powernowd.
+DESCRIPTION: With processors that support it (e.g. recent athlon64,
+many laptop processors), you can reduce the processor frequency, to
+reduce wasted energy or conserve battery power.
+
+PREREQUISITES: 2.6.9 or later kernel, the bootscripts target LFS-6.1
+
+HINT:
+
+
+Overview
+________
+
+ Frequency scaling is an important part of increasing the battery life
+of notebooks,  but it also has a place in reducing power consumption,
+and thus waste heat, on desktops and servers.  Most CPUs that support
+it will have at least two valid frequency/voltage settings, e.g. my
+athlon64 Winchester 3200 (2.0 GHz) can run at approx 1.0 GHz, 1.8 GHz,
+and 2.0 GHz.  Give the ondemand governor a heavy load and the speed
+quickly ramps up.  After the load has fallen back, the speed will
+first fall to 1.8 GHz and then some seconds later to 1.0 GHz.
+
+ The kernel began by offering 'powersave' (slow) and 'performance' 
+(fast) drivers, with a 'userspace' alternative to allow a daemon to
+dynamically change the frequency.  As of 2.6.9, an 'ondemand' driver
+was made available.  Other demand-based governors, such as 
+'conservative', have been introduced in later kernels.
+
+ Meanwhile, the powernowd daemon was developed, see 
+http://www.deater.net/john/powernowd.html - this will dynamically
+change the frequency as the load goes up and down.
+
+ It would seem that the 'ondemand' driver makes powernowd redundant,
+but some CPUs (like the ppc 7447) apparently have a very high 
+transition latency which causes the ondemand governor to decline to
+manage them - on my 7447A the powersave and performance drivers
+('governors') work, but trying to install 'ondemand' fails.  Equally,
+on a laptop powernowd will probably be a little quicker at dropping
+the speed, and can therefore give a little more battery life.
+
+ On x86 and x86_64 it appears that your bios has to support frequency
+scaling (typically labelled Cool'n'Quiet on boards with AMD CPUs) -
+after upgrading to a new mobo/cpu, I lost the ability to use both the
+'ondemand' governor and powernowd until I configured the bios properly.
+
+
+Kernel Configuration
+____________________
+
+On the Processor menu, select CPU Frequency scaling
+
+Set the Default CPUFreq governor to userspace (the default is often
+'performance')
+
+Select the governors you wish to use, typically 'performance', 
+'powersave', and try 'ondemand'.  Feel free to select any other
+available governors.  I assume most people will want to build these
+governors in, rather than compiling them as modules.
+
+Select the correct cpu-freq hardware driver (on a mac there is nothing
+further to select, on x86, choose from POWERNOW_K7, POWERNOW_K8,
+SPEEDSTEP_CENTRINO, and similar options).
+
+
+Testing
+_______
+
+After you've booted the new kernel, you can test which of the kernel
+governors work.  As root, echo the governor name to 
+/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor - presumably,
+people with SMP boxes need to try this for each CPU.  Then test the
+status of the command, e.g. with 'echo $?' - if the governor loaded,
+the status will be 0 and you can use that governor, otherwise the
+status will be 1.
+
+You can view the current CPU frequency in /proc/cpuinfo.  To test the
+ondemand or other variable-speed governors, run something "expensive"
+(e.g. untar the gcc .bz2, or do a big compile) and repeatedly check
+the spead in the cpuinfo file.  You should find that it ramps up
+shortly after the load starts, and falls back a few seconds after the
+load drops. [ BUT, if you are in an xterm on a kernel > 2.6.12-rc5,
+see the ignore_nice line in my bootscript below. ]
+
+
+Bootscript for kernel cpufreq
+_____________________________
+
+If one or more of the demand-based governors works for you, you're
+almost done, you just need to ensure the appropriate governor is
+loaded after you boot.  For my desktop box (athlon64) I use the
+following :
+
+cat >>/etc/rc.d/init.d/cpufreq << EOF
+#!/bin/sh
+
+. /etc/sysconfig/rc
+. ${rc_functions}
+
+case "${1}" in
+	start|demand)
+		boot_mesg "Enabling ondemand cpu frequency"
+		echo ondemand \
+		>/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+		boot_mesg "ignoring niceness for ondemand"
+		echo 1 \
+		>/sys/boot/devices/system/cpu0/cpufreq/ondemand/ignore_nice
+ 		;;
+	powersave)
+		boot_mesg "Enabling powersave cpu frequency"
+    		echo powersave \
+		>/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+		;;
+	performance)
+		boot_mesg "Enabling performance cpu frequency"
+		echo performance \
+		>/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+		;;
+	*)
+		echo "Usage: ${0} {start|demand|powersave|performance}"
+		exit 1
+		;;
+esac
+EOF
+
+chmod 754 /etc/rc.d/init.d/cpufreq
+
+ln -s ../init.d/cpufreq /etc/rc.d/rcsysinit.d/S45cpufreq
+
+ Note that this allows me to set powersave or performance if I ever wish
+to, and that I just install this in rcsysinit.d so there is no 'stop'
+option.
+
+ The 'ignore_nice' ensures the old behaviour of ondemand for kernels
+newer than 2.6.12-rc5 : without this, anything I start in an xterm has a
+niceness of 10 and the kernel doesn't allow it to influence the cpu
+frequency.
+
+
+Powernowd
+_________
+
+
+ This is based on 0.96.  Untar it, you'll notice the Makefile is
+described as -very- simple.  Unfortunately, it installs into /usr/sbin
+- on a laptop, you probably want to bring it up as part of the boot
+process, so I think it belongs in /sbin.  The easy way to do that is
+
+ make && install -m 755 powernowd /sbin
+
+ There is an example powernowd.init in the package, which could be
+adapted for the bootscript, using variations of "dyn" (dynamic), "low",
+"high" - I go with something a little simple - dynamic frequency
+control at all times:
+
+Bootscript for powernowd
+________________________
+
+cat >>/etc/rc.d/init.d/powernowd << EOF
+#!/bin/sh
+
+. /etc/sysconfig/rc
+. ${rc_functions}
+
+case "${1}" in
+	start)
+		boot_mesg "Starting powernowd"
+		loadproc /sbin/powernowd
+		;;
+	status)
+		boot_mesg "Starting powernowd"
+		statusproc /sbin/powernowd
+		;;
+	stop)
+		boot_mesg "Starting powernowd"
+		killproc /sbin/powernowd
+		;;
+	*)
+		echo "Usage: ${0} {start|status|stop}"
+		exit 1
+		;;
+esac
+EOF
+
+chmod 754 /etc/rc.d/init.d/powernowd
+
+ln -s ../init.d/powernowd /etc/rc.d/rcsysinit.d/S45powernowd
+ln -s ../init.d/powernowd /etc/rc.d/rc0.d/K45powernowd
+ln -s ../init.d/powernowd /etc/rc.d/rc6.d/K45powernowd
+
+ACKNOWLEDGEMENTS:
+_________________
+
+Barry Shilliday for bringing the scaling_governors to my attention
+in an article in PC Plus magazine.
+
+Eric Piel for explaining how to restore the old behaviour for the
+ondemand governor.
+
+
+CHANGELOG:
+__________
+
+2005-07-12	First version.
+
+
+Updated versions of this hint may be found at
+http://www.kenmoffat.uklinux.net/hints/
+

@@ -1,0 +1,229 @@
+TITLE:          DHCP client daemon
+LFS VERSION:    3.3+ (should work on older versions if bootscrips are updated)
+AUTHOR:         D.J. Lucas <dj_me@swbell.net>
+		Last updated 08/20/2002
+
+SYNOPSIS:       How to setup a DHCP client daemon. This is used with most
+                xDSL and cable gateways/routers and for cable ISPs.  Also
+                used, nowadays, on almost all corporate networks to set up
+                non mission critical servers and most workstations.
+______________________________________________________________________________
+THIS HINT WILL NO LONGER BE UPDATED BEYOND 08/20/2002.  
+ALL INFORMATION HAS BEEN INCLUDED IN THE BLFS BOOK AVAILIBLE AT:
+
+http://beyond.linuxfromscratch.org/
+
+Rest assured, you will find a much broader and more thorough collection 
+of easy to follow instructions and 'hints' for things to do with your shiny 
+new LFS sytem on the BLFS site.  Check it out!
+______________________________________________________________________________
+
+HINT:  After reading the dhcpd hints by Simon Perreault <nomis80@videotron.ca>
+and Thinus Pollard <thinusp@olienhout.org.za>, I had an excelent grasp on the
+configuration and use of dhcpcd.  I, however, felt the need to expand on their
+ideas and incorporate the use of the DHCP client into the network (ethnet on
+previous versions) init script.  This will both reduce the amount of scripts in
+/etc/rc.d/init.d/, and also allow for an easy change back to a static network
+should the need arise.
+
+NOTE:  Just a basic reminder....because this works on my system, dosen't mean
+that it will work on yours, tho it should.  Even though these are just script
+changes, IT IS ALWAYS A GOOD IDEA TO BACKUP any existing files that will be
+changed, deleted, modified, moved, etc....    Also, I do not go into any of
+the advanced options for cable/*DSL modems that may be required by some ISPs.
+These options are covered in the man-pages for the client, however, if you are
+having problems with broadband modems, look for the -D, -H, -I, and -i switches.
+Furthur more, cable modem users will probably not want to use the -k option in
+the ifdown-eth0 script below.  Change to this to killproc or ifconfig down 
+on cable modem setups to preserve the cache file.  'man dhcpcd' for more info.
+
+How to install and configure the DHCP client daemon according to the LFS
+standards.
+
+1. Get the current version of dhcpcd at:
+	ftp://ftp.phystech.com/pub/dhcpcd-1.3.22-pl1.tar.gz
+2. Obtain the LFS patch for DHCPCD.
+	http://www.lucasit.com/linux/dhcpcd-1.3.22-pl1.patch.bz2
+3. Unpack the archive, patch, and install.
+_______________________________________________________________________________
+	tar -zxf dhcpcd-1.3.22-pl1.tar.gz 
+	bzip2 -d dhcpcd-1.3.22-pl1.patch.bz2 &&
+	cd dhcpcd-1.3.22-pl1 &&
+	patch -Np1 -i ../dhcpcd-1.3.22-pl1.patch &&
+	./configure --prefix="" --sysconfdir=/var/lib \
+		--mandir=/usr/share/man &&
+	make &&
+	make install
+_______________________________________________________________________________
+
+Command Explanation:  
+
+patch -Np1 -i ../dhcpcd-1.3.22-pl1.patch
+The LFS patch changes the location of the cache, info, and pid files to be
+both LFS freindly and FHS compliant.  This was added to make sure that cleanfs
+correctly removes the pid files when the system is restarted without being
+properly shut down.  FYI: Cache files are now kept in /var/cache, info files
+are still kept in <ConfigDir> which is now, by default /var/lib/dhcpc, and
+pid files are now stored correctly in /var/run.  All three changes were made
+to make the client FHS compliant.
+
+--prefix=""   
+We do not want to install dhcpcd in prefix=/usr because in a lot of systems,
+usr may be network mounted.  Also, this is not a program that we'd have most
+users access, so it makes sense to me to install in /sbin. However, it is 
+your LFS system, so do as you see fit.
+
+--sysconfdir=/var/lib  
+Tells the install script to create the */dhcpc directory in /var/lib as this
+is now the default location of <ConfigDir>. 
+
+--mandir=/usr/share/man  
+Tells the install script to place the man files in /usr/share/man.
+_____________________________________________________________________________
+
+4. Create the new device specific scripts.
+
+If you are using a version of LFS prior to 3.3, see my old hint for the 
+scripts that will work.  The old hint is availible here: 
+
+http://hints.linuxfromscratch.org/hints/old/dhcpcd.txt
+
+We will create the $nework_devices/ifup-eth? and $network_devices/ifdown-eth?
+files. This method proves to be a much easier method for new device types that 
+weren't accounted for in the base build.  Also, we now will not mess with your 
+existing config files, so should you need to return to a static assigned IP, 
+we can simply delete the scripts we've created. In the following example, we 
+are creating a script for eth0, if you need for eth1, rename the files to 
+ifup-eth1 and ifdown-eth1 respectively, and edit for eth1.
+______________________________________________________________________________
+cat > /etc/sysconfig/network-devices/ifup-eth0 << "EOF"
+#!/bin/sh
+# Begin /etc/sysconfig/network-devices/ifup-eth0
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+echo "Bringing up the eth0 interface via DHCP..."
+/sbin/dhcpcd eth0
+evaluate_retval
+# End /etc/sysconfig/network-devices/ifup-eth0
+EOF
+_______________________________________________________________________________
+cat > /etc/sysconfig/network-devices/ifdown-eth0 << "EOF"
+#!/bin/sh
+# Begin /etc/sysconfig/network-devices/ifdown
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+echo "Bringing down the eth0 interface..."
+/sbin/dhcpcd -k eth0
+evaluate_retval
+
+# End /etc/sysconfig/network-devices/ifdown
+EOF
+chmod 755 /etc/sysconfig/network-devices/ifup-eth0
+chmod 755 /etc/sysconfig/network-devices/ifdown-eth0
+______________________________________________________________________________
+
+5. Bootscrpt handling.
+
+Another issue has come to surface with the way LFS handles shutdowns and
+restarts in the new scripts.  By default, in runlevel 0 and runlevel 6, network
+is called as K80, this causes a problem because dhcpcd is exacly as it's name
+implies, a daemon.  In both of these runlevels, sendsignals is run at K50,
+before the network script has a chance to run, therefore, the dhcp client
+daemon is killed by the time the script runs.  I don't know if this is a good
+idea or not, but it works for what little I have on my system.  It seems to me
+that a lot of network services that will possibly be installed will be daemons,
+and that sendsignals should be run after the network is properly shut down.
+I'd appreciate any feedback that anybody could give on this statement.  Run
+the following commands to eliminate this problem as I have.
+------------------------------------------------------------------------------
+mv /etc/rc.d/rc0.d/K80network /etc/rc.d/rc0.d/K45network
+mv /etc/rc.d/rc6.d/K80network /etc/rc.d/rc6.d/K45network
+______________________________________________________________________________
+
+As you can see, this will run the network script at K45, prior to sendsignals
+at K50, eliminating this problem.  There may be other problems that surface if
+you do not move network dependent Kills before K45 on some systems.  This may
+not be the ideal solution for all systems.  It's your own LFS, check it out.
+It has also been suggested that sendsignals should be moved to K70 (moving 
+everything currently behind it as well to allow for more room between the K40
+and K50. This is up to you, again, it's your LFS system, do what you like!
+_____________________________________________________________________________
+
+6.  Changes to /etc/sysconfig/network
+
+Note:  The dhcpcd client handles the route setup internally if a default gateway
+is provided by the DHCP server.  If a card configured via DHCP is given a
+default gateway by the DHCP server, then that card is automatically put into
+the routing table as a default route.  If you should need to disable this 
+feature, see the manpages for dhcpcd and route (man dhcpcd or man route)
+
+You will need to chage the /etc/sysconfig/network file if the default route
+device is now being configured by DHCP.  If your default route device is 
+now set up by DHCP, then you'll need to comment out (#) the "GATEWAY" and the 
+"GATEWAY_IF" variables.  Make a backup copy and fix it with the following:
+_______________________________________________________________________________
+cd /etc/sysconfig
+cp network network.bak
+sed 's/GATEWAY/# GATEWAY/' network.bak > network
+_______________________________________________________________________________
+
+7.  Before you reboot you need to test the system.  Start by running ifconfig
+with no options to see which devices are enabled.  Disable all devices except
+lo by running:
+_______________________________________________________________________________
+ifconfig <device name> down
+_______________________________________________________________________________
+
+Now start the network using the following command:
+_____________________________________________________________________________
+/etc/rc.d/init.d/network start
+_____________________________________________________________________________
+
+Look for any failures and try to track them down.  If you have no failures,
+run ifconfig and make sure everything looks okay.  Also check that your
+routing is set up correctly by running route with no argurments.  If
+everything looks good, then stop the network.
+_____________________________________________________________________________
+/etc/rc.d/init.d/network stop
+_____________________________________________________________________________
+
+Again look for any failures and track them down.  Again run route and ifconfig,
+and look for any interfaces that aren't supposed to be there.  If there are no
+interfaces, besides lo and any static cards, returned by ifconfig and there
+are no routes set,congratulations.  Reboot your system and continue on your
+path with LFS.
+
+If you do have failures that you cannot track down.  Please feel free to
+e-mail me <dj_me@swbell.net> or better yet, use the blfs-suport mailing list
+<blfs-support@linuxfromscratch.org>.  Be sure to include the full problem 
+description (as much of it as you understand), the exact error message, and 
+the text of all your relevant config files.  Also, if you are not subscribed
+to the mailing list, please request that you be CC'd on all replies to your
+inquiry for help.  If you do have problems, you've made a backup of everything,
+so put the backups back where you got them from.
+______________________________________________________________________________
+
+8.  Conclusion:  "I hope this helps somebody out there ;)" -- Thinus Pollard
+I'd like to thank Thinus Pollard and Simon Perreault for their versions of
+this hint....which had my LFS system up and running in under an hour.  I'd
+also like to thank the following dedicated LFS users who took the time to track
+down the problems in the previous versions of this hint.
+
+Special thanks to: Robert Smol, Rich Jones, Phil Gendreau, Cli - corrected 
+dhcpcd -k $Device, Markku Tikkanen, Tijmen Stam - provided cable modem info,
+Steve Hayashi, Wolfgang Scheicher - provided dhcpcd default gateway and routing
+info, Carl Spelkens - corrected the runlevels before I even wrote this hint,
+and Oliver Brakmann - provided the patch for correcting the locations of the 
+state, cache, and pid files.
+
+
+The new scripts in 3.3+ have disolved quite a few of the issues encountered in
+the previous hints. So a big thanks to Gerard and the entire LFS Devel crew!  
+Many many thank for a truely incredible project!  As always, please send any 
+tips, suggestions, flames...etc, to: dj_me@swbell.net.
+
+-- D.J. Lucas <dj_me@swbell.net>

@@ -1,0 +1,718 @@
+Package: locales-all
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.5.1
+
+Package: libvolume-id-dev
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 113
+
+Package: linux-headers
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.6.22.5
+
+Package: mktemp
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.5
+
+Package: iproute2
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.6.20
+
+Package: coreutils
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 6.9
+
+Package: login
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1:4.0.18.1
+
+Package: gettext-base
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 0.16.1
+
+Package: module-init-tools
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 3.2.2
+
+Package: man-db
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.4.4
+
+Package: libuuid1
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.40.2
+
+Package: cpp-4.1
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 4.1.2
+
+Package: procps
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 3.2.7
+
+Package: g++-4.1
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 4.1.2
+
+Package: libtool
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.5.24
+
+Package: ncurses-base
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 5.6
+
+Package: libmagic-dev
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 4.21
+
+Package: psmisc
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 22.5
+
+Package: inetutils-ftp
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.5
+
+Package: perl-modules
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 5.8.8
+
+Package: bsdutils
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.12r
+
+Package: dpkg-dev
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.13.25
+
+Package: libc6-dev
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.5.1
+
+Package: bzip2
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.0.4
+
+Package: vim-common
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 7.1
+
+Package: libltdl3-dev
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.5.24
+
+Package: inetutils-talk
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.5
+
+Package: ncurses-bin
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 5.6
+
+Package: perl-base
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 5.8.8
+
+Package: sysv-rc
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.86
+
+Package: ss-dev
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.40.2
+
+Package: gcc-base
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 4.1.2
+
+Package: texinfo
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 4.9
+
+Package: libmagic1
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 4.21
+
+Package: libbz2-dev
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.0.4
+
+Package: gettext
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 0.16.1
+
+Package: libblkid-dev
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.40.2
+
+Package: e2fslibs-dev
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.40.2
+
+Package: groff
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.18.1.4
+
+Package: libperl-dev
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 5.8.8
+
+Package: gawk
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 3.1.5
+
+Package: tar
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.18
+
+Package: file
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 4.21
+
+Package: gcc-4.1
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 4.1.2
+
+Package: zlib1g
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1:1.2.3
+
+Package: locales
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.5.1
+
+Package: manpages
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.63
+
+Package: libgcc1
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1:4.1.2
+
+Package: libgcc4
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 4.1.2
+
+Package: grub
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 97
+
+Package: flex
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.5.33
+
+Package: mount
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.12r
+
+Package: libreadline5
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 5.2
+
+Package: libncurses5
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 5.6
+
+Package: vim
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 7.1
+
+Package: libltdl3
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.5.24
+
+Package: iproute
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 20070313
+
+Package: libcgi-fast-perl
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 5.8.8
+
+Package: patch
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.5.4
+
+Package: sed
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 4.1.5
+
+Package: libperl5.8
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 5.8.8
+
+Package: binutils-dev
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.17
+
+Package: g++
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 4.1.2
+
+Package: e2fslibs
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.40.2
+
+Package: inetutils-telnet
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.5
+
+Package: gcc-4.1-base
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 4.1.2
+
+Package: libcomerr2
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.40.2
+
+Package: groff-base
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.18.1.4
+
+Package: grep
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.5.1a
+
+Package: libncurses-dev
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 5.6
+
+Package: kbd
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.12
+
+Package: autoconf
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.61
+
+Package: passwd
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1:4.0.18.1
+
+Package: inetutils-ping
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.5
+
+Package: sysvinit
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.86
+
+Package: initscripts
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.86
+
+Package: libblkid1
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.40.2
+
+Package: libss2
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.40.2
+
+Package: libproc-dev
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 3.2.7
+
+Package: findutils
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 4.2.3
+
+Package: e2fsck-static
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.40.2
+
+Package: automake1.10
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.10
+
+Package: ncurses-term
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 5.6
+
+Package: e2fsprogs
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.40.2
+
+Package: db4.5-util
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 4.5.20
+
+Package: cpp
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 4.1.2
+
+Package: gzip
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.3.12
+
+Package: dpkg
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.13.25
+
+Package: libncursesw5
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 5.6
+
+Package: libncursesw5-dev
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 5.6
+
+Package: info
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 4.9
+
+Package: gcc
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 4.1.2
+
+Package: diff
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.8.1
+
+Package: libbz2-1.0
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.0.4
+
+Package: perl
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 5.8.8
+
+Package: iproute-dev
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 20070313
+
+Package: sysklogd
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.4.1
+
+Package: comerr-dev
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.40.2
+
+Package: zlib1g-dev
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1:1.2.3
+
+Package: iproute2-dev
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.6.20
+
+Package: libreadline5-dev
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 5.2
+
+Package: libvolume-id0
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 113
+
+Package: sysvinit-utils
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.86
+
+Package: libc6
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.5.1
+
+Package: klogd
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.4.1
+
+Package: libstdc++6-4.1-dev
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 4.1.2
+
+Package: libbz2
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.0.4
+
+Package: udev
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 113
+
+Package: bison
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.3
+
+Package: bash
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 3.2
+
+Package: make
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 3.81
+
+Package: util-linux
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.12r
+
+Package: m4
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.4.10
+
+Package: libstdc++6
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 4.1.2
+
+Package: debconf-tiny
+Status: purge ok not-installed
+Priority: optional
+Section: admin
+
+Package: uuid-dev
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1.40.2
+
+Package: binutils
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 2.17
+
+Package: zlib-bin
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 1:1.2.3
+
+Package: less
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 406
+
+Package: readline-common
+Status: install ok installed
+Priority: optional
+Section: base
+Version: 5.2

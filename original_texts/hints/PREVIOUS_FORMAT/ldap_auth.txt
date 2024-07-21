@@ -1,0 +1,875 @@
+TITLE:          LDAP AUTH
+LFS VERSION:    3.1
+AUTHOR:         Michenaud Laurent <Michenaud Laurent>
+
+VERSION : BETA BETA BETA
+
+SYNOPSIS:
+
+HINT:
+
+I - PAM
+=======
+
+download here :
+http://www.us.kernel.org/pub/linux/libs/pam/pre/library/Linux-PAM-0.75.tar.bz2
+http://www.us.kernel.org/pub/linux/libs/pam/pre/library/cracklib-files.tgz
+
+
+1) CrackLib Installation
+
+unpack cracklib-files.tgz
+
+cp usr/include/* /usr/include/*
+cp usr/lib/* /usr/lib/*
+cp usr/sbin/* /usr/sbin/*
+
+
+2) Pam Installation
+
+./configure --with-mailspool=/var/mail
+
+make
+
+make install
+
+# Create the directory where u can have one file 
+# per service configuration
+mkdir /etc/pam.d
+
+# Creating missing links
+cd /lib
+ln -s libpam.so.0.75 libpam.so.0
+ln -s libpam_misc.so.0.75 libpam_misc.so.0
+
+
+3) Shadow-20001016 recompilation
+
+You have to reinstall the shadow-20001016 package
+in order to take of PAM.
+
+For that, recompile the option --with-pam
+
+I am not a pam specialist and maybe it will be good to add
+a specific configuration for the other services such ftp, telnet,etc...
+
+
+
+II - OPENLDAP
+=============
+
+download here :
+ftp://ftp.OpenLDAP.org/pub/OpenLDAP/openldap-release/openldap-2.0.22.tgz
+
+1) Installation
+---------------
+./configure --prefix=/usr \
+            --sysconfdir=/etc \
+            --localstatedir=/var \
+	    --enable-syslog \
+            --with-threads \
+            --with-tls \
+	    --enable-ldap \
+	    --enable-slapd \
+            --enable-crypt \
+            --enable-modules \
+            --enable-dynamic \
+            --enable-ldbm \
+            --enable-passwd-backend \
+            --enable-slurpd
+make depend
+make
+make test
+make install
+
+
+2) SSL Key Generation for connection encryption
+-----------------------------------------------
+
+mkdir /etc/openldap/ssl
+cd /etc/openldap/ssl
+openssl req -new -x509 -nodes -out slapd.pem -keyout slapd.key -days 365
+
+
+It will ask a few question needed to generate the key.
+VERY IMPORTANT :
+When asking for Common Name, enter your hostname.
+
+I don't know why but without that, it will not work.
+
+
+3) OpenLDAP Configuration
+--------------------------
+
+You should read the documentation.
+Here is what i use with some explanations.
+
+The configuration is /etc/openldap/slapd.conf
+
+###################################
+# Begin of /etc/openldap/slapd.conf
+
+# The following included files define the necessary
+# objects
+include         /etc/openldap/schema/core.schema
+include         /etc/openldap/schema/cosine.schema
+include         /etc/openldap/schema/inetorgperson.schema
+include         /etc/openldap/schema/nis.schema
+
+#
+# GLOBAL DIRECTIVES
+#
+
+pidfile		/var/run/slapd.pid
+argsfile	/var/run/slapd.args
+
+# Load dynamic backend modules:
+modulepath	/usr/libexec/openldap
+# moduleload	back_ldap.la
+moduleload	back_ldbm.la
+# moduleload	back_passwd.la
+# moduleload	back_shell.la
+
+# Access Control
+# access to
+
+# Default acces { none | compare | search | read | write } 
+defaultaccess read
+
+# Time before an idle connection is killed, -1 to desactivate this fonction
+idletimeout	0
+
+# Loglevel
+loglevel 256
+
+# Define the max records number that a research can provide.
+sizelimit 500
+
+# Specifie le referral quand slapd ne peut trouver une base 
+# de données locale
+# referral
+
+# 
+# GENERAL BACKEND OPTIONS
+#  options for all databases
+# 
+
+# Database type : ldbm, shell, passwd
+backend ldbm
+
+
+#
+# GENERAL DATABASE DIRECTIVES
+#
+
+# Database type
+database ldbm
+
+# Read only database
+readonly off
+
+# replica ldap-1.example.com:389 tls=yes
+#	bindmethod=sasl saslmech=GSSAPI
+#	authcId=host/ldap-master.example.com@EXAMPLE.COM
+
+# Log file for replication
+replogfile     /var/log/openldap/master-slapd.replog
+
+# specifies the DN that is not subject to access control or 
+# administrative limit restrictions for operations on this database. The DN 
+# need not refer to an entry in the directory. The DN may refer to a SASL 
+# identity.
+rootdn          "cn=Manager,dc=zerezo,dc=org"
+
+# Specify a password for the entry above
+rootpw		secret
+#rootpw		{crypt}fdssdfs
+
+# Suffix for this database
+suffix          "dc=zerezo,c=org"
+
+
+#updatedn <dn>
+#updateref <url>
+
+
+#
+# LDBM BACKEND SPECIFIC DIRECTIVES
+#
+
+# Memory cache size
+cachesize	1000
+
+# Cache size for each opened index
+dbcachesize	100000
+
+# Deactivate database lock
+dbnolocking
+
+# Directory that contains lbdm-files
+directory	/var/openldap-ldbm
+
+# Defines the index to maintain
+index   objectClass,uid,uidNumber,gidNumber,memberUid   eq
+index   cn,mail,surname,givenname                       eq,subinitial
+
+# Droits par default pour les nouveaux index
+mode	0600
+
+# SSL encryption
+TLSCertificateFile /etc/openldap/ssl/slapd.pem
+TLSCertificateKeyFile /etc/openldap/ssl/slapd.key
+TLSCACertificateFile /etc/openldap/ssl/slapd.pem
+
+
+# End of /etc/openldap.slapd.conf
+#################################
+
+
+Now, we have to configure the log mechanism.
+U have to add this line in /etc/syslog.conf :
+local4.*     -/var/log/openldap.log
+
+
+
+3) The starting script /etc/rc.d/init.d/openldap
+------------------------------------------------
+
+#!/bin/sh
+# Begin $rc_base/init.d/
+
+# Based on sysklogd script from LFS-3.1 and earlier.
+# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+case "$1" in
+        start)
+                echo -n "Démarrage du serveur openldap..."
+                /opt/network/libexec/slapd -h "ldap:///  ldaps:///" -d 1
+                ;;
+
+        stop)
+                echo -n "Arrêt du serveur openldap..."
+                kill -INT `cat /var/run/slapd.pid`
+                ;;
+        reload)
+                echo -n "Rechargement du serveur openldap..."
+                reloadproc openldap
+                ;;
+
+        restart)
+                $0 stop
+                sleep 1
+                $0 start
+                ;;
+
+        status)
+                statusproc
+                ;;
+
+        *)
+                echo "Usage: $0 {start|stop|reload|restart|status}"
+             	exit 1
+                ;;
+esac
+# End $rc_base/init.d/
+
+Add the link in 
+/etc/rc.d/rc*.d
+
+
+3) Starting the server
+---------------------
+
+First, start the openldap server with the script.
+If it fails, try to launch it by hand with debug mode 
+with the following command :
+
+$ /usr/libexec/slapd -d 1
+
+Then, execute the following test and checks wether there are no error :
+
+ldapsearch -b 'dc=zerezo,dc=org' 'objectclass=*'
+
+
+
+4) Importing data for OPENLDAP
+------------------------------
+
+Now, you have to write the file containing your user data.
+My openldap database has the following structure :
+
+org
+|- zerezo
+        |- people
+                | zarba
+                | karine
+        |- groups
+                | wheel
+                | users
+
+Here the file in the LDIF format :
+
+# Begin of /tmp/newentry
+
+dn: dc=zerezo, dc=org
+objectclass: top
+objectclass: organizationalUnit
+ou: zerezo
+
+dn:ou=groups, dc=zerezo, dc=org
+objectclass: top
+objectclass: organizationalUnit
+ou: groups
+
+dn:ou=people, dc=zerezo, dc=org
+objectclass: top
+objectclass: organizationalUnit
+ou: people
+
+dn: cn=Michenaud Laurent, ou=people, dc=zerezo, dc=org
+cn: Michenaud Laurent
+sn: Zarba
+objectclass: top
+objectclass: person
+objectclass: posixAccount
+objectclass: shadowAccount
+uid:zarba
+userpassword:{crypt}sfsdfdsfd
+uidnumber:1002
+gidnumber:103
+gecos:Michenaud Laurent
+loginShell:/bin/bash
+homeDirectory: /home/zarba
+shadowLastChange:10877
+shadowMin: 0
+shadowMax: 999999
+shadowWarning: 7
+shadowInactive: -1
+shadowExpire: -1
+shadowFlag: 0
+
+dn: cn=Michenaud Karine, ou=people, dc=zerezo, dc=org
+cn: Michenaud Karine
+sn: Buffy
+objectclass: top
+objectclass: person
+objectclass: posixAccount
+objectclass: shadowAccount
+uid:karine
+userpassword:{crypt}sfsdfdsfd
+uidnumber:1002
+gidnumber:103
+gecos:Michenaud Karine
+loginShell:/bin/bash
+homeDirectory: /home/karine
+shadowLastChange:10877
+shadowMin: 0
+shadowMax: 999999
+shadowWarning: 7
+shadowInactive: -1
+shadowExpire: -1
+shadowFlag: 0
+
+
+dn: cn=wheel, ou=groups, dc=zerezo, dc=org
+objectclass: top
+objectclass: posixGroup
+cn: wheel
+gidnumber: 103
+memberuid: zarba
+
+dn: cn=users, ou=groups, dc=zerezo, dc=org
+objectclass: top
+objectclass: posixGroup
+cn: users
+gidnumber: 100
+memberuid: zarba
+memberuid: karine
+
+# End of file /tmp/newentry
+
+Import the file in your database with the following command :
+
+$ ldapadd -f /tmp/newentry -D "cn=Manager,dc=zerezo,dc=org" -w secret
+
+
+Then, you can execute the following test for fun :
+
+ldapsearch -b 'dc=zerezo,dc=org' 'cn=Michenaud Laurent'
+ldapsearch -u -b 'dc=zerezo,dc=org' 'cn=Michenaud Laurent' sn mail 
+
+See in the LDAP Howto at www.linuxdoc.org to modify or
+delete some ldap records.
+
+
+
+III - PAM_LDAP
+==============
+
+Download here : ftp://ftp.padl.com/pub/pam_ldap.tgz
+
+1) Installation
+
+Strange installation but i didnot find any other way
+to make compilation working.
+
+./configure --with-ldap-lib=openldap --with-ldap-dir=/usr
+
+make
+make
+
+sed 's|depcomp = $(SHELL) $(top_srcdir)/depcomp||' \
+Makefile > Makefile.tmp &&
+mv Makefile.tmp Makefile
+
+make
+make install
+
+# We copy all the pam service config files in /etc/pam.d/
+cp pam.d/* /etc/pam.d/
+
+
+
+
+IV - NSS LDAP
+=============
+
+download here : ftp://ftp.padl.com/pub/nss_ldap.tgz
+
+1) Installation
+
+./configure --enable-schema-mapping --with-ldap-lib=openldap --with-ldap-dir=/usr
+
+make
+make
+
+sed 's|depcomp = $(SHELL) $(top_srcdir)/depcomp||' \
+Makefile > Makefile.tmp &&
+mv Makefile.tmp Makefile
+
+make
+make install
+
+2) Configuration
+
+You have to edit the /etc/nsswitch.conf like this :
+
+passwd: files ldap
+group:  files ldap
+shadow: files ldap
+
+3) LDAP client configuration file
+
+# Begin of /etc/ldap.conf
+
+# Your LDAP server. Must be resolvable without using LDAP.
+host 127.0.0.1
+
+# The distinguished name of the search base.
+base dc=zerezo,dc=org
+
+# version de ldap
+ldap_version 3
+
+# The distinguished name to bind to the server with.
+# Optional: default is to bind anonymously.
+#binddn cn=proxyuser,dc=padl,dc=com
+
+# The credentials to bind with. 
+# Optional: default is no credential.
+#bindpw secret
+
+# The distinguished name to bind to the server with
+# if the effective user ID is root. Password is
+# stored in /etc/ldap.secret (mode 600)
+#rootbinddn cn=manager,dc=padl,dc=com
+
+# The port.
+# Optional: default is 389.
+port 636
+
+# The search scope.
+#scope sub
+#scope one
+#scope base
+
+# Search timelimit
+#timelimit 30
+
+# Bind timelimit
+#bind_timelimit 30
+
+# Idle timelimit; client will close connections
+# (nss_ldap only) if the server has not been contacted
+# for the number of seconds specified below.
+#idle_timelimit 3600
+
+# Filter to AND with uid=%s
+pam_filter objectclass=posixAccount
+
+# The user ID attribute (defaults to uid)
+pam_login_attribute uid
+
+# Search the root DSE for the password policy (works
+# with Netscape Directory Server)
+#pam_lookup_policy yes
+
+# Check the 'host' attribute for access control
+# Default is no; if set to yes, and user has no
+# value for the host attribute, and pam_ldap is
+# configured for account management (authorization)
+# then the user will not be allowed to login.
+#pam_check_host_attr yes
+
+# Group to enforce membership of
+#pam_groupdn cn=PAM,ou=Groups,dc=padl,dc=com
+
+# Group member attribute
+#pam_member_attribute uniquemember
+pam_member_attribute memberuid
+
+# Specify a minium or maximum UID number allowed
+#pam_min_uid 0
+#pam_max_uid 0
+
+# Template login attribute, default template user
+# (can be overriden by value of former attribute
+# in user's entry)
+#pam_login_attribute userPrincipalName
+#pam_template_login_attribute uid
+#pam_template_login nobody
+
+# HEADS UP: the pam_crypt, pam_nds_passwd,
+# and pam_ad_passwd options are no
+# longer supported.
+
+# Do not hash the password at all; presume
+# the directory server will do it, if
+# necessary. This is the default.
+#pam_password clear
+
+# Hash password locally; required for University of
+# Michigan LDAP server, and works with Netscape
+# Directory Server if you're using the UNIX-Crypt
+# hash mechanism and not using the NT Synchronization
+# service. 
+
+pam_password crypt
+
+# Remove old password first, then update in
+# cleartext. Necessary for use with Novell
+# Directory Services (NDS)
+#pam_password nds
+
+# Update Active Directory password, by
+# creating Unicode password and updating
+# unicodePwd attribute.
+#pam_password ad
+
+# Use the OpenLDAP password change
+# extended operation to update the password.
+#pam_password exop
+
+# RFC2307bis naming contexts
+# Syntax:
+# nss_base_XXX		base?scope?filter
+# where scope is {base,one,sub}
+# and filter is a filter to be &'d with the
+# default filter.
+# You can omit the suffix eg:
+
+# nss_base_passwd	ou=People,
+# to append the default base DN but this
+# may incur a small performance impact.
+#nss_base_passwd	ou=People,dc=padl,dc=com?one
+#nss_base_shadow	ou=People,dc=padl,dc=com?one
+#nss_base_group		ou=Group,dc=padl,dc=com?one
+#nss_base_hosts		ou=Hosts,dc=padl,dc=com?one
+#nss_base_services	ou=Services,dc=padl,dc=com?one
+#nss_base_networks	ou=Networks,dc=padl,dc=com?one
+#nss_base_protocols	ou=Protocols,dc=padl,dc=com?one
+#nss_base_rpc		ou=Rpc,dc=padl,dc=com?one
+#nss_base_ethers	ou=Ethers,dc=padl,dc=com?one
+#nss_base_netmasks	ou=Networks,dc=padl,dc=com?ne
+#nss_base_bootparams	ou=Ethers,dc=padl,dc=com?one
+#nss_base_aliases	ou=Aliases,dc=padl,dc=com?one
+#nss_base_netgroup	ou=Netgroup,dc=padl,dc=com?one
+
+# attribute/objectclass mapping
+# Syntax:
+#nss_map_attribute	rfc2307attribute	mapped_attribute
+#nss_map_objectclass	rfc2307objectclass	mapped_objectclass
+
+# configure --enable-nds is no longer supported.
+# For NDS now do:
+#nss_map_attribute uniqueMember member
+
+# configure --enable-mssfu-schema is no longer supported.
+# For MSSFU now do:
+#nss_map_objectclass posixAccount User
+#nss_map_attribute uid msSFUName
+#nss_map_attribute uniqueMember posixMember
+#nss_map_attribute userPassword msSFUPassword
+#nss_map_attribute homeDirectory msSFUHomeDirectory
+#nss_map_objectclass posixGroup Group
+#pam_login_attribute msSFUName
+#pam_filter objectclass=User
+#pam_password ad
+
+# configure --enable-authpassword is no longer supported
+# For authPassword support, now do:
+#nss_map_attribute userPassword authPassword
+#pam_password nds
+
+# For IBM SecureWay support, do:
+#nss_map_objectclass posixAccount aixAccount
+#nss_map_attribute uid userName
+
+#nss_map_attribute gidNumber gid
+#nss_map_attribute uidNumber uid
+#nss_map_attribute userPassword passwordChar
+#nss_map_objectclass posixGroup aixAccessGroup
+#nss_map_attribute cn groupName
+#nss_map_attribute uniqueMember member
+#pam_login_attribute userName
+#pam_filter objectclass=aixAccount
+#pam_password clear
+
+# Netscape SDK LDAPS
+#ssl on
+
+# Netscape SDK SSL options
+#sslpath /etc/ssl/certs/cert7.db
+
+# OpenLDAP SSL mechanism
+# start_tls mechanism uses the normal LDAP port, LDAPS typically 636
+ssl start_tls
+ssl on
+
+# OpenLDAP SSL options
+# Require and verify server certificate (yes/no)
+
+# Default is "no"
+#tls_checkpeer yes
+
+# CA certificates for server certificate verification
+# At least one of these are required if tls_checkpeer is "yes"
+#tls_cacertfile /etc/ssl/ca.cert
+#tls_cacertdir /etc/ssl/certs
+
+# SSL cipher suite
+# See man ciphers for syntax
+#tls_ciphers TLSv1
+
+# Client certificate and key
+# Use these, if your server requires client authentication.
+#tls_cert
+#tls_key
+
+
+4) Check the permission
+
+-rw-r--r--  root.root /etc/ldap.conf
+-rw-------  root.root /etc/openldap/slapd.conf
+
+
+5) Examples of extension of nss_ldap
+
+You can put your services definition in your openldap too.
+Here is an example ldif file for services :
+
+dn:ou=tcpIp, dc=zerezo, dc=org
+objectclass: top
+objectclass: organizationalUnit
+ou: tcpIp
+
+dn: cn=swat,ou=tcpIp,dc=zerezo,dc=org
+cn: swat
+objectclass: ipService
+ipServicePort: 901
+ipServiceProtocol: tcp
+cn: swat
+
+dn: cn=cups,ou=tcpIp,dc=zerezo,dc=org
+cn: cups
+objectclass: ipService
+ipServicePort: 631
+ipServiceProtocol: tcp
+cn: cups
+
+Then just add "ldap" in nsswitch.conf for the line services.
+
+What is bad is that aliases are not managed in the schema.
+
+You can define too your networks, protocols and rpc in the
+openldap database.
+
+
+==========================
+V - PROFTPD auth with LDAP
+==========================
+
+It just speaks about adding LDAP to proftpd...
+It doesnot speak about installing and configuring proftpd...
+
+download here :  http://horde.net/~jwm/software/mod_ldap/mod_ldap-2.8.1.tar.bz2
+
+1) Installation
+
+Proftpd-1.2.4 provides only mod_ldap-2.7.6 so you have to download the
+latest version of the module.
+
+Extract the module archive and copy mod_ldap.c in your proftpd-1.2.4/contrib/
+
+Proftpd can work with LDAP SSL/TLS. To enable SSL/TLS, edit mod_ldap.c
+and uncomment /* #define USE_LDAPV3_TLS */
+
+Recompile proftpd with the option : --with-modules=mod_ldap
+
+
+2) Configuration
+
+In your proftpd.conf, just add :
+
+LDAPServer localhost
+LDAPDNInfo cn=Manager,dc=zerezo,dc=org password
+LDAPDoAuth on "dc=zerezo,dc=org"
+LDAPUseTLS on
+
+I had to add these parameters for the global section and for
+each virtual host to make it work
+
+You have to create the /etc/ftpusers, /etc/shells too
+
+
+============================
+VII - POSTFIX Auth with LDAP
+============================
+
+Postfix doesnot work with LDAP-TLS/SSL.
+
+1) Installation
+
+Unpack the postfix tarballs and execute the following commands, 
+and then compile like you are used to to it.
+
+make tidy
+make makefiles CCARGS="-I/usr/local/include -DHAS_LDAP" \
+	AUXLIBS="-L/usr/local/lib -lldap -L/usr/local/lib -llber"
+
+
+2) Configuration in your main.cf files.
+
+Here is a basic configuration for integrating ldap in postfix.
+I know you can do more like integrating your files /etc/aliases, 
+sender_canonical and recipient_canonicial in the openldap database.
+
+alias_maps = hash:/etc/aliases, ldap:ldapsource
+
+ldapsource_server_host = localhost
+ldapsource_server_port = 389
+ldapsource_search_base = dc=zerezo, dc=org
+ldapsource_timeout = 5
+#ldapsource_query_filter=mailacceptinggeneralid=%s
+#ldapsource_domain = postfix.org, hash:/etc/postfix/searchdomains
+#ldapsource_result_attribute = mailbox,maildrop
+#ldapsource_special_result_attribute = member
+#ldapsource_bind = no
+#ldapsource_bind_dn = uid=postfix, dc=your, dc=com
+#ldapsource_bind_pw = postfixpw
+
+
+===================
+IX - OPENLDAP UTILS
+===================
+
+1) GQ, an interface to browse/edit an ldap database
+
+download here : http://biot.com/gq/download/gq-0.4.0.tar.gz
+
+./configure
+make
+make install
+
+2) Directory Administrator
+
+A great program to manager users and group
+through openldap
+
+download here :
+http://prdownloads.sourceforge.net/directoryadmin/directory_administrator-1.1.3.tar.gz
+
+./configure
+make
+make install
+
+
+=========
+X - SAMBA
+=========
+
+1) Samba installation
+
+I recommend Samba 2.2.2_HEAD
+
+cd sources
+ ./configure --prefix=/opt/network \
+	--with-smbmount \
+	--with-configdir=/etc/samba \
+	--with-privatedir=/etc/samba/private \
+	--with-acl-support \
+	--with-profile \
+	--disable-static \
+	--with-ldapsam \
+	--with-syslog \
+	--with-ssl \
+	--with-ssl-lib=/opt/network/lib \
+	--with-ssl-include=/opt/network/include \
+	--with-pam \
+	--with-pam_smbpass
+
+make
+make install
+cd ..
+cp examples/LDAP/samba.schema /etc/openldap/schema/
+
+
+2) Configuration
+
+Add in /etc/openldap/slapd.conf :
+include 	/etc/openldap/schema/samba.schema
+
+access to attrs=lmPassword,ntPassword
+	by 'cn=samba,ou=SystemAccounts,dc=zerezo,dc=Org'
+	write by self write by * auth
+
+
+Edit samba.schema and delete the displayName attribute
+because we have already it.
+
+Then we need to precise the password for accessing the LDAP server
+smbpasswd -w secret
+
+
+
+==============
+X - CONCLUSION
+==============
+
+I wrote this hint while discovering openldap.
+There may be some errors and it may be incomplete.
+
+Feel free to modify this hint to improve it :)
+
+TO DO :
+	- Adding security rules
+	- exporting an entire LDAP ( backup )
+	- Samba Auth with LDAP ( Completing )
+	- Postfix more integration
+	- Replication
+	- Maybe Kerberos
+	
+

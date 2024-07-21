@@ -1,0 +1,56 @@
+TITLE:		Client is not authorized to connect to server
+LFS VERSION:	any
+AUTHOR:		Simon Perreault <nomis80@videotron.ca>
+
+SYNOPSIS:
+	How root can connect to the X server while it is in use by another user.
+
+HINT:
+Perrin Aybara <vze24938@verizon.net> asked this question:
+"Okay, this is strange.  When I try to run something graphical as root
+(for example, my latest case-in-point: installing realplayer 7), I get
+this: 
+Xlib: connection to ":0.0" refused by server
+Xlib: Client is not authorized to connect to server
+Error: Can't open display: :0.0
+
+Also, when I check the X server output in a VT, I get:
+AUDIT: Sun Dec 31 21:24:00 2000: 18735 X: client 5 rejected from local
+host
+
+I got this trying to install Real Player 7, I got this when compiling
+the Glade-Perl module (in the "make test" phase it pops up a graphical
+UI you can test out), and I remember getting it a couple other times too
+(I didn't take much notice though, didn't matter at the time for
+whatever reason).  I'm running XFree86 4.0.2 as a normal user (not
+root), and I'm attempting the aforementioned commands as root from an
+Xterm.  I was always able to do such things before, so this is very
+strange for me now.  Thanks in advance..."
+
+The main problem here is that root can't connect to the X server while it is 
+in use by another user. This happens fairly often, while installing software 
+for example. Andy <atark@thepipeline.net> replied with this information:
+"Try "xhost +" as the user that started X first, that should do it.  You
+could also try "export DISPLAY=localhost:0.0" as root."
+
+The "xhost +" command permits to everyone to run programs on :0.0. This 
+includes root. And this includes every other user too. So, if you see programs 
+popping up, maybe someone logged in is trying to harass you, you may just turn 
+it off using the "xhost -" command. To restrict the command to only the root 
+user, use "xhost root". The DISPLAY environment variable is used to determine 
+which display to use when starting an X program.
+
+"Another way, when su'ing to root:
+
+Make sure the /root/.Xauthority file is a pointer to the
+user's .Xauthority file.  Be sure to restore your original
+root .Xauthority file before acutally logging in as root."
+
+This might be a good way to bypass the "xhost +" part if you never login as 
+root.
+
+For my part, I've run into this problem sometimes, but on rare occasions, and 
+I can't reproduce it. Normally, root can use every display he wishes, and no 
+user can stop him. I've tried shutting down everyone's access to my display, 
+but root could still use it. Bottom point is: this problem happens, this is 
+the solution.

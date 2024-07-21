@@ -1,0 +1,129 @@
+TITLE:          PPPOE
+LFS VERSION:    3.0pre4
+AUTHOR:         Chris Lynn <roryo@roryo.dynup.net>
+
+SYNOPSIS:
+        It's the configuring of your LFS thats the tricky bit.  ;)
+
+HINT:
+Well, you've got your brand-spanking new LFS, now you want to connect your
+nice dsl / adsl connection to it.  You are going to need the following :
+
+        http://www.roaringpenguin.com/pppoe/ppp-2.4.1-pppoe2.tgz
+        http://www.roaringpenguin.com/pppoe/rp-pppoe-3.2.tar.gz
+
+You are also going to need a kernel above 2.4.2.  There were some issues
+with pppoe and 2.4.2. kernel.  I'm currently using 2.4.7 and its screaming
+along. The latest kernel can be found at ftp.kernel.org or your local
+mirror.
+
+Installing the kernel.
+
+        cd /usr/src &&
+        mkdir linux-2.4.7 &&
+        mv linux linux-2.4.6 &&
+        ln -s linux-2.4.7 linux &&
+        tar yxvf linux-2.4.7.tar.bz2 &&
+        cd linux &&
+        make mrproper &&
+        make menuconfig
+
+You will have to replace linux-2.4.6 with the version of your current
+kernel.
+
+You will have to enable the following in your kernel configuration:
+
+        Code maturity level options -->
+                [*] Prompt for development and/or incomplete code/drivers
+
+        General setup -->
+                [*] Networking support
+
+        Network options -->
+                <*> Packet socket
+                [*]    Packet socket: mmaped IO
+                ........
+                [*] TCP/IP networking
+
+        Network device support -->
+                [*] Network device support
+                ........
+                <*> PPP (point-tp-point protocol) support
+                [ ]    PPP Multilink support (EXPERIMENTAL)
+                <M>    PPP support for async serial ports
+                <M>    PPP support for sync tty ports
+                <M>    PPP Deflate compression
+                <M>    PPP SD_Compress compression
+                < >    PPP over ethernet (EXPERIMENTAL)
+
+You will notice that we leave pppoe out of the kernel modules, this is due
+to the fact that we cannot debug later if we use the kernel driver. Not
+that you will need to debug.  ;)
+
+        File systems -->
+                ........
+                [*]  /dev/pts file system for Unix98 PTYs
+
+Now there are a LOT of options that u need to have a proper kernel, these
+are just those required to get your pppoe running. Next :
+
+        make dep &&
+        make bzImage &&
+        make modules &&
+        make modules_install &&
+        cp arch/i386/boot/bzImage /boot/lfskernel
+
+Make sure that you lilo after all that.  Now comes the real work:
+
+
+PPPD :-
+
+        cd /usr/src &&
+        tar zxvf ppp-2.4.0-pppoe4.tgz &&
+        cd ppp-2.4.0.pppoe4 &&
+        ./confiure &&
+        make &&
+        make install
+
+Then to do some configuring :
+
+        echo "plugin /usr/lib/pppd/2.4.1/pppoe.so" > /etc/ppp/options
+
+        cat >> /etc/modules.conf << "EOF"
+        alias /dev/ppp          ppp_generic
+        alias char-major-108    ppp_generic
+        alias tty-ldisk-3       ppp_async
+        alias tty-ldisk-14      ppp_synctty
+        alias ppp-compress-21   bsd_comp
+        alias ppp-compress-24   ppp_deflate
+        alias ppp-compress-26   ppp_deflate
+        EOF
+
+RP-pppoe :-
+
+        cd /usr/src &&
+        tar zxvf rp-pppoe-3.2.tar.gz &&
+        cd rp-pppoe-3.2 &&
+        ./go
+
+Roaring penguin will auto-magically do everything for you, well almost,
+you'll have to answer some questions for it.  Now before you adsl-start
+there are two more things we need to do.
+
+Lets add the following to /etc/fstab:
+
+        none /dev/pts devpts guid=4,mode620 0 0
+
+And that should be it!  Time for a reboot to get then kernel installed.
+
+OK, now that you've got your new kernel up and running you should try:
+
+adsl-start
+
+If you get the ...Connected! then your in business.  8-)  If not then you
+are going to have to read the rp-pppoe docs and do some debuggin, now you
+see why i didn't use the experimental kernel driver.
+
+I hope you enjoy you LFS with xDSL installed!
+
+A big thanks go to all the guys on #lfs for all their help.

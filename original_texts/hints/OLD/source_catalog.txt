@@ -1,0 +1,84 @@
+TITLE:		Source Code Indexing
+LFS VERSION:	ALL
+AUTHOR:		Tom Judge <tomjude@orange.net>
+
+SYNOPSIS:
+    A small PHP script to catalog all of the source code required to build a LFS
+    system to make it easyer to find the source that you are looking for.
+
+HINT:
+    Ver: 1.0
+    28/12/2001
+    
+    This script requires PHP v4.
+    
+    The script will extract all of bz2 files and then move them to a directory
+    with the same name as the first character of the file name.  Then if the 
+    file is a tarball it extracts the contents and removes the original file.
+    
+    The code is listeb below, some lines have been been truncated, these lines
+    end in '\' and will have to un-truncated in order for the script to work
+    completely.
+    
+    Script Listing:
+
+    -------------Snip---------------
+    #!/usr/bin/php
+
+    <?
+    exec ("nice -20 bunzip2 *.bz2");
+    $dirs = array (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, \
+	u, v, w, x, y, z);
+    $i = 0;
+    $num = count($dirs);
+    while ( $i < $num ) {
+    	exec("mkdir $dirs[$i]");
+	$i++;
+    }
+
+    $handle = opendir('.');
+    $i = 0;
+
+    while (($file = readdir($handle))!==false) {
+	if ( !is_dir($file) ) {
+	    $array[$i] = $file;
+	    $i++;
+	}
+    }
+    closedir($handle);
+
+    $num = count($array);
+    $i = 0;
+
+    while ( $i < $num ) {
+	if ( $array[$i] != "relocate" ) {
+	    $tmp = $array[$i];
+	    $letter = substr( $tmp, 0, 1);
+	    $dir = $letter . "/";
+	    echo "Moving $tmp to $letter .....";
+	    exec ("mv $tmp $dir");
+	    echo "Done.\n";
+	    $ext = substr( $tmp, -3, 3);
+	    if ( $ext == "tar" ) {
+		echo "Changing Dir to $dir .....";
+		chdir($letter);
+		echo "Done.\n";
+		echo "Un-taring Archive $tmp .....";
+		exec("tar -xf $tmp");
+		echo "Done.\n";
+		echo "Removing Archive $tmp .....";
+		exec("rm -f $tmp");
+		echo "Done.\n";
+		echo "Changin Back to src dir .....";
+		chdir("..");
+		echo "Done.\n";
+	    }
+	}
+	$i++;
+    }
+    ?>
+    --------------Snap------------------
+    
+    The Future:
+	In future is plan to make a bash script version of this script and a c++
+	version so that users without PHP can utilise it.

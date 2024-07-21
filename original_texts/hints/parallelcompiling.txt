@@ -1,0 +1,538 @@
+AUTHOR: Daniel Baumann <daniel.baumann@panthera-systems.net>
+
+DATE: 2004-07-10
+
+LICENSE: GNU General Public License
+
+SYNOPSIS: How to build LFS using multiple compiler instances.
+
+PRIMARY URI: http://archive.daniel-baumann.ch/linux-from-scratch/hints/parallelcompiling/
+
+DESCRIPTION:
+How to build a LFS-system in less time using multiple compiler instances in parallel.
+
+ATTACHMENTS:
+* http://www.linuxfromscratch.org/hints/downloads/attachments/parallelcompiling/profile-LFS-5.1.1-4_parallelcompiling-1.patch
+
+PREREQUISITES:
+The command-replacements are applicable for LFS version 5.1.1. Similar changes
+will probably work fine on other versions of the book, but your mileage may
+vary.
+
+HINT:
+--------------------------------------------------------------------------------
+
+PARALLELCOMPILING
+=================
+
+This hint replaces the smp-hint written by Adam Greenblatt <agreenbl@aol.com>.
+Now updated and maintained by Daniel Baumann.
+
+
+1. Introduction
+===============
+
+GNU Make can build multiple targets in parallel compiler (GCC) instances using
+the '-j' switch.
+
+On single-processor computer, the compiler instances will be automatically
+scheduled on the processor. This gains speed because a single instance rarely
+use all ressources, the rest can be used by another one.
+
+On multi-processor computer, the compiler instances will be automatically
+scheduled between the processors. This gains speed because it makes use of the
+additional application-processor(s) (CPU(s) number 1-?) instead of only using
+the boot-processor (CPU number 0).
+
+A few packages fail to build in parallel: Their makefiles contain implicit
+depencies that force them to build serially (arguably, this is a bug in those
+packages). A couple of other packages, notably the GNU C Library (Glibc) and
+XFree86, use other makefile trickery in place of '-j'.
+
+Here is a step by step description of the changes needed.
+
+
+1.1 About $CC_PARALLEL
+======================
+
+As with $LFS, we will use the variable $CC_PARALLEL to specify how many compiler
+instances to build with. Replace $CC_PARALLEL with an integer. A good value
+seems to be 2 instances per processor. In example for a dual-processor system,
+I suggest to use CC_PARALLEL="4".
+
+Machines with Jackson Technologie (also know as Intel Hyper-Threading) should
+make use of it. A good value here is 2 instances per logical processor. In
+example for a dual-processor system with enabled Jackson Technologie, I suggest
+to use CC_PARALLEL="8".
+
+Generally on faster systems (2GHz and more), it is also save to use more than 2
+isntances per (logical) processor. I personally use 5, but I leave this up to
+you to choose.
+
+The rest of the hint assumes you have set $CC_PARALLEL as an environment
+variable, in example
+
+	# export CC_PARALLEL="4"
+
+Attention:	If you use the '-j' switch without a following number, GNU Make 
+		will start an infinit number of compiler instances. This often
+		crashs your system and should therefore not be used (especially
+		noticed on compiling Glibc which does hang nearly everytime the
+		computer).
+
+
+2. LFS-Book
+===========
+
+
+2.1 Chapter 4. Final Preparations
+=================================
+
+About $LFS
+	Add:	export CC_PARALLEL="<value>"
+
+	Note:	Please replace <value> with a proper integer according to the
+		introduction.
+
+
+2.2 Chapter 5. Constructing a temporary system
+==============================================
+
+Binutils-2.14 - Pass 1
+	Change:	make LDFLAGS="-all-static"
+	To:	make -j $CC_PARALLEL LDFLAGS="-all-static"
+
+	Change:	make -C ld LDFLAGS="-all-static" LIB_PATH=/tools/lib
+	To:	make -j $CC_PARALLEL -C ld LDFLAGS="-all-static" LIB_PATH=/tools/lib
+
+GCC-3.3.3 - Pass 1
+	Change:	make BOOT_LDFLAGS="-static" bootstrap
+	To:	make -j $CC_PARALLEL BOOT_LDFLAGS="-static" bootstrap
+
+Linux-2.4.26 headers
+	No changes - we are just copying the header files here.
+
+Glibc-2.3.3-lfs-5.1
+	Change:	make AUTOCONF=no
+	To:	make PARALLELMFLAGS="-j $CC_PARALLEL"
+
+	Change:	make localedata/install-locales
+	To:	make PARALLELMLFAGS="-j $CC_PARALLEL" localedata/install-locales
+
+Adjusting the toolchain
+	Change:	make -C ld install
+	To:	make -j $CC_PARALLEL -C ld install
+
+Tcl-8.4.6
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Expect-5.41.0
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+DejaGnu-1.4.4
+	Change:	make install
+	To:	make -j $CC_PARALLEL install
+
+GCC-3.3.3 - Pass 2
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Binutils-2.14 - Pass 2
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Gawk-3.1.3
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Coreutils-5.2.1
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Bzip2-1.0.2
+	Change:	make PREFIX=/tools install
+	To:	make -j $CC_PARALLEL PREFIX=/tools install
+
+Gzip-1.3.5
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Diffutils-2.8.1
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Findutils-4.1.20
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Make-3.80
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Grep-2.5.1
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Sed-4.0.9
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Gettext-0.14.1
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Ncurses-5.4
+	Change:	make
+
+	To:	make sources
+		make -j $CC_PARALLEL
+
+Patch-2.5.4
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Tar-1.13.94
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Texinfo-4.7
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Bash-2.05b
+	No changes - Bash does not like to be made in parallel.
+
+Util-linux-2.12a
+	Change:	make -C lib
+		make -C mount mount umount
+		make -C text-utils more
+
+	To:	make -j $CC_PARALLEL -C lib
+		make -j $CC_PARALLEL -C mount mount unmount
+		make -j $CC_PARALLEL -C text-utils more
+
+Perl-5.8.4
+	Change:	make perl utilities
+	To:	make -j $CC_PARALLEL perl utilities
+
+
+2.3 Chapter 6. Installing basic system software
+===============================================
+
+Entering the chroot environment
+	Change:	chroot "$LFS" /tools/bin/env -i \
+			HOME=/root TERM="$TERM" PS1='\u:\w\$ ' \
+			PATH=/bin:/usr/bin:/sbin:/usr/sbin:/tools/bin \
+			/tools/bin/bash --login +h
+	
+	To:	chroot $LFS /tools/bin/env -i CC_PARALLEL="<value>" \
+			HOME=/root TERM="$TERM" PS1='\u:\w\$ ' \
+			PATH=/bin:/usr/bin:/sbin:/usr/sbin:/tools/bin \
+			/tools/bin/bash --login +h
+
+	Note:	Please replace <value> with a proper integer according to the
+		introduction.
+
+Creating devices with Make_devices-1.2
+	No changes - we are just creating the devices files here.
+
+Linux-2.4.26 headers
+	No changes - we are just copying the header files here.
+
+Man-pages-1.66
+	No changes - we are just copying the man-pages here.
+
+Glibc-2.3.3-lfs-5.1
+	Change:	make
+	To:	make PARALLELMFLAGS="-j $CC_PARALLEL"
+
+	Change:	make localedata/install-locales
+	To:	make PARALLELMFLAGS="-j $CC_PARALLEL"
+
+Re-adjusting the toolchain
+	Change:	make -C ld INSTALL=/tools/bin/install install
+	To:	make -j $CC_PARALLEL -C ld INSTALL=/tools/bin/install install
+
+Binutils-2.14
+	Change:	make tooldir=/usr
+	To:	make -j $CC_PARALLEL tooldir=/usr
+
+GCC-3.3.3
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Coreutils-5.2.1
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Zlib-1.2.1
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Mktemp-1.5
+	No changes - mktemp does not worth the effort.
+
+Iana-Etc-1.00
+	No changes - iana-etc does not worth the effort.
+
+Findutils-4.1.20
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Gawk-3.1.3
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Ncurses-5.4
+	Change:	make
+	To:	make sources
+		make -j $CC_PARALLEL
+
+Vim-6.2
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+M4-1.4
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Bison-1.875
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Less-382
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Groff-1.19
+	No changes - Groff does not like to be made in parallel.
+
+Sed-4.0.9
+	Change: make
+	To:	make -j $CC_PARALLEL
+
+Flex-2.5.4a
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Gettext-0.14.1
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Net-tools-1.60
+	No changes - Net-tools do not like to be made in parallel.
+
+Inetutils-1.4.2
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Perl-5.8.4
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Texinfo-4.7
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Autoconf-2.59
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Automake-1.8.4
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Bash-2.05b
+	No changes - Bash does not like to be made in parallel.
+
+File-4.09
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Libtool-1.5.6
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Bzip2-1.0.2
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Diffutils-2.8.1
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Ed-0.2
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Kbd-1.12
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+E2fsprogs-1.35
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Grep-2.5.1
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Grub-0.94
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Gzip-1.3.5
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Man-1.5m2
+	No changes - Man does not like to be made in parallel.
+
+Make-3.80
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Modutils-2.4.27
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Patch-2.5.4
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Procinfo-18
+	Change:	make LDLIBS=-lncurses
+	To:	make -j $CC_PARALLEL LDLIBS=-lncurses
+
+Procps-3.2.1
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Psmisc-21.4
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Shadow-4.0.4.1
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Sysklogd-1.4.1
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Sysvinit-2.85
+	Change:	make -C src
+	To:	make -j $CC_PARALLEL -C src
+
+Tar-1.13.94
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Util-linux-2.12a
+	Change:	make HAVE_KILL=yes HAVE_SLN=yes
+	To:	make -j $CC_PARALLEL HAVE_KILL=yes HAVE_SLN=yes
+
+GCC-2.95.3
+	Change:	make bootstrap
+	To:	make -j $CC_PARALLEL bootstrap
+
+
+2.4 Chapter 7. Setting up system boot scripts
+=============================================
+
+LFS-Bootscripts-2.0.5
+	No changes - we are just copying the scripts here.
+
+
+2.5 Chapter 8. Making the LFS system bootable
+=============================================
+
+Linux-2.4.26
+	Change:	make CC=/opt/gcc-2.95.3/bin/gcc bzImage
+		make CC=/opt/gcc-2.95.3/bin/gcc modules
+
+	To:	make -j $CC_PARALLEL CC=/opt/gcc-2.95.3/bin/gcc bzImage
+		make -j $CC_PARALLEL CC=/opt/gcc-2.95.3/bin/gcc modules
+
+
+3. BLFS-Book
+============
+
+
+3.1 Chapter 25. X Window Environment
+====================================
+
+Xorg-6.7.0
+	Change:	( make World 2>&1 | tee xorg-compile.log && exit $PIPESTATUS ) &&
+
+	To:	( make TOPPARALLELMLFAGS="-j $CC_PARALLEL" World 2>&1 \
+			| tee xorg-comile.log && exit $PIPESTATUS ) &&
+
+XFree86-4.4.0
+	Change:	( make WORLDOPTS="" World 2>&1 | tee xfree-compile.log && exit $PIPESTATUS ) &&
+
+	To:	( make WORLDOPTS="" TOPPARALLELMFLAGS="-j $CC_PARALLEL" \
+			World 2>&1 | tee xfree-compile.log && \
+			exit $PIPESTATUS ) &&
+
+
+4. nALFS
+========
+
+Download the patch from:
+	
+	http://www.linuxfromscratch.org/hints/downloads/attachments/parallelcompiling/profile-LFS-5.1.1-4_parallelcompiling-1.patch
+
+Apply the patch with:
+
+	# cd LFS-5.1.1
+	# patch -Np1 -i ../profile-LFS-5.1.1-4_parallelcompiling-1.patch
+
+Open config_seperate/general.ent, go to
+
+	<!ENTITY gcc_parallel "<value>">
+
+and replace <value> according to your needs.
+
+--------------------------------------------------------------------------------
+
+ACKNOWLEDGEMENTS:
+  * Adam Greenblatt <agreenbl@aol.com> for the smp-hint.
+
+CHANGELOG:
+  [2004-07-10]
+    * Updated nALFS profile patch.
+  [2004-06-12]
+    * Updated nALFS profile patch.
+  [2004-06-06]
+    * Updated to LFS-5.1.1.
+    * X.org-command (BLFS) added.
+    * XFree86-command (BLFS) updated.
+    * nALFS profile patch added.
+  [2004-05-29]
+    * Typographic mistakes corrected.
+  [2004-05-22]
+    * Updated to LFS 5.1.
+    * Minor text changes.
+  [2004-01-26]
+    * Minor text changes.
+  [2004-01-25]
+    * Ncurses-command revised (Thanks to Greg Schaefer <gschafer@zip.com.au>).
+    * Typographic mistake corrected.
+  [2004-01-16]
+    * Updated to LFS 5.0.
+    * Minor text changes.
+    * Typographic mistakes corrected.
+  [2003-09-09]
+    * New hint format.
+  [2003-06-21]
+    * Glibc-command revised.
+    * XFree86-command (BLFS) added.
+    * Typographic mistakes corrected.
+  [2003-06-07]
+    * Initial revision.

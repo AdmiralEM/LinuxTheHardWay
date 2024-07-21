@@ -1,0 +1,67 @@
+TITLE:		USBMOUSE
+LFS VERSION	ALL (Linux >= 2.4.19)
+AUTHOR:		Konrad Miller <konrad_miller@gmx.net>
+
+SYNOPSIS:
+	How to install a USB-mouse
+
+HINT:
+
+1. Recompile the Kernel. You need to turn on:
+	USB support  ---> 
+		<M> Support for USB
+		<M>   UHCI (Intel PIIX4, VIA, ...) support 
+		<M>   USB Human Interface Device (full HID) support 
+		[*]     HID input layer support 
+	Input core support  --->  
+		<M> Input core support       
+		<M>   Mouse support
+
+Do _not_ turn on "USB HIDBP Mouse support"
+If you build modules, you need to load "input.o", "hid.o", and "mousedev.o".
+
+2. Plug in the Mouse and check if it was detected (kernel message)
+
+3. Create the mouse nodes by running the following commands:
+	mkdir /dev/input	\
+	mknod /dev/input/mice c 13 63
+
+4. You probably want to use the mouse under X, you need to edit your XF86Config
+(/etc/X11/XF86Config). Change your InputDevice and ServerLayout sections to
+something like that:
+
+Section "InputDevice"
+    Identifier			"USB Mice"
+    Driver			"mouse"
+    Option "Protocol"    	"IMPS/2"
+    Option "Device"      	"/dev/input/mice"
+    Option "ZAxisMapping" 	"4 5"
+    Option "Buttons"	  	"5"
+EndSection
+
+Section "ServerLayout"
+...
+    InputDevice 	"USB Mice"  		"CorePointer"
+...
+EndSection
+
+-------------------------------------8<-----------------------------------------
+
+Hannes Birnbacher asked me to add the following comments:
+"For any software using not X-Window, but libvga, like some Games and like 
+links2.1pre4, it is important to check /etc/vga/libvga.config after 
+installation of libvga. I had among else to insert the following lines and to 
+comment out what was there before for my USB optical mouse for "mdev" and 
+"mouse":
+
+	mdev  /dev/input/mice
+        mouse imps2
+
+and, for my Typhoon Optical Mouse with Cable, change mouse_accel_maxdelta and 
+mouse_accel_thresh to one tenth of what stood there before."
+
+I did not check the comments of Hannes but I hope they may be helpful.
+			
+-------------------------------------8<-----------------------------------------
+
+check out  http://www.linux-usb.org/USB-guide/x194.html for further information!

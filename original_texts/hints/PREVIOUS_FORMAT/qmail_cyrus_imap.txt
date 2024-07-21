@@ -1,0 +1,1823 @@
+TITLE:          Qmail and Cyrus Imap with virtual domains
+LFS VERSION:    Tested on LFS-4.0
+AUTHOR:         Ivo Schaap <ivo@thecourtofeden.org>
+
+SYNOPSIS:       How to install and configure a mail system that can 
+                handle mail to multiple domains using virtual domains.
+                
+HINT:
+
+version 1.2 (16/10/2002)
+
+ -  Changed LFS version from 3 to 4 
+ -  Added c-client to the list of prerequisites, there could be more deps !!
+ -  Moved Berkeley DB there as well and version updated from 3.0.1 -> 4.0.14
+ -  Moved cyrus-sasl-1.5.27  -> cyrus-sasl-2.1.9
+ -  Moved cyrus-imapd-2.0.16 -> cyrus-imapd-2.1.9
+ -  Added Transport Layer Security (TLS) support
+ -  Added Openssl 0.9.6g
+ -  Added Avmailgate 2.0.1.7
+ -  Added Nail 10.0
+ -  Added Fcron 2.0.0 
+ -  Added Procmail 3.22
+ -  Added SpamAssassin 2.43
+ -  Added Vipul's Razor v2.20 + sdk 2.20
+ -  Added F-prot Antivirus 3.12b
+ -  Added Distributed Checksum Clearinghouse 1.1.15
+ -  Added Anomy-sanitizer 1.55
+ -  Added Various comments and command improvements
+ 
+version 1.1 (12/15/2001)
+
+ - Initial commit
+
+
+
+TABLE OF CONTENTS
+=================
+ 
+1.  Sources
+2.  Introduction
+3.  Prerequisites
+4.  Installation of Avmailgate
+5.  Installation of Qmail
+6.  Installation of Nail
+7.  Installation of Fcron
+8.  Installation of Procmail
+9.  Installation of SpamAssassin
+10. Installation of Razor-agents
+11. Installation of Razor-agents-sdk
+12. Installation of F-Prot Antivirus 
+13. Installation of Distributed Checksum Clearinghouse
+14. Installation of Anomy-sanitizer
+15. Installation of Imap
+16. Configuration of Qmail and Mailboxes
+17. Configuration of Procmail
+18. Starting up all processes
+19. Monitoring the processes
+20. Migrating mail from backups
+21. Interesting readings
+22. Legal Blurb
+
+
+
+1. Sources
+==========
+
+Berkeley DB: 
+http://www.sleepycat.com/update/snapshot/db-4.0.14.tar.gz
+
+C-client library: 
+ftp://ftp.cac.washington.edu/imap/c-client.tar.Z
+imap-2002.RC7
+
+Openssl:
+ftp://ftp.openssl.org/source/openssl-0.9.6g.tar.gz
+
+Avmailgate:
+http://www.hbedv.com/files/antivir/release/avlxmgt.tgz
+avmailgate-2.0.1.7-Linux-glibc
+
+The free license can be ordered here:
+http://www.antivir.de/order/privreg/order_e.htm
+
+Qmail:  
+http://cr.yp.to/software/qmail-1.03.tar.gz
+
+Nail:
+http://omnibus.ruf.uni-freiburg.de/~gritter/archive/nail/nail-10.0.tar.gz
+
+Fcron:
+http://fcron.free.fr/fcron-2.0.0.src.tar.gz
+
+Procmail:
+http://www.procmail.org/procmail-3.22.tar.gz
+
+SpamAssassin:
+http://spamassassin.taint.org/released/Mail-SpamAssassin-2.43.tar.gz
+
+Razor:
+http://razor.sourceforge.net/download/index.html
+razor-agents-sdk-2.03.tar.gz
+razor-agents-2.20.tar.gz
+
+F-Prot Antivirus:
+ftp://ftp.f-prot.com/pub/f-prot_3.12b.tar.gz
+
+Distributed Checksum Clearinghouse:
+http://www.rhyolite.com/anti-spam/dcc/source/dcc-dccproc.tar.Z
+dcc-dccproc-1.1.15
+
+Anomy-sanitizer:
+http://mailtools.anomy.net/dist/anomy-sanitizer-1.55.tar.gz
+
+IMAP/SASL:
+ftp://ftp.andrew.cmu.edu/pub/cyrus-mail/cyrus-imapd-2.1.9.tar.gz
+ftp://ftp.andrew.cmu.edu/pub/cyrus-mail/cyrus-sasl-2.1.9.tar.gz
+
+
+2. Introduction
+===============
+
+First of all I wanna thank Gerard and all the others for providing
+the platform where we do the stuff we do.
+
+In this hint we setup a mail server that serve two virtual example domains
+and have different example users per domain:
+
+   - linuxfromsource.org
+
+      - John the Ripper          john@linuxfromsource.org
+      - Susie Summer            susie@linuxfromsource.org
+      - Dirk Beekmans            dirk@linuxfromsource.org
+
+      
+   - linuxfrombinary.org
+
+      - Olaf Olsen               olaf@linuxfrombinary.org
+      - Jennifer Loopneus    jennifer@linuxfrombinary.org
+      - Pamela Andersom        pamela@linuxfrombinary.org
+
+John is the local administer so he gets the mail for root, postmaster and 
+himself. All the usernames must be unique as each user has its own box so if
+olaf have a email account on linuxfrombinary AND linuxfromsource he must
+be the same person because its the same mailbox. And if Olaf opens his 
+mailbox he sees mail from both the domains. Comprende ?
+
+There is also a cyrus user to administer the IMAP server daemon and the
+mailboxes. But he got a password for both for unix and imap/sasl. 
+
+A mail user do not needs a unix password set to get mail. If one of the 
+mail users needs access on the mail server you give him a unix password
+as well as the imap/sasl password.
+
+
+
+3. Prerequisites
+================
+
+A. The MX record
+----------------
+
+Make sure there is an MX record in DNS to point mail for the virtual domains
+to the host running qmail. (Mostly the DNS runs on the ISP side.)
+
+This is what roughly happens:
+
+Here is a mail to olaf@linuxfrombinary.org to your SMTP server. 
+
+The SMPT server wants to find out who is linuxfrombinary.org. An email address
+as well as a web site address needs to be resolved in an ip address.
+DNS ( Domain Name Server) is used to resolve the domain in an ip address 
+and point to a mail server that will accept connections.
+An MX (mail exchange) record is used for that.
+
+Now the mail is routed to your ip adders for your mail server on port 25.
+Port 25 is your SMTP port that listens for mail from your domains. 
+Your IP address can be your fixed DSL ip address or a connection on your
+campus, or other fixed ip address connections to the internet. If you behind
+masquerading you need to set up forwarding rules for both smtp and imap. It
+should be possible have a dynamic ip address domain name solution on the 
+internet from where you can host your mail server from dailup or isdn
+connections.
+
+
+B. Berkeley DB
+--------------
+
+UCB's database library version-4.0.14
+Cyrus IMAP will not compile with the version of Berkeley DB 4.1.24.
+Or maybe there is a patch for it. Let me know ;)
+
+Use this to install it once your in the unpacked tarball of Berkeley DB.
+
+cd build_unix/
+../dist/configure \
+ --prefix=/usr /
+ --enable-compat185 \
+make docdir=/usr/doc/Berkeley-DB all install
+ 
+chown -R 0.0  /usr/doc/Berkeley-DB 
+chmod -R go-w /usr/doc/Berkeley-DB  
+ 
+
+C.  c-client library  (Optional)
+--------------------------------
+
+I have this already installed and this is imap related. Adjust to taste
+this is what i used. Its only a static library with some headers for
+development. (this is the minimum requirement for IMAP in PHP.
+
+cd src/osdep/unix
+vi Makefile
+
+< = Gone
+> = New
+
+31,34c31,34
+< SSLDIR=/usr/local/ssl
+< SSLCERTS=$(SSLDIR)/certs
+< SSLINCLUDE=$(SSLDIR)/include
+< SSLLIB=$(SSLDIR)/lib
+---
+> SSLDIR=/usr/ssl
+> SSLCERTS=/etc/ssl/certs
+> SSLINCLUDE=/usr/include
+> SSLLIB=$/usr/lib
+73,75c73,75
+< SPOOLDIR=/usr/spool
+< MAILSPOOL=$(SPOOLDIR)/mail
+< NEWSSPOOL=$(SPOOLDIR)/news
+---
+> SPOOLDIR=/var/spool
+> MAILSPOOL=/var/mail
+> NEWSSPOOL=/var/news
+
+cd ../../../
+
+make slx &&
+cd c-client                &&
+cp c-client.a /usr/lib     &&
+cp c-client.h /usr/include &&
+cp imap4r1.h  /usr/include &&
+cp rfc822.h   /usr/include &&
+cp mail.h     /usr/include &&
+cp linkage.h  /usr/include &&
+cp env.h      /usr/include &&
+cp env_unix.h /usr/include &&
+cp fs.h       /usr/include &&
+cp ftl.h      /usr/include &&
+cp misc.h     /usr/include &&
+cp nntp.h     /usr/include &&
+cp nl.h       /usr/include &&
+cp osdep.h    /usr/include &&
+cp smtp.h     /usr/include &&
+cp tcp.h      /usr/include &&
+ln -s /usr/lib/c-client.a /usr/lib/libc-client.a &&
+ln -s /usr/lib/c-client.a /usr/lib/libc-client4.a
+
+
+D. Open Secure Socket Layer
+---------------------------
+
+We Only need it if you plan to use imap with ssl but its also needed
+with Openssh so you might already have it.
+
+cp Configure Configure.dist
+
+vi +337 Configure   # for optimization edit this file
+
+And change:
+-m486 
+
+In:
+-march=i686
+
+mv doc/apps/passwd.pod doc/apps/openssl-passwd.pod
+./Configure linux-elf \
+ --openssldir=/etc/ssl \
+ --prefix=/usr shared 
+make MANDIR=/usr/share/man all install
+rmdir /etc/ssl/lib
+
+
+E. Other deps
+-------------
+
+If any one know of other imap/mail deps, mail me, i have 70+ packs already
+installed beyond lfs-4 when i start building this server.
+In /path/to/cyrus-imapd-2.1.9/doc/install-prereq.html you find them all.
+
+
+   
+4.  Installation of Avmailgate
+==============================
+
+Avmailgate offers virus protection by having a daemon listening on port 25.
+This is the SMPT port. When mail gets thru, it uses qmail's sendmail wrapper
+to inject the mail into the qmail queue.
+
+The other option is to have qmail's smtp server started from (x)inetd and
+listening on port xxx where avmailgate is forwarding virus checked mail to.
+But this gives only more rules for the firewall when heres an other port open.
+
+
+cd /usr/src/avmailgate-2.0.1.7-Linux-glibc
+
+mkdir /usr/lib/AntiVir
+
+cp vdf/antivir.vdf /usr/lib/AntiVir
+cp bin/antivir     /usr/lib/AntiVir
+
+chown -R daemon.daemon /usr/lib/AntiVir
+
+cp etc/avmailgate.conf /etc
+cp etc/avmailgate.acl /etc
+cp etc/antivir.conf /etc
+--------------------------------------------------------------------------------
+Edit /etc/avmailgate.conf              # Here we say witch user and group 
+                                       # avgate runs under and to use the
+                                       # sendmail wrapper from qmail that 
+                                       # we install in the next section.
+
+Change:
+
+# User                            uucp 
+# Group                           uucp
+
+# ForwardTo /usr/lib/sendmail -oem -oi
+
+In:
+
+  User                            daemon
+  Group                           daemon
+
+  ForwardTo /usr/sbin/sendmail -oem -oi
+  
+--------------------------------------------------------------------------------
+Edit /etc/avmailgate.acl               # We do this to prevent relaying to 
+                                       # other domains than ours.
+Change:
+
+local: hbedv.com antivir.de
+
+In:
+
+local: linuxfromsource.org linuxfrombinary.org
+
+--------------------------------------------------------------------------------
+
+cp bin/avgated /usr/sbin
+cp bin/avgatefwd /usr/sbin
+
+mkdir /var/spool/avmailgate 
+chown daemon.daemon /var/spool/avmailgate 
+
+chmod 700 /var/spool/avmailgate 
+cd /var/spool/avmailgate 
+mkdir incoming 
+mkdir outgoing 
+mkdir rejected 
+chown daemon.daemon * 
+chmod -R 700 * 
+
+cp hbedv.key /usr/lib/AntiVir/avmgate.key                                                    
+chown daemon.daemon /usr/lib/AntiVir/avmgate.key
+
+cp script/antivirupdater /usr/sbin
+
+In the fcron section we set the cron job for antivirupdater
+
+cp init/rc.avgate /etc/rc.d/init.d/avgate
+
+chmod 700 /etc/init.d/avgate
+
+Adjust the Sxx and Kxx to your situation
+
+cd /etc/rc.d/rc0.d &&
+ln -s ../init.d/avgate Kxxavgate &&
+cd ../rc3.d &&
+ln -s ../init.d/avgate Sxxavgate &&
+cd ../rc6.d &&
+ln -s ../init.d/avgate Kxxavgate
+
+
+
+5. Installation of Qmail
+========================
+
+A. Create a working directory for Qmail and untar sources
+---------------------------------------------------------
+
+mkdir /opt/qmail &&
+mkdir /opt/qmail/alias &&
+cd /usr/src &&
+tar zxvpf qmail-1.03.tar.gz &&
+cd qmail-1.03 &&
+
+
+B. Change the program parameters. Read the documentation for other
+   modifications 
+------------------------------------------------------------------
+
+vi conf-qmail
+
+Add :
+
+/opt/qmail
+
+vi conf-cc
+
+Add: (Use your own architecture)
+
+gcc -O3 -march=i686
+
+
+C. Create user and group ID's
+-----------------------------
+
+vi /etc/group
+
+Add: (Use your own ID's if this is conflicting)
+
+nofiles:x:100:
+qmail:x:110:
+
+vi /etc/passwd
+
+Add: (Use your own ID's if this is conflicting)
+
+alias:x:1000:100::/opt/qmail/alias:
+qmaild:x:1001:100::/opt/qmail:
+qmaill:x:1002:100::/opt/qmail:
+qmailp:x:1003:100::/opt/qmail:
+qmailq:x:1004:110::/opt/qmail:
+qmailr:x:1005:110::/opt/qmail:
+qmails:x:1006:110::/opt/qmail:
+
+pwck && grpck 
+
+
+D. DNS Hack to use DNS response packets larger than 512 bytes
+   Qmail 1.03 chokes on large DNS packets sometimes. 
+-------------------------------------------------------------
+
+vi +24 dns.c
+
+And change:
+
+static union { HEADER hdr; unsigned char buf[PACKETSZ]; } response;
+
+In:
+
+static union { HEADER hdr; unsigned char buf[65536]; } response;
+
+
+E. Final compilation and installation
+-------------------------------------
+
+make setup check
+
+
+F. Create the init script.
+--------------------------
+
+cat << EOF > /etc/init.d/qmail
+
+#!/bin/bash
+# Begin $rc_base/init.d/qmail
+
+# Based on sysklogd script from LFS-3.1 and earlier.
+# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+test -x /opt/qmail/rc || exit 0
+
+case "$1" in
+ start)
+  echo -n "Starting Qmail...  "
+  sh -cf '/opt/qmail/rc &'
+  evaluate_retval
+ ;;
+ 
+ stop)
+  echo -n "Stopping Qmail... "
+  killall -9 qmail-send
+  evaluate_retval
+ ;;
+ 
+ restart)
+  echo -n "Restarting Qmail... "
+  killall -HUP qmail-lspawn
+  killall -ALRM qmail-lspawn
+  evaluate_retval
+ ;;
+ 
+ *)
+  echo "Usage: $0 {start|stop|restart}"
+  exit 1
+  
+esac
+
+exit 0
+
+# End /etc/rc.d/init.d/qmail
+EOF
+
+
+G. Set up links and permissions
+-------------------------------
+
+chmod 700 /etc/init.d/qmail
+
+Adjust the Sxx and Kxx to your situation
+
+cd /etc/rc.d/rc0.d &&
+ln -s ../init.d/qmail Kxxqmail &&
+cd ../rc3.d &&
+ln -s ../init.d/qmail Sxxqmail &&
+cd ../rc6.d &&
+ln -s ../init.d/qmail Kxxqmail
+
+cd /usr/sbin &&
+ln -s /opt/qmail/bin/sendmail
+
+
+H. Note
+-------
+
+Configuration of qmail can happen in many ways, read the documentation
+on the different kinds of configurations. At the end of this document I
+go into initialization and configuration of qmail.
+
+
+
+6. Installation of Nail
+============================
+
+This peace of software is used by internal processes such as 
+fcron.
+
+./configure --prefix=/usr \
+--with-mailspool=/var/mail \
+--with-sendmail=/usr/sbin/sendmail &&
+make &&
+make install && 
+cd /usr/bin &&
+ln -s /usr/bin/nail mail &&
+ln -s /usr/bin/nail mailx
+
+
+
+7. Installation of fcron
+========================
+
+Fcron is the program we use as scheduler for some virus update scripts.
+Its a very handy program anyway so here we go.
+
+A. Setting up a fcron user and group.
+-------------------------------------
+
+vi /etc/passwd
+fcron:x:14:14::/dev/null:/bin/false
+
+vi /etc/group
+fcron:x:14:
+
+
+B. Configure fcron
+------------------
+
+./configure --prefix=/usr \
+   --with-username=fcron \
+   --with-sendmail=/usr/sbin/sendmail \
+   --with-groupname=fcron 
+
+
+C. Add Optimization for you system.
+-----------------------------------
+vi Makefile
+
+< OPTIM         = -O2 -Wall
+---
+> OPTIM         = -O3 -march=i686 -Wall
+
+
+D. Make and install fcron.
+--------------------------
+
+make &&
+make install &&
+cd /usr/sbin &&
+ln -s fcron cron &&
+cd /usr/bin &&
+ln -s fcrontab crontab
+
+E. Add init script to /etc/rc.d/init.d
+--------------------------------------
+
+cat > /etc/rc.d/init.d/fcron << "EOF"
+#!/bin/sh
+# Begin $rc_base/init.d/fcron
+# Based on sysklogd script from LFS-3.1 and earlier.
+# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+source /etc/sysconfig/rc
+source $rc_functions
+case "$1" in
+        start)
+                echo "Starting fcron..."
+                loadproc fcron
+                ;;
+        stop)
+                echo "Stopping fcron..."
+                killproc fcron
+                ;;
+        restart)
+                $0 stop
+                sleep 1
+                $0 start
+                ;; 
+        status)
+                statusproc fcron
+                ;;
+        *)
+                echo "Usage: $0 {start|stop|restart|status}"
+                exit 1
+                ;;
+esac
+# End $rc_base/init.d/fcron
+EOF
+
+F. Set up links and permissions
+-------------------------------
+
+chmod 700 /etc/rc.d/init.d/fcron
+
+Adjust the Sxx and Kxx to your situation.
+
+cd /etc/rc.d/rc0.d &&
+ln -s ../init.d/fcron Kxxfcron &&
+cd ../rc3.d &&
+ln -s ../init.d/fcron Sxxfcron &&
+cd ../rc6.d &&
+ln -s ../init.d/fcron Kxxfcron
+
+use this to start fron
+
+/etc/init.d/fcron start
+
+So if we want to make use of the scheduler do this
+
+fcrontab -e -u root
+
+We add the entries we need when appropriate programs are installed.
+
+Avmailgate:
+
+25 0 * * * root /usr/sbin/antivirupdater -q
+
+F-prot Antivirus:
+
+27 4,16 * * *   /usr/f-prot/check-updates.sh -cron
+
+
+
+8. Installation of Procmail.
+============================
+
+We use procmail to filter the delivery of mail to /usr/cyrus/bin/deliver that
+delivers the mail to the IMAP folders. It will not make use of any mail{box,dir}
+delivery method.
+
+cd /path/to/procmail-3.22/src 
+make BASENAME=/usr install
+
+
+
+9. Installation of SpamAssassin.
+================================
+
+read:
+http://spamassassin.taint.org/dist/INSTALL
+
+There are some perl-modules that not come with the presumed perl-5.8.0 standard
+installation in LFS 4.0 or perl-5.8.0 in general.
+
+SpamAssassin Razor Cyrus and probably more depends on perl, no worries there is 
+an easy way to update your system.
+
+
+When you are connected to the internet commence this as root:
+
+perl -MCPAN -e shell  
+
+A series of questions is asked and stores this information in:
+/usr/lib/perl5/5.8.0/CPAN/Config.pm 
+
+if you get weird looping experiences say /usr/bin/wget --passive in
+the questions asked.
+
+Now type this in the CPAN shell:
+
+o conf prerequisites_policy ask
+
+
+And now for ease of administration, install these optional perl modules .
+
+i /Term::ReadKey/
+install Term::ReadKey
+
+i /Term::Readline/
+install Term::Readline
+
+i /Term::Readline::GNU/
+install Term::Readline::GNU
+
+i /Term::Readline::Perl/
+install Term::Readline::Perl
+
+What follows are dependences of SpamAssassin although it doesn't need it.
+
+i /HTML::Parser/
+install HTML::Parser
+
+i /Mail::Audit/
+install Mail::Audit
+
+i /Mail::Internet/
+install Mail::Internet
+
+i /Net::SMTP/
+install Net::SMTP
+
+SpamAssassin make a lot use of them if you do install them.
+ 
+SpamAssassin:
+
+i /Mail::SpamAssassin/
+install Mail::SpamAssassin
+
+quit
+
+
+Once the modules are installed you can read all about it by doing:
+
+perldoc <name>::<name> 
+
+eg:
+
+perldoc Mail::Audit
+
+
+Oke now the local source tarball method. 
+
+Untar the SpamAssassin archive and say:
+
+perl Makefile.PL
+make
+make -s install
+
+If you want to prevent spam checking from eg. user@domain.com you 
+only have to this:
+
+Edit /etc/mail/spamassassin/local.cf
+
+Add:
+
+whitelist_from user@domain.com
+
+
+
+10. Installation of Razor-agents.
+=================================
+Read: 
+http://razor.sourceforge.net/docs/install.html
+
+Untar the razor-agents archive and say:
+
+perl Makefile.PL
+make
+make -s install
+
+
+
+11. Installation of Razor-agents-sdk.
+=====================================
+
+Oke Razor will work fine without them, so this is optional.
+
+perl Makefile.PL
+make
+make -s install
+
+
+
+12. Installation of F-Prot Antivirus.
+=====================================
+
+cd /usr
+
+tar zxvf /path/to/fp-linux_3.12b.tar.gz
+mv fp-linux_3.12b f-prot
+
+ln -fs /usr/f-prot/f-prot.sh bin/f-prot
+ln -fs /usr/f-prot/man8/f-prot.8 man/man8/
+ln -fs /usr/f-prot/man8/check-updates.sh.8 man/man8/
+
+chmod +x /usr/f-prot/f-prot*
+chmod +x /usr/f-prot/check*
+
+ln -fs /usr/f-prot/man8/f-prot.8 man/man8/
+ln -fs /usr/f-prot/man8/check-updates.sh.8 man/man8/
+
+For more information see this:
+
+/usr/bin/f-prot -help
+
+
+
+13. Installation of Distributed Checksum Clearinghouse.
+=======================================================
+
+./configure \
+ --bindir=/usr/bin \
+ --mandir=/usr/man
+make all install
+
+Now to see if it all works do:
+
+cdcc 'info'
+
+
+
+14. Installation of Anomy-sanitizer.
+===================================
+
+Anomy-sanitizer uses this perl library's, but they are already
+installed with a standard perl install.
+
+MIME::Base64 
+MIME::QuotedPrint 
+
+
+Untar the packet in /usr/src
+
+cd /usr/src 
+mv anomy /usr
+chmod 750 /usr/anomy
+mkdir /var/quarantine
+
+This whole section is used from the mail.txt hint.
+Its a good config so why not use it ?
+
+
+cat > /usr/anomy/anomy.conf << "EOF"
+# Configuration file for Anomy Sanitizer
+#
+
+# Do not log to STDERR:
+feat_log_stderr = 0
+
+# Don't insert log in the message itself:
+feat_log_inline = 0
+
+# Advertisement to insert in each mail header:
+header_info = X-Sanitizer: This mail was sanitized
+header_url = 0
+header_rev = 0
+
+# Enable filename based policy decisions:
+feat_files = 1
+
+# Protect against buffer overflows and null values:
+feat_lengths = 1
+
+# Replace MIME boundaries with our own:
+feat_boundaries = 1
+
+# Fix invalid and ambiguous MIME boundaries, if possible:
+feat_fixmime = 1
+
+# Trust signed and/or encrypted messages:
+feat_trust_pgp = 1
+msg_pgp_warning = WARNING: Unsanitized content follows.\n
+
+# Defang shell scripts:
+feat_scripts = 0
+
+# Defang active HTML:
+feat_html = 1
+
+# Defang UUEncoded files:
+feat_uuencoded = 0
+
+# Sanitize forwarded content too:
+feat_forwards = 1
+
+# Testing? Set to 1 for testing, 0 for production:
+feat_testing = 0
+
+## Warn user about UN scanned parts, etc.
+feat_verbose = 1
+
+# Force all parts (except text/html parts) to
+# have file names.
+feat_force_name = 1
+
+# Disable web bugs:
+feat_webbugs = 1
+
+# Disable "score" based mail discarding:
+score_panic = 0
+score_bad = 0
+
+msg_file_drop  = \n*****\n
+msg_file_drop += NOTE: An attachment named %FILENAME was deleted from
+msg_file_drop += this message because was a windows executable.
+msg_file_drop += Contact the system administrator for more information.
+
+##
+## File attachment name mangling rules:
+##
+
+file_name_tpl       = /var/quarantine/att-$F-$T.$$
+
+# Number of rulesets we are defining:
+file_list_rules = 2
+file_default_policy = defang
+
+# Delete probably nasty attachments:
+file_list_1 = (?i)(winmail.dat)|
+file_list_1 += (\.(vb[se]|exe|com|cab|dll|ocx|msi|cmd|bat|pif|lnk|hlp|ms[ip]|reg|asd))$
+file_list_1_policy = drop
+file_list_1_scanner = 0
+
+# Allow known "safe" file types and those that can be
+# scanned by the downstream virus scanner:
+file_list_2 = (?i)\.(doc|dot|rtf|xls|ppt|xlw|jpg|gif|png|tiff?|txt|zip|tgz|gz)
+file_list_2_policy = accept
+file_list_2_scanner = 0
+
+# Any attachment not listed above gets renamed.
+EOF
+
+
+
+13. Installation of Imap.
+========================
+
+Do some unpacking, by now you should know ;)
+
+A. Compile and install SASL
+---------------------------
+
+./configure --prefix=/usr --disable-krb4 \
+   --with-gnu-ld &&
+make &&
+make install
+
+
+B. Create uid/gid for the cyrus admin
+-------------------------------------
+
+mkdir /usr/cyrus
+
+We assume a user of "cyrus" and a group of "mail",
+though any user and group name can be used. 
+
+vi /etc/passwd
+
+   Add: (Use your own ID's if this is conflicting)
+
+cyrus:x:90:90:Imap-Server:/usr/cyrus:/bin/bash
+
+vi /etc/group
+
+   Add: (Use your own ID's if this is conflicting)
+
+mail:x:90:daemon
+
+passwd cyrus &&
+
+pwck && pwconv
+
+
+C. Find a missing header.
+-------------------------
+
+First find com_err.h and link it to /usr/include/com_err.h
+or if you don't have it get it here:
+
+http://www.ludd.luth.se/~jnilsson/cvsweb/cvsweb.cgi/src/contrib/com_err
+
+locate com_err.h
+
+On a LFS-4 system its located @ /usr/include/et/com_err.h
+
+cd /usr/include/ &&
+ln -s et/com_err.h .
+
+
+D. Compile and install IMAP
+---------------------------
+
+./configure --prefix=/usr \
+ --with-auth=unix \
+ --without-krb \
+ --with-cyrus-user=cyrus \
+ --with-cyrus-group=mail &&
+make depend &&
+make all &&
+make install
+
+And install some tools
+
+cp -av tools/ /usr/cyrus &&
+rm -r /usr/tools/CVS &&
+chown -R cyrus.mail /usr/cyrus
+
+E. Configuring IMAP
+-------------------
+
+mkdir /var/adm
+
+The last 3 lines are only necessary if you use SSL
+Edit /etc/imapd.conf
+
+configdirectory: /var/imap
+partition-default: /var/spool/imap
+admins: cyrus root
+srvtab: /var/imap/srvtab
+allowanonymouslogin: no
+tls_ca_file: /var/imap/server.pem
+tls_cert_file: /var/imap/server.pem
+tls_key_file: /var/imap/server.pem
+
+
+F. Making the director's
+------------------------
+
+touch /var/adm/imapd.log
+mkdir /var/imap /var/spool/imap /var/imap/srvtab
+chown cyrus /var/imap /var/spool/imap /var/imap/srvtab
+chgrp mail /var/imap /var/spool/imap /var/imap/srvtab
+chmod 750 /var/spool/imap /var/imap/srvtab
+chmod 755 /var/imap
+
+G. Making the imap structure
+----------------------------
+
+su - cyrus
+tools/mkimap
+cd /var/imap
+chattr +S . user quota user/* quota/*
+chattr +S /var/spool/imap
+exit
+
+touch /var/spool/mqueue
+chattr +S /var/spool/mqueue
+
+
+H. Change Other files
+---------------------
+
+Added to /etc/services although only imap/imaps is needed.
+
+imap            143/tcp     # remove old imap2 !
+imsp            406/tcp
+aca             674/tcp
+imaps           993/tcp
+pop3s           995/tcp
+kpop            1109/tcp
+sieve           2000/tcp
+lmtp            2003/tcp
+fud             4201/udp
+
+
+Add to: /etc/syslog.conf
+
+local6.debug -/var/log/imapd.log
+auth.debug -/var/log/auth.log
+
+And restart the syslog daemon:
+
+/etc/init.d/sysklogd restart
+
+
+I. Setting the cyrus user password for imap
+-------------------------------------------
+
+/usr/sbin/saslpasswd2 cyrus
+
+chown cyrus.mail /etc/sasldb2
+
+cd /usr/src/cyrus-imapd-2.1.9
+
+You can uncomment the things you don't like here
+
+cp master/conf/normal.conf /etc/cyrus.conf
+
+
+J. Getting SSL to work.
+-----------------------
+We already adapted the /etc/imapd.conf for SSL
+Its known that M$ Outlook and Netscape mail clients 
+can handle SSL connections.
+
+Type this:
+
+openssl req -new -x509 -nodes -out /var/imap/server.pem -keyout \
+   /var/imap/server.pem -days 365 &&
+chown cyrus.mail /var/imap/server.pem
+
+
+K. Making the init.d script.
+----------------------------
+
+cat > /etc/rc.d/init.d/imapd << "EOF"
+#!/bin/bash
+# Begin $rc_base/init.d/imapd
+
+# Based on sysklogd script from LFS-3.1 and earlier.
+# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+case "$1" in
+ start)
+  echo "Starting the IMAP server..."
+  /usr/cyrus/bin/master &
+  evaluate_retval
+  ;;
+
+ stop)
+  echo "Stopping the IMAP server..."
+  killproc /usr/cyrus/bin/master
+  ;;
+
+ reload)
+  echo "Reloading the IMAP server..."
+  reloadproc /usr/cyrus/bin/master
+  ;;
+
+ restart)
+  $0 stop
+  sleep 1
+  $0 start
+  ;;
+
+ status)
+  statusproc /usr/cyrus/bin/master
+  ;;
+
+ *)
+  echo "Usage: $0 {start|stop|reload|restart|status}"
+  exit 1
+  ;;
+
+esac
+
+# End $rc_base/init.d/imapd
+EOF
+
+Adjust the runlevel link numbers Kxx and Sxx to taste.
+
+chmod 700 /etc/rc.d/init.d/imapd &&
+cd /etc/rc.d/rc0.d &&
+ln -s ../init.d/imapd Kxximapd &&
+cd ../rc3.d &&
+ln -s ../init.d/imapd Sxximapd &&
+cd ../rc6.d &&
+ln -s ../init.d/imapd Kxximapd
+
+
+/etc/init.d/imapd start
+
+
+Well, if it works, you supposed to see this:
+
+netstat -vat
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State      
+tcp        0      0 *:imaps                 *:*                     LISTEN      
+tcp        0      0 *:pop3s                 *:*                     LISTEN      
+tcp        0      0 *:pop3                  *:*                     LISTEN      
+tcp        0      0 *:imap                  *:*                     LISTEN      
+tcp        0      0 *:sieve                 *:*                     LISTEN      
+
+You might only need imap or imaps , adjust this in /etc/cyrus.conf
+Comment out services that you don't want. 
+
+L. Check configuration
+----------------------
+
+Now lets see what works and what not. 
+
+If you want to login with telnet to test you need to add:
+
+allowplaintext yes 
+
+to /etc/imapd.conf
+
+Now try:
+
+telnet localhost imap
+
+Test all the authentications possible and again fiddling with the
+/etc/imapd.conf wont hurt. Read the imapd.conf man page and just change the
+the config file, restart the daemon and: 
+
+tail -f /var/log/imapd.log
+tail -f /var/log/sys.log
+tail -f /var/log/auth.log
+
+Now become the cyrus admin and test the various options.
+
+su - cyrus
+
+imtest -m login -p imap localhost
+imtest -m OTP -p imap localhost
+imtest -m DIGEST-MD5 -p imap localhost
+imtest -m CRAM-MD5 -p imap localhost
+
+Use this to bail out !!
+. logout
+
+You can test STARTTLS by using imtest:
+
+imtest -t "" localhost
+
+
+M. Per User Imap Configuration
+------------------------------
+
+This is the bare minimum to perform for each imap user you want to add.
+ 
+First become the cyrus administrator
+
+su - cyrus 
+
+Use the cyradm program to administor the IMAP folders for each user.
+
+cyradm --auth login localhost
+
+localhost.localnet> cm user.john
+localhost.localnet> cm user.john.SPAM
+localhost.localnet> quit
+
+Become root again
+
+exit
+
+And set the imap password for john
+
+saslpasswd2 john
+
+
+There are more things possible, but knowing to delete a mailbox is handy 
+if you new to all this.
+
+Say to the access control list of the user john mailbox that the 
+cyrus user may delete john's folders, this is not the default case.
+
+localhost.localnet> setaclmailbox user.john cyrus c
+
+localhost.localnet> deletemailbox user.john
+
+If you want to get into it do this:
+
+localhost.localnet> help
+
+
+authenticate, login, auth         authenticate to server
+chdir, cd                         change current directory
+createmailbox, create, cm         create mailbox
+deleteaclmailbox, deleteacl, dam  remove ACLs from mailbox
+deletemailbox, delete, dm         delete mailbox
+disconnect, disc                  disconnect from current server
+exit, quit                        exit cyradm
+help, ?                           show commands
+info                              display mailbox/server metadata
+listacl, lam, listaclmailbox      list ACLs on mailbox
+listmailbox, lm                   list mailboxes
+listquota, lq                     list quotas on specified root
+listquotaroot, lqr, lqm           show quota roots and quotas for mailbox
+reconstruct                       reconstruct mailbox (if supported
+renamemailbox, rename, renm       rename (and optionally relocate) mailbox
+server, servername, connect       show current server or connect to server
+setaclmailbox, sam, setacl        set ACLs on mailbox
+setinfo                           set server metadata
+setquota, sq                      set quota on mailbox or resource
+version, ver                      display version info of current server
+
+
+
+14. Configuration of Qmail and Mailboxes.
+=========================================
+
+A. First make sure all mail users have valid unix accounts.
+-----------------------------------------------------------
+
+   Users will not require a password set. So they become 
+   valid unix accounts without unix login. 
+   John is an admin because root is not supposed to get mail.
+
+
+vi /etc/passwd
+
+john:x:501:500:John the ripper:/home/john:/bin/bash
+susie:x:502:500:Susie Summer:/home/susie:/bin/bash
+dirk:x:503:500:Dirk Beekmans:/home/dirk:/bin/bash
+olaf:x:504:500:Olaf Olsen:/home/olaf:/bin/bash
+jennifer:x:505:500:Jennifer Loopneus:/home/jennifer:/bin/bash
+pamela:x:506:500:Pamela Andersom:/home/pamela:/bin/bash/bash
+
+vi /etc/group
+
+mailuser:x:500:john,susie,dirk,olaf,jennifer,pamela
+
+cd /home 
+
+mkdir john susie dirk olaf jennifer pamela
+
+chown -R <user>.mailuser <userdir>/ (for all users)
+
+You repeat the above line if you finished or do it as last
+   
+B. Create a master user ID and home directory for the new domain
+----------------------------------------------------------------
+
+This is roughly how stuff works.
+Mail is coming in for a domain, lets say pamela@linuxfrombinary.org.
+It's first put into a drop box /home/binary/Maildir/ and then processed
+further via .qmail-xxx files. These files contain a user name who is supposed
+to get the mail. The user has a .qmail file in his or her home directory
+which says what to do with the incoming mail. In this case pipe it to
+the program /usr/bin/procmail that filters the mail and send that to the 
+/usr/cyrus/bin/deliver program which stores it in the IMAP boxes.
+
+cd /home
+
+mkdir source binary
+
+vi /etc/passwd
+
+source:x:507:500:Mail account for linuxfromsource.org:/home/source:/bin/bash
+binary:x:508:500:Mail account for linuxfrombinary.org:/home/binary:/bin/bash
+
+vi /etc/group
+
+mailuser:x:500:john,susie,dirk,olaf,jennifer,pamela,source,binary
+
+
+chown -R source.mailuser source/
+chown -R binary.mailuser binary/
+
+
+C. Editing the Qmail Control/Config files
+-----------------------------------------
+
+Editing the control files is tricky and I've spent lot's of time 
+fiddling around with it. Key thing to understand is that 
+the host and domainname have something to do with the canonicalized
+name that is assigned to your link with the internet.
+For the people that use a ppp or an adsl connection this is often
+something like sdf23-2.dsl.blabla.com Please don't ask me why,
+it works and if anyone has a good explanation mail me !!
+
+One way of finding out is with the commands that come with bind
+dig or nslookup you can also try to login on an other box, logout,
+and than run to that other box login again and read: your last login
+was on xxx.xxxx.xxxxx.org or do an chat session on that box. I know
+it isn't elegant but it works ;-)
+
+For now lets hack some qmail
+
+
+--------------------------------------------------------------------------------
+cat << EOF > /opt/qmail/rc 
+#!/bin/sh
+
+# Using splogger to send the log through syslog.
+# Using qmail-local to deliver messages to Maildir by default.
+
+exec env - PATH="/opt/qmail/bin:$PATH" \
+   qmail-start ./Maildir/ splogger qmail &
+EOF
+--------------------------------------------------------------------------------
+
+chmod 700 /opt/qmail/rc
+
+cd /opt/qmail/control
+
+--------------------------------------------------------------------------------
+
+Edit: me                               # This is the hostname of local server
+
+Add:
+
+<hostname> (example adsl32.net.xs4all.nl)
+
+--------------------------------------------------------------------------------
+
+Edit: virtualdomains                   # Specify virtual domains 
+
+Add:
+
+linuxfromsource.org:source
+linuxfrombinary.org:binary
+
+--------------------------------------------------------------------------------
+
+Edit: locals                           # Domains that should be treated as 
+                                         locals
+
+Add:
+
+localhost                              # The local name
+adsl32.net.xs4all.nl                   # The canonicalized name
+intern.net                             # An example local domain
+
+--------------------------------------------------------------------------------
+
+Edit: defaultdomain                    # Same as 'me' minus the first part 
+
+Add:
+
+<domainname> (example net.xs4all.nl)
+
+--------------------------------------------------------------------------------
+
+Edit: smtpgreeting                     # Adjust to taste
+
+Add:
+
+Hi and welcome to this SMTP server
+
+--------------------------------------------------------------------------------
+
+Edit: rcpthosts                        # Important file to prevent relaying of
+                                         mail by outsiders, List all machines
+                                         and domains on the network that 
+                                         allowed to relay mail on this server.
+
+Add:
+
+linuxfrombinary.org
+linuxfromsource.org
+otherinterndomain.org
+internhost1
+internhost2
+
+chmod 644 *
+
+
+Make the aliases, John is a mortal user on the system who gets
+administrative email eg for root and for bounced or failed messages.
+The first three aliases are necessary. For each user an alias is a necessity.
+and only needs the username
+
+cd /opt/qmail/alias
+
+echo john > .qmail-mailer-daemon
+echo john > .qmail-postmaster
+echo john > .qmail-root
+
+and further for all users:
+
+echo <user> > .qmail-<user>
+
+eg 
+
+echo john > .qmail-john
+
+
+D. Per user virtual domain config 
+--------------------------------
+
+Now we split up our users for the virtual domains. If new mail arrives it is
+forwarded to the user in the first part of the email address. Lets say there
+is mail for susie@linuxfromsource.org. The alias file .qmail-susie is used to 
+forward the mail to susie, '&user' means forward. The .qmail file in her home
+directory now determine the faith of the message.
+
+The file .qmail-default is used if all other usernames fails to have a
+.qmail-<user> alias for it. For example 'zuzie@linuxfromsource.org'.
+You can write one line that says: ./Maildir/ to .qmail-default.
+Now unresolved mail is sitting in the /home/virt-dom/Maildir/new directory.
+
+John is the local mail admin who loves to get the unresolved mail and therefore
+we say &john to '.qmail-default'. Now John determine the faith of the message.
+He either trash it of forward it to the appropriate recipient.
+
+
+
+cd /home/source
+/opt/qmail/bin/maildirmake Maildir
+echo '&john'       > .qmail-default
+echo '&john'       > .qmail-postmaster
+echo '&john'       > .qmail-webmaster
+echo '&john'       > .qmail-root
+echo '&john'       > .qmail-john
+echo '&susie'      > .qmail-susie
+echo '&dirk'       > .qmail-dirk
+chown -R source.mailuser .
+chmod 640 .qmail-*
+
+
+cd /home/binary
+/opt/qmail/bin/maildirmake Maildir
+echo '&john'       > .qmail-default
+echo '&john'       > .qmail-postmaster
+echo '&john'       > .qmail-webmaster
+echo '&john'       > .qmail-root
+echo '&olaf'       > .qmail-olaf
+echo '&jennifer'   > .qmail-jennifer
+echo '&pamela'     > .qmail-pamela
+chown -R binary.mailuser .
+chmod 640 .qmail-*
+
+
+And now for all users substitute <user> for the login name. Here comes the 
+filtering with procmail into play. 
+
+cd /home/<user>
+
+echo '| preline /usr/bin/procmail' > .qmail
+
+Now make sure the permissions are set right.
+
+chown -R <user>.mailuser <userdir>/ (for all users)
+
+
+   
+16. Configuration of Procmail.
+==============================
+
+Here you find a example configuration file, adjust to taste
+This goes to each users home directory, change the <user>
+with the real user name eg. john
+
+touch /var/log/procmail.log
+chmod 666 /var/log/procmail.log
+
+chmod 600 /home/<user>/.procmailrc
+
+cat > .procmailrc << "EOF"
+USER="<user>"
+PATH=/usr/bin:/bin:/usr/cyrus/bin:/usr/anomy/bin
+SHELL=/bin/bash
+#VERBOSE=1                             # uncomment these if you want to see
+#LOGABSTRACT=all                       # more what's happening in procmail.log
+LOGFILE="/var/log/procmail.log"
+SANE="deliver -a $USER -m user.$USER"
+SPAM="$SANE.SPAM"
+ANOMY=/usr/anomy
+
+  #######################################################
+  # FIRST: REMOVE THE LEADING "From " field             #
+  # Cyrus bombs if it sees a leading "From " (not       #
+  # to be confused with "From:"). By running sed        #
+  # as a filter we simply remove the first line without #
+  # any real thought.                                   #
+  #######################################################
+
+:0f
+| sed 1d
+
+# Anomy mail sanitizer
+
+:0fw
+| sanitizer.pl /usr/anomy/anomy.conf
+
+
+# Spam Assassin
+
+:0fw
+| spamassassin 
+
+:0
+* ^X-Spam-Status: Yes
+| $SPAM
+
+
+# Empty To: From: Subject:
+
+:0
+* !^To:
+| $SPAM
+
+:0
+* !^From:
+| $SPAM
+
+:0
+* !^Subject:
+| $SPAM
+
+
+# Porn Spam although you might wand to see those ;-)
+
+:0
+* ^Subject.*(\|<\pornography\>)
+| $SPAM
+
+:0 B
+* ^.*(\|<\pornography\>)
+| $SPAM
+
+
+# Example From spam traps although SpamAssassin should filter it.
+
+:0
+* ^FROM_advertising
+| $SPAM
+
+:0
+* ^From:.*(advertising|sales|offers|promotion|reply|request|theuseful)
+| $SPAM
+
+
+# Example Subject spam traps
+
+:0
+* ^Subject:.*\[ADV\]
+| $SPAM
+
+:0
+* ^Subject:\ ADV
+| $SPAM
+
+
+# Else
+   
+:0
+| $SANE 
+
+:0w
+{
+EXITCODE=$?
+HOST
+}
+EOF
+
+
+
+16. Starting up all processes
+=============================
+
+You should know how to make the links for the different run levels.
+Otherwise Gerard Beekmans has a guide where this issue is addressed.
+
+/etc/init.d/sysklogd restart
+/etc/init.d/avgate   start
+/etc/init.d/qmail    start
+/etc/init.d/imap     start
+
+
+
+17. Monitoring the processes.
+=============================
+
+Oke just start mailing everyone from localhost and remote and
+have a terminal running with the following command:
+
+tail -f /var/log/mail.log
+or
+tail -f /var/log/sys.log
+or
+tail -f /var/adm/imapd.log
+or 
+tail -f /var/log/procmail.log
+
+netstat -vat
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State      
+tcp        0      0 *:pop3                  *:*                     LISTEN      
+tcp        0      0 *:imap                  *:*                     LISTEN      
+tcp        0      0 *:ssh                   *:*                     LISTEN      
+tcp        0      0 *:smtp                  *:*                     LISTEN      
+Active UNIX domain sockets (servers and established)
+Proto RefCnt Flags       Type       State         I-Node Path
+unix  2      [ ACC ]     STREAM     LISTENING     16068  /var/imap/socket/lmtp
+
+
+If you wanna know WTF Qmail is doing:
+
+for reading the queue:
+/opt/qmail/bin/qmail-qread
+
+for statistics:
+/opt/qmail/bin/qmail-qstat
+
+for information:
+/opt/qmail/bin/qmail-showctl
+
+
+
+18. Migrating mail from backups.
+================================
+
+Make a back up of the /var/spool/imap/user directory 
+and the /var/imap/mailboxes.db on your existing mail server.
+
+cd /var/spool/imap
+tar cvpf user-backup.tar user/
+mv user-backup.tar ../../imap
+
+Add to the backup /var/imap/mailboxes.db
+
+cd ../../imap
+tar uvpf user-backup.tar mailboxes.db
+
+gzip -9 user-backup.tar
+
+
+Go to the new system and unpack the user folders and mailboxes.db
+
+mv user-backup.tar.gz /var/spool/imap
+cd /var/spool/imap
+tar zxvpf user-backup.tar.gz 
+mv mailboxes.db ../../imap/
+
+Now that all the old mailboxes are restored, we can rebuild the mailboxes.db.
+
+su - cyrus                             # Become the cyrus user.
+
+ctl_cyrusdb -r                         # rebuild the cyrus mailboxes database
+reconstruct                            # reconstruct mailboxes
+
+cyradm --auth login localhost          # Use the admin console for cyrus-imap.
+Password:                              # Enter the imap/sasl password.
+localhost.localnet> lm                 # Check to see if mailboxes are restored.
+localhost.localnet> exit               # Leave the cyrusadm console.
+
+exit                                   # exit the cyrus user.
+
+Every user that has imap login access needs a entry in /etc/sasldb2 again
+So do this for every imap user on the new server.
+
+saslpasswd2 <user>
+
+
+
+If you want a hint on reading a remote imap box with fetchmail on a client,
+compile fetchmail and procmail and put the following in a .fetchmailrc in your
+home dir and do 
+
+fetchmail -v
+
+<snip>
+poll "linuxfromsource.org"
+protocol imap
+no envelope
+no dns
+username "john"
+password "xxxx"
+mda "/usr/bin/procmail -d john"
+</snip>
+
+Or:
+
+<snip>
+poll mail.linuxfromsource.org port 993 
+protocol IMAP:
+user john
+password secret
+ssl
+</snip>
+
+Or:
+
+<snip>
+poll mail.linuxfrombinary.org with proto imap:
+plugin "ssh %h /usr/cyrus/bin/imtest" auth ssh;
+user john is john here
+</snip>
+
+
+19. Interesting readings.
+=========================
+
+All this information didn't come to me in a dream. It's a combination of 
+sources that I used. A little file that I used to log thing has grown into
+this hint and hopefully it's usefull for others as well. Understanding e-mail
+by this hint is not gonna help you enough, you have to RTFM A LOT.
+
+
+The Big HOWTO:
+http://linuxdoc.org/HOWTO/Cyrus-IMAP.html
+
+Source documentation:
+file://localhost/usr/src/cyrus-imapd-2.0.16/doc/index.html
+
+Article's:
+http://www.linuxjournal.com/article.php?sid=2313
+http://www.linuxworld.com/site-stories/2002/0410.ldap4.html
+http://www.abiglime.com/webmaster/articles/cgi/062398.htm
+http://www.summersault.com/chris/techno/qmail/qmail-antispam.html
+http://sysadmin.oreilly.com/news/imap2_1000.html
+
+Sites:
+http://www.openantivirus.org/projects.php
+http://docsrv.caldera.com:8457/en/volutionmsg_ag/msgag.mailadmin.html
+
+Google, Some ppl on #lfs, a friend enz
+
+Running Qmail - ISBN 0-672-31945-4 - Richard Blum - Sams Publishing 2000
+
+
+
+20. Legal Blurb
+==============
+
+The author does not feel responsible for loss or destruction of data and
+mail due to typos and bad language. So if you wipe out you system or get your
+dog killed don't come to me to cry on my shoulder. Be a man/woman and take 
+responsibility for your own actions. On the other hand if your are successful
+and want to contribute, throw a BIG bag of money to Gerard Beekmans, he deserves
+it. This is my contribution to LFS and improvements are welcome.
+

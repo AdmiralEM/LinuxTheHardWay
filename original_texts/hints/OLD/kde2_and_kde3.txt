@@ -1,0 +1,78 @@
+TITLE:		kde2_and_kde3
+LFS VERSION:	3.x
+AUTHOR:		Jeroen Coumans <jeroencoumans@gmx.net>
+
+SYNOPSIS:
+(1 tab) How to install kde2 and kde3 next to each other.
+
+HINT:
+
+This hint describes how you can add KDE 3 to your existing KDE 2 installation.
+I suggest you take a look at the kde hint or the BLFS section for installing
+KDE. I assume you use the following directory setup:
+
+/opt/qt2
+/opt/qt3
+/opt/kde2
+/opt/kde3
+
+For KDE 3, you first have to install qt-3.x (where x=latest). This is my
+build script for qt-3.x:
+
+#!/bin/sh
+bzcat qt-$VERSION.tar.bz2 | tar xv &&
+pushd qt-$VERSION &&
+export QTDIR=`pwd` &&
+export PATH=$PATH:$QTDIR/bin &&
+./configure -prefix /opt/qt3 -xft -xrender -no-stl -thread -no-g++-exceptions \
+-system-libmng -system-libpng -system-libjpeg -system-zlib -qt-gif \
+-qt-imgfmt-jpeg -qt-imgfmt-png -qt-imgfmt-mng \
+-L/usr/local/lib -I/usr/local/include/freetype2 -I/usr/local/include &&
+make &&
+make install &&
+popd &&
+rm -rf qt-$VERSION &&
+echo "/opt/qt3/lib" >> /etc/ld.so.conf &&
+ldconfig
+
+Don't blindly copy the ./configure line, you'll probably have a different setup
+than me. Use ./configure --help to see what each option does.
+
+When compiling KDE 3, start with arts, next kdelibs then kdebase. Install
+kdeaddons after kdenetwork and kdemultimedia. The other packages can be
+installed in arbitrary order.
+Important: set the appropriate variables before installing the packages.
+
+    export QTDIR=/opt/qt3
+    export KDEDIR=/opt/kde3
+
+When configuring, you can use --prefix=$KDEDIR.
+
+Installing kde is straightforward, and you can find lots of info on www.kde.org.
+Don't forget to add /opt/kde3/lib to /etc/ld.so.conf and run ldconfig. Also, you
+ should comment out /opt/qt2/lib and /opt/kde2/lib in this file to avoid
+library conflicts (I had some strange errors which disappeared when I didn't).
+Next thing is configuring kdm to allow the selection of either a KDE2
+session or a KDE 3 session. If you followed Remy's big_kdm hint, you've allready
+setup KDM.
+Replace the kde) case with the following:
+
+kde2)
+	export QTDIR=/opt/qt2
+	export KDEDIR=/opt/kde2
+	export PATH=/bin:/usr/bin:/usr/X11R6/bin:$KDEDIR/bin:$QTDIR/bin
+	exec $KDEDIR/bin/startkde
+kde3)
+	export KDEHOME=$HOME/.kde3
+	export KDEDIR=/opt/kde3
+	export QTDIR=/opt/qt3
+	export PATH=/bin:/usr/bin:/usr/X11R6/bin:$KDEDIR/bin:$QTDIR/bin:/opt/kde2/bin
+	exec $KDEDIR/bin/startkde
+
+For a flawless cooperation between the two, the most important variable is
+KDEHOME. If you don't set this, your configuration files will be updated to kde3
+and you won't be able to start kde2 anymore. If you don't want to reconfigure
+all your settings, copy all the ~/.kde/share/config/k*rc to ~/.kde3/share/config
+
+Also, it doesn't matter if you want to run the KDE3 version of kdm, but don't
+forget to adjust /etc/X11/xdm/XSetup accordingly. 

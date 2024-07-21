@@ -1,0 +1,324 @@
+AUTHOR:         Teemu Tervo <teemu.tervo@gmx.net>
+DATE:           2003-12-19
+LICENSE:        The MIT License
+SYNOPSIS:       Building an LFS system with the NPTL library
+DESCRIPTION:    Using the new libpthread implementation NPTL (Native POSIX
+                Threading Library) instead of linuxthreads.
+PREREQUISITES:  LFS version 5.0+
+
+HINT:
+
+Contents
+========
+1. Introduction
+2. Software requirements
+3. Inline installation
+4. Drawbacks
+5. Feedback
+
+
+Introduction
+============
+
+The Native POSIX Threading Library is a relatively new threading library
+designed to replace the linuxthreads package in Glibc. It has many
+advantages over the linuxthreads package, one of which is the focus on
+standards-compliance. NPTL never sacrifices standards-compliance under
+any circumstances, no matter the gains. Despite this, NPTL has
+world-class performance, with thread-spawning speeds as much as 500x the
+speed of traditional thread libs.
+
+Despite all these changes, it maintains near-complete
+backwards-compatibility with linuxthreads, and generally works perfectly
+as a drop-in replacement where the proper compiler infrastructure is
+already present.
+
+
+Software requirements (as of December 18th 2003)
+================================================
+
+1. A kernel with proper support for thread-local storage. This means
+   you must use a fairly recent 2.6 kernel. RedHat has managed to
+   backport this functionality into 2.4, but the patch is rather messy
+   and many parts of it will fail to apply on a vanilla kernel. If
+   you're going to use 2.4, you're on your own.
+
+   If you have no experience with 2.6, I suggest you have a look at
+   the post-halloween document, which summarizes the changes since 2.4.
+
+     http://www.linux.org.uk/~davej/docs/post-halloween-2.6.txt
+
+   I won't go into further detail on using the 2.6.x kernels, since
+   it is fairly straight-forward, but be sure to replace modutils with
+   the new module handling package called module-init-tools.
+
+     ftp://ftp.kernel.org/pub/linux/kernel/people/rusty/modules/
+
+   For those minimalists who like to disable everything in the kernel config
+   it should be noted that CONFIG_FUTEX shouldn't be set to no, futexes are
+   required for NPTL to function. Also note that you'll need to run
+   2.6 on both the host and the target system and that you should use
+   gcc-3.x (3.2.3 is a safe bet) to compile it.
+
+2. A CVS tarball of Glibc. NPTL is no longer distributed in a separate
+   tarball as it has now been been added to the glibc source tree.
+
+     cvs -d :pserver:anoncvs@sources.redhat.com:/cvs/glibc -z3 co libc     
+     mv libc glibc-2.3-`date +%Y%m%d`
+     tar cjf glibc-2.3-`date +%Y%m%d`.tar.bz2 glibc-2.3-`date +%Y%m%d`
+     rm -rf glibc-2.3-`date +%Y%m%d`
+
+5. H J Lu's Binutils version 2.14.90.0.5 or newer
+
+   Or more precisely, a binutils release with .cfi_rel_offset support. Right
+   now, this leaves us with either FSF CVS or the HJL branch. As usual,
+   when using the HJL release, you'll also need to install m4, bison and
+   flex in chapter 5.
+
+     ftp://ftp.kernel.org/pub/linux/devel/binutils/ (HJL)
+     ftp://sources.redhat.com/pub/binutils/releases (FSF)
+
+6. Sanitized kernel headers
+
+   It is agreed that user space shouldn't use kernel headers, but a
+   set of sanitized headers such as distributions use instead. In
+   addition to it not being kosher, stock kernel headers in /usr/include
+   will break a lot of packages due to changes in 2.6 kernels. Get the
+   latest Fedora headers from:
+
+     http://download.fedora.redhat.com/pub/fedora/linux/core/development/SRPMS/
+
+   The package name is glibc-kernheaders-*. You can use rpm2cpio to first
+   convert and extract it. All you'll need is glibc-kernheaders.tar.bz2.
+   I've also made the tarball available in http://ttervo.vectorstar.net/nptl,
+   but don't expect it to be the latest one available. In the same directory,
+   you'll also find POSIX compliancy patches for several packages (see notes
+   after chapter 5 Glibc instructions).
+
+7. Couple of essential patches
+
+   You'll need a couple of patches as well. If not otherwise mentioned, they
+   are expected to be used during both chapters 5 and 6. All are available in
+
+     http://ttervo.vectorstar.net/nptl
+
+   Binutils testsuite will fail one test due to changes introduced in
+   glibc cvs. The patch is named binutils-VERSION-fix-static-linking.patch.
+
+   Util-linux won't compile against 2.6 kernel headers, so we patch it in
+   chapter 5. We don't install sanitized headers there, since it's easier to
+   just make this one package work along with the 2.6 headers.
+
+   If you're going to use GCC-3.3.1, you need a patch to fix an issue
+   with static compilation of some programs, caused the same changes that
+   make binutils tests fail. For 3.3.2 and later this isn't needed. The patch
+   has been named gcc-3.3.1-fix-static-linking.patch.
+
+
+   This hint was tested using glibc-20031218, binutils-2.14.90.0.7 and
+   gcc-3.3.2 with both the host and the target systems using linux-2.6.0.
+
+Inline installation
+===================
+
+Chapter 5 -- Installing 2.6 kernel headers
+------------------------------------------
+
+When installing the headers, you must use the "make include/asm" command
+in place of "make symlinks". The latter no longer works in 2.6 kernels.
+
+
+Chapter 5 -- Installing Glibc
+-----------------------------
+
+You won't need to apply the sscanf patch, this has been fixed.
+
+Configure Glibc with the following command:
+
+          ../glibc-2.3*/configure --prefix=/tools --disable-profile \
+              --with-headers=/tools/include --with-binutils=/tools/bin \
+              --enable-add-ons=nptl --enable-kernel=current --without-gd \
+              --without-cvs --with-tls
+
+During make check, you can expect some failures.
+
+
+About POSIX conformance
+-----------------------
+
+Packages such as coreutils use the _POSIX2_VERSION variable defined in 
+unistd.h to see which POSIX version to conform to. CVS Glibc has this variable
+set to a newer version and this causes problems with many packages and scripts
+which use obsoleted syntax like tail -1 instead of tail -n 1. To get around
+this, export _POSIX2_VERSION=199209, and make sure it's set at all times.
+
+There are also few other methods, which means this will eventually be a nice
+flamewar subject on lfs-dev when the next Glibc version is released. You
+could:
+  1) Patch each package using illegal syntax, like I do.
+  2) Edit the _POSIX2_VERSION variable directly in unistd.h.
+  3) Patch coreutils to also require POSIXLY_CORRECT variable set, before
+     spouting out "You can't do this anymore." This is what RH does.
+
+The nice thing about standards is there are so many ways to avoid them.
+
+
+Chapter 6 -- Mounting /dev/shm
+------------------------------
+
+NPTL's semaphore code and its testsuite uses /dev/shm, hence it's
+recommended to mount it not only in chapter 6 but also after booting to the
+final system.
+
+Chapter 6 -- Installing 2.6 kernel headers
+------------------------------------------
+
+It is agreed that user space shouldn't use kernel headers, but use a
+set of sanitized headers such as distributions use instead. Glibc is an
+exception to this rule, and it needs to be built against the most
+recent headers to make use of new kernel features. So we'll install
+them to a prefix other than /usr/include and instruct Glibc to look
+for them there.
+
+          make mrproper &&
+          make include/linux/version.h &&
+          make include/asm &&
+          mkdir /usr/src/glibcheaders &&
+          cp -HR include/asm /usr/src/glibcheaders &&
+          cp -R include/asm-generic /usr/src/glibcheaders &&
+          cp -R include/linux /usr/src/glibcheaders &&
+          touch /usr/src/glibcheaders/linux/autoconf.h
+
+
+Chapter 6 -- Installing Glibc
+-----------------------------
+
+If you try running /tools/lib/libc.so.6, you'll see it won't work due to
+some assertions failing. http://ttervo.vectorstar.net/nptl contains a patch,
+which fixes this problem. This is merely a cosmetic issue, and is optional.
+
+Use the following command to configure Glibc:
+
+          ../glibc-2.3*/configure --prefix=/usr --libexecdir=/usr/bin \
+              --disable-profile --with-headers=/usr/src/glibcheaders \
+              --enable-add-ons=nptl --enable-kernel=current --without-cvs \
+              --with-tls
+
+As of this writing, the testsuite should pass without any failures. After make
+install, you can remove /usr/src/glibcheaders.
+
+
+Chapter 6 -- Installing sanitized kernel headers
+------------------------------------------------
+
+Right after installing Glibc, untar the glibc-kernheaders tarball
+and cd to the extracted usr/include directory.
+
+          cp -R asm-i386 /usr/include/asm    
+          cp -R linux /usr/include
+
+
+Chapter 6 -- Installing modutils
+--------------------------------
+
+Feel free to skip this package and install module-init-tools in its
+place. Modutils is useful only if you want to use binary modules
+built for 2.4.
+
+
+Drawbacks
+=========
+
+I've been running NPTL on my system for a few months now, and in that period
+the only unsolvable problem I've come across is that the beautiful debugger
+called Valgrind won't work. As an alternative though, GDB-6.0+ will. In
+addition, all binaries linked against linuxthreads' libpthread will fail
+to function.
+
+Feedback
+========
+
+If you have an idea for something I should add, want to report a bug,
+point out typos and/or bad grammar, tell me if the hint sucks or wish
+to offer me penis enlargement products, drop me a line at teemu.tervo@gmx.net.
+
+ACKNOWLEDGEMENTS:
+
+Thanks to Zack Winkles for the original hint, as well as to Ryan and Greg
+for all their help, suggestions and corrections.
+
+CHANGELOG:
+
+[2003-04-11]
+* Initial release of rewrite.
+[2003-04-18]
+* Added patch for 2.4.20 futex support.
+[2003-04-21]
+* Backed out futex patch. General cleanups.
+[2003-04-21]
+* Added note about module-init-tools (Thanks DJ Lucas)
+* Added warning about NVIDIA.
+[2003-04-23]
+* Moved to GCC 3.3.
+[2003-04-24]
+* NVIDIA_GLX works now.
+[2003-04-26]
+* Devfs notes.
+* Patch to make 2.4.20 work w/ NPTL (Thanks YuX).
+[2003-05-05]
+* Added fix to allow building against old hosts.
+* Added patch to fix detection of eh_frame using coreutils.
+* Added note about rml's procps.
+[2003-05-06]
+* Oops. Forgot to put up the location of the GCC patch.
+[2003-05-12]
+* Another rewrite
+* LFS has moved to PLFS
+* Don't disable fixincl as it breaks GCC on old hosts
+* Removed 2.4 patch.
+* Removed any remants of NVIDIA.
+[2003-05-15]
+* Futexes have been made optional in the latest kernel,
+          make sure the user enables it.
+* Update text for GCC 3.3.
+[2003-05-19]
+* Clarify warning about futexes.
+[2003-09-22]
+* Adopted by Teemu
+* Edited hint to new format
+* Install sanitized kernel headers
+* Added note about Drepper's release notes
+* Clarified binutils requirement
+* Changed linux-2.5 > 2.6, added note about post-halloween doc
+* Added note about _POSIX2_VERSION and the Glibc version string
+* Added patch that removes a couple of asserts in glibc, thanks to NeoCool
+* Removed reference to sysklogd patch, it's not needed
+[2003-10-12]
+* Removed references to the nptl tarball, as it no longer exists
+* Revised glibc cvs checkout commands
+* Added the drawbacks section
+* Added a nicer assertion patch for glibc
+* Added --without-cvs to glibc configure commands
+* Added note about /dev/shm
+* Added POSIX conformance section, describing the issue a bit more thoroughly
+[2003-10-15]
+* Install lowlevellock.h in chapter6 glibc
+* Revised /dev/shm note
+* Added GCC patch to fix static linking
+* Added a patch for util-linux to compile with 2.6 headers in chapter 5
+[2003-11-04]
+* Added binutils patch related to the issue with static linking
+* Added glibc makefile patch to fix testsuite
+* Fixed the RH kernel headers URL
+* Fix for static linking no longer needed with GCC-3.3.2
+* Removed lowlevellock.h, nothing needing it works even with it installed
+[2003-11-15]
+* Changed sanitized headers dl location, they're now over at fedora's site
+* Revised the part about futexes in the kernel, it was misleading
+[2003-12-13]
+* Dropped editing of glibc's version.h, it's unnecessary, outdate and
+  removing it will prevent me from ever updating it
+* Updated post-halloween doc location
+[2003-12-19]
+* Dropped glibc-DATE-nptl-testsuite.patch, it is no longer needed
+* 2.6 kernels are not in test phase anymore

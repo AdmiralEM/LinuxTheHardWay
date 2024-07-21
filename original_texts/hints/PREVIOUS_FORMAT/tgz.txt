@@ -1,0 +1,108 @@
+TITLE:		"make install" tracking, using slackware tools & checkinstall
+LFS VERSION:	2.4.4
+AUTHOR:		Michenaud Laurent <lmichenaud@free.fr>
+
+SYNOPSIS:
+	Short guide, on how to be able to build .tgz from tarball.
+
+HINT:
+VERSION: 1.0	18-04-2001
+
+	One major problem with lfs is how to upgrade properly. When you do a
+	"make install", you don't really know which files are installed. Then,
+	if you want to upgrade properly, you have to remove the old files. If
+	there are no "make uninstall", it is a big problem. This hint explains
+	you how to build .tgz from a tarball install using the slackware package
+	system and the program checkinstall.
+
+What you need :
+
+- The slackware package tools avaible on www.slackware.com. 
+	The name of the package is :
+	hdsetup.tgz
+	
+- Checkinstall program 
+	http://mayams.net/~izto/checkinstall-en.html
+
+
+1 -  Installation of the slackware package tools
+------------------------------------------------
+
+tar zxvf hdsetup.tar.gz
+cd hdsetup/sbin
+
+# Only these progs are useful :
+cp explodepkg installpkg makepkg removepkg upgradepkg pkgtool.tty /usr/sbin/
+
+# Giving executable modes if not gived before
+cd /usr/sbin
+chmod u+x explorepkg installpkg makepkg removepkg upgradepkg pkgtool.tty
+
+# Rename of pkgtool
+mv pkgtool.tty pkgtool
+
+# Need some directory to keep log of installed packages
+cd /var/log
+mkdir packages scripts setup setup/tmp
+
+
+2 - Installation of checkinstall
+--------------------------------
+
+tar zxvf checkinstall-1.3.2.tgz
+cd checkinstall-1.3.2
+
+# If you want to install checkinstall in another directoty than /usr/local/bin ( default ),
+# you have to edit the following files and change the PREFIX :
+	Makefile
+	InstallWatch/Makefile
+
+# Compiling
+	make
+	make install
+
+# If before, you have changed the PREFIX, you have to edit the checkinstall script
+# located in the directory where you have installed it.
+# You have to change in this script the prefix for the three programs : checkinstall, installwatch, makepkg  
+
+# Run checkinstall
+checkinstall
+
+
+3 - Example on how to use it ?
+------------------------------
+
+# No changes for the beginning
+	tar zxvf xmms-1.2.2.tar.gz
+	cd xmms-1.2.2
+	./configure
+	make
+
+# Some classical files will have to be integrated in the .tgz file
+# This step is not compulsory
+	mkdir doc-pak
+	cp README INSTALL COPYING Changelog TODO CREDITS doc-pak/
+
+# Now, we have to create the .tgz and to install the files on your system
+# if it is make install, just run
+	checkinstall
+# if not, ( example make install-strip ), run
+	checkinstall make install
+
+# Now, xmms is installed on your system and you have a xmms-1.2.2.tgz in source tree.
+# To uninstall xmms from your system, run :
+	removepkg xmms-1.2.2.tgz
+# To install again, run 
+	installpkg xmms-1.2.2.tgz
+	
+	
+4 - Others things
+-----------------
+
+There are X11 programs to manage the tgz packages. They didnot work well with
+me that is why i will use only console tools.
+
+Checkinstall can create rpm files too. I didnot choose rpm because tgz tools needs only
+a bash to work. Rpm needs librairy and is more complicated. When you will have to do
+something in rescue phasing for example, tgz tools will have more chances to work properly
+than a rpm system.

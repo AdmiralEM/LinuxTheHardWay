@@ -1,0 +1,712 @@
+#!/bin/bash
+
+# mkinitrd for 2.4/2.6 Kernel by Jim Gifford <scripts@j555.com>
+# Release 4.05
+
+# Usage Menu
+#
+usage () {
+	echo "$0 : options"
+	echo "options available"
+	echo "  Required"
+	echo "	[kernel_version={version} = use kernel version]"
+	echo "	Optional"
+	echo "	[-ide = remove ide modules] [-scsi = remove scsi modules]"
+	echo "	[-usb = remove usb modules] [-cdrom = remove cdrom modules]"
+	echo "	[-ide-scsi = remove ide-scsi modules]"
+	echo "	[-devfs = remove devfs settings from initrd]"
+	echo "	[initrdfs={ext2|ext3} = use either ext2 or ext3]"
+	echo "	[-module={module} = remove module]"
+	echo "	[+module={module} - add module]"
+	echo "	[root-device={device} - skips auto detection of the root device]"
+	echo "	[order={scsi,ide,usb,added} - sets the order of modules to be loaded]"
+	exit 1
+}
+
+# Input Check
+#
+if [ "$1" == "" ]
+	then
+		usage
+fi
+
+echo "Checking Input..."
+while [ $# -gt 0 ]
+	do
+		case $1 in
+		-ide)
+			REMOVE_IDE="1"
+			echo "	Removing IDE Modules."
+			;;
+
+		-scsi)
+			REMOVE_SCSI="1"
+			echo "	Removing SCSI Modules."
+			;;
+
+		-ide-scsi)
+			REMOVE_IDE_SCSI="1"
+			echo "	Removing IDE-SCSI Module."
+			;;
+
+		-devfs)
+			REMOVE_DEVFS="1"
+			echo "	Removing devfs settings."
+			;;
+
+		-cdrom)
+			REMOVE_CDROM="1"
+			echo "	Removing CDROM Modules"
+			;;
+
+		-usb)
+			REMOVE_USB="1"
+			echo "	Removing USB Modules."
+			;;
+
+		kernel_version=*)
+			KERNEL_VERSION="`echo $1 | awk -F= '{print $2;}'`"
+			echo "	Making image for kernel $KERNEL_VERSION."
+			KER_VER_REL="`echo $KERNEL_VERSION | grep -o 2.6`"
+			if [ "$KER_VER_REL" != "2.6" ]
+				then
+					KER_VER_REL="2.4"
+			fi			
+			;;
+
+		initrdfs=*)
+			INITRDFS="`echo $1 | awk -F= '{print $2;}'`"
+			echo "	Initrd will be using $INITRDFS filesystem."
+			;;
+
+		-module=*)
+
+			if [ "$REMOVE_MODULE" == "" ]
+				then
+					REMOVE_MODULE="`echo $1 | awk -F= '{print $2;}'`"
+					echo "	Removing Module $REMOVE_MODULE."
+
+				else
+					NEW_MODULE="`echo $1 | awk -F= '{print $2;}'`"
+					echo "	Removing Module $NEW_MODULE."
+					REMOVE_MODULE="$REMOVE_MODULE $NEW_MODULE"
+			fi
+			;;
+
+		+module=*)
+
+			if [ "$ADD_MODULE" == "" ]
+				then
+					ADD_MODULE="`echo $1 | awk -F= '{print $2;}'`"
+					echo "	Adding Module $ADD_MODULE."
+				else
+					NEW_MODULE="`echo $1 | awk -F= '{print $2;}'`"
+					echo "	Adding Module $NEW_MODULE"
+					ADD_MODULE="$ADD_MODULE $NEW_MODULE."
+			fi
+			;;
+
+		order=*)
+			ORDER="`echo $1 | awk -F= '{print $2;}'`"
+			FIRST="`echo $ORDER | cut -f1 -d,`"
+			SECOND="`echo $ORDER | cut -f2 -d,`"
+			THIRD="`echo $ORDER | cut -f3 -d,`"
+			FOURTH="`echo $ORDER | cut -f4 -d,`"
+				
+			;;
+
+		root-device=*)
+			ROOT_DEVICE="`echo $1 | awk -F= '{print $2;}'`"
+			;;
+
+		*)
+			usage
+			;;
+		esac
+	shift
+done
+
+echo "Setting up Parameters..."
+
+# Set Order if Order Doesn't Exist
+#
+if [ "$ORDER" == "" ]
+	then
+		FIRST="scsi"
+		SECOND="ide"
+		THIRD="usb"
+		FOURTH="added"
+fi
+
+# Show Modules Order
+#
+echo "	Module Load order is $FIRST"
+
+if [ "$SECOND" != "" ]
+	then
+		echo "	         followed by $SECOND"
+fi
+
+if [ "$THIRD" != "" ]
+	then
+		echo "	         followed by $THIRD"
+fi
+
+if [ "$FOURTH" != "" ]
+	then
+		echo "	         followed by $FOURTH"
+fi
+
+# Show Root Device Information
+#
+if [ "$ROOT_DEVICE" == "" ]
+	then
+		ROOT_DEVICE="$(awk '/^[ \t]*[^#]/ { if ($2 == "/") { print $1; }}' /etc/fstab)"
+fi
+
+echo "	Root Device is $ROOT_DEVICE."
+
+# Module Files
+#
+if [ "$KER_VER_REL" == "2.4" ]
+	then
+		CONFIG_FILE="/etc/modules.conf"
+		EXTENSION="o"
+fi
+
+if [ "$KER_VER_REL" == "2.6" ]
+	then
+		CONFIG_FILE="/etc/modprobe.conf"
+		EXTENSION="ko"
+fi
+
+rm -f /tmp/foundmodules
+rm -f /tmp/copiedmodules
+
+# Find Dependencies
+#
+finddep () {
+
+for module in $MODULES
+	do
+
+		if [ "$KER_VER_REL" == "2.4" ]
+			then
+				echo "depfile=/lib/modules/$KERNEL_VERSION/modules.dep" > /tmp/config
+				modprobe -C /tmp/config $module -v -n 2> /dev/null | \
+				sed -ne "s#^/sbin/insmod.*/\(.*\)\.$EXTENSION.*#\1#p" >> /tmp/foundmodules
+		fi
+
+		if [ "$KER_VER_REL" == "2.6" ]
+			then
+				modprobe --set-version=$KERNEL_VERSION --show-depends $module 2> /dev/null | \
+				sed -ne "s#^insmod.*/\(.*\)\.$EXTENSION.*#\1#p" >> /tmp/foundmodules
+		fi
+	done
+}
+
+# Find Modules
+#
+find_module() {
+
+	FIND_MOD=$1
+	SEARCH="`find /lib/modules/$KERNEL_VERSION/kernel -name $FIND_MOD`"
+}
+
+# Add or Remove IDE Modules
+#
+if [ "$REMOVE_IDE" == "1" ]
+	then
+		PRE_IDE=""
+		IDE_MODULES=""
+		POST_IDE=""
+	else
+		PRE_IDE="ide-probe-mod"
+
+		if [ -e /proc/ide ]
+			then
+				CHECK="`ls -1 /proc/ide`"
+				for check in $CHECK
+					do	
+						IDE_MODULE="`echo $check`"
+						IDE_MODULES="$IDE_MODULES $IDE_MODULE"
+					done
+		fi
+
+		if [ "$REMOVE_CDROM" == "1" ]
+			then
+				POST_IDE="ide-disk ide-floppy"
+			else
+				POST_IDE="ide-disk cdrom ide-cd ide-floppy"
+		fi
+fi
+
+# Add or Remove SCSI Modules
+#
+if [ "$REMOVE_SCSI" == "1" ]
+	then
+		PRE_SCSI=""
+		SCSI_MODULES=""
+		POST_SCSI=""
+	else
+		PRE_SCSI="sd_mod"
+		SCSI_MODULE="`grep scsi_hostadapter $CONFIG_FILE | grep -v '^[    ]*#' | awk '{ print $3 }'`"
+		SCSI_MODULES="$SCSI_MODULE"
+		if [ "$REMOVE_CDROM" == "1" ]
+			then
+				POST_SCSI=""
+			else
+				POST_SCSI="cdrom sr_mod"
+		fi
+fi
+
+# Add or Remove IDE-SCSI Module
+#
+if [ "$REMOVE_IDE_SCSI" == "1" ]
+	then
+		IDE_SCSI_MODULE=""
+	else
+
+		if [ "$REMOVE_CDROM" == "1" ]
+			then
+				IDE_SCSI_MODULE="ide-scsi"
+			else
+				IDE_SCSI_MODULE="ide-scsi cdrom sr_mod"
+		fi
+fi
+
+# Add or Remove USB Modules
+#
+if [ "$REMOVE_USB" == "1" ]
+	then
+		PRE_USB=""
+		USB_MODULES=""
+		POST_USB=""
+	else
+		PRE_USB="usbcore"
+		USB_MODULES="`grep usb-controller $CONFIG_FILE | grep -v '^[    ]*#' | awk '{ print $3 }'`"
+		POST_USB="usb-storage"
+fi
+
+# Create Module Groups
+#
+IDE_MODULES_GROUP="$PRE_IDE $IDE_MODULES $POST_IDE $IDE_SCSI_MODULE"
+SCSI_MODULES_GROUP="$PRE_SCSI $SCSI_MODULES $POST_SCSI"
+USB_MODULES_GROUP="$PRE_USB $USB_MODULES $POST_USB"
+
+# Set Modules in Proper Order
+#
+if [ "$FIRST" == "ide" ] || [ "$FIRST" == "IDE" ]
+	then
+		FIRST_MODULES="$IDE_MODULES_GROUP"
+fi
+
+if [ "$FIRST" == "scsi" ] || [ "$FIRST" == "SCSI" ]
+	then
+		FIRST_MODULES="$SCSI_MODULES_GROUP"
+fi
+
+if [ "$FIRST" == "usb" ] || [ "$FIRST" == "USB" ]
+	then
+		FIRST_MODULES="$USB_MODULES_GROUP"
+fi
+
+if [ "$FIRST" == "added" ] || [ "$FIRST" == "ADDED" ]
+	then
+		FIRST_MODULES="$ADD_MODULE"
+fi
+
+if [ "$SECOND" != "" ]
+	then
+		if [ "$SECOND" == "ide" ] || [ "$SECOND" == "IDE" ]
+			then
+				SECOND_MODULES="$IDE_MODULES_GROUP"
+		fi
+
+		if [ "$SECOND" == "scsi" ] || [ "$SECOND" == "SCSI" ]
+			then
+				SECOND_MODULES="$SCSI_MODULES_GROUP"
+		fi
+
+		if [ "$SECOND" == "usb" ] || [ "$SECOND" == "USB" ]
+			then
+				SECOND_MODULES="$USB_MODULES_GROUP"
+		fi
+
+		if [ "$SECOND" == "added" ] || [ "$SECOND" == "ADDED" ]
+			then
+				SECOND_MODULES="$ADD_MODULE"
+		fi
+fi
+
+if [ "$THIRD" != "" ]
+	then
+		if [ "$THIRD" == "ide" ] || [ "$THIRD" == "IDE" ]
+			then
+				THIRD_MODULES="$IDE_MODULES_GROUP"
+		fi
+
+		if [ "$THIRD" == "scsi" ] || [ "$THIRD" == "SCSI" ]
+			then
+				THIRD_MODULES="$SCSI_MODULES_GROUP"
+		fi
+
+		if [ "$THIRD" == "usb" ] || [ "$THIRD" == "usb" ]
+			then
+				THIRD_MODULES="$USB_MODULES_GROUP"
+		fi
+
+		if [ "$THIRD" == "added" ] || [ "$SECOND" == "ADDED" ]
+			then
+				THIRD_MODULES="$ADD_MODULE"
+		fi
+fi
+
+if [ "$FOURTH" != "" ]
+	then
+		if [ "$FOURTH" == "ide" ] || [ "$FOURTH" == "IDE" ]
+			then
+				FOURTH_MODULES="$IDE_MODULES_GROUP"
+		fi
+
+		if [ "$FOURTH" == "scsi" ] || [ "$FOURTH" == "SCSI" ]
+			then
+				FOURTH_MODULES="$SCSI_MODULES_GROUP"
+		fi
+
+		if [ "$FOURTH" == "usb" ] || [ "$FOURTH" == "usb" ]
+			then
+				FOURTH_MODULES="$USB_MODULES_GROUP"
+		fi
+
+		if [ "$FOURTH" == "added" ] || [ "$SECOND" == "ADDED" ]
+			then
+				FOURTH_MODULES="$ADD_MODULE"
+		fi
+fi
+
+# List of All Needed Modules
+#
+MODULES="$FIRST_MODULES $SECOND_MODULES $THIRD_MODULES $FOURTH_MODULES"
+
+# Find the module Dependencies
+#
+finddep
+
+# Set initrd name and size
+#
+IMAGE_SIZE=4000
+MOUNT_IMAGE="/tmp/initrd.$$"
+IMAGE="/tmp/initrd.img-$$"
+MOUNT_POINT="/tmp/initrd.mnt-$$"
+LINUXRC="$MOUNT_IMAGE/linuxrc"
+INITRD="/boot/initrd-$KERNEL_VERSION.img"
+
+# Check for Valid Kernel
+#
+if [ -e /lib/modules/$KERNEL_VERSION ]
+	then
+			echo "	/lib/modules/$KERNEL_VERSION does exist."
+	else
+			echo "	/lib/modules/$KERNEL_VERSION does not exist."
+			exit 1
+fi
+
+# Check for filesystem for initrd
+#
+if [ "$INITRDFS" == "" ]
+	then
+		FSYSCHECK="$(awk '/^[ \t]*[^#]/ { if ($2 == "/") { print $3; }}' /etc/fstab)"
+
+		if [ "$FSYSCHECK" == "ext2" ]
+			then
+				INITRDFS="ext2"
+		fi
+
+		if [ "$FSYSCHECK" == "ext3" ] && [ "$INITRDFS" == "" ]
+			then
+				INITRDFS="ext3"
+		fi
+
+		if [ "$FSYSCHECK" == "auto" ] && [ "$INITRDFS" == "" ]
+			then
+				find_module "ext3.$EXTENSION"
+
+				if [ "$SEARCH" != "ext3.$EXTENSION" ]
+					then
+						INITRDFS="ext3"
+				fi
+
+				if [ "$INITRDFS" == "" ]
+					then
+						find_module "ext2.$EXTENSION"
+
+						if [ "$SEARCH" != "ext2.$EXTENSION" ]
+							then
+								INITRDFS="ext2"
+						fi
+				fi
+		fi
+
+		if [ "$INITRDFS" == "" ]
+			then
+				echo "Cannot autodetect file system for initrd."
+				exit 1
+		fi
+
+		echo "	Autoselecting $INITRDFS File System for initrd."
+fi
+
+# Check for initrd Directory
+#
+if ! [ -e /initrd ]
+	then
+		mkdir /initrd
+fi
+		
+# Pivot Root Fixes
+#
+cd /sbin
+ln -sf init linuxrc
+cp /usr/sbin/chroot /sbin/chroot
+
+# Create Image and setup Loopback
+#
+dd if=/dev/zero of=$IMAGE bs=1k count=$IMAGE_SIZE 2> /dev/null
+
+if [ "$INITRDFS" == "ext2" ] || [ "$INITRDFS" == "ext3" ]
+	then
+		# Creating LoopBack Device
+		#
+		echo "	Setting up Lookback Device..."
+		for device_number in 0 1 2 3 4 5 6 7 8
+			do
+				if losetup /dev/loop$device_number $IMAGE 2>/dev/null
+					then
+						break
+				fi
+			done
+
+		if [ "$device_number" = "8" ]
+			then
+				rm -rf $MOUNT_POINT $IMAGE
+				echo "		All of your loopback devices are in use!" >&2
+				exit 1
+		fi
+
+	LOOP_DEVICE=/dev/loop$device_number
+	echo "		Using loopback device $LOOP_DEVICE"
+fi
+
+echo "Checking for Initrd FileSystem..."
+
+# Make sure the initrd filesystem is in the kernel.
+#
+if [ "$INITRDFS" == "ext2" ]
+	then
+		find_module "ext2.$EXTENSION"
+
+		if [ "$SEARCH" == "ext2.$EXTENSION" ]
+			then
+				echo "	$INITRDFS is compiled as a module."
+				exit 1
+			else
+				echo "	$INITRDFS is compiled into the kernel."
+				echo y | mkfs.ext2 $LOOP_DEVICE $IMAGE_SIZE > /dev/null 2> /dev/null
+		fi
+fi
+
+if [ "$INITRDFS" == "ext3" ]
+	then
+		find_module "ext3.$EXTENSION"
+
+		if [ "$SEARCH" == "ext3.$EXTENSION" ]
+			then
+				echo "	$INITRDFS is compiled as a module."
+				exit 1
+			else
+				echo "	$INITRDFS is compiled into the kernel."
+				echo y | mkfs.ext3 $LOOP_DEVICE $IMAGE_SIZE > /dev/null 2> /dev/null
+		fi
+fi
+
+echo "Creating Initrd..."
+
+# Creating initrd directory
+#
+echo "	Creating Mount Point..."
+mkdir -p $MOUNT_POINT
+
+if [ "$INITRDFS" == "ext2" ] || [ "$INITRDFS" == "ext3" ]
+	then
+		echo "	Creating $INITRDFS File System..."
+		mount -t $INITRDFS $LOOP_DEVICE $MOUNT_POINT || {
+							     echo "		Can't get a loopback device"
+							     exit 1
+					   }
+fi
+
+# Creating Directories
+#
+echo "	Creating Directories..."
+mkdir -p $MOUNT_IMAGE
+mkdir -p $MOUNT_IMAGE/{bin,dev,etc,lib,new_root,proc,sys}
+
+rm -rf $MOUNT_POINT/lost+found
+
+# Copying Static Programs
+#
+echo "	Copying Files..."
+cp -a /etc/fstab $MOUNT_IMAGE/etc/fstab
+
+if [ "$KER_VER_REL" == "2.4" ]
+	then
+		cp -a /etc/modules.conf $MOUNT_IMAGE/etc/modules.conf
+fi
+
+if [ "$KER_VER_REL" == "2.6" ]
+	then
+		cp -a /etc/modprobe.conf $MOUNT_IMAGE/etc/modprobe.conf
+fi
+
+cp -a /bin/busybox.static $MOUNT_IMAGE/bin/busybox
+cp -a /bin/busybox.static /bin/busybox
+cp -a /bin/busybox $MOUNT_IMAGE/bin/busybox
+ln -s /bin/busybox $MOUNT_IMAGE/bin/echo
+ln -s /bin/busybox $MOUNT_IMAGE/bin/insmod
+ln -s /bin/busybox $MOUNT_IMAGE/bin/mount
+ln -s /bin/busybox $MOUNT_IMAGE/bin/pivot_root
+ln -s /bin/busybox $MOUNT_IMAGE/bin/sh
+ln -s /bin/busybox $MOUNT_IMAGE/bin/[
+rm -f /bin/busybox
+
+# Copying Modules
+#
+rm -f /tmp/copiedmodules
+
+MODULES="`cat /tmp/foundmodules`"
+for MODULE in $MODULES
+	do
+		echo "$MODULE" | {
+			IFS=':' read module
+			find_module "$module.$EXTENSION"
+			REMOVE_MOD="0"
+
+			if ! [ "$SEARCH" == "" ]
+				then
+
+					if ! [ -e $MOUNT_IMAGE/lib/$module.$EXTENSION ]
+						then
+							for remove in $REMOVE_MODULE
+								do
+
+									if [ "$remove" == "$module" ]
+										then
+											REMOVE_MOD="1"
+									fi
+								done
+	
+							if [ "$REMOVE_MOD" != "1" ]
+								then
+									cp $SEARCH $MOUNT_IMAGE/lib
+									echo "$module" >> /tmp/copiedmodules
+							fi
+					fi
+			fi
+	           }
+	done
+
+for i in console null ram0 tty[1234]
+	do
+		cp -a /dev/$i $MOUNT_IMAGE/dev
+done
+
+# Create non DEVFSD devices
+#
+if ! [ -e /dev/.devfsd ]
+	then
+		DEVICES="$(awk '/^[ \t]*[^#]/ { print $1; }' /etc/fstab)"
+		for device in $DEVICES
+			do
+				if [ -e $device ]
+					then
+						cp -a $device $MOUNT_IMAGE/dev
+				fi
+			done
+fi
+
+# Creating linuxrc File
+#
+echo "#!/bin/sh" > $LINUXRC
+echo "echo \"Initial RAMDISK Loading Starting...\"" >> $LINUXRC
+
+MODULES="`cat /tmp/copiedmodules`"
+for MODULE in $MODULES
+	do
+		echo "$MODULE" | {
+		IFS=':' read module
+
+		echo "		Module $module added to initrd."
+		echo "insmod /lib/$module.$EXTENSION" >> $LINUXRC
+		}
+done
+
+echo "echo \"Mounting proc...\"" >> $LINUXRC
+echo "mount -n -t proc none /proc" >> $LINUXRC
+
+if [ "$KER_VER_REL" == "2.6" ]
+	then
+		echo "echo \"Mounting sys...\"" >> $LINUXRC
+		echo "mount -n -t sysfs none /sys" >> $LINUXRC
+fi
+
+echo "echo 0x0100 > /proc/sys/kernel/real-root-dev" >> $LINUXRC
+echo "echo \"Mounting real root dev...\"" >> $LINUXRC
+echo "mount -n -o ro $ROOT_DEVICE /new_root" >> $LINUXRC
+echo "echo \"Running pivot_root...\"" >> $LINUXRC
+echo "pivot_root /new_root /new_root/initrd" >> $LINUXRC
+
+if [ "$REMOVE_DEVFS" == "0" ]
+	then
+		echo "if [ -c initrd/dev/.devfsd ]" >> $LINUXRC
+		echo "	then" >> $LINUXRC
+		echo "		echo \"Mounting devfs...\"" >> $LINUXRC
+		echo "		mount -n -t devfs none dev" >> $LINUXRC
+		echo "fi" >> $LINUXRC
+fi
+
+echo "if [ \$\$ = 1 ]" >> $LINUXRC
+echo "	then" >> $LINUXRC
+echo "		echo \"Running init...\"" >> $LINUXRC
+echo "		exec chroot . sbin/init dev/console 2>&1" >> $LINUXRC
+echo "	else" >> $LINUXRC
+echo "		echo \"Using bug circumvention for busybox...\"" >> $LINUXRC
+echo "		exec chroot . sbin/linuxrc dev/console 2>&1" >> $LINUXRC
+echo "fi" >> $LINUXRC
+chmod +x $LINUXRC
+
+echo "echo \"Initial RAMDISK Loading Completed...\"" >> $LINUXRC
+
+# Unmount and Compress initrd
+#
+(cd $MOUNT_IMAGE; tar cf - .) | (cd $MOUNT_POINT; tar xf -)
+
+if [ "$INITRDFS" == "ext2" ] || [ "$INITRDFS" == "ext3" ]
+	then
+		umount $MOUNT_POINT
+		losetup -d $LOOP_DEVICE
+fi
+
+gzip -9 < $IMAGE > $INITRD
+
+# Remove all temp files
+#
+rm -rf $MOUNT_IMAGE $MOUNT_POINT $IMAGE
+rm -f /tmp/foundmodules
+rm -f /tmp/copiedmodules
+rm -f /tmp/config
+
+if [ -e $INITRD ]
+	then
+		echo "Initrd was created.."
+fi

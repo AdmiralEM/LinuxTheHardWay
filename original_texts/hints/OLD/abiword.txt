@@ -1,0 +1,111 @@
+TITLE:		Installation of Abiword
+LFS VERSION:	any
+AUTHOR:		J. E. Garrot, Sr <johnga@primenet.com>
+
+SYNOPSIS:
+	How to install Abiword from source.
+
+HINT:
+Abiword is quite easy to install, but there are a couple of
+gotcha's.  Note that I did not install the gnome version.
+
+The URL for the sources is:
+
+    http://www.abisource.com/downloads/Version-0.7.11/lf/
+
+or, if you prefer:
+
+    ftp://ftp.abisources.com/releases/0.7.1/src/lf
+
+The required files and approximate sizes (for Linux only :)
+(Actually, you have a choice.  You can download .zip versions
+of the following. . .if you wish.)
+
+    abi-0.7.11.tar.gz           4.4M
+    abidistfiles-0.7.11.tar.gz  546k
+    expat-0.7.11.tar.gz          65k
+    libiconv-0.7.11.tar.gz      1.4M
+    libpng-0.7.11.tar.gz        228k
+    unixfonts-0.7.11.tar.gz     1.8M
+    wv-0.7.11.tar.gz            1.1M
+    zlib-0.7.11.tar.gz          168k
+
+You don't have to download anything that you already have,
+except xpat.  It is important that the other files are untarred
+and unzipped in the same directory as abi-0.7.11
+
+In addition, you must have XFree86 installed.  I used 4.01, but
+3.3.6 should work fine.
+
+Also gtk, glib, gdk, etc.  Version 2.2 or higher.
+
+After downloading the necessary files, untar and unzip them
+in whatever directory you wish.  (I build everything in /usr/src,
+but this is arbritrary.)
+
+BUILD_DIR=/usr/src   (You don't have to set a shell variable.  Just
+substitute the value whereever $BUILD_DIR occurs below.)
+
+Preparation:
+
+    Now, because I know you didn't read the Developer's FAQ . . .:-)
+    I will tell you how to build the shared version.  (You didn't make
+    static versions of everything, including XFree86, did you?)
+
+    First, cd to $BUILD_DIR/abi-0.7.11/src/config/platforms
+
+    Then edit the file linux.mk, changing "UNIX_CAN_BUILD_STATIC=1"
+    to "UNIX_CAN_BUILD_STATIC=0".  (Without the quotes, naturally :)
+
+    No, you are not done yet.  We now come to the reason I decided to
+    write this little note.  The following edit is not in the FAQ.
+
+    cd to $BUILD_DIR/abi-0.7.11/src/config/require/unix and
+    edit the Makefile.
+
+    Change all occurances of "libz.a" to "libz.so".
+    Change all occurances of "libpng.a" to "libpng.so".
+    Again without the quotes in both cases.
+
+Compiling:
+
+    You may wish to install the binaries somewhere else.
+    INSTALL_DIR=/usr/local  (See the comment to BUILD_DIR above.)
+
+    cd $BUILD_DIR
+
+    ln -s abi-0.7.11 abi
+    cd abi
+
+    Simple way:
+
+        make
+        make install
+
+    Harder, but nicer:
+
+        make distribution prefix=$INSTALL_DIR \
+        ABI_BUILD_VERSION=0.7.11 ABI_DIST_TARGET=<fmt>
+
+        where <fmt> is one of 'tgz', 'rpm', 'deb', 'slp', 'pkg'.
+
+        This will place the appropriate file(s) in abi/dist.  They
+        may then be installed in the normal manner.  If you want to
+        install in /usr/local, then leave out the prefix= argument.
+
+        Well, since this is a hint, in abi/dist there is a file,
+        abisuite-0.7.11-Linux_i386_shared.tar.gz.  Untar this somewhere,                enter the resulting abisuite-0.7.11-Linux_i386_shared directory
+        and run install.sh.  You should now be up and running.
+
+        Try typing "abiword &".  It should come up.  (What?  You didn't
+        forget to put $INSTALL_DIR in your path, I hope.)
+
+Now save $BUILD_DIR/abi-0.7.11/dist/abisuite-0.7.11-Linux_i386_shared.tar.gz
+to whereever you save such things.  (If you're not going to save it,
+why did you create it in the first place?)
+
+If you have any problems, the best place to air them is at
+lfs-apps@linuxfromscratch.org, so others can possibly benefit from
+the answers.  However, I will certainly try to answer any questions
+on this install that are directed to me privately.
+Just remember, it may be a case of the blind leading the blind.

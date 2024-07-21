@@ -1,0 +1,762 @@
+TITLE:		Compiling Mozilla and Installing Plugins
+
+LFS VERSION:	LFS-4.0
+
+AUTHOR:         Tushar Teredesai <Tushar@LinuxFromScratch.Org>
+
+SYNOPSIS:
+	How to compile 'Mozilla from Scratch' and install some relevant plugins.
+
+HINT:
+
+Primary Location of this hint:
+        http://www.linuxfromscratch.org/~tushar/
+The latest version of the hint and any relevant patches are available at that
+site. Please refer to the primary location before submitting
+bug-reports/enhancements to this hint.
+
+You may freely copy this document or create derivate works or distribute the
+document in any format. At your discretion, you may give credit to the original
+author:)
+
+Use the hint at your own risk. Neither the author, nor the Linux From Scratch
+project accepts any reponsibility for anything that happens when using these
+documents or associated files.
+
+An appropriate place to discuss this hint is blfs-support MailingList/NewsGroup
+at LinuxFromScratch.Org.
+
+Change Log:
+[2002-12-25]
+        * Changed primary location and e-mail address.
+[2002-11-29]
+	* Added fontconfig and Xft2 support for gtk2 builds (unstable).
+	* Upgrade to mozilla-1.2.
+[2002-11-13]
+	* Upgraded to gtk2.
+	* Added triple install (mozilla-1.0.1, mozilla-1.2b, phoenix).
+[2002-09-28]
+	* Added instructions for Phoenix.
+[2002-09-23]
+	* Added spellchecker, enigmail and easysearch extensions.
+[2002-09-22]
+	* Added modifications required for OpenOffice.
+[2002-09-12]
+	* Changed location of nss headers from nss to security.
+[2002-09-09]
+	* Added lcms dependency.
+[2002-09-08]
+	* Added notes for Galeon suggested by Scot Mc Pherson.
+[2002-08-30]
+	* Added comment on LD_LIBRARY_PATH and /etc/ld.so.conf.
+	* Added comment on dowloading gcc2 libraries for precompiled mozilla.
+[2002-08-14]
+	* Added warning regarding stripping mozilla-bin.
+	* Added Problems and workarounds section.
+[2002-08-07]
+	* Made individual patches.
+[2002-07-12]
+	* Added link netscape -> mozilla.
+[2002-06-20]
+	* Changed the CFLAGS I use.
+[2002-06-19]
+	* Added alternate site for hint.
+[2002-06-17]
+	* Added "make install" option.
+	* Added MOZ_PLUGIN_PATH.
+	* Added warning for GTK2 option.
+[2002-05-14]
+	* Added explanations for configure options.
+	* Added options to build only the browser.
+[2002-04-28]
+	* Add gtk2 toolkit option.
+	* Added a section to list of relevant URLs.
+[2002-04-24]
+	* Added hack to ignore autocomplete=off attribute used by some websites.
+	* Added some useful preference settings.
+[2002-04-22]
+	* Fixed some typos, again!
+	* Renamed hint to mozilla.
+	* Added warning for CFLAGS, CXXFLAGS.
+	* Added warning for QT and XLib toolkits.
+	* Added info about pre-compiled distributions.
+	* Added MOZILLA_FIVE_HOME to .mozconfig.
+	* Added instructions to copy man page, header files and idl files.
+[2002-03-28]
+	* Fixed some typos.
+	* Environment variable to speed up Mozilla.
+	* First version as mozcompile.
+
+Pre-requisites (Post-LFS):
+	* X 4.2.0
+		<http://freshmeat.net/projects/xfree86/>
+	* which
+		<http://freshmeat.net/projects/which/>
+	* GLib
+		<http://freshmeat.net/projects/glib/>
+	* GTK+
+		<http://freshmeat.net/projects/gtk/>
+	* libIDL
+		<http://freshmeat.net/projects/libidl/>
+		<http://freshmeat.net/projects/orbit/>
+	* libjpeg
+		<http://freshmeat.net/projects/libjpeg/>
+	* libpng
+		<http://freshmeat.net/projects/libpng/>
+	* libmng
+		<http://freshmeat.net/projects/libmng/>
+	* LCMS
+		<http://freshmeat.net/projects/lcms/>
+	* Info Zip >=2.3
+		<http://freshmeat.net/projects/zip/>
+Installation of all these packages is covered in the BLFS book at
+<http://beyond.linuxfromscratch.org>. As per the BLFS book, I have all packages
+installed in /usr, so if you install in a non-standard location, you are on your
+own.
+
+Packages to download:
+	* iCal [Optional]
+		<http://freshmeat.net/projects/libical/>
+	* Mozilla:)
+		<http://freshmeat.net/projects/mozilla/>
+	* Mozilla SpellChecker
+		<http://spellchecker.mozdev.org/source.html>
+	* FontConfig
+		<http://fontconfig.org>
+
+Which Mozilla version?
+
+I use Mozilla-1.2 for regular use. But I also install a copy of Mozilla-1.0.1
+since it is the stable version and hence useful for experimenting with packages
+such as japhar, openoffice, sun-jdk. I also use Phoenix browser for general
+browsing. I have Mozilla-1.2 and Phoenix-0.4 installed in the system wide
+prefix /usr and Mozilla-1.0.1 installed in /opt/mozilla.
+
+The Mozilla instructions below are, for the most part, applicable to both
+Mozilla-1.0.1 and Mozilla-1.2. Instructions for Phoenix are in the latter part
+of the hint.
+
+GLIb & GTK+:
+
+I use the GTK2 as the default toolkit. But if you want to play it safe, use
+GTK1.
+
+libIDL:
+
+You may use the latest libIDL (0.8.0), also known as libIDL2. Mozilla-1.2
+automatically utilizes libIDL2. But for Mozilla-1.0.1 you will need to do the
+following so that libIDL2 is properly recognized. This is assuming that you
+don't have Orbit1 or libIDL-0.6.x installed.
+	export LIBIDL_CONFIG=/usr/bin/libIDL-config-2
+	ln -sf libIDL-2.so /usr/lib/libIDL.so
+The variable LIBIDL_CONFIG needs only to be set when configuring Mozilla. You
+may unset it latter.
+
+CVS:
+
+If you plan to install the calendar component or any mozdev projects, you will
+need a CVS client to download the relevant code. See the BLFS-book for
+instructions to install a CVS client.
+
+
+Preparations for installing Calendar component:
+
+libical is only required if you want to play around with calendar. I had
+problems building Mozilla calendar, YMMV. Also, mozilla requires the libical
+that is available from mozilla's CVS (dubbed 0.23a).
+	cvs -d :pserver:anonymous@cvs-mirror.mozilla.org:/cvsroot co \
+		mozilla/other-licenses/libical &&
+	cd mozilla/other-licenses/libical &&
+	./autogen.sh --prefix=/usr --disable-python-bindings &&
+	make &&
+	make install
+
+The released source tarballs don't include the calendar component. Download it
+using the following instructions:
+	cvs -d :pserver:anonymous@cvs-mirror.mozilla.org:/cvsroot co \
+		mozilla/calendar
+After you untar mozilla tarball, move this directory to where the mozilla source
+code is.
+	rm -rf $MOZ_SRC/calendar
+	mv mozilla/calendar $MOZ_SRC
+
+
+Preparations for installing mozdev projects:
+(Spellchecker, Protozilla, Enigmail, Easysearch)
+
+All these mentioned projects are part of mozdev. Spellchecker aims to provide
+spellchecking for composer and mail. Protozilla allows extending the protocols
+supported by mozilla. Enigmail provides authentication and encryption features
+(via GNU PG or PGP). Easy Search bar provides a search bar (similar to the
+Google bar). For further information on mozdev, check out <http://mozdev.org>.
+
+Enigmail requires that you have GNU Privacy Guard or PGP installed. Installation
+of GNU PG (available at http://www.gnupg.org) is the usual ./configure dance
+routine which now you must be really familiar with:) Enigmail also depends on
+Protozilla.
+
+You will need to download the code for these applications via CVS. The password
+for anonymous cvs access is "guest".
+
+	cd $MOZ_SRC
+	mkdir mozdev
+	export CVSROOT=":pserver:guest@mozdev.org:/cvs"
+	cvs login
+	cvs co spellchecker/spellcheck
+	cvs co protozilla/ipc
+	cvs co protozilla/pipella
+	cvs co enigmail/src
+	cvs co easysearch/www/download
+
+Except for the easysearch, all other packages are to be built within the mozilla
+source tree. Also, there is a difference in the way these projects are built.
+Spellchecker can be built along with mozilla as extensions. Protozilla and
+Enigmail need to be built after building the entire mozilla build. Easy Search
+is added after installing mozilla.
+
+First lets move the files to the appropriate locations.
+	mv spellchecker/spellcheck $MOZ_SRC/extensions
+	mv protozilla/ipc $MOZ_SRC/extensions
+	mv protozilla/pipella $MOZ_SRC/extensions
+	mv enigmail/src $MOZ_SRC/extensions/enigmail
+
+
+Installing FontConfig and Xft:
+
+Fontconfig is needed to enable xft support in Mozilla. 1.0.x versions use an
+internal copy of fontconfig, but it has been removed since the 1.1 series.
+
+Fontconfig and Xft are going to be incorporated into X-4.3. Till then they are
+available as seperate packages. Installing these packages in the standard X
+prefix (/usr/X11R6) caused me a lot of problems with many GNOME2 packages. Hence
+I installed these with a seperate prefix and renamed the Xft lib to Xft2. That
+way the apps that have not yet been upgraded to Xft2 can still continue to link
+against libXft.so while apps such as mozilla can link against libXft2.so.
+
+Download the fontconfig package from the URL mentioned above and install it as
+follows. Remember to add /opt/xft/lib to /etc/ld.so.conf.
+	cd fontconfig
+	./configure --prefix=/opt/xft
+	make
+	make install
+	ln -sf /opt/xft/pkgconfig/fontconfig.pc /usr/lib/pkgconfig
+	cd ..
+	cd Xft
+	for i in xft.pc.in xft-config.in
+	do
+		cp $i $i.orig
+		sed -e "s:\-lXft:\-lXft2:g" $i.orig > $i
+	done
+	export CFLAGS="$CFLAGS -L/opt/xft/lib"
+	export CXXFLAGS="$CFLAGS -L/opt/xft/lib"
+	export CPPFLAGS="-I/opt/xft/include"
+	./configure --prefix=/opt/xft
+	make
+	make install
+	mv /opt/xft/lib/libXft.so /opt/xft/lib/libXft2.so
+	ln -sf /opt/xft/pkgconfig/xft.pc /usr/lib/pkgconfig
+
+WARNING: Though I got the build to compile, I got runtime errors. I don't know
+whether it was a problem with Mozilla or incorrect configuration of fontconfig.
+So use the Xft option at your own risk.
+
+
+Compiling Mozilla:
+
+Apply patches that you think are useful from the site mentioned above. Some of
+the patches are specific to the Mozilla version. For Galeon users, it is better
+to stick with Mozilla 1.0.x for now. The VERSION variable refers to the Mozilla
+version.
+
+One option is to pass the options to configure. Alternatively, these options can
+be placed in a file .mozconfig that is read by Mozilla's configure script. I
+prefer latter method (useful for recompiles).
+
+First we will set the flags so that we can build a distribution rather than
+having to run Mozilla from the directory we compiled.
+	export MOZILLA_OFFICIAL=1
+	export BUILD_OFFICIAL=1
+	export MOZ_INTERNAL_LIBART_LGPL=1
+The third export specifies that you accept the LGPL License for libart. This is
+required for SVG support and is recommended.
+
+Set CFLAGS and CXXFLAGS based on your needs. I have had no problems setting both
+CFLAGS and CXXFLAGS to "-O3 -march=i686 -fforce-addr -funroll-loops
+-frerun-cse-after-loop -frerun-loop-opt -falign-functions=4
+-fomit-frame-pointer". YMMV. Though, for my default build I use "-O3 -march=i686
+-fomit-frame-pointer -fexpensive-optimizations -s -w".
+
+First try
+	cd $MOZ_SRC &&
+	./configure --help
+to understand all the options that are available to you.
+
+Now create the .mozconfig file containing the options you want. The .mozconfig
+file can be in various locations (home directory of the user compiling, or in a
+hierarchy above the mozilla source directory). Since I use MSB's package user
+hint, I prefer to keep the file in the home directory.
+
+There are options that you can use to install just the browser and skip all the
+additional baggage that comes along with mozilla. These are some of the common
+options along with short descriptions.
+
+Mozilla now supports the "make install" option:) I prefer installing mozilla in
+one of the standard locations such as /usr. You may prefer to install it in
+/opt/mozilla. I will refer to this as MOZ_PREFIX.
+	echo ac_add_options --prefix=$MOZ_PREFIX >> .mozconfig
+
+The --enable-default-mozilla-five-home is not relevant anymore since mozilla
+installs in the standard locations.
+
+Redundant but here for the sake of completeness:)
+	echo ac_add_options --with-x >> .mozconfig
+
+Use the packages we have installed as against using the ones available with
+mozilla.
+	echo ac_add_options --with-system-jpeg >> .mozconfig
+	echo ac_add_options --with-system-zlib >> .mozconfig
+	echo ac_add_options --with-system-png >> .mozconfig
+	echo ac_add_options --with-system-mng >> .mozconfig
+
+Build the calendar client (optional).
+	echo ac_add_options --enable-calendar >> .mozconfig
+
+Disable the mail and news client (optional).
+	echo ac_add_options --disable-mailnews >> .mozconfig
+
+Disable LDAP Support, recommended if mail is disabled.
+	echo ac_add_options --disable-ldap >> .mozconfig
+
+Enable the Xft support (this is unstable).
+	echo ac_add_options --enable-xft >> .mozconfig
+
+Enable the Personal Security Manager to enable SSL connections.
+	echo ac_add_options --enable-crypto >> .mozconfig
+
+Disable all debugging options and enable all optimization options. Pick and
+choose.
+	echo ac_add_options --disable-accessibility >> .mozconfig
+	echo ac_add_options --disable-tests >> .mozconfig
+	echo ac_add_options --disable-debug >> .mozconfig
+	echo ac_add_options --enable-optimize=-O3 >> .mozconfig
+	echo ac_add_options --disable-logging >> .mozconfig
+	echo ac_add_options --enable-reorder >> .mozconfig
+	echo ac_add_options --enable-strip >> .mozconfig
+	echo ac_add_options --enable-elf-dynstr-gc >> .mozconfig
+	echo ac_add_options --enable-cpp-rtti >> .mozconfig
+Among the above options, --disable-accessibility and --disable-logging cause
+problems in a GTK2 build.
+
+Some features are only required for developer of webapplications (Optional):
+	echo ac_add_options --disable-jsd >> .mozconfig
+	echo ac_add_options --disable-dtd-debug >> .mozconfig
+
+The following option is for enabling the xterm title with the current command
+when compiling.
+	echo ac_add_options --enable-xterm-updates >> .mozconfig
+
+Disable support for HTML editing (optional).
+	echo ac_add_options --enable-plaintext-editor-only >> .mozconfig
+
+Enable extensions you want. I prefer to enable all the extensions:)
+	echo ac_add_options --enable-extensions="all" >> .mozconfig
+If you want to include spellchecker, then change the above line to:
+	echo ac_add_options \
+		--enable-extensions="all,spellcheck" >> \
+		.mozconfig
+You may also pick and choose the extensions you want. To disable everything
+other than the browser, use the following.
+	echo ac_add_options \
+		--enable-extensions="default,-venkman,-inspector,-irc" >> \
+		.mozconfig
+
+Enable SVG (Scalable Vector Graphics) support.
+	echo ac_add_options --enable-svg >> .mozconfig
+
+Mozilla now supports both gtk 1.2 and gtk 2.0. To enable gtk2 support:
+	echo "ac_add_options --enable-toolkit-gtk2" >> .mozconfig
+	echo "ac_add_options --enable-default-toolkit=gtk2" >> .mozconfig
+
+The QT and XLib toolkit support are not stable and may (!) fail to compile. Try
+compiling without these first and if all goes well, experiment with the other
+toolkits. If you would like to help out with the QT port of Mozilla, check out
+the Mozilla Developer NGs since they are looking for developers.
+
+<WARNING>
+According to the financial institutions, the following hack makes your browser
+insecure. IMO, it is no more insecure than using MS-IIS (along with its security
+history) as the server for financial sites;) You have been warned. Many sites
+use an MS-IE specific tag (autocomplete=off) to prevent autocomplete from
+working in some forms. This tag is now supported in mozilla to appease the
+financial institutions. As per the requirements of the financial institutions,
+they will not even accept a solution where this a preference option. My opinion
+is that it should be in the hands of the user. To enable autocomplete to bypass
+this restriction, we need to make a slight modification in the code. Note that
+this modification is also available as a patch.
+</WARNING>
+
+<HACK>
+Open the file $MOZ_SRC/extensions/wallet/src/wallet.cpp and search for
+the line 
+	#define WALLET_DONT_CACHE_ALL_PASSWORDS
+and delete or comment out the line.
+</HACK>
+
+If anyone tells you MS-IE is user friendly, give them this example and explain
+to them the distinction between corporate friendly and user friendly:)
+
+Now configure the package as usual. If there are problems run configure again by
+removing the offending option.
+	./configure
+
+If you have enabled xft support, mozilla needs Xft2 headers but in the
+Makefiles, /usr/X11R6/include appears before /opt/fontconfig/include and hence
+the build picks up Xft headers installed by X (i.e. Xft1) and the build craps
+out. The easiest fix is to sed in the Xft2 headers to appear before X11 headers.
+	cd config
+	cp autoconf.mk autoconf.mk.orig
+	sed -e "s:\-I\/usr\/X11R6\/include:\-I\/opt\/xft\/include \
+		\-I\/usr\/X11R6\/include:g" autoconf.mk.orig > autoconf.mk
+	cd ..
+
+Now do the usual build stuff.
+	make
+This will take a few hours to compile. Watch your favorite Startrek movie.
+
+If you plan to include Enigmail, then you will need to compile it since it needs
+to be built after the entire mozilla is built. Also since it depends on
+Protozilla, Protozilla is built first.
+	cd extensions
+	for subdir in ipc pipella enigmail
+	do
+		cd $subdir
+		./makemake
+		make
+		cd ..
+	done
+The makemake command generates the Makefile. make compiles the package:)
+
+You have two options, installing mozilla in the standard locations or making a
+distribution that can be installed on various computers.
+
+Installing mozilla on top of an existing installation creates some problems. So
+I usually delete the previous installation before installing a new one. There is
+no need to delete your profile, just delete the installed package.
+
+If you would like to install in the standard locations do the standard:
+	cd $MOZ_SRC
+	make install
+The nss headers are not installed by default, so do the following.
+	install -d $MOZ_PREFIX/include/mozilla-$VERSION/nss
+If you are installing Mozilla-1.0.1, do
+	cp -Lf dist/private/security/*.h dist/public/security/*.h \
+		$MOZ_PREFIX/include/mozilla-$VERSION/nss
+If you are installing Mozilla-1.2, do
+	cp -Lf dist/private/nss/*.h dist/public/nss/*.h \
+		$MOZ_PREFIX/include/mozilla-$VERSION/nss
+
+Also, if you are installing mozilla-1.0, then all header files may not copied
+and hence packages (such as Galenon) that depend on mozilla cannot be compiled.
+So do the following to verify that all header files are copied.
+	cp -Lur dist/include/* $MOZ_PREFIX/include/
+
+Now we make some symlinks so that apps (OpenOffice, Gnome) that depend on
+Mozilla don't need to know the mozilla version that is installed to use the
+headers and libraries installed by Moz.
+	ln -nsf mozilla-${VERSION} ${MOZ_PREFIX}/include/mozilla
+	ln -nsf mozilla-${VERSION} ${MOZ_PREFIX}/lib/mozilla
+
+Also if you plan on compiling OpenOffice and link it to Mozilla address book,
+then you will need to copy some static libraries that are not installed by "make
+install".
+	install -d ${MOZ_PREFIX}/lib/mozilla-${VERSION}/openoffice
+	cp -f dist/lib/libembed_base_s.a dist/lib/liblber50.a \
+		dist/lib/libmozreg_s.a \
+		${MOZ_PREFIX}/lib/mozilla-${VERSION}/openoffice
+
+If you want to install the easysearch toolbar, do the following: (There was no
+way I could fit the following in a 80 column width)
+	cd $MOZ_SRC/mozdev/easysearch/www/download
+	unzip -qq -o easysearch_e0983.xpi
+	cp -a easysearch.jar $MOZ_PREFIX/lib/mozilla-${VERSION}/chrome
+	echo \
+'content,install,url,jar:resource:/chrome/easysearch.jar!/content/easysearch/' \
+		>> chrome/installed-chrome.txt
+	echo \
+'locale,install,url,jar:resource:/chrome/easysearch.jar!/locale/en-US/easysearch/' \
+		>> chrome/installed-chrome.txt
+
+There are many search engines that you can add to the easysearch toolbar.
+Download the easysearch plugins tarball from the project's homepage and copy the
+engines you need to ${MOZ_PREFIX}/lib/mozilla-${VERSION}/searchplugins.
+
+Do the following to register the components (else the build segfaults if the
+user running mozilla does not have write access to the installation directories.
+Note that the MOZILLA_FIVE_HOME and LD_LIBRARY_PATH are not relevant anymore
+when running mozilla.
+	export LD_LIBRARY_PATH=/usr/X11R6/mozilla-$VERSION:$LD_LIBRARY_PATH
+	export MOZILLA_FIVE_HOME=/usr/X11R6/mozilla-$VERSION
+	rm -rf chrome/overlayinfo chrome/*.rdf
+	mkdir chrome/overlayinfo
+	$MOZ_PREFIX/lib/mozilla-$VERSION/regxpcom
+	$MOZ_PREFIX/lib/mozilla-$VERSION/regchrome
+	touch `find $MOZ_PREFIX/lib/mozilla-$VERSION -name *.rdf`
+
+Some apps look for netscape for starting the browser (RMS has started a movement
+so that these apps start recognizing the BROWSER env variable). Till then it is
+better to do a symlink.
+	ln -sf mozilla netscape
+in the directory where the mozilla startup script is installed (/usr/X11R6/bin).
+
+To make a distribution that you would like to install on other machines:
+	cd xpinstall/packager &&
+	make &&
+	cd /opt &&
+	tar -xzf $MOZ_SRC/dist/mozilla-i686-pc-linux-gnu.tar.gz &&
+	cd $MOZ_SRC/dist &&
+	cp -LfR man /opt/mozilla &&
+	cp -LfR idl /opt/mozilla &&
+	cp -LfR include /opt/mozilla &&
+	mkdir /opt/mozilla/include/security &&
+	cp -Lf private/security/*.h /opt/mozilla/include/security &&
+	cp -Lf public/security/*.h /opt/mozilla/include/security &&
+	install -d /opt/mozilla/openoffice
+	cp -f lib/libembed_base_s.a lib/liblber50.a lib/libmozreg_s.a \
+		/opt/mozilla/openoffice
+	cd /opt &&
+	tar -cvzf mozilla-dist.tar.gz mozilla/
+The above commands create a binary distribution, installs it in /opt/mozilla,
+copies the man pages and header files to the installation and then creates a
+distribution that can be untarred on other machines.
+
+Now we make some environment settings.
+
+If you install mozilla in a non-standard location, make sure that the location
+is in your PATH. Also you may add the man page to your MANPATH.
+	export PATH=$PATH:/opt/mozilla
+	export MANPATH=$MANPATH:/opt/mozilla/man
+In addition, if you plan on using Galeon, then you will need to export
+MOZILLA_FIVE_HOME, though it is not required for running Mozilla. There is no
+need to add the mozilla libraries to /etc/ld.so.conf since the startup script
+automatically adjusts the library paths that it requires (such as the Mozilla
+libraries, the plugin directories, etc.).
+
+To make your Mozilla build go faster, add:
+	export XPCOM_CHECK_THREADSAFE=0
+in .bash_profile or in run-mozilla.sh. This apparently only affects debug
+builds, but no harm in setting it for optimized builds.
+
+I use a different location for the Mozilla plugins so that I can keep remove and
+reinstall mozilla without affecting the plugins. If you do this set the
+MOZ_PLUGIN_PATH to the appropriate directory. I use:
+	export MOZ_PLUGIN_PATH=/opt/mozilla-plugins
+
+Please note that you shouldn't need any modifications with /etc/ld.so.conf
+and/or LD_LIBRARY_PATH env variable. The mozilla wrapper scripts takes care of
+adding all the required libraries to LD_LIBRARY_PATH before running mozilla-bin.
+So don't modify either LD_LIBRARY_PATH or /etc/ld.so.conf. IMO, /etc/ld.so.conf
+should only list the standard system wide library locations.
+
+Enzoy:)
+
+
+Installing Phoenix:
+
+Phoenix is a redesign of the Mozilla browser component written using the XUL
+user interface language and designed to be cross-platform.
+
+You will need do download the Phoenix code using CVS. I won't discuss the
+options since they have alreay been discussed before. Most of the options
+discussed above apply (such as the wallet hack and creating the registry for
+multi user installs) apply when building phoenix.
+
+One problem with Phoenix is that the source tar balls for each version are not
+available, so the only way to install is to use cvs. There is a bug report to
+make source tarballs available for Phoenix (Bug # 175934).
+
+In the following PHOENIX_SRC refers to the directory where you want to compile
+Phoenix source code.
+	cd $PHOENIX_SRC
+	cd ..
+	export CVSROOT=":pserver:anonymous@cvs-mirror.mozilla.org:/cvsroot"
+	cvs co mozilla
+	cvs co mozilla/toolkit
+	cvs co mozilla/browser
+	cd  $PHOENIX_SRC
+	export MOZILLA_OFFICIAL=1
+	export BUILD_OFFICIAL=1
+	export MOZ_INTERNAL_LIBART_LGPL=1
+	export MOZ_PHOENIX=1
+	echo "ac_add_options --prefix=${MOZ_PREFIX}" >> .mozconfig
+	echo "ac_add_options --enable-default-mozilla-five-home" >> .mozconfig
+	echo "ac_add_options --with-x" >> .mozconfig
+	echo "ac_add_options --with-system-jpeg" >> .mozconfig
+	echo "ac_add_options --with-system-zlib" >> .mozconfig
+	echo "ac_add_options --with-system-png" >> .mozconfig
+	echo "ac_add_options --with-system-mng" >> .mozconfig
+	echo "ac_add_options --disable-mailnews" >> .mozconfig
+	echo "ac_add_options --disable-ldap" >> .mozconfig
+	echo "ac_add_options --enable-xft" >> .mozconfig
+	echo "ac_add_options --enable-crypto" >> .mozconfig
+	echo "ac_add_options --enable-java-supplement" >> .mozconfig
+	echo "ac_add_options --disable-jsd" >> .mozconfig
+	echo "ac_add_options --disable-accessibility" >> .mozconfig
+	echo "ac_add_options --disable-tests" >> .mozconfig
+	echo "ac_add_options --disable-debug" >> .mozconfig
+	echo "ac_add_options --enable-optimize=-O3" >> .mozconfig
+	echo "ac_add_options --disable-dtd-debug" >> .mozconfig
+	echo "ac_add_options --disable-logging" >> .mozconfig
+	echo "ac_add_options --enable-reorder" >> .mozconfig
+	echo "ac_add_options --enable-strip" >> .mozconfig
+	echo "ac_add_options --enable-elf-dynstr-gc" >> .mozconfig
+	echo "ac_add_options --enable-cpp-rtti" >> .mozconfig
+	echo "ac_add_options \
+		--enable-extensions=default,-venkman,-inspector,-irc" \
+		>> .mozconfig
+	echo "ac_add_options --enable-svg" >> .mozconfig
+	./configure
+	make
+If we use make install, it will overwrite the mozilla installation, hence do the
+following to copy phoenix.
+	install -d ${MOZ_PREFIX}/lib/phoenix-${VERSION}
+	cp -LfR dist/bin/* ${MOZ_PREFIX}/lib/phoenix-${VERSION}
+	ln -sf ${MOZ_PREFIX}/lib/phoenix-${VERSION}/phoenix ${MOZ_PREFIX}/bin/phoenix
+	cd ${MOZ_PREFIX}/lib/phoenix-${VERSION}
+	export LD_LIBRARY_PATH="${MOZ_PREFIX}/lib/phoenix-${VERSION}"
+	export MOZILLA_FIVE_HOME="${MOZ_PREFIX}/lib/phoenix-${VERSION}"
+	rm -rf chrome/overlayinfo chrome/*.rdf
+	mkdir chrome/overlayinfo
+	./regxpcom
+	./regchrome
+	touch `find ${MOZ_PREFIX}/lib/phoenix-${VERSION} -name *.rdf`
+
+
+Installing a pre-compiled distribution:
+
+An alternative is to install a pre-compiled Mozilla distribution. Though against
+"the spirit of LFS", the reasons you may wish to do so:
+	1. Chicken and egg problem:) You are having problems compiling Mozilla
+	   and till you resolve them, you need a browser to get support with the
+	   debugging.
+	2. You don't want to spend 5 hours (thats how long it takes on my P-II
+	   350) compiling.
+	3. You are content with the options used by the pre-compiled
+	   distribution.
+	4. You have a GCC3 CVS and you would like to use a GCC2 compiled mozilla
+	   so that commercial plugins can work without problems. Though I am
+	   using all the plugins (except for Real) mentioned below without
+	   problems.
+
+If so, head over to mozilla.org and download the "talkback enabled full
+installer" and read the installation instructions in the release notes.
+Remember to follow the instructions for multi-user installs in the notes, else
+a core dump may occur at startup.
+
+If your system is gcc3 based, and the precompiled distro is linked against gcc2,
+download the libraries from <http://www.linuxfromscratch.org/~timothy/misc/> and
+move it to where mozilla can find it (such as the MOZILLA_FIVE_HOME).
+
+
+Relevant URLs:
+
+Visit the following sites to find help and find extensions to mozilla.
+	* http://www.mozdev.org/projects.html
+	  Some really cool extensions to mozilla such as google bar.
+	* http://www.mozilla.org/projects/
+	  Projects related to mozilla, some of them are already integrated into
+	  the current release, some are yet to mature.
+	* http://www.gerbilbox.com/newzilla/
+	  The unofficial Mozilla FAQ.
+	* http://www.themes.org/skins/mozilla/
+	  Theme park for Mozilla.
+
+
+Changing Preferences:
+
+Whether to follow the settings in the current section is entirely at your
+discretion. Would just like to mention some changes in the preferences I like:
+	* Appearance -> Colors -> Enable Use System Colors.
+	* Appearance -> Theme -> Select Modern Theme. Way better than Classic.
+	* Navigator -> Smart Browsing -> Enable Internet Keywords.
+	* Navigator -> Search Engine -> Search Using Google:)
+	* Navigator -> Tabbed Browsing -> Enable all options under Open Tabs
+	  instead of windows. Tabs are cool.
+	* Privacy & Security -> Cookies -> Enable Ask me before storing a
+	  cookie. Bye bye Doubleclick.
+	* Privacy & Security -> Images -> Enable Ask me before downloading an
+	  image. Do this only if you are on a slow connection. Otherwise it is
+	  more of a hassle. I usually set it because it prevents the user
+	  tracking images from loading.
+	* Advanced -> Scripts & Windows -> Disable Open Unrequested Windows,
+	  Move or resize existing windows, Raise or lower windows. Bye bye X10.
+	* Advanced -> Cache -> Disk Cache = 8192KB. I had some problems in an
+	  older version when the disk cache became very large (although that was
+	  on Windows 2000:D). Anyways 50 MB sounds a bit too much.
+
+
+Installing Adobe Acrobat Plugin:
+
+Download the Acrobat Reader from Adobe's website.
+	http://www.adobe.com/products/acrobat/readstep2.html
+
+Install Acrobat in /opt/acrobat. Now link the plugin.
+	cd $MOZ_PLUGIN_PATH &&
+	ln -s /opt/acrobat/Browsers/intellinux/nppdf.so
+
+
+Installing Java Plugin:
+
+Download SUN JRE 1.4 from
+	http://java.sun.com/j2se/
+
+Install JDK in /opt/j2sdk and then link the plugin.
+	cd $MOZ_PLUGIN_PATH &&
+	ln -s ${JAVA_HOME}/jre/plugin/i386/ns610/libjavaplugin_oji.so
+
+Some alternative java plugins:
+	http://www.alphaworks.ibm.com/
+	http://www.blackdown.org/
+
+I have succesfully managed to compile Java 2 SDK 1.4 that is linked against
+GCC3. Check out the "Java From Scratch" hint.
+
+
+Installing Macromedia Flash Player:
+
+Download the Flash Player from Macromedia's website.
+	http://sdc.shockwave.com/shockwave/download/alternates/#linux
+
+Untar the files.
+	cp libflashplayer.so ShockwaveFlash.class $MOZ_PLUGIN_PATH
+
+
+Installing RealPlayer:
+
+Download the plugin from Real Networks.
+	http://forms.real.com/real/player/unix/unix.html
+
+Install RealPlayer in /opt/RealPlayer8 and then copy the plugin to mozilla's
+plugin directory.
+	cp rpnp.so raclass.zip $MOZ_PLUGIN_PATH
+
+
+CodeWeaver's CrossOver Plugin:
+
+If you are interested in using Windows plugins, this commercial product will
+allow you to do it. Check out:
+	http://www.codeweavers.com/products/crossover/
+for more info.
+
+Problems and Workarounds:
+
+* If you are using the gcc2 compatible patch when compiling for gcc3, avoid
+stripping the mozilla-bin binary. If you follow the instructions mentioned
+above, the binaries are stripped of debugging information. So no need to strip
+further. Credit for the problem and the workaround goes to Kelledin.
+
+
+Have fun mozzing around.
+
+Don't forget to send me bug reports and enhancements so that I can keep the hint
+updated.
+

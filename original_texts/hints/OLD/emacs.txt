@@ -1,0 +1,286 @@
+TITLE:		GNU Emacs 2
+LFS-VERSION:	All
+AUTHOR:		Andreas Klauer <andykl@epost.de>
+
+SYNOPSIS:
+	Downloading and Installing GNU Emacs 2
+
+HINT:
+
+
+I.   What it is
+---------------
+
+All information you need can be found at the GNU Emacs page:
+http://www.gnu.org/software/emacs/emacs.html
+
+There is also a FAQ available:
+http://www.gnu.org/software/emacs/emacs-faq.text
+
+Here is a quote:
+--------------------------------------------------------------------------------
+Emacs is the extensible, customizable, self-documenting real-time display
+editor. If this seems to be a bit of a mouthful, an easier explanation is Emacs
+is a text editor and more. At its core is an interpreter for Emacs Lisp
+(``elisp'', for short), a dialect of the Lisp programming language with
+extensions to support text editing.
+
+Some of the features of GNU Emacs include:
+ o Content sensitive major modes for a wide variety of file types, from plain
+   text to source code to HTML files.
+ o Complete online documentation, including a tutorial for new users.
+ o Highly extensible through the Emacs Lisp language.
+ o Support for many languages and their scripts, including all the European
+   ``Latin'' scripts, Russian, Greek, Japanese, Chinese, Korean, Thai,
+   Vietnamese, Lao, Ethiopian, and some Indian scripts. (Sorry, Mayan
+   hieroglyphs are not supported.)
+ o A large number of extensions which add other functionality. The GNU Emacs
+   distribution includes many extensions; many others are available
+   separately -- even a web browser.
+--------------------------------------------------------------------------------
+
+Please note that this hint doesn't cover the extensions, just because there are
+far too many of them - Emacs is an operating system that comes with an editor
+included ;o)
+
+If you want any extensions, visit the GNU Emacs page.
+
+
+II.  Where to get & What to get
+-------------------------------
+
+You can get all these files on ftp.gnu.org or on one of its mirrors
+(visit http://www.gnu.org/order/ftp.html for a complete mirror list)
+
+Required: emacs-20.7.tar.gz (around 15 Megabytes)
+          ftp://ftp.gnu.org/pub/gnu/emacs/emacs-20.7.tar.gz
+
+Note: If there is a newer version available, take the newer version -
+      if this hint does no longer work with a newer version, please send me
+      an E-Mail, so that I can update it: andykl@epost.de
+
+Description: This package contains the Emacs editor ;o)
+             It comes with a very good README and INSTALL - File, which should
+             make this hint unneccessary; but the old emacs hint wasn't good
+             enough to help a newbie out.
+
+
+Optional: leim-20.7.tar.gz (around 3.3 Megabytes)              [requires X11]
+          ftp://ftp.gnu.org/pub/gnu/emacs/leim-20.7.tar.gz
+
+Note: The package should have the same version number as the emacs package.
+
+Description: LEIM stands for Libraries of Emacs Input Methods.
+             This package supports Chinese & Japanese and other input methods.
+             You should read the INSTALL file that comes with the emacs package
+             and the README that is included in this package if you are
+             interested in it.
+
+
+Optional: intlfonts-1.2.tar.gz (around 25 Megabytes)           [requires X11]
+
+Note: This package can be installed after the installation of Emacs.
+
+Description: It contains a whole bunch of X11 fonts - Chinese, Japanese, but
+             also European (Greek etc.) and other fonts.
+             Get it if you plan to use Emacs in X11 and want support for those
+             languages. Otherwise, Emacs will print hollow boxes if there is
+             a font missing.
+
+
+III. How to install it
+----------------------
+
+I unpacked my sources in /usr/src and was root all the time during the
+installation. You can put the sources somewhere else and don't need to be root
+when installing, just as you like.
+But please don't forget: When I'm talking of /usr/src, I mean the directory
+                         where your sources are located.
+                         If you encounter weird problems without being root,
+                         switching to root may help - I don't know exactly
+                         where root privileges are required and where not.
+
+1. Unpack the emacs tarball:
+
+   > cd /usr/src
+   > tar xvfz /usr/src/emacs-20.7.tar.gz
+
+   This will create a directory /usr/src/emacs-20.7/ and put the emacs sources
+   in it.
+
+   You probably should read /usr/src/emacs-20.7/README and
+   /usr/src/emacs-20.7/INSTALL now.
+
+
+2. If you decided to download LEIM, unpack it:
+
+   > cd /usr/src
+   > tar xvfz /usr/src/leim-20.7.tar.gz
+
+   The LEIM package will create a directory /usr/src/emacs-20.7/leim.
+   It will be automatically included in the Emacs installation.
+
+
+3. Run the Emacs configure script
+
+   > cd /usr/src/emacs-20.7
+
+   Please read the configure help first:
+   > ./configure --help
+
+   This gives you a list of all possible options.
+   Please choose the options that fit your needs.
+
+   [ Optimization note:
+       If you want gcc to be run with any optimization flags,
+       you should run
+       > export CFLAGS='-yourflags'
+       now.
+       I used: (may not work on your system)
+       > export CFLAGS='-O2 -march=i686'
+   ]
+
+   I used the following command (may not work on your system):
+   > ./configure i686-unknown-linux-gnu --prefix=/usr --with-gcc --with-x
+
+   This will install Emacs in /usr/* and not in /usr/local/* and also use GCC
+   and enable the Emacs X11 interface.
+
+   I also specified my host type: i686-unknown-linux-gnu
+   Information on available host types can be found in:
+   /usr/src/emacs-20.7/etc/MACHINES
+
+   If unsure, just use the following:
+   > ./configure --prefix=/usr
+
+   Emacs will then be installed in your /usr directory.
+
+[3b. This part is hard for newbies :o( ]
+
+   The installation instructions that come with the emacs package now recommend
+   to look at /usr/src/emacs-20.7/lisp/paths.el.
+
+   The file contains paths to various external programs (sendmail p.e.).
+   If those are not correct and you want emacs to be able to use them, you
+   should modify the file site-init.el (not the paths.el file).
+
+   For further information read /usr/src/emacs-20.7/INSTALL
+
+   In most cases (especially on your LFS system), the paths in paths.el should
+   be correct - it looks for the binaries in the /usr/bin and /usr/local/bin
+   directories and checks all 'usual' locations.
+
+   It is quite safe not to look at paths.el, unless you've installed programs
+   like sendmail in unusual locations.
+
+
+[ Note: There are a few more steps you could do if you want, such as adding
+        special termcap entries and so on.
+        I didn't need any of those, so I just say that the normal user won't
+        need them; but you may take a look at the INSTALL file if interested ]
+
+4. Compile Emacs
+
+   Now this should be quite easy:
+
+   > cd /usr/src/emacs-20.7
+   > make
+
+   If the configure - script ran without errors, the make shouldn't produce any,
+   too.
+
+   If make exits with an error message, it may be due to some optimization flags
+   that you may have added in Part 3. Then try to remove them and run configure
+   and make again.
+
+   If that doesn't solve the problem, send it to the lfs-apps mailing list to
+   get help.
+
+   The compilation took 10 Minutes on my PII-233.
+
+
+5. Install Emacs
+
+   Just run:
+
+   > make install
+
+   This installs Emacs in the directories you specified in the configure call
+   (Default: /usr/local/..., with --prefix=/usr in /usr/... and so on)
+
+   prefix/bin now contains:
+
+     emacs, etags, ctags, b2m, emacs-client, rcs-checkin
+     (Sorry, I'm too lazy to describe them, go to www.gnu.org, there's the
+      manual, FAQ, just everything)
+
+   prefix/share/emacs/VERSION/ contains the emacs lisp library and other emacs
+   files.
+
+   There also should be manpages installed - read the INSTALL file for further
+   information.
+
+   If 'make install' was successful, you can delete the sources if you want to:
+   > rm -R /usr/src/emacs-20.7
+
+
+For the people who decided not to install the intlfonts:
+
+  Congratulations, you've done it!
+  If this hint helped you out, I'd be glad if you'd send a short note to
+  andykl@epost.de, so that I know that this work had some use ;o)
+
+
+For all others:
+
+6. Install intlfonts
+
+   You'll have to unpack the intlfonts package first.
+
+   > cd /usr/src
+   > tar xvfz intlfonts-1.2.tar.gz
+
+   This will create the /usr/src/intlfonts-1.2/ directory.
+   Go into this directory and run the configure script:
+   [If you used a --prefix= parameter when installing emacs,
+    you probably should use the same prefix option here!]
+
+   Note: You may also want to take a look on ./configure --help first;
+         Type1/TTF Fonts are not installed by default - if your X
+         supports those, you may want to install them, too.
+
+   > cd /usr/src/intlfonts-1.2
+   > ./configure
+
+   The fonts will be installed in the prefix directory you specified
+   (Default: /usr/local): /prefix/share/emacs/fonts.
+
+   To do this, you need to run:
+
+   > make install
+
+   Now, the X server needs to know about the new fonts.
+
+   This is done by adding /prefix/share/emacs/fonts to the known font paths.
+
+   I did it by adding FontPath "/usr/share/emacs/fonts/" to my XF86Config file.
+   But this depends on how you configured your X. You may want to add
+   xset +fp /usr/share/emacs/fonts/ in some .xinitrc Files instead.
+
+--------------------------------------------------------------------------------
+
+Congratulations, you now have a running emacs.
+
+Manuals, FAQs, How-to-Configure and similar stuff can be found at:
+http://www.gnu.org/software/emacs.
+
+I hope this hint helped you a little :)
+
+Andreas Klauer
+Also known as:  menaures@UNItopia.de
+E-Mail: andykl@epost.de
+
+If you manage to get the Emacs Webbrowser running and you speak german,
+visit www.unitopia.de ;o)
+
+

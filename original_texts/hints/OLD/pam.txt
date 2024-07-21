@@ -1,0 +1,274 @@
+
+TITLE:			Linux PAM - Pluggable Authentication Modules
+VERSION:		1.0 (08-APRIL-2002)
+LFS VERSION:		ANY
+AUTHOR:			Yannick Tousignant <yannick@iscream.ca>
+
+SYNOPSIS:
+	How to compile, install and configure Linux-PAM.
+
+
+CONTENTS
+========
+
+  1. INTRODUCTION
+  2. SOURCE PACKAGES
+  3. CRACKLIB INSTALLATION
+  4. PAM INSTALLATION
+  5. SHADOW INSTALLATION
+  6. PAM CONFIGURATION
+  7. BEYOND PAM
+
+
+
+
+INTRODUCTION
+============
+
+This document describes how to compile, install and configure a Pluggable
+Authentication Modules for a Linux system. PAM is a suite of shared libraries
+that enable the local system administrator to choose how applications
+authenticate users. In other words, without (rewriting and) recompiling a
+PAM-aware application, it is possible to switch between the authentication
+mechanism(s) it uses. Indeed, one may entirely upgrade the local authentication
+system without touching the applications themselves. It is the purpose of the
+Linux-PAM project to separate the development of privilege granting software
+from the development of secure and appropriate authentication schemes. This is
+accomplished by providing a library of functions that an application may use to
+request that a user be authenticated.
+
+
+
+
+SOURCE PACKAGES
+===============
+
+You need the following sources to start the installation:
+
+http://www.us.kernel.org/pub/linux/libs/pam/pre/library/Linux-PAM-0.75.tar.bz2
+http://www.us.kernel.org/pub/linux/libs/pam/pre/library/cracklib-files.tgz
+http://ftp.pld.org.pl/software/shadow/old/shadow-20001016.tar.gz
+
+
+
+
+CRACKLIB INSTALLATION
+=====================
+
+LAST MINUTE UPDATE : The cracklib package seems to be very unstable with this
+version of pam or shadow. Fell free to experience it yourself...
+
+When entering lots of numbers+letters, this end with passwd crashing.
+
+root:~# passwd 
+New UNIX password: 
+Segmentation fault
+
+If you find any fix or work around, email me right away at yannick@iscream.ca 
+
+WE DO NOT RECOMMEND INSTALLING CRACKLIB ON CRUCIAL SYSTEMS !!!
+
+CrackLib is a library containing a C function which may be used in a 
+passwd-like program. The idea is simple: try to prevent users from choosing
+passwords that could be guessed by "Crack" by filtering them out, at source.
+
+This is a pre-compiled version a cracklib, if anyone can come up with a hint
+on howto compile it... For now, lets just extact an move files.
+
+If you extract this package, this will create a folder called "usr"
+do not enter into it and execute :
+
+cp usr/include/* /usr/include
+cp usr/lib/* /usr/lib
+cp usr/sbin/* /usr/sbin
+
+
+
+
+PAM INSTALLATION
+================
+
+Extract the source package and enter the source directory and enter the
+following commands :
+
+./configure --enable-read-both-confs \
+	--with-mailspool=/var/mail &&
+make &&
+make install &&
+cd /lib &&
+ln -sf libpam.so.0.75 libpam.so &&
+ln -sf libpamc.so.0.75 libpamc.so
+
+
+This will install pam libraries in /lib, pam modules in /lib/security, and
+pam config files in /etc/security.
+
+
+
+
+SHADOW INSTALLATION
+===================
+
+Now, you must recompile the shadow password suite and link it with pam
+librairies. Goes a little like that :
+
+cp src/useradd.c src/useradd.c.backup &&
+sed 's/\(.*\) (nflg || \(.*\))\(.*\)/\1\2\3/' \
+   src/useradd.c.backup > src/useradd.c &&
+./configure --prefix=/usr --with-libpam &&
+make &&
+make install &&
+cd /lib &&
+mv libshadow.*a /usr/lib &&
+ln -sf libshadow.so.0 libshadow.so &&
+cd /usr/lib &&
+ln -sf ../../lib/libshadow.so &&
+cd /usr/sbin &&
+ln -sf vipw vigr &&
+cd /usr/share/man/man8 &&
+ln -sf vipw.8 vigr.8
+
+Now, if you do a "ldd /bin/login", the binary should be linked to pam.
+
+LEAVE A SESSION OPEN TIL YOUR DONE, YOU CAN'T LOG IN RIGHT NOW !!!
+
+
+
+
+PAM CONFIGURATION
+=================
+
+Now, you have two way you can configure pam. The first one is the 
+/etc/pam.conf configuration file. This file can contain all your config
+for every programs linked to the pam libraries.
+
+The other way is to create the /etc/pam.d directory and then configure
+each programs in a separate file. If there is a /etc/pam.d/ directory then 
+libpam only uses the files contained in this directory. However, in the 
+absence of the /etc/pam.d/ directory the /etc/pam.conf file is used.
+
+To simplify things a little, we are going to use the pam.conf file to
+configure everything into 1 step. If you think you are going to expand your
+system a lot, you better use the pam.d directory...
+
+For more information, please refer to this document :
+
+http://www.us.kernel.org/pub/linux/libs/pam/Linux-PAM-html/pam.html
+
+Here is a sample of a pam.conf file, use it well.
+
+cat > /etc/pam.conf << "EOF"
+# ---------------------------------------------------------------------------#
+# /etc/pam.conf                                                              #
+# ---------------------------------------------------------------------------#
+# $Id: pam.txt,v 1.1 2003/09/13 16:18:12 tushar Exp $
+# ---------------------------------------------------------------------------#
+# serv. module     ctrl       module [path]     ...[args..]                  #
+# name  type       flag                                                      #
+# ---------------------------------------------------------------------------#
+
+# 'pam_deny' deny everyting and 'pam_warn' logs it.
+other   auth       required   pam_deny.so
+other   auth       required   pam_warn.so
+other   account    required   pam_deny.so
+other   password   required   pam_deny.so
+other   password   required   pam_warn.so
+other   session    required   pam_deny.so
+
+login   auth       requisite  pam_securetty.so # /etc/securetty (CONSOLE)
+login   auth       required   pam_unix.so
+login   auth       optional   pam_group.so # group.conf (CONSOLE_GROUPS)
+login   auth       requisite  pam_nologin.so # /etc/nologin (NOLOGINS_FILE)
+login   auth       required   pam_env.so # pam_env.conf (ENVIRON_FILE)
+login   account    required   pam_unix.so
+login   account    requisite  pam_time.so # time.conf (PORTTIME_CHECKS_ENAB)
+login   account    required   pam_access.so # access.conf (/etc/access.defs)
+login   session    required   pam_unix.so
+login   session    required   pam_limits.so # limits.conf (/etc/limits)
+login   session    optional   pam_lastlog.so # (LASTLOG_ENAB)
+login   session    optional   pam_mail.so standard noenv # (MAIL_CHECK_ENAB)
+login   session    optional   pam_motd.so # (MOTD_FILE)
+login   password   required   pam_unix.so shadow md5
+
+passwd  password   required   pam_unix.so shadow md5
+
+su      auth       sufficient pam_rootok.so
+su      auth       required   pam_unix.so
+su      account    required   pam_unix.so
+su      session    required   pam_unix.so
+
+shadow  auth       sufficient pam_rootok.so
+shadow  auth       required   pam_unix.so
+shadow  account    required   pam_unix.so
+shadow  session    required   pam_unix.so
+shadow  password   optional   pam_permit.so
+
+EOF
+
+
+You must create the securetty file before you can log into you system :
+
+cat > /etc/securetty << "EOF"
+tty1
+tty2
+tty3
+tty4
+tty5
+tty6
+EOF
+
+You must as well comment unused variables in /etc/login.defs...
+
+MOTD_FILE
+DIALUPS_CHECK_ENAB
+LASTLOG_ENAB
+MAIL_CHECK_ENAB
+OBSCURE_CHECKS_ENAB
+PORTTIME_CHECKS_ENAB
+CONSOLE
+MOTD_FILE
+NOLOGINS_FILE
+SU_WHEEL_ONLY
+CRACKLIB_DICTPATH
+PASS_CHANGE_TRIES
+PASS_ALWAYS_WARN
+MD5_CRYPT_ENAB
+CONSOLE_GROUPS
+ENVIRON_FILE
+PASS_MIN_LEN
+
+You can also delete the old /etc/limits and login.access files.
+All configuration are now in /etc/security/ and some files are still
+in the /etc directory. (see in pam.conf)
+
+I had a problems with useradd/groupadd commands linked with pam now.
+If i comment out the "shadow  password   optional   pam_permit.so",
+The command is working well, but an error message appear :
+
+root:/etc# useradd -g 100 -s /bin/bash -m test
+useradd: PAM chauthtok failed
+
+Also, the pam_issue.so don't seem to work, so i left out this job to
+/etc/login.defs.
+
+There is something i don't get, i'm not a pam expert, so please e-mail
+at yannick@iscream.ca to complete this hint.
+
+
+
+
+BEYOND PAM
+==========
+
+Now that pam is installed, you must recompile your favorite daemons with
+pam support. i.e.: --with-pam ;-)
+
+Here is an example for the widely used openssh :
+
+sshd    auth       requisite  pam_securetty.so
+sshd    auth       required   pam_unix.so
+sshd    account    required   pam_unix.so
+sshd    session    required   pam_unix.so
+sshd    password   required   pam_unix.so shadow md5
+
+

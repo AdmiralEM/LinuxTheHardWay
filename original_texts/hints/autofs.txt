@@ -1,0 +1,274 @@
+AUTHOR:         Bryan Mason <bmason@bmason.com>
+
+DATE:           2004-05-20
+        
+LICENSE:        GNU Free Documentation License Version 1.2 
+                Copyright (c) 2003, Bryan Mason.
+                Permission is granted to copy, distribute and/or modify
+                this document under the terms of the GNU Free
+                Documentation License, Version 1.2 or any later version
+                published by the Free Software Foundation. A copy of the
+                license can be found at
+                http://www.gnu.org/copyleft/fdl.html.
+
+SYNOPSIS:       Installing the version 4 autofs automounter on LFS
+
+DESCRIPTION:    This hint describes how to install autofs 4 on a Linux
+                From Scratch system.
+                
+ATTACHMENTS:    Patch for compiling autofs-4.1.2:
+                http://www.bmason.com/LFS/autofs/unused-variables.patch
+                
+                Init scripts:
+                http://www.bmason.com/LFS/autofs/autofs-initscripts.tar.gz
+                
+PREREQUISITES:  This hint assumes that you have already a working system
+                and are comfortable with configuring and re-compiling
+                the Linux kernel.  Although this hint was written based
+                on LFS 3.3 (kernel 2.4.18), it should work equally well
+                on newer LFS installations, although they have not been
+                fully tested.
+
+HINT:
+
+Contents
+========
+
+    1. Introduction
+    2. Configuring the Kernel for autofs Support
+    3. Downloading, Configuring, and Compiling autofs
+    4. Creating Initialization Scripts
+    5. Configuring Mount Points
+    6. Troubleshooting
+
+1. Introduction
+===============
+
+    Automounting is the process of automatically mounting and unmounting
+    of file systems by a daemon.  When a file in the file system is
+    accessed, the automounter will automatically mount the file system.
+    After a period of inactivity, the file system is automatically
+    unmounted.  This can be extremely useful for network file systems
+    (both SMB and NFS) as well as automatically mounting CD-ROM drives
+    and floppy disk drives.
+    
+    There are two types of automounters in Linux, "AMD" and "autofs".
+    AMD is implemented entirely as a user-space daemon.  Autofs includes
+    both a user-space daemon and code in the kernel that assists the
+    daemon.  There are currently two versions of autofs, v3 and v4.
+    
+    Although there are several good documents on how to configure autofs
+    after installation, there seem to be few documents on how to compile
+    and install the autofs package, which is where this document comes
+    in.
+    
+    This document describes how to configure and compile autofs version
+    4 for LFS and provides a boot script to start autofs.  It does not
+    discuss AMD or how to configure autofs after it has been installed.
+    There are two very good HOWTO's that describe the post-install
+    configuration of autofs:
+
+    "Automount mini-Howto"
+        http://www.linux-consulting.com/Amd_AutoFS/autofs.html
+    
+    "Autofs Automounter HOWTO"
+        http://www.tldp.org/HOWTO/Automount.html
+
+    Installation of autofs consists of the following basic steps which 
+    are described in more detail below:
+    1) Configuring the Kernel for autofs support
+    2) Downloading, configuring, and installing the autofs daemon, 
+       man pages, and libraries
+    3) Creating boot scripts to start the automount daemons
+    
+    If you have any comments or corrections to be made to this document,
+    please send an e-mail message to the author at <bmason@bmason.com>.
+    
+
+2. Configuring the LFS Kernel for Autofs Support 
+================================================
+
+    To provide support for the automount user-space daemon, the 
+    following options must be configured in the kernel, either
+    as a module or as part of the kernel:
+    
+    In the "File Systems" section:
+      - "Kernel automounter version 4 support (also supports v3)"
+        (CONFIG_AUTOFS4_FS).
+        
+    In the "File Systems -> Network File Systems" section:
+      - "NFS file system support" (CONFIG_NFS_FS)
+      
+    If you want to mount shares on Windows systems, you should also
+    enable the "SMB file system support" (CONFIG_SMB_FS) option in the
+    "File Systems -> Network File Systems" section.  In addition, you
+    may need to install and configure Samba as described in Beyond Linux
+    From Scratch (BLFS) at <http://www.linuxfromscratch.org/blfs/>.
+      
+    After the kernel is configured, proceed with the normal process of
+    building and installing a new Linux kernel (make bzImage, make
+    modules, make modules_install, copy the bzImage file, etc.)
+    
+    After the kernel has been recompiled, the following line should
+    be added to /etc/modules.conf if automount support was compiled
+    as a kernel module:
+    
+        alias autofs4 autofs
+
+
+3. Downloading, Configuring, and Installing Autofs
+==================================================
+
+    Autofs can be downloaded from kernel.org at
+        ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4
+        
+    There are some problems compiling autofs 4.1.2 with gcc 2.95.3, so 
+    you can download version 4.0.0 (autofs-4.0.0-1.tar.gz or
+    autofs-4.0.0-1.tar.bz2), or apply the patch located at 
+    <http://www.bmason.com/LFS/autofs/unused-variables.patch>
+    
+    To apply the patch, cd to "autofs-4.1.2/lib" and execute 
+    "patch -Np1 < [path-to-patch]" where [path-to-patch] is the path to
+    where you copied the patch on your system.
+    
+    The problem is that gcc 2.95.3 doesn't recognize the 
+    "-Wno-unused-variables" option (although it does recognize 
+    "-Wno-unused").  If later versions of gcc recognize the 
+    "-Wno-unused-variables" option, then this patch is probably
+    unnecessary.
+    
+    Configuration, building, and installation of autofs is
+    straightforward.  Simply run the standard, "configure, make, 
+    make install" routine:
+    
+        ./configure &&
+        make &&
+        make install
+        
+    This will install the following files to the following directories:
+    
+    Automount Daemon 
+        Destination Directory:  /usr/sbin
+        File:                   automount
+    
+    Man Files
+        Destination Directory:  /usr/share/man/man5
+        Files:                  auto.master.5
+                                autofs.5
+        Destination Directory:  /usr/share/man/man8
+        Files:                  autofs.8
+                                automount.8
+    
+    Configuration Files
+        Destination Directory:  /etc
+        Files:                  auto.master
+                                auto.net
+                                auto.misc
+    
+    Init Scripts
+        Destination File:       /etc/rc.d/init.d
+        File:                   autofs
+
+    
+    Libraries
+        Destination Directory:  /usr/lib/autofs
+        Files:                  lookup_file.so
+                                lookup_program.so
+                                mount_afs.so
+                                mount_changer.so
+                                mount_generic.so
+                                lookup_multi.so
+                                lookup_userhome.so
+                                mount_autofs.so
+                                mount_ext2.so
+                                mount_nfs.so
+                                lookup_nisplus.so
+                                lookup_yp.so
+                                mount_bind.so
+                                mount_ext3.so
+                                parse_sun.so
+
+
+4. Creating Initialization Scripts
+==================================
+
+    The installation script installed by default will not run under LFS
+    because it expects the distribution to be either Debian or Red Hat.
+    the script looks for the files /etc/debian_version and 
+    /etc/redhat-release, and if it doesn't find them, it complains and
+    exits.
+
+    I've created a new init script with a more LFS-style flavor.  The
+    init script and configuration file is in a single tarball located at
+    <http://www.bmason.com/LFS/autofs/autofs-initscripts.tar.gz>. The
+    script performs the following functions:
+    
+    Start: the file /etc/auto.master will be read and the mount point(s)
+    in the file will be created, if necessary.  Some basic checks are
+    made to verify that the map files are there, and the automount
+    daemon(s) will be started with the correct options to implement the
+    mount point(s). Currently, only static map files and executable map
+    files are supported (I don't know enough about yp, etc. to write the
+    code to handle the more complex cases).
+    
+    Stop: all of the automount deamon(s) specified in /etc/auto.master,
+    as well as all other automount process, will be stopped.
+    
+    Restart: the "stop" procedure is run, followed by a one-second
+    delay, and then the "start" procedure is run.
+    
+    Reload: not implemented.
+    
+    Status: a list of configured mount points, followed by a list of the
+    active automount deamon(s), and then a list of actively automounted
+    directories (from mount) will be displayed.
+    
+
+5. Configuring Mount Points
+===========================
+
+    There are several good texts that describe how to configure
+    mount points with autofs, so I won't describe how to do that
+    here.
+    
+    The following Howto's describe how to configure autofs:
+    "Automount mini-Howto"
+        http://www.linux-consulting.com/Amd_AutoFS/autofs.html
+    "Autofs Automounter HOWTO"
+        http://www.tldp.org/HOWTO/Automount.html
+        
+     In addition, the following man pages contain descriptions
+     of autofs and its configuration files:
+     - auto.master(5)
+     - autofs(5)
+     - automount(8)
+     - autofs(8)
+
+
+6. Troubleshooting
+==================
+
+   Generally speaking, most problems are caused by problems in the
+   configuration script (/etc/auto.master) and the associated map files
+   (/etc/auto.misc, /etc/auto.net, and so forth).  Double-check the man
+   pages and Howto's to make sure everything is OK.
+   
+   If you have some problems and have figured out a good way to overcome
+   them, send me a message describing your problem/solutin and I'll add
+   it to this section.
+   
+   If you find a bug in the init scripts please send a message to me at
+   <bmason@bmason.com> so I can correct them.  Thank you.
+   
+   
+ACKNOWLEDGEMENTS:
+   
+   R. Cort Tompkins <rtompkin@cs.odu.edu> wrote a hint on installing autofs
+   version 3 on LFS.
+    
+ 
+CHANGELOG:
+    [2004-05-20]
+    * Originated
+
+

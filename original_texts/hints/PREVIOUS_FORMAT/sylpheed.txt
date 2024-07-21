@@ -1,0 +1,245 @@
+TITLE:		Sylpheed
+LFS-VERSION:	any
+AUTHOR:		Vassili Dzuba <vassili.dzuba@wanadoo.fr>
+SYNOPSIS:
+	How to install Sylpheed, a GTK+ -based mail/news program.
+HINT VERSION:   1.0 (Aug 11, 2002)
+
+HINT:
+
+CONTENT
+=======
+  1) INTRODUCTION
+  2) REQUIREMENTS
+  3) BUILDING THE REQUIRED LIBRARIES
+  4) GETTING Sylpheed
+  5) BUILDING Sylpheed
+  6) CONFIGURING Sylpheed
+  7) IMPORTING MESSAGES
+
+INTRODUCTION
+============
+
+From Sylpheed's README :
+
+<quote>
+Sylpheed is an e-mail client (and news reader) based on GTK+, running on
+X Window System, and aiming for
+
+  * Quick response
+  * Graceful, and sophisticated interface
+  * Easy configuration, intuitive operation
+  * Abundant features
+</quote>
+
+The user interface is quite similar to the UI of Outlook Express and
+other Windows e-mail client.
+
+The messages are managed  in the MH format, so that Sylpheed is compatible
+with other e-mail clients using this format; and fetchmail and/or procmail.
+
+Sylpheed is released under the GPL.
+
+REQUIREMENTS
+============
+
+As Sylpheed is a X11 application (written using GTK+), it requires of 
+course X11. One will assume that X11 has been installed according to the
+BLFS book.
+
+To build Sylpheed, you will need the following library
+
+-  GTK+ 1.2.6 or higher (the current version is 1.2.10)
+
+GTK+ itself requires some libraries (listed here with their current
+version number) :
+
+- libtiff 3.5.7
+- libpng 1.2.3
+- libjpeg 6b
+- libungif 4.1.01b1
+- glib 1.2.0
+
+Optionally, you can use :
+- libssl 0.9.6e for SSL support
+- GPGME 0.2.3 or later for GnuPG support
+
+The following libraries are recommanded :
+
+- gdk-pixbuf 1.18.0
+- imlib 1.9.14
+
+The build process of most of these libraries is described in the BLFS book.
+
+The build process of GnuPG is not described in the BLFS book but 
+is rather straightforward
+
+   GnuPG can be obtained from http://www.gnupg.org.
+
+   tar xzvf gnupg-1.0.7.tar.gz /usr/src
+   cd /usr/src/gnupg-1.0.7
+   ./configure --prefix=/usr
+   make 
+   make install
+   gpg --gen-key
+
+Note : the command  
+             gpg --gen-key
+       will create a new key pair for the current user, and store it into
+       the directory ~/.gnupg
+       It should therefore be executed for each user that will use gnupg.
+
+The build process of GPGME is not described in the BLFS book but 
+is rather straightforward
+
+   GPGME can be obtained from http://www.gnupg.org/gpgme.html
+
+   tar xzvf gpgme-0.3.8.tar.gz /usr/src
+   cd /usr/src/gpgme-0.3.8
+   ./configure --prefix=/usr
+   make 
+   make install
+
+compface
+--------
+
+  compface is an optional progam aimed at compressing/decompression
+  small (48x48) images to be put in mail headers, under the field name
+  X-Face.
+  i've never meet any e-mail with some X-face header, but if yuo want to
+  support it in sylpheed , you can get it from
+  http://freshmeat.net/projects/compface/
+
+  The compilation goes as follows:
+   
+     tar xzvf compface-1.4.tar.gz /usr/src
+     cd /usr/src/compface-1.4
+     ./configure --prefix=/usr
+     make
+     make install
+
+libjconf
+--------
+
+  By default, Sylpheed supports US-ASCII, ISO-8859-1, and EUC-JP.
+  For other character sets and/or encodings (UTF-8, KOI8-R, and GB2312)
+  you need to install libjconv, which is a wrapper for iconv()	
+  According to Sylphhed documentation, you can download it from :
+
+       http://www.kondara.org/libjconv/index.html
+
+  However, I have been unable to reach the site http://www.kondara.org/,
+  and i don't know if it exists any more.
+
+ldap
+----
+
+  The support of LDAP is mentionned in the change log but not in the 
+  install file.
+  If you download openldap-2.1.3.tgz from http://www.openldap.org/
+  or one of its mirrors, and compile it, using the usual routine :
+     tar -xzvf openldap-2.1.3.tgz /usr/src
+     cd /usr/src/openldap-2.1.3
+     ./configure --prefix=/usr
+     make 
+     make install
+  and if you execute Sylpheed configuration with the option --enable-ldap
+  you'll make it happily tell you that it uses LDAP.
+  As i didn't test it; I cannot tell you more for the time being.
+
+JPilot
+------
+
+  Sylpheed has support for JPilot, a Palm Pilot organizer that runs under
+  Linux. As i don't have a Palm Pilot, I cannot comment on that functionality.
+  If you are interested, see the site http://www.jpilot.org/ and add option
+  --enable-jpilot to Sylpheed's configure command.
+
+
+GETTING Sylpheed
+================
+
+  Sylpheed home page is : http://sylpheed.good-day.net/
+  You can find there a .tar.gz and a .tar.bz2 archive.
+  The current version is 0.8.1
+
+  Note : there is also a "bleeding edge" advanced version named
+         Sylpheed-claws, available from http://sylpheed-claws.sourceforge.net/
+         Its version is called  0.8.1.claws
+
+
+BUILDING Sylpheed
+=================
+
+  The build process is as follows:
+
+    tar tzvf sylpheed-0.8.1 /usr/src
+    cd /usr/src/sylpheed-0.8.1
+    ./configure --prefix=/usr --enable-ssl --enable-gpgme  --enable-ldap
+    make
+    make install
+
+ 
+  Note : the option --enable-ssl is used to enable SSL support; you can omit
+         it if you don't have openssl, or do not wish SSL support
+
+         the option --enable-gpgme is used to enable GnuPG support; 
+         you can omit it if you don't have GnuPG, or do not wish SSL support
+
+         the option --enable-ldap is used to enable LDAP support; you can omit
+         it if you don't have LDAP or don't want to use it with Sylpheed.
+
+         the default installation directory for Sylpheed is /usr/local/bin
+         the option --prefix=/usr indicates that we want it to be installed
+         into /usr.
+
+         it is possible to enable IPv6 support by using the configure option
+         --enable-ipv6. As my LFS box does not support IPv6, I cannot comment
+         on this functionality.
+
+         it is possible to enable JPilot support by using the configure option
+         --enable-jpilot.
+
+  
+CONFIGURING Sylpheed
+====================
+
+If you want to have the interface of Sylpheed in a language different
+from English, you must set an environment variable before launching 
+Sylpheed. For instance, to have it in German :
+   export LANG=de_DE
+or in French :
+   export LANG=fr_FR
+
+When a user runs Sylpheed for the first time, the program creates
+its private files under ~/.sylpheed; and asks the user for
+the location of the mailbox, the default being ~/Mail.
+
+When in Sylpheed, you will have to create one or several accounts,
+through the menu item Configuration/ Create new account.
+You will have to create one or several POP3 or IMAP account(s)
+to access your e-mails, and one or several NNTP accounts to
+access the news.
+
+To have access to the documentation (which is in HTML), you might need to
+configure the command to call your browser. You can reach it through
+the menu Configuration / Common preferences, and then select the
+tab "Other" in the dialog (you might have to scroll the tab list to the
+right to see it).
+The default is to call netscape, but you could for instance call mozilla
+using the following command, assuming Mozilla is in your PATH:
+
+      mozilla -remote 'openURL(%s)'
+
+IMPORTING MESSAGES
+==================
+
+If you have some OutlookExpress mailbox that you want to import to Linux, 
+you can get liboe from http://www.gpl.no/liboe/.
+You can then download liboe-0.92.tar.gz, decompress it and
+compile oe2mbx : 
+    make oe2mbx
+
+The program oe2mbx will read your Outlook Express mailbox (.dbx)
+and create a .mbx file that you will be able to import into Sylpheed
+using the menu item File / Import mbox file...

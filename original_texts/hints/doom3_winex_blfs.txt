@@ -1,0 +1,99 @@
+AUTHOR: Lupine <thelupine AT PunkAss DOT com>
+
+
+DATE: 2004-08-06
+
+
+LICENSE: GNU Free Documentation License
+
+
+SYNOPSIS: How to install Doom3 via Winex-cvs
+
+
+DESCRIPTION:
+I mainly put this together because I couldn't wait for ID to release the Doom3
+Linux binaries, and I stumbled onto Rob Smith's (http://linux-militia.net/howtos/doom3/doom3.html)
+HOWTO.  It was close, but I needed to change a few things around in order to get 
+this working on my BLFS box.  I thought I would document exactly what I had to do 
+differently, and share it.
+
+
+PREREQUISITES:
+Sufficient knowledge of (Beyond)LinuxFromScratch.
+The Doom3 CDs.
+Note: I would dd the 3 CDs to ISO, and mount all 3 of the ISO files as loopback devices. 
+During the "doom3_installer.sh"(from below), I was never prompted for the CDs, it
+automagically found the mounted devices.
+
+
+HINT:
+	Download latest wine from http://www.ibiblio.org/pub/Linux/ALPHA/wine/development/
+	cd wine-xxxxx/
+	tools/wineinstall
+
+
+Install/Tweak transgaming:
+	cvs -d:pserver:cvs@cvs.transgaming.org:/cvsroot login	(password is 'cvs')
+	cvs -z3 -d:pserver:cvs@cvs.transgaming.org:/cvsroot co winex
+	wget http://www.linux-militia.net/howtos/doom3/GlobalMemoryStatusExFixed.patch
+	dos2unix GlobalMemoryStatusExFixed.patch
+	cd winex
+	patch -po < ../GlobalMemoryStatusExFixed.patch
+	./configure --enable-pthreads --prefix=/usr/lib/winex-cvs/winex
+	make
+	make install
+	touch /usr/lib/winex-cvs/.transgaming/tg_config_version
+	cp ./documentation/sample/config ~/.transgaming
+	wget http://www.linux-militia.net/howtos/doom3/winex-cvs
+	mv winex-cvs /usr/bin
+	chmod +x /usr/bin/winex-cvs
+	wget http://www.linux-militia.net/howtos/doom3/pthreads_stack_test
+	mv pthreads_stack_test /usr/lib/winex-cvs/winex/bin
+	chmod 755 /usr/lib/winex-cvs/winex/bin/pthreads_stack_test
+	cp -a ~/.wine ~/.transgaming
+	cd ~/.transgaming
+	mv drive_c c_drive
+	mkdir c_drive/windows/system32
+	
+	
+Install/Tweak Doom3:
+	wget http://www.linux-militia.net/howtos/doom3/doom3_installer.sh
+	chmod +x doom3_installer.sh
+	./doom3_installer.sh
+	cd ~/doom3/
+	wget http://www.linux-militia.net/howtos/doom3/Doom3.exe.gz
+	mv Doom3.exe Doom3.exe.old
+	gzip -d Doom3.exe.gz
+	winex-cvs Doom3.exe
+
+Happy fragging!
+
+
+ACKNOWLEDGEMENTS:
+Most of the commands are taken straight from Rob Smith's HOTWO.  Without his 
+HOWTO I would have never gotten this to work...he deserves a big ol' Thank You!!!
+----------------------------------------------------------------------------------
+----------------------------------------------------------------------------------
+http://linux-militia.net/howtos/doom3/doom3.html
+Doom III and Winex CVS
+Rob Smith d3howto@kormoc.com
+V0.02 2004-08-04
+
+You are free:
+# to copy, distribute, display, and perform the work
+# to make derivative works
+# to make commercial use of the work
+Under the following conditions:
+# Attribution. You must give the original author credit.
+# Share Alike.
+# If you alter, transform, or build upon this work, you may distribute the resulting work 
+only under a license identical to this one. For any reuse or distribution, you must make 
+clear to others the license terms of this work. Any of these conditions can be waived if 
+you get permission from the author.
+http://linux-militia.net/howtos/doom3/doom3.html
+----------------------------------------------------------------------------------
+----------------------------------------------------------------------------------
+
+CHANGELOG:
+[ 2004-08-06]
+	* Initial hint.

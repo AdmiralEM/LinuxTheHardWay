@@ -1,0 +1,91 @@
+TITLE:		GLX setup on XF402
+LFS VERSION:	any
+AUTHOR:		manaveru <manaveru@manaveru.net>
+
+SYNOPSIS:
+	Generic instructions on how to setup GLX on Xfree 40[1-2], based on my experience with Nvidia cards.
+
+HINT:
+(Ed. note: There is also a nice mini-HOWTO on this subject which you can find on
+ linuxdoc.org)
+
+Required stuff:
+===============
+First, you need a kernel with AGP support. There are available patches for 2.2 
+kernels, but I really recommand 2.4 kernels for 3D.
+
+Read the Kernel2.4 hint for instructions on the upgrade. The AGP support is in 
+Char devices (agpgart), select to build it as a module and choose your 
+motherboard chipset in the list. Don't select any DRI option.
+
+You need Xfree 4.0.1+ built and running.
+
+Then, you have to download the Nvidia GLX modules on www.nvidia.com/drivers.
+
+You need the following files:
+	- NVIDIA_kernel-0.9-6.tar.gz
+	- NVIDIA_GLX-0.9-6.tar.gz
+
+Installation:
+=============
+Unpack the NVIDIA-kernel file and enter the created directory.
+	
+	# make
+This will produce a module called NVdriver. Copy it to the appropriate kernel 
+modules directory (the same as agpgart).
+
+	# cp NVdriver /lib/modules/2.4.1/drivers/char/agp
+
+Add the device in /etc/modules.conf and refresh the modules dependencies.
+
+	# echo alias char-major-195 NVdriver >> /etc/modules.conf
+	# depmod -a
+
+Unpack the NVIDIA-GLX file and enter the created directory.
+
+	# make
+
+This will install the Nvidia drivers in the correct locations.
+
+
+Setup:
+======
+
+You will now edit the XF86Config file to use the new drivers.
+I'll just show the things to add/modify or verify
+	# vi /etc/X11/XF86Config
+
+	Section "Module"
+		Load	"glx"		# add if it's not there
+		....
+	EndSection
+
+	Section	"Device"
+		Driver	"nv"		# remove/comment that line
+		Driver	"nvidia"	# add this line
+		....
+	EndSection
+
+Tests:
+======
+Restart X.
+	If X restarts properly, first step is OK.
+	If not, head to troubleshooting section. 
+Launch Q3, UT or any other GLX compliant game.
+	If you have low performances (2-3 FPS), head to troubleshooting.
+	If performances are OK, you now have 3D accel on Linux.
+Additionnaly, you may want to test glspec (you can find it on freshmeat.net)
+
+Troubleshooting:
+================
+Problem: X locks at startup
+Solution: you'll need to edit os-registry.c, and check the comments near lines 
+that start like #if 0.
+
+Problem: 3D acceleration not working.
+Solution: You have some mesa libs laying around in /usr/lib. Remove the 
+following files /usr/lib/libMesa* /usr/X11R6/lib/libMesa* and reinstall GLX 
+module. If you have 3D apps that require Mesa libs, you can simply create 
+symlinks to GLX lib (libGL.so.1). You also need to remove 
+/usr/X11R6/lib/libGL.so.1.2 and symlink it to /usr/lib/libGL.so.
+

@@ -1,0 +1,263 @@
+TITLE:		Compiling OpenOffice.Org from Scratch
+
+LFS VERSION:	LFS-4.0
+
+AUTHOR:         Tushar Teredesai <Tushar@LinuxFromScratch.Org>
+
+SYNOPSIS:
+	How to compile 'OpenOffice.org from Scratch'.
+
+HINT:
+
+Primary Location of this hint:
+        http://www.linuxfromscratch.org/~tushar/
+The latest version of the hint and any relevant patches are available at that
+site. Please refer to the primary location before submitting
+bug-reports/enhancements to this hint.
+
+You may freely copy this document or create derivate works or distribute the
+document in any format. At your discretion, you may give credit to the original
+author:)
+
+Use the hint at your own risk. Neither the author, nor the Linux From Scratch
+project accepts any reponsibility for anything that happens when using these
+documents or associated files.
+
+An appropriate place to discuss this hint is blfs-support MailingList/NewsGroup
+at LinuxFromScratch.Org.
+
+Change Log:
+[2002-12-25]
+        * Changed primary location and e-mail address.
+[2002-09-11]
+	* Upgraded to OpenOffice 1.0.1.
+[2002-06-20]
+	* Added optimization hint.
+[2002-06-19]
+	* Added alternate site for hint.
+[2002-06-18]
+	* First public version.
+
+<WARNING>
+The build takes a lot in terms of CPU power, hard disk space and time:)
+On my PIII-850MHz, it took around 12 hours and consumed 2 GB.
+</WARNING>
+
+Pre-requisites (post LFS):
+	* Freetype 2.1
+		<http://freshmeat.net/projects/freetype/>
+	* XFree86 4.2.0
+		<http://freshmeat.net/projects/xfree86/>
+	* Sun JDK 1.4
+		<http://freshmeat.net/projects/sunjdk/>
+	* InfoZip Zip
+		<http://freshmeat.net/projects/zip/>
+	* InfoZip Unzip
+		<http://freshmeat.net/projects/unzip/>
+	* Tenex C Shell
+		<http://freshmeat.net/projects/tcsh/>
+	* Linux PAM
+		<http://freshmeat.net/projects/linux-pam/>
+Notes:
+* Installation of these packages in discussed in the BLFS book at
+  <http://beyond.linuxfromscratch.org>.
+* The patches are for gcc-3.2 system and may work for future versions. If you
+  using a previous version, correct the configure.in patch before applying.
+* Previous version of X will probably work though I have not tested them.
+* JDK 1.3 may work, no guarantees.
+* You don't need to install PAM You just need the PAM headers in
+  /usr/include/security. You can either download PAM and do a "./configure
+  --prefix=/tmp --includedir=/usr/include && make install" or download the
+  headers from the hint's primary site. Alternately if you don't want to install
+  the headers system wide, you can follow the instructions given below to
+  install them in the OpenOffice source tree. Please not that I have submitted
+  the patch to the OpenOffice bugzilla, but dunno if or when it will be
+  incorporated.
+* If you have set the LS_COLORS variable, do a export LS_COLORS="" to prevent
+  tcsh from reading bash syntax for LS_COLORS.
+
+Packages to download:
+	* Berkeley DB 4.0.14
+		<http://freshmeat.net/projects/berkeleydb/>
+	* STLport 4.5.3
+		<http://freshmeat.net/projects/stlport/>
+	* OpenOffice.Org:)
+		<http://freshmeat.net/projects/openoffice/>
+	* General Polygon Clipper
+		<http://freshmeat.net/projects/gpclib/>
+
+Notes:
+Thanks are due to Debian and Redhat developers for providing hints and patches.
+
+
+The OOo source comes with some of the packages I have mentioned above, but the
+versions are slightly old and may have problems with gcc-3.2. Hence I decided to
+use system installed versions wherever possible.
+
+
+Compiling Berkeley DB:
+
+Install Berkeley DB using the following commands. Note that these commands
+differ slightly from that in the BLFS book (we also compile the C++ and Java
+interfaces).
+
+	cd build_unix
+	../dist/configure --prefix=/usr --enable-compat185 --enable-cxx --enable-java
+	make
+	make docdir=/usr/share/doc/db install
+
+Compiling STLport:
+
+The patches for STLport are available at the primary site for this hint.
+	PATH_HOLD=$PATH
+	export PATH=$PWD/stlport:$PATH
+	cd src
+	sed -e "s:\-O2:$CFLAGS:" gcc-linux.mak > Makefile
+	make
+	make INSTALLDIR=/usr install
+	export PATH=$PATH_HOLD
+
+
+
+Compiling OOo:
+
+Untar both OOo and gpc and copy the gpc.c and gpc.h files from the gpc package
+to <$OOSRC/external/gpc>.
+
+Apply the patches that you have downloaded.
+
+If you need to set optimization flags, set the CFLAGS variable and do the
+following to incorporate those into the configuration files. My setting for
+CFLAGS is "-O3 -march=i686 -fforce-addr -fomit-frame-pointer -funroll-loops
+-frerun-cse-after-loop -frerun-loop-opt -falign-functions=4". Using that
+increased the compile time from 12 hours to 17 hours.
+	cd $OOSRC/solenv/inc &&
+	cp unxlngi3.mk unxlngi3.mk.orig &&
+	sed -e "s:^CFLAGSOPT=.*:CFLAGSOPT=${CFLAGS}:g" \
+		unxlngi3.mk.orig > unxlngi3.mk &&
+	cp unxlngi4.mk unxlngi4.mk.orig &&
+	sed -e "s:^CFLAGSOPT=.*:CFLAGSOPT=${CFLAGS}:g" \
+		unxlngi4.mk.orig > unxlngi4.mk
+
+The mozilla libraries that are included with openoffice are pretty old and link
+against gcc-3.0.x. Instead what we will do is to recreate the mozilla files that
+are needed by OpenOffice. Set MOZ_PREFIX to the prefix where you have installed
+Mozilla. Also note that you will need slightly modified Mozilla installation
+instructions. Check the Mozilla hint for the update. Don't worry if some of the
+libraries seem to be missing. I had problems using these instructions with
+Mozilla 1.2a, but 1.0.1 was ok.
+	cd $OOSRC
+	rm -f moz/zipped/LINUXGCCI*.zip
+	cd ${MOZ_PREFIX}/include/mozilla
+	zip -r ${OOSRC}/moz/zipped/LINUXGCCIinc.zip *
+	cd ${MOZ_PREFIX}/lib/mozilla
+	zip -j ${OOSRC}/moz/zipped/LINUXGCCIlib.zip openoffice/lib*.a \
+		libnspr4.so libxpcom.so
+	cd ${OOSRC}/..
+	mkdir -p mozilla/components mozilla/defaults/pref
+	cd mozilla
+	for i in absyncsvc addrbook mork mozldap necko pref profile rdf strres \
+		uconv ucvcn ucvibm ucvja ucvko ucvlatin ucvtw ucvtw2 \
+		unicharutil uriloader vcard xpconnect
+	do
+		cp -a ${MOZ_PREFIX}/lib/mozilla/components/lib${i}.so components
+	done
+	for i in necko_dns xpcom_xpti xpcom_threads xpcom_io xpcom_ds \
+		xpcom_components xpcom_base
+	do
+		cp -a ${MOZ_PREFIX}/lib/mozilla/components/${i}.xpt components/
+	done
+	for i in xpti xptitemp
+	do
+		cp -a ${MOZ_PREFIX}/lib/mozilla/components/${i}.dat components/
+	done
+	cp -a ${MOZ_PREFIX}/lib/mozilla/defaults/pref/*.js defaults/pref/
+	for i in mozjs msgbaseutil ldap50 nspr4 plc4 plds4 xpcom prldap50
+	do
+		cp -a ${MOZ_PREFIX}/lib/mozilla/lib${i}.so .
+	done
+	zip -r ${OOSRC}/moz/zipped/LINUXGCCIruntime.zip *
+	cd ..
+	rm -rf mozilla/
+
+If you don't want to install Linux PAM system wide (even the headers as
+mentioned above), download the Linux-PAM header tar ball from the hint's primary
+location and move the headers to $OOSRC/external/pam. Also apply the patch to
+use internal PAM.
+
+Configure OOo with the options. This will generate LinuxIntelEnv.Set in $OOSRC
+directory. We need to run autoconf since in the above patches we patch
+configure.in but not configure.
+	cd $OOSRC/config_office/ &&
+	autoconf &&
+	./configure --enable-gcc3 --with-jdk-home=${JAVA_HOME} \
+		--with-lang=ENUS --with-x --with-stlport4-home=/usr
+I configured for US English, you can enable more languages or all languages by
+using --with-lang=ALL.
+
+Verify that the $OOSRC/LinuxIntelEnv.Set file is correct.
+
+If when compiling gcc, you included java in the list of languages, then you will
+have a file /usr/include/jni.h which will give you problems since it appears
+first in the include path. So move the file to a different location and remember
+to restore it back after compiling OOo. (To avoid this problem, I compile gcc
+with --includedir=/usr/include/gcc)
+
+Now some workarounds to 'fix' the build process. If you do a "make clean"
+remember to repeat the following steps again. Note that libgcc_s.so* files in
+your installation could be in /lib.
+	cd $OOSRC
+	mkdir -p solver/641/unxlngi4.pro/inc/
+	touch solver/641/unxlngi4.pro/inc/minormkchanged.flg
+	mkdir -p solver/641/unxlngi4.pro/lib/
+	cp -f /usr/lib/libstdc++.so.5* /usr/lib/libgcc_s.so* \
+		solver/641/unxlngi4.pro/lib/
+	chmod +x solenv/bin/zipdep.pl
+
+Now run the bootstrapping program which will build the pre-requisites such as
+dmake that are required for building OOo.
+	tcsh -c "source LinuxIntelEnv.Set; ./bootstrap"
+This will run for sometime and build the required tools.
+
+Now to compiling the package. Remember looks are deceiving:) Though a one liner,
+the following command does everything except for the kitchen sink:) It will
+build all the sub-projects of OOo and then copy them to the appropriate
+locations and then make suitable installation sets.
+	tcsh -c "source LinuxIntelEnv.Set; dmake"
+
+Once the package is built, now on to installation.
+	cd $OOSRC/instsetoo/unxlngi4.pro/01/normal
+In case you are wondering, 01 represents the telephone code for US (the language
+I built). So if you want a German installation, replace 01 by 49.
+
+If you would like to keep a backup for future installations, the files in this
+directory are all you need to keep.
+
+Edit the install script. I prefer making the following changes
+	cp install install.orig
+	sed -e "s:oo_home=OpenOffice.org1.0:oo_home=openoffice:" install.orig > install
+	chmod +x install
+
+Now install OOo. Note that though the script does not open any windows it needs
+permission to open the display. So set the DISPLAY variable accordingly.
+	./install --prefix=/opt
+
+I prefer creating symbolic links to the programs from a standard location
+(/usr/X11R6/bin) rather than including the directory where the OOo programs
+reside into my path.
+If you prefer to do that, do the following:
+	for appl in swriter scalc sdraw simpress smath soffice
+	do
+	ln -sf /opt/openoffice/program/$appl /usr/X11R6/bin/$appl
+	done 
+
+If you had moved /usr/include/jni.h, remember to restore it to its proper
+location, else the Gods will be angry and curse the OOo installation:)
+
+The first time you start the application as any user, the setup program will
+start. Select the "Workstation Install" option to configure OpenOffice. This
+will create the user directories that OOo can use.
+
+Don't forget to send me bug reports and enhancements so that I can keep the hint
+updated.
+

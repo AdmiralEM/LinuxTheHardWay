@@ -1,0 +1,36 @@
+TITLE:		shadow-4.0.0
+LFS VERSION:	3.0 (possibly others as well)
+AUTHOR:		Scott Alfter <salfter@salfter.dyndns.org>
+
+SYNOPSIS:
+	Now that the shadow password suite v4 is final, here's a small patch
+to build it as part of an LFS system in place of the beta version called out
+in LFS 3.0.
+
+HINT:
+
+Download the package and the patch (available at these URLs):
+
+ftp://ftp.pld.org.pl/software/shadow/shadow-4.0.0.tar.bz2
+http://salfter.dyndns.org/files/shadow-4.0.0-patch.bz2
+
+Unpack the archive and change into its directory.  Apply the patch and build
+with these commands:
+
+bzcat shadow-4.0.0-patch.bz2 | patch -p1 &&
+cp src/useradd.c src/useradd.c.backup &&
+sed 's/\(.*\) (nflg || \(.*\))\(.*\)/\1\2\3/' \
+   src/useradd.c > tmp~ &&
+mv tmp~ src/useradd.c &&
+./configure --prefix=/usr &&
+make &&
+make install &&
+cd etc &&
+cp limits login.access /etc &&
+sed 's%/var/spool/mail%/var/mail%' login.defs.linux > /etc/login.defs &&
+cd /lib &&
+mv libshadow.a /usr/lib &&
+mv libshadow.la /usr/lib &&
+ln -sf libshadow.so.0 libshadow.so &&
+cd /usr/lib &&
+ln -sf ../../lib/libshadow.so

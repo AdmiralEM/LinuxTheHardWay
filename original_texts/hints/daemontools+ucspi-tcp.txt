@@ -1,0 +1,46 @@
+AUTHOR:         Stefan Krah <djbware-install at bytereef.org>
+
+DATE:           2005-11-05
+
+LICENSE:        GNU Free Documentation License Version 1.2
+
+SYNOPSIS:       Install and use daemontools-0.76 and ucspi-tcp-0.88
+
+DESCRIPTION:    Since the BLFS Book has dropped support for daemontools and
+                ucspi-tcp, I'm maintaining the install instructions at my
+                website. I have added usage examples of my own.
+
+PREREQUISITES:  A working Unix system with the usual development tools.
+
+
+HINT:
+
+DJ Bernstein's daemontools suite offers a very convenient way of starting
+and controlling daemons. The package includes other highly useful tools like
+multilog, which does automatic log rotation, or setlock, which can be used
+in shell scripts to ensure that only a single instance of a program is running.
+
+The ucspi-tcp suite contains tcpserver, a secure replacement for inetd,
+as well as several other useful net-tools.
+
+The BLFS book has dropped support for daemontools and ucspi-tcp, so I
+maintain an updated version of the last install instructions at:
+
+http://www.bytereef.org/howto/djb/daemontools-install.html
+http://www.bytereef.org/howto/djb/ucspi-tcp-install.html
+
+If you want to know how to *use* daemontools/tcpserver, read:
+
+http://www.bytereef.org/howto/djb/tcpserver-getting-started.html
+http://www.bytereef.org/howto/djb/daytime-server.html
+http://www.bytereef.org/howto/djb/further-reading.html
+
+
+ACKNOWLEDGEMENTS:
+  * All the people who contributed to the original BLFS entry
+
+CHANGELOG:
+[2005-11-05]
+  * Initial hint.
+[2005-12-04]
+  * Added usage examples. Changed URLs.

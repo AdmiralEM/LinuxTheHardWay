@@ -1,0 +1,278 @@
+AUTHOR: Eloi Primaux eloi@bliscat.org
+DATE: 2006-02-19
+LICENSE: GNU Free Documentation License Version 2
+SYNOPSIS: Setting a wireless network with WPA and dhcpcd
+DESCRIPTION:
+This hint purpose a way to set wireless networks using wpa_supplicant and dhcpcd
+
+ATTACHMENTS:
+no attachments yet
+
+PREREQUISITES:
+A full LFS-6.1 and BLFS-6.1 system already configured with a standart lan network
+The chipset driver of your wireless card (ex: madwifi http://madwifi.org/wiki/)
+wireless tools available at http://www.hpl.hp.com/personal/Jean_Tourrilhes/Linux/Tools.html
+wpa_supplicant available at http://hostap.epitest.fi/wpa_supplicant/ (latest stable release)
+dhcpcd installed from the blfs book
+
+
+note you will also require and access point which use wpa encryption and dhcp service
+
+HINT:
+
+this hint is mainly based on what has already been done in the blfs book for the dhcpcd service
+
+install chipset driver, wireless tools, and wpa_supplicant
+both of them have fully explanaited documentations to build them
+If you still in trouble, have a look to http://madwifi.org/wiki
+
+Now you need to create 2 files,
+1)	/etc/sysconfig/network-devices/service/wpa-dhcpcd
+2)	/etc/sysconfig/network-devices/ifconfig.XX/wpa-dhcpcd
+
+XX is  the name of your device, eth0,wlan0,ath0...
+
+Here are those files
+
+#######	1) wpa-dhcpcd service script	########
+#	
+#  /etc/sysconfig/network-devices/service/wpa-dhcpcd
+#
+####### start here ######
+
+#!/bin/sh
+# Begin $network-devices/services/wpa-dhcpcd
+
+# Based on dhcpcd script adapted for  wpa networks
+# Rewritten by Eloi Primaux  - eloi@bliscat.org
+
+
+. /etc/sysconfig/rc
+. $rc_functions
+. $IFCONFIG
+
+DHCPCD_PIDFILE="/var/run/dhcpcd-$1.pid"
+DHCPCD_LEASEINFO="/var/lib/dhcpc/dhcpcd-$1.info"
+WPA_PIDFILE="/var/run/wpa_supplicant-$1.pid"
+#WPA_CONFIGFILE="/etc/sysconfig/network-devices/ifconfig.$1/wpa-dhcpcd"
+#. $WPA_CONFIGFILE
+WPA_SCRP="/etc/sysconfig/network-devices/wpa-script.$1"
+rm -f $WPA_SCRP
+case "$2" in
+        up)
+	RET=$?
+	evaluate_retval
+	echo "" # due to the pre ifconfig process
+	# Start wpa_supplicant in the background
+	wpa_supplicant -g/var/run/wpa_supplicant-$1-global -P$WPA_PIDFILE -B
+	#We must check if our requested SSID is available...
+	boot_mesg "Scanning for available Access Points..."
+	iwlist ath0 scan | grep "ESSID"
+	SSID_AVAILABLE=$(iwlist ath0 scan | grep "$WPA_SSID")
+	if [ -n "$SSID_AVAILABLE" ]; then
+		boot_mesg  "The Access Point "$WPA_SSID" is  available, connecting"
+		echo_ok
+		# Add a new interface (no configuration file and
+		# enable control interface)
+		echo "wpa_cli -g/var/run/wpa_supplicant-$1-global interface_add $1 \"\" $WPA_DRIVER /var/run/wpa_supplicant" > $WPA_SCRP
+		# Configure a network using the newly added network interface:
+		echo "wpa_cli -i$1 add_network" >> $WPA_SCRP
+		echo "wpa_cli -i$1 set_network 0 ssid '\"$WPA_SSID\"'" >> $WPA_SCRP
+		echo "wpa_cli -i$1 set_network 0 key_mgmt WPA-PSK" >> $WPA_SCRP
+		echo "wpa_cli -i$1 set_network 0 psk '\"$WPA_PASS\"'" >> $WPA_SCRP
+		echo "wpa_cli -i$1 set_network 0 pairwise $WPA_PAIRWISE" >> $WPA_SCRP
+		echo "wpa_cli -i$1 set_network 0 group $WPA_GROUP" >> $WPA_SCRP
+		echo "wpa_cli -i$1 set_network 0 proto $WPA_PROTO" >> $WPA_SCRP
+		echo "wpa_cli -i$1 enable_network 0" >> $WPA_SCRP
+		#Now we run the little script created above
+		boot_mesg -n "Booting wpa_supplicant on the $1 interface..."
+		. $WPA_SCRP > /dev/null
+		RET=$?
+		evaluate_retval
+		#Now we overwrite the last script by one which request the wpa status
+		# When the network is ready it will answer "wpa_state=COMPLETED"
+		echo "wpa_cli -i$1 status | grep 'wpa_state' | sed 's,wpa_state=,,g'" > $WPA_SCRP
+		# we run a little loop to wait for wpa_supplicant being ready
+		boot_mesg "Please wait while the daemon is connecting to $WPA_SSID..."
+			RET=$(. $WPA_SCRP)
+			COUNTER=0 # to not loop undefinetly at boot time if the network is down...
+		while [ "$RET" != "COMPLETED" ]; do
+			if [ "$COUTER" = "$WPA_MAXCYCLE" ]; then
+			boot_mesg "The Access Point $WPA_SSID is available" ${WARNING}
+			boot_mesg "But the connecting time is over . This is" ${WARNING}
+			boot_mesg "Mostly due to a misconfigurated network." ${WARNING}
+			boot_mesg "Please check your configuration" ${WARNING}
+                        echo_warning
+                        exit 2
+		fi
+			sleep 5s
+			RET=$(. $WPA_SCRP)
+			echo -n "$RET..."
+        	done
+		echo ""
+		echo_ok
+		
+		# At this point, the new network interface should start trying to associate
+		# with the WPA-PSK network using SSID.
+
+
+		boot_mesg  "Starting dhcpcd on the $1 interface..."
+                # Test to see if there is a stale pid file
+                if [ -f "$DHCPCD_PIDFILE" ]
+                then
+                    ps `cat "$DHCPCD_PIDFILE"` | grep dhcpcd > /dev/null
+                    if [ $? != 0 ]
+                    then
+                        rm -f $DHCPCD_PIDFILE > /dev/null
+                    else
+			boot_mesg "dhcpcd already running!" ${WARNING}
+                        echo_warning
+                        exit 2
+                    fi
+                fi
+                /sbin/dhcpcd $1 $DHCP_START
+		# Save the return value
+		RET="$?"
+		# Print the assigned settings if requested
+		if [ "$RET" = "0" -a "$PRINTIP" = "yes" ]; then
+			. /var/lib/dhcpc/dhcpcd-$1.info
+			if [ "$PRINTALL" = "yes" ]; then
+				echo ""
+				echo_ok
+				boot_mesg "           DHCP Assigned Settings for $1:"
+				boot_mesg_flush
+				boot_mesg "           IP Address:      $IPADDR"
+				boot_mesg_flush
+				boot_mesg "           Subnet Mask:     $NETMASK"
+				boot_mesg_flush
+				boot_mesg "           Default Gateway: $GATEWAY"
+				boot_mesg_flush
+				boot_mesg "           DNS Server:      $DNS"
+				boot_mesg_flush
+			else
+				boot_mesg " IP Addresss: ""$IPADDR"
+				echo_ok
+			fi
+		else
+			echo ""
+			$(exit "$RET")
+			evaluate_retval
+		fi
+	else
+		boot_mesg "The Access Point "$WPA_SSID" is not available" ${WARNING}
+		boot_mesg "Please check your configuration" ${WARNING}
+                        echo_warning
+                        exit 2
+	fi
+
+        ;;
+
+        down)
+		boot_mesg -n "Stopping dhcpcd on the $1 interface..."
+		# Do nothing with the client daemon if we have an infinate 
+		# lease time as the client exits when started in this case,
+		# just echo OK.
+		if [ -e $DHCPCD_LEASEINFO ]
+		then
+		    . $DHCPCD_LEASEINFO
+
+		    if [ "$DHCPCD_LEASETIME" = "4294967295" ]
+		    then
+			# do nothing, just echo ok
+			echo ""
+			echo_ok
+		    else
+			if [ -n "$DHCP_STOP" ]
+			then
+			    /sbin/dhcpcd $1 $DHCP_STOP &> /dev/null
+			    RET="$?"
+			    if [ "$RET" -eq 0 ]; then
+				echo ""
+				echo_ok
+			    elif [ "$RET" -eq 1 ]; then
+				boot_mesg "dhcpcd not running!" ${WARNING}
+				echo_warning
+			    else
+				echo ""
+				echo_failure
+			    fi
+			else
+			    echo ""
+			    killproc dhcpcd
+			fi
+		    fi
+		else
+		    boot_mesg -n "LEASEINFO Test failed! - " ${WARNING}
+		    boot_mesg "dhcpcd is not running!" ${WARNING}
+		    echo_warning
+		    exit 1
+		fi
+		boot_mesg "Stopping wpa_supplicant on the $1 interface..."
+		killproc -p $WPA_PIDFILE wpa_supplicant
+
+
+        ;;
+
+        *)
+                echo "Usage: $0 [interface] {up|down}"
+                exit 1
+        ;;
+esac
+
+# End $network_devices/services/wpa-dhcpcd
+
+
+#### end here####
+
+
+
+
+#######	2) wpa-dhcpcd config file	########
+#
+# /etc/sysconfig/network-devices/ifconfig.XX/wpa-dhcpcd
+# XX is  the name of your device, eth0,wlan0,ath0...
+#
+#### start here #####
+
+#This config file is mostly based of the
+#dhcpcd config file
+
+ONBOOT="yes"
+SERVICE="wpa-dhcpcd"
+DHCP_START="-d " # to print some debug informations
+DHCP_STOP="-k "
+WPA_SSID="Your SSID"  
+WPA_DRIVER="Your Driver"
+WPA_PROTO="Your Proto" # WPA2 for WPA2-PSK check the wpa-supplicant readme
+WPA_PAIRWISE="Your Pairwise" # CCMP for AES
+WPA_GROUP="Your Group" # CCMP for AES
+WPA_PASS="Your very secret WPA password"
+
+#one cycle each 5 seconds
+WPA_MAXCYCLE=24 # 120s
+# Set PRINTIP="yes" to have the script print
+# the DHCP assigned IP address
+PRINTIP="no"
+
+# Set PRINTALL="yes" to print the DHCP assigned values for
+# IP, SM, DG, and 1st NS. This requires PRINTIP="yes".
+PRINTALL="yes"
+
+
+### End Here ##### 
+
+
+do a chmod 755 /etc/sysconfig/network-devices/service/wpa-dhcpcd
+and if you correctly set the config file, just type
+/etc/rc.d/init.d/network restart if you can use the connection then
+your wireless network will be set at boot time
+
+ACKNOWLEDGEMENTS:
+
+
+CHANGELOG:
+
+-- 
+http://linuxfromscratch.org/mailman/listinfo/hints
+FAQ: http://www.linuxfromscratch.org/faq/
+Unsubscribe: See the above information page

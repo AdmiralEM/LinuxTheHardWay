@@ -1,0 +1,306 @@
+AUTHOR: Stef Bon <stef at bononline dot nl>
+
+DATE: 2006-09-09
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: Starting and stopping DBUS at a KDE-session using KDM.
+
+DESCRIPTION: 
+This hint is about starting the sessionpart of the dbusdaemon. This 
+is based on my hint 
+"Execute scripts at begin and end of a KDE-session using KDM".
+
+In this hint is described in general how scripts and commands are 
+started at the begin and end of a KDE session using KDM.
+
+It's very possible to use this construction with oher loginmanagers as well.
+
+
+ATTACHMENT:
+
+PREREQUISITES:
+This hint requires sufficient knowledge of LINUX in general, and scripts in particular.
+Futher sudo should be installed, and you should start KDE via KDM.
+
+HINT:
+
+Content:
+
+1. Starting the sessiondaemon of dbus and make environmentvariables available.
+1.1 About the startupfiles of Bash.
+1.2 Starting the sessionbus part of dbus
+1.3 Stopping the sessionbus part of dbus
+1.4 Installation of Sudo 1.6.8p12
+1.5 One user is more than one time logged in
+
+
+1. Starting the sessiondaemon of dbus and make the environmentvariables available
+---------------------------------------------------------------------------------
+
+The dbus package is split up in two parts: one systemwide part and one 
+for (each) session/user. The systemwide part (a daemon) is started at boottime, 
+with special privileges of a dedicated user. The sessionwide part (also a daemon) 
+has to started when a session for a user begins, and stopped when the session ends.
+
+The construction with kdm I'm using here is ideal for this. One script in the 
+startup directory to start the sessiondaemon for a user, running with the privileges 
+of that user, and one in the reset directory an other script has to stop that daemon.
+
+But is not so simple as that. Some variables (DBUS_SESSION_BUS_ADDRESS and 
+DBUS_SESSION_BUS_PID) have to be available in the environment to every application 
+which works with dbus. IMHO the setting of these variables should go in the 
+bash-startupscripts. Then whatever script or application you're running, these 
+variables are set to the right value. 
+
+
+
+1.1 About the startupfiles of Bash
+----------------------------------
+
+The sessiondaemon of dbus creates a file which contains the environmentvariables. 
+As stated above this file should be read (sourced) by bash when it starts for this user.
+
+When bash is started by "login" as an interactive login shell, it reads /etc/profile 
+and ~/.bash_profile. Bash is also started by "kdm", and the files /etc/profile 
+and ~/.bash_profile are sourced.
+
+My idea is to store the output of the command
+
+dbus-launch --auto-syntax 
+
+in the file
+
+$HOME/.dbus-session
+
+This file is "sourced" when bash start. This happens not automatically, but you 
+will have to add the following script to /etc/profile.d :
+
+cat >> dbus-session.sh << "EOF"
+
+if [ -f $HOME/.dbus-session ]; then
+
+	. $HOME/.dbus-session
+
+fi;
+EOF
+
+This way, the environment variables are made available when Bash starts.
+
+
+1.2  Starting the sessionbus part of dbus
+-----------------------------------------
+
+
+I assume that dbus is installed, and that it is started at boottime.
+Compiling and installing it is described in the latest versions of BLFS 
+(beginning 200510..). 
+
+Create a script in the /etc/session.d/kdm/startup directory dbus-session-start.sh:
+
+cd /etc/session.d/kdm/startup
+
+cat >> dbus-session-start.sh << "EOF"
+#!/bin/bash
+
+retcode=0;
+
+userid=$1
+userproperties=$(getent passwd | grep -m 1 -E "^$userid")
+homedir=$(echo $userproperties | cut -d ":" -f 6);
+gidnr=$(echo $userproperties | cut -d ":" -f 4);
+uidnr=$(echo $userproperties | cut -d ":" -f 3);
+
+
+if [ -d $homedir ]; then
+
+    #
+    # do a check whether dbus-daemon is already running
+    # dbus-daemon needs to be started by the user (uidnr) logging in
+    #
+    
+    if [ -f $homedir/.dbus-session ]; then
+
+        # do a check the dbus-daemon for this user is running with the pid
+        # in the .dbus-session file
+ 
+	# pid according to the ps command
+	ps_dbus_session_pid=$(ps aux | grep -m 1 -E "^$userid.*dbus-daemon.*session.*" \
+	| grep -v "grep" | sed 's@[[:space:]][[:space:]]*@ @g' | cut -d " " -f 2)
+	
+	# read the pid from the .dbus-session file
+	. $homedir/.dbus-session
+
+
+	# check they are the same	
+	if [ -z "$ps_dbus_session_pid" ]; then
+	
+	    # dbus for this user not running
+	    rm $homedir/.dbus-session
+	    
+	elif [ $DBUS_SESSION_BUS_PID -ne $ps_dbus_session_pid ]; then
+	
+            # there is something wrong: stop dbus-daemon for this user 
+            # and remove .dbus-session file
+	    if [ $(id -u) -eq 0 ]; then
+                sudo -H -u $userid sh -c "kill $ps_dbus_session_pid"
+
+	    elif [ $(id -u) -eq $uidnr ]; then
+		kill -SIGTERM $ps_dbus_session_pid;
+	    fi
+
+	    rm $homedir/.dbus-session
+	    
+	fi
+    
+    fi	
+
+    if [ ! -f $homedir/.dbus-session ]; then
+
+	# only start a dbus session if .dbus-session file it not found
+	# in users homedirectory 
+  
+	if [ $(id -u) -eq 0 ]; then
+ 	    sudo -u $userid -H /bin/sh -c "dbus-launch --auto-syntax > $homedir/.dbus-session"
+	    retcode=$?
+	    chown $uidnr:$gidnr $homedir/.dbus-session
+	elif [ $(id -u) -eq $uidnr ]; then 
+    	    dbus-launch --auto-syntax > $homedir/.dbus-session
+	    retcode=$?
+	fi
+
+    fi
+
+fi;
+
+if [ $retcode -ne 0 ]; then
+    echo "An error with dbus ($retcode)."
+fi;
+
+exit $retcode
+EOF
+
+chmod 755 /etc/session.d/kdm/startup/dbus-session-start.sh
+
+This script, executed by KDM at startup will start the dbus session daemon for this user, 
+and will create the .dbus-session file in the homedirectory of this user, containing
+all the dbusvariables.
+It will only do this when dbus is not already running for this user.
+
+Now when bash starts at login, it reads (sources) this file.
+
+As you can see, I've split the start of dbus up into two parts:
+- dbus-kdm.sh, started when a (kdm)session starts, should be run once
+- .dbus-session, sourced when a (bash)session starts, could be sourced multiple times
+
+Futher, I use the --auto-syntax parameter, where I assume Bash is used. So I could
+use here --sh-syntax, but it works.
+
+And Sudo is needed to run dbus-launcher as the user who's logging in, and the script is 
+run as root. This is the case with KDM, the Xstartup file is run as root.
+Installation of Sudo in chapter 1.4.
+
+
+
+
+1.3  Stopping the sessionbus part of dbus
+-----------------------------------------
+
+
+Creating the dbus-session-stop.sh script in the reset directory:
+
+
+cd /etc/session.d/kdm/reset
+
+cat >> dbus-session-stop.sh << "EOF"
+#!/bin/bash
+
+retcode=0;
+
+userid=$1
+userproperties=$(getent passwd | grep -m 1 -E "^$userid")
+homedir=$(echo $userproperties | cut -d ":" -f 6);
+gidnr=$(echo $userproperties | cut -d ":" -f 4);
+uidnr=$(echo $userproperties | cut -d ":" -f 3);
+	
+if [ -f $homedir/.dbus-session ]; then
+	
+	. $homedir/.dbus-session
+	
+	if [ -n "$DBUS_SESSION_BUS_PID" ]; then
+		if [ $(id -u) -eq 0 ]; then
+		    sudo -u $userid -H /bin/sh -c "kill $DBUS_SESSION_BUS_PID"
+		    retcode=$?
+		    rm $homedir/.dbus-session
+		elif [ $(id -u) -eq $uidnr ]; then
+		    kill $DBUS_SESSION_BUS_PID
+		    retcode=$?
+		    rm $homedir/.dbus-session
+		fi
+	
+	fi
+fi;
+
+
+if [ $retcode -ne 0 ]; then
+    echo "An error with dbus ($retcode)."
+fi;
+
+exit $retcode
+EOF
+
+chmod 755 /etc/session.d/kdm/reset/dbus-session-stop.sh
+
+This script stops the session part of the dbus-daemon.
+
+
+
+
+1.4 Installation of Sudo 1.6.8p12
+---------------------------------
+
+With sudo it's possible to execute a script or command as a normal user,
+being root. 
+
+Since some time now sudo is in the BLFS book. Install it as described there.
+Notes:
+
+- documentation you'll find only in the basedirectory of the source:
+README, README.LDAP, PORTING, RUNSON, BUGS, INSTALL, CHANGES and so on.
+If you want you can copy this to the usual directory in:
+
+/usr/share/doc/sudo-1.6.8p12
+
+- Authentication can be done via PAM. This is not needed here, because the default
+behaviour of sudo allows root to run any script and command.
+
+- for other purposes, like mount.cifs, you just need root privileges. Here you use 
+sudo again, but then the other way around.
+
+
+
+
+1.5 One user is more than one time logged in
+--------------------------------------------
+
+For most of the situations this construction is good enough. Most users 
+have one session at a time. Now what happens when a user has more than 
+one sessions at the same time? Is it nessacary to start the sessionpart
+of dbus for every session, or is one instance sufficient? 
+
+This construction does not allow more than one dbus-daemon per user. 
+I think that should be good enough. 
+
+
+ACKNOWLEDGEMENTS:
+
+
+CHANGELOG:
+[2006-01-18]
+  * Initial hint.
+[2006-07-18]
+  * Changed the bash scripts
+  * changed from sudo-1.6.8p7 to sudo-1.6.8p12
+[2006-09-09]
+  * add check to see dbus-daemon is already running for this user
+    and the information found in .dbus-session is right

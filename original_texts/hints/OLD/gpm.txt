@@ -1,0 +1,122 @@
+TITLE:		Installation of GPM on LFS.
+LFS VERSION:	Any
+AUTHOR:		Marc Heerdink <marc_heerdink@softhome.net>
+
+SYNOPSIS:
+	Installation of gpm can be pretty difficult. This hint makes it a bit easier.
+
+HINT:
+version 1.3 (12/26/2001)
+
+  The installation of GPM (General Purpose Mouse support) can be pretty hard
+when you use mawk. This hint is a guideline to install GPM in a few minutes.
+First, you'll have to get the sources for GPM if you don't already have them:
+
+ ftp://arcana.linux.it/pub/gpm/gpm-1.19.6.tar.gz
+
+This location has been down for ages, though, so you may want to try this link:
+
+ ftp://ftp.schottelius.org/pub/linux/gpm/gpm-1.19.6.tar.bz2
+
+  Extract this file in /usr/src:
+
+ cd /usr/src &&
+ tar xzvf /path/to/gpm-1.19.6.tar.gz
+
+  If the whole GPM installation would be this easy, there would be no need for
+a hint I suppose :) but we're approaching the more difficult part now... First,
+make sure you're in the /usr/src/gpm-1.19.6 directory. Then, we'll have to
+configure the beast:
+
+ ./configure --prefix=/usr
+
+  Configuration should give no problems. The compile stage is next, but this is
+the part where GPM goes wonky. Open /usr/src/gpm-1.19.6/Makefile and search for
+"SUBDIRS". Remove "doc" from the subdirs so this line looks like:
+
+SUBDIRS = contrib
+
+Now open src/gpm.c and type
+
+#include <time.h>
+
+on the first line. Now it's time to make GPM. Make sure you're in the
+/usr/src/gpm-1.19.6 directory and type:
+
+ make
+
+  This time, compilation should give you no trouble. Install GPM by typing:
+
+ make install
+
+  Because we removed the directory "doc" from the targets, the documentation
+wasn't installed. Mawk can't build the documentation, so you've got two choices
+left:
+
+* Install gawk and rebuild gpm with the manpages
+* Get the manpages from:
+
+  http://www.linuxfromscratch.org/~gimli/gpm-manpages-1.19.6.tar.bz2
+
+  (These manpages were mailed to me by Manfred H. Winter <mahowi@gmx.net>, but
+   there have been more people who submitted them to me. I just didn't have the
+   time to make them available yet... :)
+
+  The only thing left to do is to install the info pages (they come pre-built
+with GPM):
+
+ cd doc &&
+ install-info --dir-file=/usr/info/dir --info-file=gpm.info
+
+  You did it! You have installed GPM! Read the documentation (info gpm or man
+gpm) to find out how you can load the driver. Generally this will be something
+like:
+
+ gpm -t ps2 -m /dev/psaux
+
+for PS/2 mice, and
+
+ gpm -t ms -m /dev/ttyS0
+
+for Serial mice. If these don't work, consult the info page.
+
+<and now, for something completely different>
+
+  Thanks to Spider <spider@wanfear.com> for reporting that a mirror site for
+the GPM ftp has been added to fmII, thanks to Manfred H. Winter
+<mahowi@gmx.net> and Andy Goth <unununium@openverse.com> for mailing me the
+manpages and thanks to Kevin Worthington <nofx_punkguy@linuxmail.org> for
+mailing me this:
+
+------------------------------------------------------------------------------
+OK, here goes, not really a huge deal, but I think it'd be helpful to the doc:  
+to the end of /etc/init.d/rc add:                                               
+                                                                                
+#                                                                               
+#Starting gpm device                                                            
+#                                                                               
+echo -n "Starting Console Mouse Device "                                        
+                                                                                
+and follow by the last command you instructed, either:                          
+                                                                                
+gpm -t ps2 -m /dev/psaux                                                        
+OR                                                                              
+gpm -t ms -m /dev/ttyS0                                                         
+                                                                                
+#End of gpm initialization                                                      
+                                                                                
+Let me know what you think. I know it's not the most elegant, but it gets things
+going. Please advice.
+
+Thanks
+Kevin Worthington                                                               
+------------------------------------------------------------------------------
+
+I must admit that I didn't really look at it (no offence :) but it might be
+useful to some readers.
+
+  Pfff that was some hard work. I hope I won't have to update this anymore for
+the next 12 months or so :p
+
+__END__
+

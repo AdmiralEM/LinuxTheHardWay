@@ -1,0 +1,277 @@
+TITLE:		Installing XFree86 4.2 using latest 4.2 source or from
+		a patched 4.1 source. (3-24-02)
+
+UPDATED:	4-8-02
+
+LFS VERSION:	3.x
+
+AUTHOR:		Dave Ayers <fogey@mindspring.com>
+
+CREDITS:	Matthias S. Benkmann <m.s.b@gmx.net>
+		Sergey Ostrovsky <sostrovsky@snip.net>
+		Ryan Strayer <rstrayer@kc.rr.com>
+
+REFERENCES:	xfree86_41.txt (Benkmann)
+		x11.txt (Ostrovsky)
+
+SYNOPSIS:	This hint takes the xfree_41.txt hint by Matthias
+		Benkmann and adapts it for a straightforward
+		installation of XFree86 4.2 without any special
+		optimizations.
+HINT:
+
+Download the newest zlib from http://www.gzip.org/zlib (unless it is
+already installed.)  Unpack the source tar file in a temporary
+directory of your choice, then cd to the source tree directory created
+for installation. Install with
+
+   ./configure --shared &&
+   make test &&
+   make prefix=/usr install &&
+   cp zlib.3 /usr/share/man/man3 &&
+   /sbin/ldconfig
+
+Option A - Install from latest XFree86 4.2 packages.
+----------------------------------------------------
+
+Download from ftp://ftp.xfree86.org/pub/XFree86/4.2.0/source/
+
+   X420src-1.tgz
+   X420src-2.tgz
+   X420src-3.tgz
+
+Unpack these tarballs into your temporary source directory.
+
+Option B - Install 4.2 from a fresh XFree86 4.1 source tree
+-----------------------------------------------------------
+
+Download from ftp://ftp.xfree86.org/pub/XFree86/4.2.0/patches/
+
+   4.1.0-4.2.0.diff1.gz
+   4.1.0-4.2.0.diff2.gz
+   4.1.0-4.2.0.diff3.gz
+   4.1.0-4.2.0.diff4.gz
+   4.2.0.tgz
+
+This patch should be applied to an unmodified XFree86 version 4.1.0
+source tree.  There are four patches that change the 4.1.0 source tree
+to XFree86 version 4.2.0.
+
+To apply this patch, move the 5 files to the directory containing your
+XFree86 4.1 'xc' directory. Then run:
+ 
+   gzip -d < 4.1.0-4.2.0.diff1.gz | patch -p0 -E
+   gzip -d < 4.1.0-4.2.0.diff2.gz | patch -p0 -E
+   gzip -d < 4.1.0-4.2.0.diff3.gz | patch -p0 -E
+   gzip -d < 4.1.0-4.2.0.diff4.gz | patch -p0 -E
+   rm -f xc/extras/freetype2/builds/mac/ftlib.prj
+   rm -fr xc/extras/freetype2/docs/design
+   rm -fr xc/extras/freetype2/docs/glyphs
+   rm -fr xc/extras/freetype2/docs/image
+   rm -fr xc/extras/freetype2/docs/tutorial
+   rm -f  xc/programs/Xserver/hw/darwin/bundle/English.lproj\
+     /MainMenu.nib/objects.nib
+   rm -f xc/programs/Xserver/hw/darwin/bundle/Japanese.lproj\
+     /Localizable.strings
+   rm -f xc/programs/Xserver/hw/darwin/bundle/Japanese.lproj\
+     /MainMenu.nib/objects.nib
+   gzip -d < 4.2.0.tgz | tar vxf -
+
+Continue from here (either option)
+----------------------------------
+
+   cd xc
+
+Edit config/cf/site.def to change XKB from NO to YES. Then run:
+
+   echo $'\n #define HasZlib YES\n' >> config/cf/site.def &&
+   echo $'\n #define HasNCurses YES\n' >> config/cf/site.def &&
+   make World &&
+   make install &&
+   make install.man &&
+
+NOTE: If you used Option B (started with a 4.1 source tree) change all
+references to X11R6 to X11R6.4. The lines needing this change are
+marked with "*"
+
+* Manually add /usr/X11R6/lib to /etc/ld.so.conf
+
+   /sbin/ldconfig
+
+Configure XFree86:
+
+*  export PATH=$PATH:/usr/X11R6/bin 
+(You will also want to put this in your .bashrc and .bash_profile)
+
+   cd /dev
+
+   ln -s /dev/psaux mouse   
+
+(Use your own mouse device if not /dev/psaux, e.g. /dev/ttys0 for a serial
+mouse connected to COM1)
+
+   XFree86 -configure
+
+This will auto-detect your graphics hardware. Your screen will turn
+black for several seconds. Don't panic. When the probing is finished,
+a file /root/XF86Config.new will be created. Make sure that the
+information in XF86Config.new regarding your mouse, video card and
+monitor is correct, then test the server with the following command:
+
+   XFree86 -xf86config /root/XF86Config.new
+
+You won't get anything but a flimmering 640 x 480 screen with an
+annoying pattern and an X-shaped mouse cursor that you can move (if
+the mouse works). Press Ctrl-Alt-Backspace to exit, then move your
+config file to its final location
+
+   mv /root/XF86Config.new /etc/X11/XF86Config
+
+Congratulations! You have just installed X.
+
+But you'll probably want to do some more configuring in
+XF86Config. Read the XF86Config(5x) manpage. It won't tell you much,
+though. Maybe you should skip it and read
+* /usr/X11R6/lib/X11/XF86Config.eg which is a well-commented example.
+
+Some things you will surely want to set are 
+
+   Section "InputDevice"
+      Identifier  "Keyboard0"
+      Driver      "keyboard"
+      Option "XkbModel" "pc102"
+      Option "XkbLayout" "<your layout>"
+      Option "AutoRepeat"  "250 30"
+   EndSection
+
+and
+
+   Section "Monitor"
+      Identifier   "Monitor0"
+      VendorName   "Iiyama"
+      ModelName    "VisionMaster 450"
+      HorizSync    27-102
+      VertRefresh  50-160
+   EndSection
+
+Of course you will need to enter the correct values for your monitor. If 
+you set the right values you don't need to fiddle with modelines anymore 
+(what a relief!) because XFree86 will choose an appropriate VESA mode with 
+a high refresh rate. Just specify what mode you want like this:
+
+   Section "Screen"
+     Identifier "Screen0"
+     Device     "Card0"
+     Monitor    "Monitor0"
+     DefaultDepth 16
+     SubSection "Display"
+       Depth     16
+       Modes   "1024x768"
+       Virtual 1280 960
+     EndSubSection
+   EndSection
+
+This is all it takes to get a nice virtual screen of 1280x960 with a real 
+resolution of 1024x768 with eye-friendly 85Hz (on my system, it depends on 
+your monitor's capabilities of course).
+
+Now read the XFree86-HOWTO you get from linuxdoc.org. It will give
+you an overview of how X is started. Read the scripts
+* /usr/X11R6/bin/startx  and /usr/X11R6/lib/X11/xinit/xinitrc
+These scripts determine what happens when you type "startx".
+
+NOTE:
+
+Ryan Strayer offers these cautions based on his 4.2 install: "No
+special flags or anything .. but I did have to manually edit the
+site.def file and change the XKB from NO to YES .. otherwise I kept
+bombing out on the install. I also had another issue compiling, but
+only if you use GCC 2.95 - which you will if you're using LFS 3.1RC1
+.. I guess I skipped patching GCC. Once I recompiled GCC 2.95 with the
+patch, and then recompiled GLIBC, X4.2 compiled right off the bat
+using a clean source tree."
+
+ENABLING TTF SUPPORT:
+
+The following was adapted from the x11.txt hint.
+
+Enabling TTF support
+--------------------
+   To use TrueType fonts we need to have not just fonts but also
+   auxiliary files which X server uses like "directory listing" for ttf files
+   installed. One of these files, fonts.scale, could be created
+   using utility ttmkfdir, which is not included in XFree86-4.02 package.
+   In turn, ttmkfdir requires package freetype-1.x.x installed.
+   However, because ttmkfdir tarball includes the prebuilt executable,
+   one might try to use this executable. In this case, one might decide
+   to skip both installation of freetype-1.3.1 library and building ttmkfdir.
+
+FreeType-1.3.1 library
+----------------------
+
+Download freetype-1.3.1.tar.gz from http://www.freetype.org/. Unpack
+and run:
+
+   ./configure --prefix=/usr
+   make
+   make install
+
+Ttmkfdir utility
+----------------
+
+Download ttmkfdir.tar.gz from
+http://freshmeat.net/projects/ttmkfdir/ and unpack it.
+
+Make the following changes in Makefile
+
+   FREETYPE_INCL = $(FREETYPE_BASE)/include/freetype
+   FREETYPE_LIB = -L$(FREETYPE_BASE)/lib -lttf
+
+Run
+   make FREETYPE_BASE=/usr
+   install -m755 ttmkfdir /usr/bin
+
+TTF configuration
+-----------------
+* Create the /usr/X11R6/lib/X11/fonts/ttf directory.
+   Copy to this directory .ttf fonts you desire.
+
+Run
+*  cd /usr/X11R6/lib/X11/fonts/ttf
+   ttmkfdir -o fonts.scale
+   mkfontdir
+
+Specify which font module the X server should be using by appending to
+the "Module" section of your XF86Config file:
+
+   Section "Module"
+     ...
+     Load  "freetype"
+     Load  "speedo"
+   EndSection
+
+and appending the path to your font directory in "Module" section:
+
+   Section "Files"
+        ...
+*	FontPath "/usr/X11R6/lib/X11/fonts/ttf/"
+   EndSection
+
+Now your X server will be able to render TrueType fonts.
+
+-----------
+
+Here's a little trick to view all of the many X manpages (except for
+the C API):
+
+*  man /usr/X11R6/man/man{1,4,5,7,8}/*
+
+This will let you read all of the manpages, one after another (press q
+to go to the next page.) Plow through this and you will know more
+about X than 99% of the rest of us.
+
+
+
+
+
+	

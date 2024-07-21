@@ -1,0 +1,22 @@
+TITLE:		Network time syncing
+LFS VERSION:	any
+AUTHOR:		mabell@tanet.net
+
+SYNOPSIS:
+	This hint tells you how to synchronize the time across a network.
+
+HINT:
+> On a different note, do you know anything about syncing time across the
+> network with Win9X machines??
+>
+
+setup samba on the linux box..
+run "net time \\linuxserver /set /yes" (i'm pretty sure that is the right
+syntax)
+perhaps from the netlogon script or just in a batch file to be ran on
+bootup, on the win9x machines, this will also work for the winNT
+machines, the net command might be a little different.. and in winNT
+not everyone can set the system time by default, so if it is ran at logon
+you might need to give the user the access to change the system time..
+... and this way you dont have to install any more software that could
+crap your M$ boxes....

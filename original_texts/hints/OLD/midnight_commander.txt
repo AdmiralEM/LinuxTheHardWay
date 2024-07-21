@@ -1,0 +1,46 @@
+TITLE:		Midnight_Commander
+LFS VERSION:	3.1
+AUTHOR:		Barbara Pfieffer <mudadmin@bejay.com>
+
+SYNOPSIS:
+	How to install Midnight Commander (MC) and required glib
+
+
+HINT:
+
+I like to use Midnight Commander for a file manager, which works
+in both terminals and X.
+
+Download Midnight Commander 4.5.55
+http://www.ibiblio.org/pub/Linux/utils/file/managers/mc/mc-4.5.55.tar.gz
+
+Download glib 1.2.10 (not the 1.3 versions)
+ftp://ftp.gtk.org/pub/gtk/v1.2/glib-1.2.10.tar.gz
+
+Unpack glib-1.2.10 and change to its directory.
+
+I put all newly installed packages (nonstandard lfs) in /usr/local, so
+that's where these will be installed.
+
+To install glib: (run as root)
+./configure &&
+make &&
+rm -rf /install-prefix/include/glib.h /install-prefix/include/gmodule.h &&
+make install
+
+Then type ldconfig (to allow the libraries to be found)
+If you installed in /usr/local as I did, edit your PATH:
+
+export PATH=$PATH:/usr/local/bin
+
+Unpack mc-4.5.55 and change to its directory
+
+To install MC:
+./configure --with-ncurses &&
+make &&
+make install
+
+
+
+
+

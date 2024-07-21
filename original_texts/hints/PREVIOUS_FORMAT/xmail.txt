@@ -1,0 +1,333 @@
+TITLE:		XMAIL
+LFS VERSION:	3.3, 4.0 and CVS
+AUTHOR:		Richard Downing <richard.downing@bcs.org.uk>
+
+SYNOPSIS:
+	How to set up xmail-1.11 instead of sendmail, postfix, qmail at al.
+
+HINT:
+This hint explains how to build and set up xmail on your LFS system. Xmail, by
+Davide Libenzi, is a single server which replaces, say,
+sendmail+qpopper+fetchmail, or as I used on an LFS system long ago,
+postfix+procmail+fetchmail+qpopper.
+
+And since I know that this hint is linked to from the Xmail website, I should 
+add for Xmail readers that LFS = Linux From Scratch - the best way to learn
+Linux and Unix, by building one from sources: Visit
+
+	http://www.linuxfromscratch.org
+
+Why Xmail? Basically: why install three or four packages when one will do the 
+job?
+
+The big problem with xmail-1.11 is that Davide hasn't got around to writing
+either a configure script or an installation script.  This presents just a few
+interesting opportunities for error, especially if you are still a bit
+unix-challenged.  However once the package is installed it appears to work well
+and do what it is advertised to do.
+
+There is an active, knowledgable, but a bit busy, mailing list.
+
+I have used these instructions on a number of LFS builds, including my latest, 
+An
+LFS CVS20021105 with glibc-2.3.1/gcc-3.2.1, with complete success.
+
+Obtain and Unpack the package.
+------------------------------
+
+Download the package from: http://www.xmailserver.org
+
+It's a .tar.gz, so unpack in the usual way, and cd xmail-1.11.  (Note: I've used
+this process to build Xmail's since version 1.8, so I expect they will still 
+work for the next few releases - let me know if they let you down or need 
+clarifying)
+
+Start by checking out the documentation in the docs directory: Readme.html or
+Readme.txt is the only manual!
+
+Build the executables.
+----------------------
+Choose your Makefile depending on the architecture of your LFS machine:
+
+	make -f Makefile.lnx  - for an i86 box
+	make -f Makefile.slx  - for a SPARC
+	make -f Makefile.plx  - for a PPC
+
+(Note I only have experience with i86)
+
+You can strip the executables now if space is an issue.
+
+This will build Xmail and it's toolset, this includes a SysV init script which
+works on a LFS system, but more on that later.
+
+Install Xmail.
+--------
+
+This is where the fun comes.  Su to root if you are not already.
+
+	cp -a MailRoot /var
+	chmod 700 /var/MailRoot
+
+Most of XMail's files are held in /var/MailRoot, which is only accessable by 
+root.
+
+	cp XMail XMCrypt MkUsers sendmail /var/MailRoot/bin
+
+However the CtrlClnt binary needs to be accessible to whoever is going to
+administer the xmail system:
+
+	cp CtrlClnt /usr/bin
+
+Copy the Manual to appropriate places:
+
+	cp -p Readme.txt /usr/share/xmail/Manual.txt
+	cp    Readme.html /usr/share/xmail/Manual.html
+
+If you plan to use Davide's init script copy it now:
+	
+	cp xmail /etc/rc.d/init.d
+
+Or create a more LFS-like script, such as:
+
+cat > /etc/rc.d/init.d/xmail << "EOF"
+
+#!/bin/bash
+# Begin $rc_base/init.d/XMail
+
+# Based on sysklogd script from LFS-3.1 and earlier.
+# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+#
+# XMail init script by Richard A Downing - richard.downing@bcs.org.uk
+# using LFS template and XMail-1.11 skeleton.
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+export MAIL_ROOT=/var/MailRoot
+export MAIL_CMD_LINE="-Qn 2 -Pl -Sl -Fl -Cl -Ll"
+PATH=$XMAIL_ROOT/bin:$PATH
+
+case "$1" in
+	start)
+		echo "Starting XMail ..."
+		loadproc $MAIL_ROOT/bin/XMail
+		;;
+
+	stop)
+		echo "Stopping XMail ..."
+		killproc XMail
+		;;
+
+	reload)
+		echo "Reloading XMail ..."
+		reloadproc XMail
+		;;
+
+	restart)
+		$0 stop
+		sleep 1
+		$0 start
+		;;
+
+	status)
+		statusproc XMail
+		;;
+
+	*)
+		echo "Usage: $0 {start|stop|reload|restart|status}"
+		exit 1
+		;;
+esac
+
+# End $rc_base/init.d/XMail
+EOF
+
+
+Replace or create a sendmail script
+-----------------------------------
+
+If your MUA (Kmail, for instance) interfaces (when sending mail) with the MTA 
+using SMTP you can skip this step entirely, but some MUA's need a sendmail 
+script which you can create like this.
+
+The sendmail executable needs the SETGUID bit set to run as root and this might
+be a security hole.
+
+If you already have a sendmail script or program, move it aside (your's might be
+in /usr/bin or elsewhere):
+
+	mv /usr/sbin/sendmail /usr/sbin/sendmail.orig
+	
+Copy Xmail's sendmail executable to an appropriate place, and set it's SETUID
+bit so that it runs as root.
+
+	cp sendmail /usr/sbin/sendmail.xmail
+	chmod +s /usr/sbin/sendmail.xmail
+
+And create a sendmail script to set the environment and call the executable:
+
+	cat > /usr/sbin/sendmail << "EOF"
+	#!/bin/bash
+	# This script sets the environment for XMail's sendmail and then calls it.
+	# The script exists so that software that expects sendmail can use XMail.
+
+	if [ -z $MAIL_ROOT ]; then
+        export MAIL_ROOT=/var/MailRoot
+	fi
+	/usr/sbin/sendmail.xmail $*
+	# End /usr/sbin/sendmail
+	EOF
+
+	chmod +x /usr/sbin/sendmail
+
+Configure Xmail's server.tab.
+-----------------------------
+
+It's important to note that all of xmail's configuration files use the 'tab'
+character as a separator character - don't use spaces or extra tabs, and every 
+line, EVEN THE LAST ONE in a file must have a terminating <return>.   For this 
+reason, apart from the following, I don't edit the tab files directly, prefering
+the control interface, see later.
+
+Use your favourite text editor to edit /var/MailRoot/server.tab for your domain
+name, and set the names of the user's who will get error and postmaster 
+messages.
+  
+The files as delivered contain a reasonable starting point with a domain called
+'xmailserver.test' which you can use to try things out if you want.
+
+The server configuration variables are well described in part 12 of
+the Manual (which you saved in /usr/share/xmail/Manual.txt !) - so check what
+your situation needs.  My server.tab is:
+
+"RootDomain"	"109bean.org.uk"
+"POP3Domain"	"109bean.org.uk"
+"PostMaster"	"root@109bean.org.uk"
+"ErrorsAdmin"	"root@109bean.org.uk"
+"DefaultSMTPGateways"	"smtp.your-isp.com"
+"RemoveSpoolErrors"	"0"
+"MaxMTAOps"	"16"
+"ReceivedHdrType"	"0"
+"FetchHdrTags"	"+X-Deliver-To,+Received,To,Cc"
+"Pop3SyncErrorAccount"	"root@109bean.org.uk"
+"DefaultSmtpPerms"	"MRVZ"
+
+(note: I have not registered 109bean.org.uk, as it's never seen outside of my 
+network)
+
+Setup the domain.tab file to contain the name of your domain:
+	"109bean.org.uk"
+
+Now set up a 'control' account, I called mine 'root'.  Choose a nice complicated
+password and find its encrypted form with XMCrypt, I'll use 'ciao' as an 
+example:
+	/var/MailRoot/bin/XMCrypt ciao
+
+Now edit /var/MailRoot/ctrlaccounts.tab to read something like this, where the 
+second element is the string that XMCrypt returned:
+	"root"	"060c040a"
+	
+Note the double-quotes are really there in the file and the separator IS a 
+single 'tab' and the line IS terminated with a <return>.  Wherever a 'tab' file 
+format calls for a password, it's an XMCrypt password that's needed - this 
+caused me a lot of problems!
+
+You will need at least one user set up in /var/MailRoot/mailusers.tab, and while 
+
+
+
+you are editing it delete the sample account for 'xmailuser', remember to use
+XMCrypt to find your encrypted password.
+
+and that is sufficient to get XMail running.
+
+Start XMail for the first time.
+-------------------------------
+
+Start XMail in debug mode with the following commands:
+
+	export MAIL_ROOT=/var/MailRoot
+	/var/MailRoot/bin/XMail -Md -Pl -Sl -Fl -Cl -Ll ...
+
+where the ... are any other command line switches you might want or need - see
+part 19 of the Manual.  (By the way those switches end with a lower case L - not
+obvious in some fonts!)
+
+You will see the various XMail threads start up, and if all looks stable you
+have a working XMail.  If you can start another terminal session, a second xterm
+or login on another tty, then you can command XMail (see next session) and watch
+the debugging output.  When you are happy, hit Ctrl-C and abort the run,
+watching XMail shut down it's threads gracefully.
+
+Setup the SysV init script.
+---------------------------
+
+Link the SysV init script as you see fit into the rc.d system, I set:
+
+	cd /etc/rc.d
+	ln -s init.d/xmail rc0.d/K27xmail
+	ln -s init.d/xmail rc1.d/K27xmail
+	ln -s init.d/xmail rc2.d/K27xmail
+	ln -s init.d/xmail rc6.d/K27xmail
+	ln -s init.d/xmail rc3.d/S43xmail
+	ln -s init.d/xmail rc4.d/S43xmail
+	ln -s init.d/xmail rc5.d/S43xmail
+
+although I actually do it with KDE3's SysV-Init editor.
+
+The aim is to close xmail before the network goes down, but after any activity
+which might cause mail activity, and to start xmail after the network is up, but
+before starting anything that might generate mail (for example: fcron).
+
+Now you can run the xmail daemon properly by issuing:
+
+/etc/rc.d/init.d/xmail start
+
+which will fork the daemon and display its process id (pid).  Now you can set up
+your other accounts and the links to mail servers at your ISP, and becuase you 
+are asking XMail to do it for you, you are assured that the setup will be 
+self-consistent.
+
+Setting up another user account.
+--------------------------------
+Type the following, you don't need to be 'root':
+
+	/usr/bin/CtrlClnt -s 109bean.org.uk -u root -p ciao \
+	useradd 109bean.org.uk newuser newpassword U
+	
+Of course, you need to substitute your domain name, Control Account and 
+password.
+
+In these CtrlClnt (Control Client) commands you should NOT use MKCrypt-ed
+passwords.
+
+Once the user account(s) are set up, you can try sending mail between them
+locally.  Set up your MUA, say Mutt or Kmail, to send via smtp localhost:110, 
+and receive by POP3 from '109bean.org.uk' or whatever your domain is
+called, with the appropriate username and password as just setup.
+
+Setting up a POP3 drop from your ISP.
+-------------------------------------
+Assuming your ISP presents a simple unencrypted (old-fashioned) POP3 service,
+you need to know your login name (you-at-isp) and password 
+(your-isp-pop-password)and the address of the POP3 server.
+
+	/usr/bin/CtrlClnt -s 109bean.org.uk -u root -p ciao \
+	poplnkadd 109bean.org.uk richard \
+	pop3.isp.com you-at-isp your-isp-pop-password CLR
+
+This will set up an automatic synchonisation between XMail and your pop3 account 
+
+
+at pop3.isp.com, syncronising every 2 minutes (120 seconds).
+To change the synchronisation rate to, say, every 5 minutes, you need to edit 
+the
+command line switch -Yi 300 (300 seconds) in /etc/rc.d/init.d/xmail.
+
+If your ISP supports APOP authorisation substitute APOP for CLR above.
+
+That's all I did, and it works for me.  Good luck.
+
+
+
+

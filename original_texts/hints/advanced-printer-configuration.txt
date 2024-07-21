@@ -1,0 +1,245 @@
+AUTHOR: Stuart Foster <smf.account1@ntlworld.com>
+
+DATE: 2023-08-10
+
+LICENSE: GNU Free Documentation License Version 1.3
+
+SYNOPSIS: Enable SysV BLFS systems to access a networked CUPS server.
+
+DESCRIPTION:
+
+This hint describes changes to BLFS configurations and the addition of new
+software to allow location on a network of a LFS/BLFS CUPS computer running as
+a print server. The core mechanism used is mDNS which is the "multicast Domain
+Name System" or "Bonjour". 
+
+ATTACHMENTS:
+
+PREREQUISITES:
+
+- Basic knowledge and experience of building LFS/BLFS packages.  
+- A preconfigured CUPS server that has nominated printers to share network wide.  
+- An existing LFS/BLFS client system or a new LFS/BLFS client system in construction.  
+- Some familiarity with GIT for downloading software.  
+
+This hint is intended only for users that follow the LFS/BLFS development
+process.  LFS/BLFS version 11.3 was used to investigate these changes, but it
+should be applicable to other recent SysV LFS/BLFS builds.
+
+HINT:
+
+This hint describes a mechanism for the creation of temporary CUPS
+print queues (as apposed to the normal permanent printer queues created
+by the standard BLFS installation of CUPS). These temporary print
+queues track the permanent print queues present on the main CUPS print
+server. The changes will enable network wide access to these printers
+on LFS/BLF client computers via these queues.
+
+To implement the new configuration the following BLFS components will
+be required to be installed on client systems with specific
+configuration changes which are detailed below,
+
+* AVAHI (service discovery)
+* CUPS
+* CUPS-FILTERS
+* GIT
+* /etc/nsswitch.conf
+
+For reference the test system described here also had installed:
+
+* CUPS-PK-HELPER
+
+This package probably does not contribute much to the final solution
+but was present through out the whole process so it is included here
+for completeness.
+
+The core addition to the BLFS system is the NSS-MDNS software package:
+
+NSS-MDNS is from https://github.com/lathiat/nss-mdns/
+
+Use GIT to clone this package into a suitable location (/sources).
+NSS-MDNS is a plugin for the GNU NSS (Name Service Switch)
+functionality which is part of the GNU C Library (GLIBC) it allows host
+name resolution via Multicast DNS.
+
+For consistency I suggest these changes be included on all the LFS/BLFS
+systems on your local network.
+
+Start by installing AVAHI include the required, recommended and
+optional dependencies.
+
+Once installed run the following tests:
+
+avahi-resolve-host-name <cupsserver>.<yourdomain>
+Only a fully qualified address will work for this test.
+
+e.g.
+From the example test system:
+
+avahi-resolve-host-name Moira.delta
+
+The example system returned:
+
+Moira.delta 192.168.0.1
+
+Then run:
+
+avahi-resolve-host-name <cupsserver>.local
+At this stage this should fail.
+
+e.g.
+From an example system:
+
+avahi-resolve-host-name Moira.local
+
+This time the example system returned:
+
+Failed to resolve host name 'Moira.local': DNS failure: NXDOMAIN
+
+This is the correct behaviour prior to the installation of NSS-MDNS.
+
+Next proceed to install CUPS, If CUPS is already present uninstall it
+and remove the /etc/cups directory and contents, a new clean directory
+will be created during the building of CUPS. Again install the
+required, recommended and optional dependencies. Note specifically the
+AVAHI option and the installation of the boot script.
+
+The next package to install is CUPS-FILTERS.
+Include the required and recommend dependencies.
+Also include any optional printer drivers (for runtime) as appropriate
+for your configuration.
+Configure and install the package as follows to allow interfacing with
+AVAHI (see the package notes):
+
+...
+CXXFLAGS="$CXXFLAGS -std=c++17" \
+./configure --prefix=/usr \
+ --sysconfdir=/etc \
+ --localstatedir=/var \
+ --without-rcdir \
+ --disable-static \
+ --docdir=/usr/share/doc/cups-filters-1.28.16 &&
+make
+...
+
+The LFS book constructs the /etc/nsswitch as part of the LFS GLIBC
+configuration this now needs to be modified to enable multicast dns
+lookups.
+
+In "/etc/nsswitch.conf" change the hosts line from:
+
+hosts: files dns
+
+to:
+
+hosts: files mdns4_minimal [NOTFOUND=return] dns mdns4
+
+The final stage in the modified CUPS BLFS system build is to include
+the NSS-MDNS package.
+
+First using "ls" make a note of the AVAHI communication sockets
+location, it should be:
+
+ /run/avahi-daemon/socket
+
+Next go to the location of the GIT downloaded NSS_MDNS package and read
+the notes (README.md). Then build the package as follows:
+
+./configure --prefix=/usr/ --localstatedir=/
+make
+
+When built check that the package has the right interface to AVAHI run:
+
+strings ./.libs/libnss_mdns.so.2|grep avahi-daemon
+
+This should return:
+
+//run/avahi-daemon/socket
+
+This must resolve to the same location expected by AVAHI.
+
+If all is well install the package:
+
+make install
+
+At this point I suggest a reboot is in order to ensure a consistent
+system.
+
+Now if we revisit the failed AVAHI test we did earlier:
+
+avahi-resolve-host-name <cupsserver>.local
+
+This should now return the address of the CUPS server:
+
+e.g.
+From the example system:
+
+avahi-resolve-host-name Moira.local
+
+now returns the correct IP address:
+
+Moira.local 192.168.0.1
+
+We are now in a position to interogate the CUPS server for any printers
+it is advertising.
+
+Run the following command:
+
+lpstat -l -e
+
+This must return at least one network available printer queue before
+proceeding.
+Assuming at least one printer is adversised run the following test to
+check that all is well and the printer is functional.
+
+lp -d <network printer queue> /etc/fstab
+
+A printed copy of your /etc/fstab should result.
+
+e.g.
+Using the example system (There are 3 printers on the example test CUPS
+server):
+
+lpstat -l -e
+
+returned:
+
+Hp5550_Inkjet_Printer_Moira network none ipps://Hp5550%20Inkjet%20Printer%20%40%20Moira._ipps._tcp.local/cups
+HP6020e_Moira network none ipps://HP6020e%20%40%20Moira._ipps._tcp.local/cups
+hp_photosmart_7700_series_Moira network none ipps://hp%20photosmart%207700%20series%20%40%20Moira._ipps._tcp.local/cups
+
+Selecting the HP7700 series printer I can print an example file with:
+
+lp -d hp_photosmart_7700_series_Moira  /etc/fstab
+
+The file is printed and the following is typically returned:
+
+request id is hp_photosmart_7700_series_Moira-1 (1 file(s))
+
+Applications (GIMP, FIREFOX etc) should now be able to print using
+these temporary printer queues.
+
+That concludes this hint, for more information refer to the
+documentation on the referenced web sites.
+
+Finally it is worth stating that the core of this hint is the
+introduction of NSS-MDNS. The inclusion of ALL the dependencies around
+AVAHI and CUPS may be considered overkill by some, but I was looking
+for a consistent approach going forward so I took the approach
+described here, I was also influenced by the approach used in AFLS
+which I have recently been investigating. Please feel free to adjust
+these dependencies if you feel an alternate arrangement is more
+suitable for your needs, you can always fallback on the complete
+solution described here.
+
+ACKNOWLEDGEMENTS:
+ * OpenPrinting CUPS (documentation
+https://openprinting.github.io/cups)
+ * nss-mdns https://github.com/lathiat/nss-mdns/
+ * Bonjour https://developer.apple.com/bonjour/
+
+
+CHANGELOG:
+[2023-08-10]
+ * Initial release
+

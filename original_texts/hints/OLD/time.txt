@@ -1,0 +1,353 @@
+TITLE:		Time on LFS
+LFS VERSIOM:	Any
+AUTHOR:		Marc Heerdink <marc@linuxfromscratch.org>
+
+SYNOPSIS:
+	This is an in-depth explanation of timezones, UTC, the TZ environment variable and similar topics.
+
+HINT:
+version 2.1 (04/10/2002)
+
+=================
+TABLE OF CONTENTS
+=================
+
+1 Introduction
+2 Local vs. UTC
+3 Determining your timezone
+4 Using the timezone
+  4.1 Creating symlinks
+  4.2 Changing bootscripts
+      4.2.1 SYSV Init
+      4.2.2 BSD Init
+  4.3 TZ environment variable
+5 Time synchronization
+  5.1 Picking an NTP server
+  5.2 Synchronize it
+  5.3 Maintenance
+
+
+===============
+1. INTRODUCTION
+===============
+
+  Earth is divided in 24 time zones. The local time in a zone depends on how
+many zones that zone is away from Greenwich, Great-Britain. The difference in
+time is relative to the 0-zone over Greenwich. For example, in Holland (where I
+live) we're in the +1-zone (that means, it's one hour later here than in Great
+Britain). This compensates for the world turning.
+  Your Linux system is multinational. It can not only talk different languages,
+but it's aware of timezones too. This hint tells you how you can set it up.
+  The second chapter of this hint is probably the most important one, the rest
+of this hint depends on the choice you make in chapter 2. Good luck... :)
+
+Send comments, suggestions, love-letters and improvements to:
+Marc Heerdink <marc@linuxfromscratch.org>
+
+
+================
+2. LOCAL VS. UTC
+================
+
+  The first and most important question you'll have to answer is whether you
+want to store the time in your machine in either UTC or local time format. UTC
+is Greenwich time, local time is the time that is displayed on a clock hanging
+on a wall near you (tm). Each format has it's own advantages and disadvantages,
+but both of them are discussed in this hint.
+  Traditionally, all POSIX machines (i.e. Solaris boxes, BSD Machines but Linux
+boxes too) have their system time in UTC (Coördinated Universal Time) format.
+Stupider OSes require their users to configure their machines for local time,
+and these OSes are mainly the Microsoft ones. Fortunately, Linux can handle
+both the normal UTC machines and the machines suffering from Microsoft diseases
+that have their system time in local format. I still recommend UTC, that's the
+way Linux was originally set up. Usage of local time is only a workaround.
+  At this point, you'll have to decide what it's gonna be: local or UTC time.
+Some guidelines: If you're running Windows and Linux together on 1 box, I
+recommend you use local time, if you have Windows but you hardly use it or if
+you don't have Windows at all, it's a good idea to store your time in UTC
+format. Both ways are described here.
+
+
+============================
+3. DETERMINING YOUR TIMEZONE
+============================
+
+  Knowing what timezone you're living in, is important for the rest of this
+hint. But it's not enough to know how many zones you're away from Greenwich,
+since daylight saving is also influenced by this choice. LFS comes with an
+easy program to determine your timezone in only a few questions (usually 2 or
+3). Run it now:
+
+ tzselect
+
+  When this program quits, the last line it prints is your timezone. Here, it
+prints "Europe/Amsterdam" (without the quotes) because I live in the
+Netherlands. Remember this value; write it down or put it somewhere in a text
+file. This variable will be referenced to as _TIMEZONE_ in the rest of this
+hint to simplify explanations.
+
+
+=====================
+4. USING THE TIMEZONE
+=====================
+
+  Now that you know what timezone you're living in, we can put this knowledge
+into practice. This chapter deals with the various ways a timezone needs to be
+set up. Each subchapter describes what we're going to do and tells you how. I
+assume you're using a virgin LFS installation. Otherwise, you'll have to do
+some improvisation.
+
+
+=====================
+4.1 CREATING SYMLINKS
+=====================
+
+  These are symlinks that have to be present, this is not different for either
+people with local time or people with UTC time. Why these symlinks have to be
+created, will be explained in chapter 4.2. For now, just enter the
+/usr/share/zoneinfo directory and create a symlink from localtime to your
+timezone with the following command:
+
+ cd /usr/share/zoneinfo &&
+ ln -sf _TIMEZONE_ localtime
+
+  Chapter 3 describes this _TIMEZONE_ thingie. Read it if you didn't already do
+so, it contains importand information. Next, we need another sylink in /etc:
+
+ cd /etc &&
+ ln -sf ../usr/share/zoneinfo/localtime
+
+  The symlinks are now set up, changing bootscripts is next.
+
+
+========================
+4.2 CHANGING BOOTSCRIPTS
+========================
+
+  At boot time, the system clock that is maintained by the Linux kernel, has
+to be synchronized to the hardware clock. The hardware clock is the clock that
+ticks in your BIOS and keeps the time even if the system is powered time. The
+reason to do so, is that the hardware clock is not really precise. The Linux
+kernel uses a far more precise way of time keeping, that I'm not going to
+describe in detail here. To keep the Linux system time when the system goes
+down, the system time has to be written to the hardware clock when the system
+is going to reboot or power down.
+  Writing to the hardware clock and reading from it is performed by a program
+named hwclock(8). This program is part of a normal LFS system, so you don't
+need to download it. We'll modify some of the bootscripts to make this program
+run at power up and power down.
+  This chapter describes the changes that have to be made to either the SYSV
+bootscrips that are described in the book, or to the BSD style bootscripts
+that are described in the BSD Init hint. If you don't know what type you have,
+you can assume you're using the SYSV type bootscripts.
+
+
+===============
+4.2.1 SYSV INIT
+===============
+
+  In the book, a script named setclock is created in /etc/init.d/setclock is
+created. This script performs only half of the job, because it only sets the
+system time from the hardware clock. We will modify this script and create
+some additional symlinks to make this script save the system time to the
+hardware clock if needed. But first, you'll have to check if the
+/etc/sysconfig/clock file is correct. This file defines a variable UTC. What
+value this variable gets, is pretty self-explanatory after reading chapter 2.
+Summarized: UTC=1 for UTC hardware clocks, UTC=0 for localtime clocks. Next:
+we create a new /etc/init.d/setclock:
+
+ rm -f /etc/init.d/setclock
+ cat >/etc/init.d/setclock <<EOF
+#!/bin/sh
+# Begin /etc/init.d/setclock
+
+#
+# Include the functions declared in the /etc/init.d/functions file
+# and include the variables from the /etc/sysconfig/clock file
+#
+
+source /etc/init.d/functions
+source /etc/sysconfig/clock
+
+case "$1" in
+	start)
+		case "$UTC" in
+			yes|true|1)
+				/sbin/hwclock --hctosys --utc
+			;;
+			no|false|0)
+				/sbin/hwclock --hctosys --localtime
+			;;
+			*)
+				echo "Invalid value for UTC in /etc/sysconfig/clock: $UTC"
+				echo "Valid values for UTC are 1 and 0."
+				exit 1
+			;;
+		esac
+	;;
+	stop)
+		case "$UTC" in
+			yes|true|1)
+				/sbin/hwclock --systohc --utc
+			;;
+			no|false|0)
+				/sbin/hwclock --systohc --localtime
+			;;
+			*)
+				echo "Invalid value for UTC in /etc/sysconfig/clock: $UTC"
+				echo "Valid values for UTC are 1 and 0."
+				exit 1
+			;;
+		esac
+	;;
+	*)
+		echo "Usage: $0 {start|stop}"
+		exit 1
+	;;
+esac
+
+# End /etc/init.d/setclock
+EOF
+ chmod 755 /etc/init.d/setclock
+
+  Next are the symlinks. The symlink to run the setclock script is already
+present in /etc/init.d/rcS.d, so the only symlinks we have to create are the
+ones to run setclock when the system shuts down:
+
+ cd /etc/rc0.d &&
+ ln -sf ../init.d/setclock S700setclock &&
+ cd /etc/rc6.d &&
+ ln -sf ../init.d/setclock S700setclock
+
+  At this point, the bootscripts are correctly set up and the only thing that's
+left to configure is the TZ environment variable in chapter 4.3.
+
+
+==============
+4.2.2 BSD INIT
+==============
+
+  The scripts are hwclock aware out of the box. The only thing you'll have to
+change, are the parameters for hwclock in the /etc/rc.d/rc.sysinit and
+/etc/rc.d/rc.0 scripts. Open these scripts in a text editor and search for the
+lines that call hwclock. These lines should look like
+
+for UTC time:
+(rc.sysinit) /sbin/hwclock --hctosys --utc
+(rc.0)       /sbin/hwclock --systohc --utc
+
+for local time:
+(rc.sysinit) /sbin/hwclock --hctosys --localtime
+(rc.0)       /sbin/hwclock --systohc --localtime
+
+  And that's it!
+
+
+===========================
+4.3 TZ ENVIRONMENT VARIABLE
+===========================
+
+  This variable is used by hwclock when it's run from a shell, and some
+programs that heavily depend on timezones. This variable is used system-wide,
+so it's a good idea to have it in the system-wide environment that is set up in
+/etc/profile. Add these lines to your /etc/profile:
+
+ TZ=__TIMEZONE__
+ export TZ
+
+
+=======================
+5. TIME SYNCHRONIZATION
+=======================
+
+  Time synchronization means "making your system display the correct time".
+You'll learn how to synchronize your time with one of the NTP (Network Time
+Protocol) servers out there and how to keep this time synchronized. In this
+chapter, we'll use a handy utility named "getdate" to do the time
+synchronization. Get it from:
+
+ ftp://metalab.unc.edu/pub/Linux/system/network/misc/getdate_rfc868-1.2.tar.gz
+
+  Now extract it in /usr/src:
+
+ cd /usr/src &&
+ tar xzvf /path/to/getdate_rfc868-1.2.tar.gz
+
+  And compile it:
+
+ cd getdate_rfc868 &&
+ make &&
+ make install &&
+ make installman
+
+  This is everything we need for time synchronization.
+
+
+=========================
+5.1 PICKING AN NTP SERVER
+=========================
+
+  This is the most difficult part of time synchronization. You need an NTP
+server that is preferably in your timezone, and that is working. Pick one from
+the list @ http://www.eecis.udel.edu/~mills/ntp/clock1a.html. Test if it works
+using:
+
+ getdate your.ntp.server
+
+  If you don't get a positive output, pick the next NTP server from the list and
+try it again, otherwise, adjust your system time manually to a value as close as
+possible to this ntp server. For example, if you get this:
+
+ ntp.foo.bar.com:  (-40)  Sun Mar 4 13:33:33 2001
+
+  Adjust your time with this command:
+
+ date -s 13:33:40
+
+  It's not really important yet what time exactly you set it to, but we need a
+value that is close enough for getdate, since it won't work with a greater
+difference between NTP and local time than 180 seconds.
+
+
+==================
+5.2 SYNCHRONIZE IT
+==================
+
+  Type this to synchronize your system time with the NTP server:
+
+ getdate -adjust 5 180 your.ntp.server
+
+  This is it! The correct time will be written to your hardware clock next time
+your system shuts down (well... if you read chapter 4) so you'll have a quite
+correct time for a few days. "A few days?!" Yes, because your hardware clock
+isn't really precise. To make sure you always have the correct time, you'll have
+to periodically synchronize it again. How this can be done will be explained in
+chapter 5.3.
+
+
+================
+5.3 MAINTANTANCE
+================
+
+  You can keep your system clock in shape if you regularly synchronize your
+local clock with an NTP server. It can be a good idea to do this every time you
+connect to the internet, or (if you have a continuous connection) with a cron
+job. If you don't like this automation, you can of course do it manually from
+time to time. This chapter contains some examples for the given methods.
+  First method is "synchronize when the internet link goes up." In this
+example, the standard PPP daemon is used, because it's often used for serial
+links. Open the file /etc/ppp/ip-up in a text editor. This file gets auto-
+matically executed when the ppp link goes up so it's safe to synchronize from
+here. Add this line to the end:
+
+ /usr/bin/getdate -adjust 5 180 your.ntp.server
+
+  The second method is "synchronize every x hours using a cron job." There are
+too many cron daemons out there to give an example that works for every daemon.
+Normally, the man page for the crontab editor you use will give you enough
+information to be able to do this yourself. If you have made such a cronjob for
+one particular cron daemon, please let me know and I'll add it here.
+  The third and last "do it yourself"-method is pretty straightforward. Run the
+familiar getdate -adjust line every once in a while...
+
+__EOF__

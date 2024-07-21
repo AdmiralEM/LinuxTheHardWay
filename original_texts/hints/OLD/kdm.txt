@@ -1,0 +1,146 @@
+TITLE:          How to login into a WM using KDM
+LFS VERSION:    4 and up.
+KDE VERSION:	3.1
+AUTHORS:	Remy Bosch <remy.bosch@hccnet.nl>
+
+
+SYNOPSIS:
+        How to successfully login into a WM using KDM
+
+HINT:
+
+ If we want to tell kdm what to start, we choose our favorite WM and klik
+ on [Go!]. The problem is that you might get a standard WM from XFree86.
+ After that, we discus XDMCP, so we can use remote-x
+
+ I've put line numbers in the index so you can jump directly to the subject you
+ want to read ;-)
+
+
+CHANGELOG      --- Timestamps are in dd-mm-yy ---
+
+ 26-07-02 (dd-mm-yy)
+  Typo in Xsession. "$1" must be "$1". Sorry :-}
+ 09-01-03
+  Removed unneeded sections. kdm of kde3.1 (rc5) works well.
+  Also the Xsession is fully under control of kdm :-)
+  Still need to check the remote acces part :-(
+
+
+INDEX
+	XSESSION		line 37
+	REMOTE ACCES		line 61
+	XACCESS			line 89
+	KDMRC			line 96
+	IF ALL IS WELL		line 110
+	REMOTE CLIENT		line 124
+	REQUESTS		line 134
+
+
+XSESSION
+
+ We can have the following in /etc/X11/xdm/Xsession. It's all we need ;-)
+
+-----begin-snip-----
+# Begin /etc/X11/xdm/Xsession
+#!/bin/bash --login
+
+# redirect errors to a file in user's home directory if we can...
+for errfile in "$HOME/.xsession-errors" "${TMPDIR-/tmp}/xses-$USER"
+"/tmp/xses-$USER"
+do
+        if ( cp /dev/null "$errfile" 2> /dev/null )
+        then
+                chmod 600 "$errfile"
+                exec > "$errfile" 2>&1
+                break
+        fi
+done
+
+# End /etc/X11/xdm/Xsession
+-----end-snip-----
+
+
+REMOTE ACCES
+
+This way you can run KDE on a 486!
+Looks amazing, but the programs are run on a server. One can call this a
+application-server. I only talk about the X-part. There are tree ways to get
+this show on the road. This is from XDM-Xterm mini-nowto:
+
+  * Direct query : the X server contacts a named host, requesting that the
+    server presents a login prompt on its display
+
+  * Broadcast : the X server sends out a broadcast message to the network,
+    and the first server running XDM that responds to the broadcast will be
+    the one to present the login prompt on its display
+
+  * Indirect query : the X server contacts a named host, but asks it which
+    other hosts it knows about on the network. The named host will then
+    present the user with a list of hosts to choose from, and will then go on
+    to initiate communications with the selected host resulting in the
+    selected host presenting a login prompt on the X servers display.
+
+
+We do the fist (Direct query). It's IMO the best and easiest option.
+
+To get it working, we do the following:
+ - Edit Xacces
+ - Edit kmdrc
+
+
+XACCESS
+
+ If you want to log in from an other computer (Remote X), you can add a IP
+ number or hostname that is allowed to use remote X in
+ /opt/kde/share/config/kdm/Xaccess.
+
+
+KDMRC
+
+ We still need to enable xdmcp... You can find it in the last section.
+ I displayed a part of mine here.
+
+-----begin-snip-----
+[Xdmcp]
+Enable=true
+KeyFile=/opt/kde/share/config/kdm/xdm-keys
+Willing=su nobody -c /opt/kde/share/config/kdm/Xwilling
+Xaccess=/opt/kde/share/config/kdm/Xaccess
+-----end-snip-----
+
+
+IF ALL IS WELL
+
+ When everything works as it should, you can started automaticly. This
+ can be done by a script from /etc/init.d or we add a line in
+ /etc/inittab.
+ IMHO I don't care much about what runlevel should(not) be used. Though
+ people say it should be runlevel "5".
+ So the line to be added would be like:
+
+ -----------
+  x:5:respawn:/where/kdm/is/kdm -nodaemon
+ -----------
+
+
+REMOTE CLIENT
+
+ To get the wanted loginscreen just run :
+
+   X -query IP_number_of_server &> /dev/null &
+
+ This way X is started and files one request for a loginscreen.
+ And presto! There is your server-power on a small PC ;-)
+
+
+REQUEST
+
+ Remote login with root is not possible.
+ Just send in solutions and sugestions to me, if you had a problem and solved
+ it... Questions are welcome too.
+ This way we all can enjoy a easy login ;-)
+
+HAVE FUN !!!
+
+ This should do the trick. Have fun!

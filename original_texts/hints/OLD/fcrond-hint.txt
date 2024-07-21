@@ -1,0 +1,317 @@
+TITLE:		Fcron Scheduling Daemon
+LFS VERSION:	4.0 (or older versions, with minor changes)
+AUTHOR:		Lyle Vogtmann <vogtmann@pioneernet.net>
+MAINTAINER:	Robert Park <rbpark@ualberta.ca>
+
+SYNOPSIS:
+	How to set up the fcron scheduling daemon on an LFS system.
+
+HINT:
+
+Changelog
+---------
+
+Revision 1.8  2003/01/22 07:55:04  feztaa
+Updated cronmail script to version 1.6
+
+Revision 1.7  2002/12/24 08:30:05  feztaa
+Updated to fcron 2.9.3.
+
+Revision 1.6  2002/09/15 05:38:52  feztaa
+Changed email address, among other misc fixes.
+
+Revision 1.5  2002/06/09 04:14:05  feztaa
+Added some notes, changed style of code blocks, and fixed a couple typos.
+
+Revision 1.4  2002/05/02 00:05:36  feztaa
+Fixed a problem with the cronmail script improperly delivering mail,
+clarified some abiguities, and reduced some redundancy in the fcrontabs.
+
+Revision 1.3  2002/04/27 19:28:08  feztaa
+Fixed various typos and other grammatical errors (oops ;)
+
+Revision 1.2  2002/04/27 19:17:48  feztaa
+I've taken over maintenance of this hint from Lyle.
+Added 'cronmail' script, updated bootscripts to LFS 3.3,
+and reformatted the layout of the hint.
+
+Intro
+-----
+
+I wrote this to help others set up and use the Vixie Cron replacement known as
+fcron. Cron is a very useful and nearly ever-present system daemon on
+Unix-like systems.  It is started at boot time and runs in the background,
+starting sheduled tasks specified in a "crontab". There are several versions of
+cron available, each with it's own additions and features. Fcron has a mixture
+of some of the best features.
+
+Fcron can function as a standard cron, running tasks at a certain time on a
+certain day. It can also function like anacron, running tasks after a certain
+amount of time at an unspecific time (if you don't leave your computer on all
+the time, this is a godsend). It can also run tasks after a certain amount of
+uptime, too.
+
+For more information, check out the fcron home page at http://fcron.free.fr.
+
+Notes
+-----
+
+In an attempt to make this easier to read, all "code blocks" that you should
+execute on the commandline start and end with "##--CODE--##". Feel free to copy
+that onto the commandline along with the code itself, it won't hurt anything.
+Also, for quoted text (the output of a program, for example), each line is
+prefixed with four spaces.
+
+Requirements
+------------
+
+If you want to see the output of the commands that Fcron runs, you will want to
+have a working mail system installed. If you are not interested in installing a
+mail system on your box, I have written a "cronmail" script that you can use to
+let fcron deliver mail to you without a full MTA on the system. You will need
+to install the procmail package, though, because my cronmail script uses
+formail (which comes with procmail).
+
+This hint does not cover setting up a local mail service, but I'll show you how
+to install cronmail. If you want to set up a local mail service, check out the
+LDP at http://www.linuxdoc.org. I reccommend Postfix, http://www.postfix.org.
+
+Instructions
+------------
+
+1. Get fcron sources from http://fcron.free.fr and unpack them. I use fcron
+2.9.3, but this hint should work for other versions as well.
+
+2. Add the "fcron" user and group to your system:
+
+##--CODE--##
+groupadd -g 13 fcron
+useradd -u 13 -g fcron -d /dev/null -s /bin/false fcron
+##--CODE--##
+
+This creates the group fcron with GID 13 and the user fcron with UID 13. It
+also prevents anybody from logging into this account, because the home
+directory is /dev/null and and the shell is /bin/false.
+
+3. Run configure:
+
+##--CODE--##
+./configure --prefix=/usr --with-spooldir=/var/lib/fcron
+##--CODE--##
+
+This tells fcron to put it's fcrontab files into /var/lib/fcron.  I personally
+use /var/fcron, but if you want to be FHS-compliant, you have to use
+/var/lib/fcron.
+
+4. You might want to have a glance at config.h to make any changes to the build
+process, but in my experience this is unneccessary. If you do edit this file,
+be sure to check the locations of key files like fcron.allow, fcron.deny, etc.
+You can also configure what Fcron calls itself when it mails you, if you like.
+
+5. Compile:
+
+##--CODE--##
+make && su -c "make install"
+##--CODE--##
+
+This will compile the sources, then install them as root. When it asks you to
+install the init script, don't. We are going to make our own, better init
+script later on.
+
+7. If you are upgrading, be sure to run this command for each user on your
+system that had an fcrontab during installation:
+
+##--CODE--##
+fcrontab -u <user> -z
+##--CODE--##
+
+This simply updates the fcrontab, in case the format has changed.
+
+8. Now we will create the bootscripts. Run this as root:
+
+##--CODE--##
+cat >/etc/rc.d/init.d/fcron <<"EOF"
+#!/bin/bash
+# Begin $rc_base/init.d/fcron
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+case "$1" in
+  start)
+    echo "Starting fcron..."
+    loadproc /usr/sbin/fcron
+    ;;
+
+  stop)
+    echo "Stopping fcron..."
+    killproc fcron
+    ;;
+
+  restart)
+    $0 stop
+    sleep 1
+    $0 start
+    ;;
+
+  status)
+    statusproc fcron
+    ;;
+
+  *)
+    echo "Usage: $0 {start|stop|restart|status}"
+    exit 1
+    ;;
+esac
+
+# End $rc_base/init.d/fcron
+EOF
+chmod 755 /etc/rc.d/init.d/fcron
+##--CODE--##
+
+You will also need to make the symlinks in the appropriate directories. I did
+mine like this, but you might want to do it differently:
+
+##--CODE--##
+cd /etc/rc.d/rc0.d &&
+ln -s ../init.d/fcron K35fcron &&
+cd /etc/rc.d/rc6.d &&
+ln -s ../init.d/fcron K35fcron &&
+cd /etc/rc.d/rc3.d &&
+ln -s ../init.d/fcron S60fcron
+##--CODE--##
+
+9. You need to give it some tasks to do (it wouldn't be very useful
+otherwise! ;). Read the man page for fcrontab:
+
+##--CODE--##
+man 5 fcrontab
+##--CODE--##
+
+If you need some examples to get started, this is what I have in root's
+fcrontab: (this is the output of 'fcrontab -l')
+
+    !mailto(feztaa),mail(yes),forcemail(yes),noticenotrun(yes)
+    %daily * 9-15 updatedb --prunepaths="/mnt /proc /dev"
+    %daily * 9-15 logreport
+
+This fcrontab is fairly straightforward. First, we set some options: send mail
+to feztaa (me), always send mail no matter what, and let me know if the command
+was not run. Then, we run updatedb every day between 9 AM and 3 PM. Finally, we
+run logreport at the same time that updatedb is run (logreport is just a quick
+bash script I wrote to scan my logs and notify me of root logins).
+
+In my own fcrontab, I have the following:
+
+    !mailto(feztaa),mail(yes),forcemail(yes),noticenotrun(yes)
+    %monthly * * 1-4 oldmail
+
+This sets the same options as root's fcrontab, and then it runs oldmail as soon
+as it can, some time during the first four days of every month (oldmail is
+another simple script I wrote that simply archives and compresses my old mail).
+
+What I've written here is by far no substitute for reading the man page; I've
+barely scratched the surface in this hint. If you want to get the most out of
+your fcron, do yourself a favour and read the man page.
+
+To install your fcrontab, run:
+
+##--CODE--##
+fcrontab -u <user> -e
+##--CODE--##
+
+The -u option can be omitted if the fcrontab you want to edit belongs to the
+same user who runs the command. The default editor (defined in /etc/fcron.conf)
+should start with a blank screen. Type in your entries in accordance with the
+fcrontab(5) man page.
+
+When you're done, save and quit editing the file (:wq in vim). Fcrontab then
+checks your work for errors, and it complains if it finds some. It will also
+refuse to use the malformed fcrontab. If you get an error, try again, and read
+the man page to see what you're doing wrong. When you get it right, fcrontab
+passes the file to fcron and saves it in /var/lib/fcron/<username>. DO NOT EDIT
+THIS FILE! Always use fcrontab to edit your fcrontab, it is much safer that
+way.
+
+10. Now, to control who has access to fcron, you edit /etc/fcron.allow and
+fcron.deny. I think that only root and a select few priveleged users should be
+able to use such a daemon, so I put "all" in fcron.deny and "root" and "feztaa"
+in fron.allow.
+
+11. We will now install the cronmail script that I talked about in the
+introduction. If you do not want this script, you are now done! If you do want
+it, read on...
+
+First, run this as root:
+
+##--CODE--##
+cat >/usr/bin/cronmail <<"EOF"
+#!/bin/bash
+# $Id: fcrond-hint.txt,v 1.1 2003/09/13 16:18:12 tushar Exp $
+# Author: Rob Park <rbpark@ualberta.ca>
+# License: GNU General Public License
+
+########################################################################
+# You probably want to edit the following two variable definitions to  #
+#            better match your system! You have been warned!!          #
+########################################################################
+
+# What is the default name to use if none is specified, or if root is
+# specified? Basically, who gets root's mail?
+default="feztaa"
+
+# Where should the mail be delivered to? This is an mbox somewhere
+# inside the user's home directory (sorry, only mbox format is supported
+# as of now).
+mbox="mail/cron"
+
+###########################################################
+# You shouldn't need to edit anything below this line! ;) #
+###########################################################
+
+# Throw away all the arguments until we find one that's a valid username
+until id "$1" >/dev/null 2>&1
+do
+  shift
+done
+
+# The username is now the first argument
+name="$1"
+
+# If the first argument is missing, or "root", deliver it to the default
+# user instead.
+[ "$name" == "" ] && name=$default
+[ "$name" == "root" ] && name=$default
+
+# Pipe stdin to the mbox in the user's home folder, adding a few headers
+# to make it look more like real mail.
+formail -a "Message-ID:" -I "From: Cron <fcron@$HOSTNAME>" -I "To: $name <$name@$HOSTNAME>" >> /home/$name/$mbox
+EOF
+chmod 755 /usr/bin/cronmail
+##--CODE--##
+
+This script is a very simple sendmail replacement. It looks for a username in
+the argument list, stamps some email headers onto the message with formail, and
+then sends it off to an mbox in the user's home directory.  You can edit where
+exactly you want it to be delivered, and who you want to get root's mail. Since
+I get all my mail in ~/mail, I have the script deliver my mail to ~/mail/cron.
+
+The next thing we need to do is tell fcron to use our cronmail script.  Run
+this command to make the change:
+
+##--CODE--##
+cd /etc &&
+perl -i -pe 's%^sendmail\s*=.*$%sendmail=/usr/bin/cronmail%' fcron.conf
+##--CODE--##
+
+Now restart fcron (if it is running), and you're all ready to go!
+
+The End
+-------
+
+You're done! Now you have a scheduling utility that will run commands
+automatically for you.
+
+If you have any questions, suggestions, or problems, PLEASE email me and I will
+help you to the best of my ability (note, don't email Lyle, he doesn't maintain
+this anymore. Just email me, Rob).

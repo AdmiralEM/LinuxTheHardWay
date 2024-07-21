@@ -1,0 +1,52 @@
+TITLE:		Xawtv
+LFS VERSÝON:	lfs-3.0-rc2
+AUTHOR:		Berkem Dincman <berkemdin@ixir.com>
+
+SYNOPSIS:
+	Adjusting LFS for TV
+HINT:
+
+In order to activate the existing support for TV-cards,
+two different options in the kernel have to be selected.
+
+Character devices --> I2C Support -->
+	activate I2C Support plus
+	add at least these two options:
+	I2C bit-banging,
+	I2C device-interface
+
+Multimedia devices --> turn on Video4Linux
+
+For these modules(compiled in as modules) to be loaded
+correctly
+
+cat /usr/src/linux/Documentation/video4linux/bttv/Modules.conf \
+>> /etc/modules.conf
+
+and edit
+
+options bttv	card=... pll=... radio=... 
+options tuner	type=... debug=1
+
+according to CARDLÝST in documentation, at the same time
+we create new devices in /dev with the help of
+
+cp /usr/src/linux/Documentation/video4linux/bttv/MAKEDEV \
+/dev/MAKEDEV.bttv && cd /dev && chmod +x MAKEDEV.bttv
+./MAKEDEV.bttv
+
+xawtv-3.64 compilation:
+If you have XFree 4.0.1 or later try :
+
+./configure --with-xfree-ext --with-xvideo
+
+If it compiles, you have to add 
+
+Load		"v4l"
+
+in the Modules section of your XF86Config file.
+If it runs, it should enable you to view TV in higher
+resolutions, since X is handling the TV card. Look
+also in the Readme of bttv, in order to find out about
+support of drivers for X.
+

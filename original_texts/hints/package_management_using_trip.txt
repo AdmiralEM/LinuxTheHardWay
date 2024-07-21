@@ -1,0 +1,561 @@
+AUTHOR: Pierre Hebert <pierrot at 1000wallpapers dot com>
+
+DATE: 2006-05-13
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: TRIP, a TRIvial Packager for LFS (and other linux systems)
+
+DESCRIPTION:
+Trip is a package manager focusing on the LFS users needs : build many, install
+once. Trip tracks modified files during install, thanks to a simple but 100%
+reliable mechanism : a combination of unionfs and chroot usage. Trip can be used
+with no restrictions on other Linux than LFS.
+
+PREREQUISITES:
+This hint requires :
+- a sufficient knowledge of LinuxFromScratch.
+- a sufficient knowledge of the linux problematic of package management. I
+suggest reading among other documents :
+http://www.linuxfromscratch.org/hints/downloads/files/fakeroot.txt from Tushar
+Teredesai.
+- a linux 2.6 system with unionfs >= 1.1.3
+- root privileges
+- the desire to experiment somewhat weird stuff.
+
+
+HINT:
+
+--------------------------------------------------------------------------------
+Background
+--------------------------------------------------------------------------------
+After having built quite a lot of LFS system I found that a LFS user is faced to
+a particular package context :
+- a LFS user install a LOT OF packages
+- each package is installed once (maybe two...)
+- a LFS user wants to know what is installed (every added, modified and
+eventually deleted files)
+
+As a LFS user what I want is : 
+- run "make install" as root, and see what has been done
+- be able to come back immediately to the state before "make install", as if I
+didn't execute "make install"
+- store packages information in a simple database, and eventually be able to
+uninstall them
+
+What I don't want :
+- complexity
+- to endlessly patch makefiles and/or sources because of the packaging tool
+needs
+
+Most of the well known package managers like RPM or DPKG do not fill these needs
+at all. Their aim is to build a package once, and install it often. They are not
+designed for users like LFS users, because it's not exactly easy to create spec
+files for example. These sort of package managers require a knowledge of each
+package in order to be sure not to miss some files. It is especially difficult
+with packages that are not built with autoconf/automake.
+
+Beside that I also notice that there is currently no 100% reliable method to
+know what files is modified during a "make install" (or other command).
+ * The fakeroot approach doesn't prevent a package to install files where it
+wants, of course. For example it is easy to confuse a system with a mistake in a
+RPM spec file.
+ * The LD_PRELOAD mechanism, associated with the overload of some functions like
+"open", "mkdir", etc seems, at first, to be a solution. I have been using it for
+a while, with a lot of satisfaction, coupled with RPM and DPKG. You can have a
+look at Checkinstall (http://asic-linux.com.mx/~izto/checkinstall/) or Paco
+(http://paco.sourceforge.net/). There are several other projects using
+LD_PRELOAD.
+Unfortunately this trick has some limitations, the bigger is to be "blind" with
+set uid programs. The second is the complexity of the LD_PRELOADed library which
+is tightly linked to glibc internal mechanisms.
+ * The technique of finding files according to their creation/modification will
+fail with some packages because some uses "cp -p" for example. So you are never
+really sure of what have been installed.
+
+But in my opinion the biggest problem with these techniques is that once the
+system has been modified, you may know what has been touched, but you may not be
+able to come back to the original state.
+
+Another package management is the Package Users technique : it is great and
+really powerfull because it totally prevents any unwanted modification of the
+system (see
+http://www.linuxfromscratch.org/hints/downloads/files/more_control_and_pkg_man.
+txt). However in my opinion it requires too many work for each package,
+especially on install targets in makefiles.
+
+After all, I wasn't satisfied by existing package managers, even if I am
+convinced of the interest of each method. So I was looking for another method to
+track any arbitrary changes on a filesystem, and finally the answer was almost
+evident : unionfs. The idea is explained in the following paragraph.
+
+--------------------------------------------------------------------------------
+The Idea
+--------------------------------------------------------------------------------
+The idea of trip is to use two filesystems in a union filesystem. See
+http://www.unionfs.org/.
+One filesystem is the target filesystem on which the user wants to do "make
+install", and is used READ-ONLY, the second is an empty filesystem merged with
+the first, and used READ-WRITE.
+
+Let's take an example fstab :
+/dev/hdb1      /mnt/lfs     ext3   defaults                    0    0
+/dev/hdc1      /mnt/pkg     ext3   defaults                    0    0
+unionfs        /mnt/union   unionfs dirs=/mnt/pkg:/mnt/lfs=ro  0    0
+
+The result of this is :
+- if we read a file in /mnt/union, it will be read from /mnt/lfs, if it doesn't
+exists in /mnt/pkg
+- if we create a file in /mnt/union it will be really created in /mnt/pkg
+- if we modify a file in /mnt/union belonging to /mnt/lfs it will be copied and
+modified in /mnt/pkg
+- if we delete a file in /mnt/union belonging to /mnt/lfs, a special file will
+be created in /mnt/pkg (whiteout mode)
+- the overall behaviour of the program executing in /mnt/union is as if there
+were only one normal filesystem.
+
+Hence a chroot in a union filesystem gives these marvelous benefits : 
+- in no case the /mnt/lfs will be altered
+- created, deleted and modified files are all stored in /mnt/pkg
+- all libraries and tools are available in their real prefix, running
+./configure --prefix=/usr is possible.
+It's a bit like magic and this is all we need for trip. Could it be easier to
+know what has been made by "make install" (or any other command) ?
+
+Note that this simple idea could be implemented in other package managers with
+probably few work.
+
+--------------------------------------------------------------------------------
+Trip history and goals
+--------------------------------------------------------------------------------
+Trip was really born under the temporary name of sp, somewhere in late 2005, I
+don't remember when exactly. SP stands for "Smart Package", where Smart itself
+stands for "Simple Management of Really Trivial" package. Unfortunately another
+software was named Smart Package so sp becames trip.
+At the beginning this was just a simple shell script to test the unionfs method.
+This script only listed the modified/created/deleted files after a "make
+install". But soon it finally becames a sufficient package manager that I called
+"trip".
+Trip is a trivial package manager because it manages a trivial package format,
+i.e. gnu tar. Why would we use obscure package formats, since we can use
+powerfull and simple tools like tar ?
+
+Trip is inspired from some RPM base concepts, and also from Pacman (Arch Linux
+package manager).
+
+That is all the short history of trip.
+
+At time of writting, trip is a 934 lines bash script, with lots of comments. And
+I used it to manage about 500 packages from linux-libc-headers to kde.
+
+
+The main goals of trip are :
+- 100% safe installation
+- able to package a whole LFS system
+- be as simple as possible, I fear too complex package managers that need
+beecrypt, neon and rpm2cpio...
+- opened : I want to be able to see what is in packages before to install them,
+modify packages eventually, modify the package database in case of problem.
+
+One special goal quoted before is to be "able to package a whole LFS system". In
+the past I built some LFS, then install RPM or DPKG for example. But the base
+LFS itself was not packaged, so there was always a dark area that could be
+altered without problem. Trip is designed to run during the Chapter 6 of LFS,
+with nothing but /tools and unionfs.
+
+At last but not least, trip does not intend to be a replacement of any other
+package manager. In fact trip does very few things. Its primary goal is perhaps
+to demonstrate the use of unionfs and chroot together, in order to provide a
+really strong package management at an uncommonly low cost.
+
+--------------------------------------------------------------------------------
+Trip install
+--------------------------------------------------------------------------------
+In this paragraph we explain how to install trip for use later in the Chapter 6
+of LFS.
+
+We assume that we get those filesystems: 
+/mnt/lfs : LFS system target, $LFS=/mnt/lfs
+/mnt/pkg : free filesystem in which are put installed files
+/mnt/union : merge of /mnt/lfs(ro) and /mnt/pkg(rw)
+
+* Step 1 : put the trip directory at the root of the target LFS system.
+(see later for download)
+	cd $LFS && tar xf /foo/bar/trip.tar
+	ln $LFS/trip / (same idea as /tools in fact : trip is available from the
+same path, chroot or not)
+	export PATH=$PATH:/trip/trip/bin
+
+* Step 2 : prepare a second empty file system, with enough space to compile and
+install the glibc (biggest package in LFS ?). Later you may need more space, for
+example KDE needs lots of space. I suggest 1 or 2 GB, if you can.
+Warning : loop devices can't be used safely actually with unionfs.
+Example :
+	mkfs.ext3 /dev/hdc1
+	mkdir /mnt/pkg
+	echo "/dev/hdc1   /mnt/pkg     ext3   defaults  0  0" >> /etc/fstab
+	mount /mnt/pkg (keep it mounted)
+
+* Step 3 : prepare the unionfs filesystem
+Example :
+	modprobe unionfs
+	echo "unionfs /mnt/union unionfs dirs=/mnt/pkg:/mnt/lfs=ro 0 0" >>
+/etc/fstab
+	mount /mnt/union && umount /mnt/union (just to see if it works, but
+don't keep it mounted)
+
+* Step 4 : trip configuration
+For now take the following configuration and put it in /trip/trip/conf/conf:
+
+---------- cut after this line -------------
+# TRIP configuration file
+# TRIP is a TRIvial Packager
+# copyright 2006 Pierre Hebert <pierrot@1000wallpapers.com>
+# http://things.1000wallpapers.com/
+
+# the real root filesystem, in which resides the operating system
+TRIP_FS_ROOT=/mnt/lfs
+
+# the filesystem on which are temporarily created the files during the install
+phase
+TRIP_FS_PKG=/mnt/pkg
+
+# the union filesystem mergin $TRIP_FS_ROOT(ro) and $TRIP_FS_PKG(rw)
+TRIP_FS_UNION=/mnt/union
+
+# the package repository root
+TRIP_PKG_ROOT=/trip/lfs-svn-20060416
+
+# where to install binary packages
+TRIP_INSTALL_DIR=/mnt/lfs
+
+# the mode tell if we use /tools or / as build environment (hosted = build from
+/tools, normal=/)
+TRIP_MODE=hosted
+
+# level of activity reporting
+TRIP_TRACE_LEVEL=3
+
+# root location of temporary files
+TRIP_TMPDIR=/trip/tmp
+---------- cut before this line -------------
+
+Et voila, trip is ready to go.
+Now let's see what's in the trip directory and how it works before to continue.
+
+--------------------------------------------------------------------------------
+Trip usage in short
+--------------------------------------------------------------------------------
+The common usage of trip is :
+trip --build /path/to/my/source/trip/package
+trip --install /path/to/the/binary/package/created
+or
+trip --wizard (and answer to the question)
+
+
+Trip handles three different inputs, more or less the same way as RPM :
+- source package directory : a source package directory is structured as bellow:
+	src/ :  contains the .tar.gz archives, eventually some patches or other
+          files.
+	support/ : contains an "identification" file (meta infos), a "build.sh"
+             script (optionnal) and an "install.sh" script. In this "support" 
+             subdirectory we can also optionally find a file "exclude" and 
+             another "include" that list files to systematically exclude or 
+             include from the binary package. Finally in support there may be 
+             four helper scripts called {pre,post}_{,un}install.sh.
+
+- source package archive : simply a tar archive of a source package directory.
+
+- binary package archive : a tar archive containing all files modified during
+the execution of the script "install.sh", and the file "identification", that
+gives meta info about this package, and eventually {pre,post}_{,un}install.sh
+scripts.
+
+The purpose of {pre,post}_{,un}install.sh is to execute some tasks upon the
+extraction of a binary package, or the uninstallation of the package. For
+example when installing MySQL, the post_install.sh script will contains
+something like "/etc/rc.d/init.d/mysql start".
+
+The basic work of trip when using "trip --build /path/to/my/source/trip/package"
+is (simplified) :
+- read "identification" file from
+/path/to/my/source/trip/package/support/identification
+- create a temp directory in which build the package
+- mount the /mnt/union unionfs filesystem (and virtual filesystems too)
+- chroot into /mnt/union
+- execute /path/to/my/source/trip/package/support/build.sh
+- execute /path/to/my/source/trip/package/support/install.sh
+- leave chroot from /mnt/union, umount /mnt/union
+- see what has been modified and stored in /mnt/pkg
+- create a binary package of those modified files
+
+When invoking "trip --install /path/to/the/binary/package/created" :
+- check file conflicts (basic check)
+- extract files from the binary archive
+- store an entry in the package database
+
+trip --help gives :
++ usage : trip --config_dir <dir>
++              --install <binary package file>
++              --uninstall <package name>
++              --rebuild <source package file>
++              --build <source package directory>
++              --wizard
++              --list [<package name>]
++              --find-file <file>
++              --help
+
+Here is a short explanation of these switches :
+--config_dir : location of trip configuration, normally default value is ok
+--install : install a binary trip package
+--uninstall : do what its name means
+--rebuild : build a binary trip package from a source package
+--build : build a binary trip package from a source directory
+--wizard : very useful mode where you are asked some questions, and where a
+skeleton source directory is created with your answer.
+--list : list all installed packages (more or less "ls -d /path/to/db"...), or
+list files from a package
+--find-file : find the package which installed a file
+
+--------------------------------------------------------------------------------
+Trip content
+--------------------------------------------------------------------------------
+Inside /trip (from the trip.tar) you should find something like that :
+/trip :
+	- trip/
+		- bin/ : contains the trip shell script
+		- conf/ : contains the trip configuration
+		- doc/ : some poor documentation
+	- lfs-svn-20060416 : the LFS packages from the lfs-svn-20060416 book, as
+an example
+		- src/ : source package directories
+		- bin_pkg : where the binary packages are created
+		- src_pkg : where the source packages are created
+		- db : the installed package database
+	- tmp : used to build packages
+
+
+--------------------------------------------------------------------------------
+Usage of trip during LFS chapter 6, from a host Linux system
+--------------------------------------------------------------------------------
+In this paragraph we explain how to use trip during the Chapter 6 of LFS. At
+this stage the $LFS/tools is ready. Stop at "6.1 Introduction". As a starting
+point we use LFS-SVN-20060416, but you may use another version of course.
+
+Note 1 : You must have installed trip as explained before and completed the 4
+steps.
+
+Note 2 : Each package of the LFS chapter 6 has its own trip source package, but
+there are some more trip packages not linked to a particular package. And for
+that matter the first package is "lfs-base" and its purpose is to create the FHS
+directory tree for example, and also some other essential files. The source
+packages used here have in general "build.sh" and "install.sh" scripts cut and
+pasted from the book.
+
+Note 3 : during the building of the LFS system when we say "install package
+foo-1.2.3" it means :
+	trip --build "/trip/lfs-svn-20060416/src/foo-1.2.3
+	trip --install "/trip/lfs-svn-20060416/bin_pkg/foo-1.2.3-*.tar.gz"
+
+
+
+* Prepare virtual filesystem and some essential link to the shell
+
+  mkdir -p $LFS/{dev,proc,sys,bin,tmp}
+  mknod -m 600 $LFS/dev/console c 5 1
+  mknod -m 666 $LFS/dev/null c 1 3
+  ln -s /tools/bin/bash $LFS/bin/bash
+  ln -s bash $LFS/bin/sh
+
+* install package lfs-base
+
+* install package linux-libc-headers-2.6.12.0
+
+* create some essential symlinks
+  ln -s /tools/bin/{cat,grep,pwd,stty} $LFS/bin
+  ln -s /tools/bin/perl $LFS/usr/bin
+  ln -s /tools/lib/libgcc_s.so{,.1} $LFS/lib
+
+* install package glibc-2.3.6
+
+* re-adjusting the toolchain
+  chroot "$LFS" /tools/bin/env -i HOME=/root TERM="$TERM" PS1='\u:\w\$ ' \
+PATH=/bin:/usr/bin:/sbin:/usr/sbin:/tools/bin /tools/bin/bash --login +h
+  mv /tools/bin/{ld,ld-old}
+  mv /tools/$(gcc -dumpmachine)/bin/{ld,ld-old}
+  mv /tools/bin/{ld-new,ld}
+  ln -s /tools/bin/ld /tools/$(gcc -dumpmachine)/bin/ld
+  gcc -dumpspecs | \
+  perl -p -e 's@/tools/lib/ld-linux.so.2@/lib/ld-linux.so.2@g;' \
+      -e 's@\*startfile_prefix_spec:\n@$_/usr/lib/ @g;' > \
+          `dirname $(gcc --print-libgcc-file-name)`/specs
+
+* install the following packages. Note that you will get conflicts on these
+packages : gcc, coreutils, perl, bash, grep : this is normal because we created
+some symlinks before. To ignore the conflict use the following command :
+	trip --no-conflict --install \
+"/trip/lfs-svn-20060416/bin_pkg/foo-1.2.3-*.tar.gz"
+
+List of packages to install in that order :
+binutils-2.16.1
+gcc-4.0.3
+db-4.4.20
+coreutils-5.94
+iana-etc-2.00
+m4-1.4.4
+bison-2.1
+ncurses-5.5
+procps-3.2.6
+sed-4.1.5
+libtool-1.5.22
+perl-5.8.8
+readline-5.1
+zlib-shared-1.2.3
+zlib-static-1.2.3
+autoconf-2.59
+automake-1.9.6
+bash-3.1
+bzip2-1.0.3
+diffutils-2.8.1
+e2fsprogs-1.38
+file-4.17
+findutils-4.2.27
+flex-2.5.33
+gawk-3.1.5
+gettext-0.14.5
+grep-2.5.1a
+groff-1.18.1.1
+grub-0.97
+gzip-1.3.5
+inetutils-1.4.2
+iproute2-2.6.16-060323
+kbd-1.12
+less-394
+make-3.80
+man-db-2.4.3
+man-pages-2.25
+mktemp-1.5
+module-init-tools-3.2.2
+patch-2.5.4
+psmisc-22.2
+shadow-4.0.15
+sysklogd-1.4.1
+sysvinit-2.86
+tar-1.15.1
+texinfo-4.8
+udev-088
+util-linux-2.12r
+vim-6.4
+lfs-bootscripts-20060415
+lfs-configuration-20060416
+linux-2.6.16.5
+
+The "shadow" package requires some manual configuration :
+	chroot "$LFS" /tools/bin/env -i HOME=/root TERM="$TERM" PS1='\u:\w\$ ' \
+PATH=/bin:/usr/bin:/sbin:/usr/sbin:/tools/bin /tools/bin/bash --login +h
+	pwconv
+	grpconv
+	rm /etc/{passwd-,group-,shadow-,gshadow-}
+	passwd root
+
+The two last packages contains some default configurations that you will
+certainly want to change. So have a look at the content of these packages in
+order to adapt them to your needs.
+I suggest at this point to come back to the book at "7.5. Configuring the
+setclock Script" for the last steps. You will in particular need to :
+- edit /boot/grum/menu.lst
+- edit /etc/fstab
+- run grub
+
+--------------------------------------------------------------------------------
+Usage of trip from the LFS system
+--------------------------------------------------------------------------------
+Once the LFS has been completed and booted, it is time to build some more
+packages. But before you must update the configuration of trip since the $LFS
+mount point has changed : it is not /mnt/lfs anymore, it is /. So update your
+/trip/trip/conf/conf files as this :
+
+---------- cut after this line -------------
+# TRIP configuration file
+# TRIP is a TRIvial Packager
+# copyright 2006 Pierre Hebert <pierrot@1000wallpapers.com>
+# http://things.1000wallpapers.com/
+
+# the real root filesystem, in which resides the operating system
+TRIP_FS_ROOT=/
+
+# the filesystem on which are temporarily created the files during the install
+phase
+TRIP_FS_PKG=/mnt/pkg
+
+# the union filesystem mergin $TRIP_FS_ROOT(ro) and $TRIP_FS_PKG(rw)
+TRIP_FS_UNION=/mnt/union
+
+# the package repository root, where packages are created
+TRIP_PKG_ROOT=/trip/lfs-svn-20060416
+
+# where to install binary packages
+TRIP_INSTALL_DIR=/
+
+# the mode tell if we use /tools or / as build environment (hosted = build from
+/tools, normal=/)
+TRIP_MODE=normal
+
+# level of activity reporting
+TRIP_TRACE_LEVEL=3
+
+# root location of temporary files
+TRIP_TMPDIR=/trip/tmp
+---------- cut before this line -------------
+
+Edit your /etc/fstab and replace the /mnt/union line by something like :
+unionfs        /mnt/union   unionfs dirs=/mnt/pkg:/=ro 0   0
+(the "dirs" option has changed)
+
+Now you can continue your LFS system with trip, if you think it worth using it.
+
+--------------------------------------------------------------------------------
+Download Trip
+--------------------------------------------------------------------------------
+Trip is available at :
+http://things.1000wallpaper.com/trip/trip.tar
+This is a 170Mb archive because it contains all source packages needed for LFS.
+And this hint is available at 
+http://things.1000wallpaper.com/trip
+
+--------------------------------------------------------------------------------
+Known limitations
+--------------------------------------------------------------------------------
+ * As we merge two filesystem there is a problem if your linux installation is
+based on several filesystem (for example / and /usr), because /usr won't be
+visible from /mnt/union.
+A solution (not tested yet) may be to use unionfs-fuse (see
+http://podgorny.cz/moin/UnionFsFuse) which may be slower but is more flexible
+that the kernel based unonfs. However unionfs-fuse seems to not support
+currently read-only branches.
+ * trip works only on Linux, with bash. It has few prerequisites though, such as
+tar, coreutils, grep, etc.
+
+
+--------------------------------------------------------------------------------
+Conclusion
+--------------------------------------------------------------------------------
+Trip is at alpha stage and may not go beyond beta. However I really hope this 
+little tool and especially the idea behind the tool will be usefull or at least 
+interesting to some LFS users, and also for non LFS users.
+
+And of course, feedback will be appreciated.
+
+
+ACKNOWLEDGEMENTS:
+  * http://www.linuxfromscratch.org/ (and BLFS too)
+  * http://www.unionfs.org/
+  * http://www.linuxfromscratch.org/hints/
+
+CHANGELOG:
+[2006-05-13]
+  * Initial hint.
+-- 
+http://linuxfromscratch.org/mailman/listinfo/hints
+FAQ: http://www.linuxfromscratch.org/faq/
+Unsubscribe: See the above information page

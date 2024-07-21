@@ -1,0 +1,84 @@
+TITLE:		Patching and compiling Dillon's Cron Daemon
+LFS VERSION:	any
+AUTHOR:		Leslie Polzer <leslie.polzer@gmx.net>
+
+SYNOPSIS:
+	dcron is a stable cron implementation without bells and whistles.
+
+HINT:
+
+Contents
+--------
+1 Why use dcron when there's fcron?
+2 Preparing the files
+3 Compiling
+4 Post-Install
+5 Frontends
+
+1 Why use dcron when there's fcron?
+-----------------------------------
+- dcron is SIMPLE:
+	dcron just gives you two binaries, crond and crontab, and consists
+	only of a few source files.
+- dcron is SMALL:
+	binaries are only about 25k
+- dcron is MATURE:
+	it is many distributions' default cron and in use since ~1994.
+- dcron is SECURE:
+	that's the consequence of being simple and mature.
+- dcron WORKS:
+	fcron only worked for root on my box, no matter how hard I tried.
+
+
+2 Preparing the files
+---------------------
+Download dcron 2.3.3 here:
+	http://www.ibiblio.org/pub/Linux/system/daemons/cron/dcron-2.3.3.tar.gz
+
+You will also need this patch I made:
+	http://linuxfromscratch.org/~timothy/misc/dcron-2.3.3.patch
+
+Unpack the tarball, put the patch into the resulting folder and cd into it.
+
+
+3 Compiling
+-----------
+Apply the patch:
+
+	patch < dcron-2.3.3.patch
+
+Now you can do the actual compile and install:
+	
+	make CC="gcc $CFLAGS"
+	make install
+
+Last line as superuser.
+
+
+4 Post-Install
+--------------
+Start the cron daemon from your bootscripts.
+dcron can only log to STDOUT so add a I/O redirect:
+
+	/usr/bin/crond -l8 >> /var/log/cron.log 2>&1
+
+'8' is the loglevel.
+
+If you want to allow every user to use cron, you're fine now.
+If you want to restrict access to cron, do:
+
+	groupadd cron
+	chown root.cron /usr/bin/crontab
+	chmod 4750 /usr/bin/crontab
+	
+Now add every user that is allowed to use cron to the new group 'cron'.
+
+
+5 Frontends
+-----------
+If you want a nice GTK frontend to cron (hate to remember those field orders!),
+look out for 'gcrontab'. There is also a frontend for GNOME and maybe one for
+the console.
+
+
+Leslie

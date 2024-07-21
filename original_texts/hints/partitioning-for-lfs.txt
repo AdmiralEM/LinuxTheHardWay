@@ -1,0 +1,102 @@
+PARTITIONING FOR LFS
+
+AUTHOR: Bruce Dubbs
+
+DATE: 2023-03-13
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: Effecive partitioning a disk drive for LFS
+
+DESCRIPTION:
+This hint contains the information about partitioning a disk drive
+for effective booting of an LFS system.
+
+ATTACHMENTS:
+* None
+
+PREREQUISITES:
+* None
+
+HINT:
+
+Booting LFS is no longer as simple as `grub-install  /dev/sda`.  There are
+more options and more considerations.  
+
+When starting LFS, the book assumes that you already have a "mainstream" 
+version of Linux installed.  That installation may make it difficult to
+create the partition where LFS will be built and eventually booted.
+
+There are two issues, the partition table and the organization of partitions
+on the hard disk.  A default install of some distributions still use the
+deprecated MSDOS partition table instead of the modern GUID Partition Table
+(GPT).  In addition, the default install of most distributions use the 
+entire disk drive and do not provide any unused disk space.
+
+There are a couple of ways to approach this.  You can reinstall the host
+distribution or use a second disk drive.  If installing LFS in a virtual
+environment such as qemu or vmware, you will need to install a host
+distribution like you would on a single disk system.
+
+Another issue involves the hardware for the machine in use.  Older systems
+use a relatively simple BIOS (Basic Input Output System) firmware.  Newer
+systems use UEFI (Unified Extensible Firmware Interface) firmware.
+
+A complication of UEFI is that it makes some assumptions about booting
+the system.  There are two items to consider.  First is Secure Boot.
+In an LFS system this should be disabled.  LFS uses a custom built
+kernel and without going into details Secure Boot interferes with that.
+
+The second item is Compatibility Mode.  Some versions of UEFI do
+not provide this mode.  Others do.  It is called different things
+on different machines.  It can be called CSM (Compatibility Suport
+Mode), Legacy Mode, or just provide an Enabled/Disabled selection
+fir EFI Mode.  Enabling CSM is a user preference item, but is
+a bit simplier in an LFS environment.  I recommend using CSM if the
+system provides that capability.
+
+The way I recommend installing the host system is to either use a bootable
+device and use fdisk or gdisk from the installation system to create a
+GPT and a layout similar to this:
+
+Number  Start (sector)    End (sector)  Size       Code  Name
+   1            2048            4095   1024.0 KiB  EF02  BIOS boot partition
+   2            4096          413695   200.0 MiB   8300  /boot
+   3          413696         4607999   2.0 GiB     8200  swap
+   4         4608000        46551039   20.0 GiB    8300  debian
+
+If a UEFI system is desired or required, the layout should look like this:
+
+Number  Start (sector)    End (sector)  Size       Code  Name
+   1            2048          411647   200.0 MiB   EF00  EFI System
+   2          411648          821247   200.0 MiB   8300  /boot
+   3          821248         5015551   2.0 GiB     8200  swap
+   4         5015552        46958591   20.0 GiB    8300  debian
+
+If you are installing on a second disk from an established linux
+installation, you only need the first two partitions above. In 
+either case you will create the new LFS partition in Section 2.4 
+of the book. You can use a swap partition or other separate 
+partitions from the first disk.
+
+The important thing is that a separate /boot partition allows a single
+location for GRUB to find all the files needed for multiple installations.
+It just makes configuring GRUB easier.
+
+I'll note here that I like to format the /boot partition as ext2 with
+mkfs.ext2 -m0 /dev/sda2 (or /dev/nvme0n1p2 in the case of an m.2 SSD drive)
+
+The reason for ext2 with no reserved blocks is that everything on /boot
+is owned by root and is rarely written so there is no real need for a journal.
+
+One last point is that the partitions above have names assigned.  These
+can be added at any time with gdisk or the expert mode of fdisk.  The names
+can be useful later when configuring GRUB.
+
+Note: The name 'debian' above is just a label and can be any text string.
+      In this case it regresents the partition where a standard distribution
+      can be installed as a starting point for building your LFS system..
+
+CHANGELOG:
+[2023-03-13]
+    Initial hint.

@@ -1,0 +1,430 @@
+TITLE:		GNU-Autotools
+LFS-VERSION:	LFS-CVS-20011206+
+AUTHOR:		Elko Holl <elko@home.nl> <elko@cyberspace.org>
+
+SYNOPSIS:	Short introduction to the GNU autotools.
+
+HINT:
+
+$Id: autotools.txt,v 1.1 2003/09/16 19:10:55 tushar Exp $
+
+Contents
+--------
+
+  * Preface
+  * Versions
+  * Creating the source file(s)
+  * Adapting configure.in
+  * Creating config.h.in
+  * Creating Makefile.am and Makefile.in
+  * Creating the configure script
+  * Testing the result
+  * Making a distribution
+  * Related documents
+  * Warranty
+
+
+Preface
+-------
+
+  Ok, so you have your BLFS finished and have all the applications you can
+  think of installed. Now what? You start to learn BaSH, Perl, C and kernel
+  internals and finally, you code up some cool program which you think is
+  worth uploading to http://sourceforge.net for example.
+
+  But how are you going to distribute your program? Just pack everything in
+  a tarball and present a Makefile to your users that they have to modify? NO!
+  You want your project to be like all the packages you already installed, so
+  that means having a configure script so you can at least specify the
+  installation --prefix for your program.
+
+  With the GNU range of applications this means using autoconf and automake,
+  rather then coding the required files yourself; these programs are part of
+  the GNU-autotools collection.
+
+  Here is a quote from the autoconf manual:
+
+  "Autoconf is a tool for producing shell scripts that automatically configure
+  software source code packages to adapt to many kinds of UNIX-like systems.
+  The configuration scripts produced by Autoconf are independent of Autoconf
+  when they are run, so their users do not need to have Autoconf."
+
+  This document describes the minimal steps you must take to start a project
+  in GNU fashion. You'll learn to use autoconf and automake to create
+  configure scripts and Makefiles, almost automagically;
+  just like the Pro's do it!
+
+  For more information on autoconf and automake skip to the section at the
+  bottom titled "Related documents".
+
+  It is assumed that you already know a bit about writing a Makefile. If this
+  is not the case, then first read-up on Makefiles at:
+
+        http://www.gnu.org/manual/make/
+
+  Hint: You can use Makefiles for more then C-program compilation, you can for
+        example create targets for commonly used functions (shell-scripts). If
+        this doesn't ring a bell right now, read the make-manual and it will
+        start to make sense (i.e. `make backup' for your system operators).
+
+
+Versions
+--------
+
+  The versions of autoconf and automake used in this document are:
+
+  [elko@elkos ~]$ (autoconf -V;automake --version)2>&1|grep "^auto"
+  autoconf (GNU Autoconf) 2.52
+  automake (GNU automake) 1.6.1
+
+  Note that as stated in the LFS-book, this newer version of autoconf
+  (and automake) may cause some not so up-to-date applications to fail to
+  compile on your system. You can always downgrade autoconf or automake; so if
+  you experience any problems building certain packages after upgrading to the
+  versions used in document, try to downgrade before complaining somewhere.
+
+  If you are happy with your autoconf and automake release, and don't want to
+  upgrade, then this document can still be used as a quick guide to start a
+  project; some of the semantics may differ though, consult the documentation
+  of your release for the details.
+
+
+Creating the source file(s)
+---------------------------
+
+  This document only uses one source file, since it's just a quick guide to
+  start a GNU fashion project. In almost any situation. your project will
+  have more then one source file, that is why it is assumed that you know how
+  to write Makefiles, since more sourcefiles mean more described dependencies
+  in your 'Makefile.am'; more on that later, read along or skip to the section
+  called "Related documents" (at the bottom) and get your information there.
+
+  First, create a directory where you start your project and create the famous
+  "Hello World!" source-file (a slightly altered version though):
+
+cd $HOME && mkdir hello && cd hello &&
+cat >hello.c <<EOHF
+/*
+ * hello.c example for the autotools.txt hint
+ *
+ */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#include <stdio.h>
+#include <unistd.h>
+
+int main()
+{
+        fprintf (stdout, "Hello World!\n");
+
+#ifdef _WITH_GOODBYE
+        sleep (1);
+        fprintf (stdout, "Goodbye Cruel World!\n");
+#endif
+
+        return (0);
+}
+EOHF
+
+  Note that there are some header-files included and there is a symbol
+  definition check present to change the behavior of the program. This is
+  done on purpose to show some details of the autotools; almost every project
+  you create will have conditionals in the source to enhance or alter the
+  behavior of your software. The #ifdef and #ifndef statements play an
+  important part in your flexibility with the GNU-autotools.
+
+  The next step is to create the 'config.h' file, which autoscan uses to
+  create the input file for autoheader:
+
+cat >config.h <<EOHF
+#define VERSION=1.0
+EOHF
+
+
+Adapting configure.in
+---------------------
+
+  Now that you have your source-file(s) in place, you have to create a file
+  for autoconf - which describes your project - called 'configure.in'.
+  To generate a template for this file, you can use `autoscan', which will
+  create a file named 'configure.scan'; rename that file to 'configure.in':
+
+autoscan &&
+mv configure.scan configure.in
+
+  You have to adapt 'configure.in' for your project now. In this example,
+  it is modified as follows (some blank lines removed):
+
+  -[snip]-
+  # Process this file with autoconf to produce a configure script.
+  # - Change program presets
+  AC_INIT(hello, 1.0, elko@home.nl)
+  AC_CONFIG_SRCDIR([hello.c])
+  # - Change AC to AM (automake version)
+  AM_CONFIG_HEADER([config.h])
+
+  # - Add this line for a bzip2 dist
+  AM_INIT_AUTOMAKE(dist-bzip2)
+
+  # - The following lines adds the --enable-goodbye option to configure:
+  #
+  # Give the user the choice to enter one of these:
+  # --enable-goodbye
+  # --enable-goodbye=yes
+  # --enable-goodbye=no
+  #
+  AC_MSG_CHECKING([whether we are enabling goodbye])
+  AC_ARG_ENABLE(goodbye,
+        AC_HELP_STRING([--enable-goodbye], [Say goodbye as well]),
+        [if test "${enable_goodbye}" = "yes" ; then
+                AC_DEFINE(_WITH_GOODBYE, 1, Say goodbye as well)
+                AC_MSG_RESULT([yes])
+        else
+                AC_DEFINE(_WITH_GOODBYE, 0, Say goodbye as well)
+                AC_MSG_RESULT([no])
+        fi],
+        # Default value for configure
+        AC_MSG_RESULT([no])
+        )
+
+  # Checks for programs.
+  AC_PROG_CC
+  # Checks for libraries.
+  # Checks for header files.
+
+  # Automatically added by autoscan
+  AC_CHECK_HEADERS([unistd.h])
+
+  # - The following line demonstrates checking for header files yourself:
+  #
+  # do nothing if stdio.h is found, else print an error
+  AC_CHECK_HEADER(stdio.h, , AC_MSG_ERROR([stdio.h not found!]))
+
+  # Checks for typedefs, structures, and compiler characteristics.
+  # Checks for library functions.
+
+  # - Add Makefile
+  AC_CONFIG_FILES([Makefile])
+  AC_OUTPUT
+  -[snip]-
+
+  The 'AM_INIT_AUTOMAKE' is specified because I wish to have a make target
+  called 'dist-bzip2', which makes a bzipped tarball from my development tree.
+  AC in the AC_CONFIG_HEADER is changed to AM because the version of automake
+  used in this document prefers it over the AC prefix.
+
+  For other options you can specify in the 'configure.in' file, skip to the
+  section "Related documents" at the bottom of this document.
+
+
+Creating aclocal.m4
+-------------------
+
+  In order for autoconf and automake to recognize and translate defined
+  macro's, you have to run `aclocal', which generates the 'aclocal.m4'
+  macro-file:
+
+aclocal
+
+
+Creating config.h.in
+--------------------
+
+  This file is required by automake because you created a 'config.h' file,
+  so just run `autoheader' and your done:
+
+autoheader
+
+
+Creating Makefile.am and Makefile.in
+------------------------------------
+
+  Now you need a way to specify the rules which make must follow. The syntax
+  of a 'Makefile.am' (AutoMake) almost resembles that of an ordinary Makefile,
+  in this example, you create the 'Makefile.am' like this:
+
+cat >Makefile.am 2>/dev/null <<EOHF
+bin_PROGRAMS = hello
+
+CC = @CC@
+program:
+        $(CC) -o hello hello.c     # <-- this line starts with a TAB!
+#
+EOHF
+
+  The 'Makefile.am' file is used to generate a 'Makefile.in', that is used by
+  the configure script, which enables the user of your package to specify
+  system specifics that will be reflected in the final (real) Makefile.
+
+  Once you have 'Makefile.am', you can run `automake' to create 'Makefile.in'.
+  If you do so at this moment however, it will complain about missing files,
+  which are normally part of a standard "GNU-package". These files are:
+
+        install-sh, mkinstalldirs, missing, ChangeLog, depcomp,
+        INSTALL, NEWS, README, COPYING, AUTHORS.
+
+  However, automake provides an option to add those missing files
+  (in case they are found on your system) if you add the -a flag
+  to automake (short for --add-missing). So let's do that:
+
+automake --add-missing
+
+  The output of this command looks something like:
+
+        configure.in: installing `./install-sh'
+        configure.in: installing `./mkinstalldirs'
+        configure.in: installing `./missing'
+        Makefile.am: installing `./INSTALL'
+        Makefile.am: required file `./NEWS' not found
+        Makefile.am: required file `./README' not found
+        Makefile.am: installing `./COPYING'
+        Makefile.am: required file `./AUTHORS' not found
+        Makefile.am: required file `./ChangeLog' not found
+        Makefile.am: installing `./depcomp'
+
+  Some symbolic links will be created in your project directory, pointing
+  to the various locations where the files are found. As you can see,
+  some files are still missing: NEWS, README, AUTHORS and ChangeLog.
+
+  If you want those files to also be installed when you add the -a flag
+  to automake, create those files in the same place where the symlinks
+  point to.
+
+  The missing files are just informal ones. It's up to you to decide if
+  you want them, though it isn't a bad idea to follow the GNU convention
+  and execute the following command to create the missing files:
+
+touch NEWS README AUTHORS ChangeLog
+
+  Run `automake' again to verify it isn't complaining anymore:
+
+automake
+
+  In case you are wondering, the symbolic links will be replaced by the
+  programs themselves if you do a `make dist' when you are ready to
+  distribute your project, read along.
+
+
+Creating the configure script
+-----------------------------
+
+  To create the configure script, just run `autoconf' and you're done:
+
+autoconf
+
+
+Testing the result
+------------------
+
+  Before you test the result, it is always a good idea to backup your work:
+
+cd .. &&
+cp -a hello hello.ok &&
+cd -
+
+  Now test if the configure script works as expected; while testing, pay
+  close attention to the output that you get from the configure script,
+  especially the '--enable-goodbye' option and the 'stdio.h' check:
+
+./configure --prefix=$HOME/hello-test \
+        --bindir=$HOME/hello-test &&
+make &&
+make install
+
+  See if the program works:
+
+ls -l ../hello-test &&
+../hello-test/hello
+
+  Now test if our configure-option gets recognized:
+
+./configure --prefix=$HOME/hello-test\
+        --bindir=$HOME/hello-test \
+        --enable-goodbye &&
+make &&
+make install
+
+  And again, see if the program works:
+
+./hello &&
+../hello-test/hello
+
+  If you execute a `make uninstall', you will notice the binary is removed,
+  but the directory is still there; this is a good thing, because if you
+  installed the package in /usr/bin for example, you wouldn't want the
+  uninstall rule to `rm -fr' your entire /usr/bin as well.
+
+  You could enhance the Makefile to test for an empty directory and then
+  remove it, or just add a `rmdir --i <prefix>', which will quietly fail
+  if the directory is not empty.
+
+
+Making a distribution
+---------------------
+
+  It is possible to create a tarball from your project by executing:
+
+make dist
+
+  In this example you would end up with a file called "hello-1.0.tar.gz",
+  and a file "hello-1.0.tar.bz2" since the target has dependencies, check
+  what the package contains:
+
+tar tvzf hello-1.0.tar.gz
+
+  If you would only like a bzipped tarball, execute:
+
+make dist-bzip2 &&
+ls -l hello-1.0.tar.bz2 &&
+tar tvjf hello-1.0.tar.bz2
+
+  Hint: If you install "bash_completion" (available on http://freshmeat.net),
+        then you can get all available make targets by entering 'make ' and
+        pressing TAB twice (notice the space after the `make' command!). With
+        bash_completion, the same is true for `./configure --<TAB><TAB>',
+        which will list the available configure options; very neat indeed!
+
+  To end the foolishness of making a GNU package of a 326 byte hello.c
+  sourcefile, unpack the distribution you just made and see that it is
+  258048 bytes now; that is ~791.56 times bigger then the original sourcefile:
+
+tar xjf hello-1.0.tar.bz2 &&
+du -sb hello-1.0
+
+  But it is supposed to be portable now.
+
+
+Related documents
+-----------------
+
+  For a full description and all the macros's you can use, visit:
+
+        http://www.gnu.org/manual/make/
+        http://www.gnu.org/manual/autoconf/
+        http://www.gnu.org/manual/automake/
+
+  For information about installing the autotools, see Linuxfromscratch:
+
+        http://www.linuxfromscratch.org/view/cvs/chapter06/make.html
+        http://www.linuxfromscratch.org/view/cvs/chapter06/autoconf.html
+        http://www.linuxfromscratch.org/view/cvs/chapter06/automake.html
+
+  I recommend reading this as well:
+
+        http://sources.redhat.com/autobook/autobook/autobook_toc.html
+
+
+Warranty
+--------
+
+  Read http://www.gnu.org/licenses/gpl.txt, section 11
+  (at the time of this writing).
+
+  If you have any questions or suggestions about this document,
+  please contact the author.
+
+  Copyleft - $Date: 2003/09/16 19:10:55 $
+

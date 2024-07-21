@@ -1,0 +1,109 @@
+TITLE:		IANA /etc/{protocols,services}
+LFS VERSION:	All
+AUTHOR:		Seth W. Klein <sk@sethwklein.net>
+
+SYNOPSIS:
+	How to get the protocols and services assigned numbers lists from
+	the IANA and install them in /etc.
+
+HINT:
+
+Purpose Of This Hint
+
+This hint documents using the IANA[1] lists for /etc/services and
+/etc/protocols.
+
+This is useful this because the samples from netkit-base[2] are rather
+incomplete and GNU inetutils[3] doesn't include any. Also, the services
+list is updated frequently.
+
+
+Change Log
+
+Revision 1.7 - 2003-FEB-26
+	Information about what happens if an entry is missing
+	and how to find missing entries, support for aliases,
+	and the whois alias. This is a recommended upgrade.
+Revision 1.6 - 2003-JAN-07
+	More robust services filter. This is a recommended upgrade.
+	It fixes a bug reported by Fire Dragon <fdragon@saturn.fdragon.org>.
+Revision 1.5 - 2002-DEC-23
+	Improved filtering code. No significant functional changes.
+Revision 1.2 - 2002-SEP-25
+	First complete version.
+
+
+Required Software
+
+These instructions may need to be adapted to run on older LFS versions
+which used mawk instead of gawk.
+
+A HTTP client is also required. The instructins assume wget[4] but can
+effortlessly be adapted for any web browser or URL fetching software.
+
+
+Bugs
+
+Few aliases are included in /etc/services. For now, at least, i prefer
+to start with the minimum and add bloat as it proves necessary.
+
+If ever an entry or alias is missing you may be treated to the error:
+getaddrinfo: Servname not supported for ai_socktype
+
+If you find out what is missing _please_ report it to the maintainer listed
+above. You may have to strace[5] the problem command to find out what it's
+looking for. The various RFCs and such usually list the correct numbers
+but it's probably faster to just check something like the NetBSD services
+file which is available from their CVSWeb interface at
+<http://cvsweb.netbsd.org/bsdweb.cgi/src/etc/services>.
+
+I know of no other bugs in these instructions, but if you find one or have
+a suggestion, please do email me at the adress listed above.
+
+
+Instructions
+
+cd /var/tmp
+wget http://www.iana.org/assignments/protocol-numbers
+cp /etc/protocols protocols.orig
+echo "# See protocols(5) for more information." > /etc/protocols
+cat protocol-numbers | tr -d '\r' | awk --re-interval '
+  match($0, /^[[:blank:]]+([[:digit:]]+)[[:blank:]]{1,5}([^[:blank:]]+)(.*)/, \
+        field) {
+    sub(/^[[:blank:]]*/, "", field[3])
+    printf "%-16s%-5s%-16s# %s\n", \
+           tolower(field[2]), field[1], field[2], field[3]
+    next
+  }
+  { print "# ", $0 }
+' >> /etc/protocols
+
+wget http://www.iana.org/assignments/port-numbers
+cp /etc/services services.orig
+echo "# See services(5) for more information." > /etc/services
+cat port-numbers | tr -d '\r' | awk '
+  BEGIN {
+    aliases["nicname"] = "whois"
+  }
+  match($0,
+      /(^[^[:blank:]]+)([[:blank:]]+[[:digit:]]+\/[^[:blank:]]+)(.*)/,
+      field) {
+    sub(/^[[:blank:]]+/, "&# ", field[3])
+    printf "\"%s\"\n", field[1] > "/dev/stderr"
+    printf "%s%s%s%s\n", field[1], field[2],
+           (field[1] in aliases) ? " " aliases[field[1]] : "", field[3]
+    next
+  }
+  !/^#/ { if (!sub(/^ /, "#")) { sub(/^/, "# ") } }
+  {
+    print $0
+  }
+' >> /etc/services
+
+
+[1] IANA: Internet Assigned Numbers Authority, http://www.iana.org/
+[2] netkit-base: ftp://ftp.uk.linux.org/pub/linux/Networking/netkit/
+[3] GNU inetutils: http://www.gnu.org/software/inetutils/inetutils.html
+[4] wget: http://beyond.linuxfromscratch.org/view/cvs/basicnet/wget.html
+[5] strace: http://www.wi.leidenuniv.nl/~wichert/strace/
+

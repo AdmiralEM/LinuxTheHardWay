@@ -1,0 +1,758 @@
+TITLE:		Bootable LFS CD using lilo
+LFS VERSION:	LFS 4.0 onwards
+AUTHOR:		Chris Lingard  chris@stockwith.co.uk
+CREDITS         Thanks to Gerard Beekmans, Martin L. Pursche and many others`
+LINKS:
+
+My boot disk   www.stockwith.co.uk
+The package    www.stockwith.uklinux.net Please do not use this until after
+I have upgraded it.  Problems with ISP, since I took hosting away from them.
+
+SYNOPSIS:
+
+This hint involves using two LFS systems to build a third system on a CD.
+It does not use any external packages, the boot method being LFS
+
+Index
+
+1.  Introduction
+2.  How it boots
+3.  What it boots
+3.  The base system
+4.  The image system
+5.  Making the package
+6.  Building the image
+7.  Some uses for the boot CD
+
+HINT:
+
+1.  Introduction
+
+This is my method of making a bootable CD
+I started this project when I realised that I had no proper recovery system,
+and it just grew from there.
+
+I tried various other systems; the best being cd_template by Martin L. Pursche.
+Extending this package, to boot a full Linux system, became my goal.
+
+Here are the standard warnings.  You must be confident enough to build systems,
+with various hacks and modifications.  You must be careful enough to avoid 
+wrecking your systems;  many of the scripts will mess up your base system if
+run wrongly.
+
+2.  How it boots
+
+First a few words on how to make a bootable CD, (using lilo). When you burn a
+CD using mkisofs, you have the -b option to specify the boot image.
+This boot image must be something that the hardware understands, therefore
+you need to emulate a floppy.  Since we are only pretending that is a floppy,
+we may choose any type,  so we choose the largest -- a 2.88Mb floppy.
+
+We make a file using a loop device that is exactly 2.88Mb, copy files to
+it, then run lilo on it.
+
+Please note that it is the BIOS that reads this 2.88Mb image.  Once this is
+read, then BIOS/lilo gives control to the kernel.  The kernel boots,
+decompresses the initrd file, and mounts this as the root file system.
+
+We need to run lilo on the 2.88Mb file.  Here is a lilo.conf:
+
+cat > $TOPDIR/lilo.conf << EOF
+disk=/dev/loop1
+bios=0x00 # bios ID from drive A, we need that here because lilo
+# need to know which boot device to use
+sectors=36 # 2.88MB disk geometry
+heads=2
+cylinders=80
+timeout=30
+lba32
+
+ boot=/dev/loop1
+ message=/mnt/loop1/boot.msg
+ install=/mnt/loop1/boot.b
+ map=/mnt/loop1/map
+ prompt
+
+ image=/mnt/loop1/vmlinuz
+   label=linux
+   initrd=/mnt/loop1/initrd.gz
+   append = "root=/dev/ram0 init=/linuxrc rw"
+   ramdisk=$ISIZE
+
+EOF
+# run lilo
+/sbin/lilo -C $TOPDIR/lilo.conf
+
+
+At the start of the above, you can see us telling lies to the hardware,
+that this is a 2.88Mb floppy.
+
+We have put a kernel and boot message into this file system.
+
+The initrd.gz is a compressed file system.
+
+linuxrc is an executable script in the root of this file system.
+
+This must all fit inside 2.88Mb.
+
+The initrd file system may be 6.5Mb, before compression,
+and still be small enough.
+
+linuxrc may be a symbolic link to bash
+
+3. What it boots
+
+The files in the base of this file are:
+boot-menu.b  boot.b  boot.msg  initrd.gz  map  vmlinuz
+
+boot.b is a symbolic link to boot-menu.b, and these together with map
+are copied from /boot on your base system
+
+boot.msg is a text file that gives the start of boot greeting
+
+vmlinux is the kernel, and initrd.gz is a compressed file system that
+will become the root partition.
+
+The file system may contain anything you like, but this is all you will
+have after booting the CD
+
+You can make this system inside a directory; it will look something like:
+
+/dev  #    Use devfsd
+/bin  ->  sbin
+/lib  # Needed if you are using dynamic programs
+/lib/modules  #  See next paragraph`
+/linuxrc  #  The script
+/sbin     #  You selection of programs
+
+The directory modules should be copied from your target system.  These
+will be the modules available during the boot.  Once the boot is complete
+then /lib/modules will be available from your target system via the CD.
+
+Once you have made this;  you calculate its size, make a file system on
+loop device,  copy the files, then compress it into initrd.gz.
+
+During the linuxrc script you would mount the cdrom, giving you access to
+whatever you put on the CD.
+
+See the mount_cdrom script below that auto-detects the cdrom, and modify it
+to do what you want.
+
+
+4.  The base system
+
+The base system's kernel will need loop devices enabled.  I use mkisofs and
+cdrecord from package  cdrtools. You will also need directories for
+the loop back devices to use;  /mnt/loop1 and /mnt/loop2 are what I use.
+
+5.  The image system
+
+This system must be running devfsd, as this is used for hardware detection
+You should implement the pciutils package to get the lspci program.
+
+You must decide if you just want a CD that will work on your machine, (and
+any identical); or you want a CD that will work on any PC.
+
+If you want a generic CD, then you must build a generic system to act as the
+image;  follow the cross compile hint to build a generic 486 LFS system.
+
+The system used for the image can be any working combination you choose.
+Things that use many shared libraries, such as KDE, should be avoided,
+because they will be too slow for any effective work on a CD.
+I use a standard LFS plus a few extras such as gpm, X and lynx.
+
+If you really want a large KDE type system, then get the cloop daemon
+from Knoppix.  This allows you to make and mount  compressed partitions.
+
+The kernel of the booting system must have been built with:
+CONFIG_BLK_DEV_RAM_SIZE=32768
+
+6.  Making the package
+
+You will need two LFS systems to generate a bootable CD.  One is the base
+system that will be used for building.  The other is the system that provides
+the image.
+
+Here is how it works.
+
+Let us first consider what we want.  We need a writable root partition,
+so we will make one out of RAM.  We will want /proc and /cdrom mounted on
+the root.
+
+We also want /root and /etc writeable,  so these are unpacked from
+tar files during the boot process. (How the image system is prepared is
+described later).
+
+The start up linuxrc will achieve this, then pass control to init. Here
+is my linuxrc script:
+
+#!/bin/sh
+
+/sbin/devfsd  /dev
+
+mount -t proc none /proc
+modprobe -q  -s `cat /scsi`
+
+dd if=/dev/zero  of=/dev/ram2  bs=1k  count=25000
+mkdir  -p  ram
+mke2fs -q /dev/ram2
+mount  /dev/ram2  /ram
+cd /ram
+mkdir cdrom
+/mount_cdrom
+mkdir proc
+mount  -t proc  none /ram/proc
+cdrom/bin/ln -s  cdrom/bin  bin
+bin/ln -s  cdrom/sbin  sbin
+bin/ln -s  cdrom/lib  lib
+bin/ln -s  cdrom/boot  boot
+bin/ln -s  /cdrom/usr  usr
+dd  if=/dev/zero  of=swapspace bs=1k  count=5000
+sbin/mkswap  swapspace
+bin/echo "Preparing file systems for pivot"
+mkdir home
+mkdir dev
+mkdir tmp
+mkdir mnt
+mkdir mnt/lfs
+mkdir var
+cd var
+mkdir lib lock log mail run spool tmp opt cache lib/misc local
+cd /ram
+bin/echo "Unpacking tar files for /etc and /root"
+bin/tar xf /ram/cdrom/etc.tar
+bin/tar xf /ram/cdrom/root.tar
+mkdir initrd
+sbin/pivot_root  .  initrd
+# Get devices on the new root
+/bin/killall  devfsd
+mount  devfs  -t  devfs  /dev
+exec /usr/sbin/chroot . /sbin/init <dev/console >dev/console 2>&1
+
+
+The only non standard thing used here is mount_cdrom, this is it.
+
+#!/bin/sh
+for disk in 0 1 2 3 4 5 6 7; do
+         if  mount -t iso9660 -o ro -n /dev/cdroms/cdrom$disk /ram/cdrom 2> /dev/null  ; then
+           if [ -r /ram/cdrom/LFS-4.1 ]; then
+            echo "Found the CD-ROM"
+            exit
+           else
+             umount  /ram/cdrom;
+           fi;
+         fi
+done
+echo "No CD-ROM found"
+
+The file LFS-4.1 is to make sure tha the right CD is mounted.
+
+The file scsi is a list of scsi modules like:
+
+3w-xxxx
+53c7,8xx
+AM53C974
+BusLogic
+.......
+.......
+
+Each is loaded in turn in case the machine has this scsi driver.  
+
+From this is can be seen that the following programs are needed during the 
+boot process:
+
+bash  chroot  devfsd  insmod    ksyms  mkdir   modprobe  pivot_root  sh
+cat   dd      echo    kallsyms  lsmod  mke2fs  mount     rmmod       umount
+
+(kallsyms, ksyms, lsmod, modprobe and rmmod are symbolic links to insmod)
+(sh is a symbolic link to bash)
+
+Because shared libraries plus programs are smaller than static programs,
+the following libraries are needed:
+
+ld-2.3.1.so
+ld-linux.so.2 -> ld-2.3.1.so
+libc-2.3.1.so
+libc.so.6 -> libc-2.3.1.so
+libcom_err.so.2 -> libcom_err.so.2.0
+libcom_err.so.2.0
+libdl-2.3.1.so
+libdl.so.2 -> libdl-2.3.1.so
+libe2p.so.2 -> libe2p.so.2.3
+libe2p.so.2.3
+libext2fs.so.2 -> libext2fs.so.2.4
+libext2fs.so.2.4
+libuuid.so.1 -> libuuid.so.1.2
+libuuid.so.1.2
+
+We can therefore make a system like this in a directory called initrdtree
+
+ls  initrdtree/
+bin   dev  etc  initrd  lib linuxrc
+mount_cdrom proc root sbin tmp usr var
+
+Where bin a link to sbin, sbin contains the programs and lib the libraries.
+linuxrc and mount_cdrom are the scripts, and dev has the devices.
+
+This file system must be small enough, ( 6-7Mb ), so that its compressed size,
+plus a kernel is less than 2.88Mb.
+
+A file system can be made on a loop device, and the directory initrdtree
+copied to it.   The file system is then compressed.
+
+This put into a futher file system containing a kernel.
+This file system must be exactly 2.88Mb, (it is a floppy to the hardware).
+
+This is also mounted on a loop device and lilo is run on it.
+This is then the boot image that mkisofs sees with the -b flag
+
+The build directory looks like:
+
+bootimagetree # Contains the kernel and the compressed file system
+build.sh  # The script
+initrdtree    # Contains the boot image system before compression
+cdtree    #  The system providing the CD image is mounted here
+
+Here is the script build.sh that builds the iso; note that the system
+providing the CD image is mounted on cdtree/
+
+#! /bin/sh 
+
+if [ -z $TOPDIR ] ; then
+  echo "you must define TOPDIR"
+  exit
+fi
+
+oldpwd=`pwd`
+
+cd $TOPDIR
+
+# we need to set aside a few loop devices. I chose (in reverse order of their appearance)
+# -- loop1 for the boot image
+# -- loop2 for the ram disk image
+# since the loop1 choice is reflected in the lilo.loopfix file, 
+# you should not change that (or you need to change the file).
+# I had used loop0 first, but I found that this is used by the Samba daemon.
+# Also, I assume that the mount points are /mnt/loop{1,2}.
+# In principle we could do with one, but it comes in handy to be able to
+# leave one mounted, so I took two different ones. 
+
+# we first assume that a proper directory tree of the later ramdisk 
+# is in the initrdtree directory. Put everything in there what you think
+# will be needed. We assume that this is the case.
+
+echo -n "Creating the Initial Ramdisk image.... "
+
+# first find out how much space we need. 
+ISIZE=`du -s -k  $TOPDIR/initrdtree/ | awk '{print $1}'`
+
+# is that true? Anyway, we are smaller than that.
+if [ $ISIZE -gt 8192 ]; then
+   echo "Initial Ramdisk max size exceeded ($ISIZE, max is 8192KB)"
+   exit 1
+fi
+
+ISIZE=`expr $ISIZE + 1024`
+ISIZE=8192
+echo "Initial Ramdisk contents will be $ISIZE KB"
+
+# delete the existing ramdisk image, if there is one
+rm -f $TOPDIR/ramdisk
+
+# create a file of $ISIZE Kb
+dd if=/dev/zero of=$TOPDIR/ramdisk bs=1k count=$ISIZE
+
+# associate it with /dev/loop2
+losetup /dev/loop2 $TOPDIR/ramdisk
+
+# make an ext2 filesystem on it. We set the amount of unused space to 0%
+# and turn down the number of inodes to save space
+#mkfs  -t ext2 -i 16384 -m 0 /dev/loop2
+mke2fs  -F -m0 -b 1024 /dev/loop2
+
+# we mount it...
+mount /dev/loop2 /mnt/loop2 
+
+# ... and delete the lost+found directory 
+rm -rf /mnt/loop2/lost+found 
+
+# then we copy the contents of our initrdtree to this filesystem
+cp -dpR $TOPDIR/initrdtree/* /mnt/loop2/
+
+# and unmount and divorce /dev/loop2
+umount /mnt/loop2
+losetup -d /dev/loop2 
+
+echo "done"
+
+# Now we have the image of the ramdisk in $TOPDIR/ramdisk. We
+# compress this one and write the compressed image to the boot tree:
+
+echo -n "Compressing the Ramdisk image.... "
+
+# delete any existing one
+rm -f $TOPDIR/bootimagetree/initrd.*
+
+# and gzip our ramdisk image and put it in the right place.
+gzip -9 -c $TOPDIR/ramdisk > $TOPDIR/bootimagetree/initrd.gz
+
+# we are done with the uncompressed ramdisk image, delete it
+rm  $TOPDIR/ramdisk
+
+# how much is the contents of the bootimagetree?
+ISIZE=`du -s -k  $TOPDIR/bootimagetree/ | awk '{print $1}'`
+echo "Boot image size is $ISIZE KB"
+
+echo "done"
+
+# Part II. We work the boot tree (with the image of the ramdisk) now.
+# we put that into yet another image which we put on the CD. 
+# This image has to be 2.88 MB exactly, because we emulate a 2.88MB floppy.
+
+echo -n "Creating the boot image.... "
+
+# delete any leftover version
+rm -f $TOPDIR/cdtree/Boot.img
+
+# and make a file of the proper size (this time it's fixed at 2880 KB)
+# note that the file gets created already in the right place to be the boot image.
+dd if=/dev/zero of=$TOPDIR/cdtree/Boot.img bs=1k count=2880
+
+# this one gets associated with loop1 and gets a ext2 file system
+losetup /dev/loop1 $TOPDIR/cdtree/Boot.img
+mke2fs -F -m0  -b 1024  /dev/loop1
+
+# mount it...
+mount /dev/loop1 /mnt/loop1
+rm -rf /mnt/loop1/lost+found
+
+# ... and copy the contents of our bootimagetree over
+cp -dpR $TOPDIR/bootimagetree/* /mnt/loop1/ 
+
+# now we calculate the ramdisk size for the lilo.conf
+# Hard code the size we want; also see linuxrc for dd's count=
+ISIZE=30000
+echo "Ram disk size will be $ISIZE KB"
+
+cat > $TOPDIR/lilo.conf <<EOF
+disk=/dev/loop1
+bios=0x00 # bios ID from drive A, we need that here because lilo
+# need to know which boot device to use
+sectors=36 # 2.88MB disk geometry
+heads=2
+cylinders=80
+timeout=30
+lba32
+ boot=/dev/loop1
+ message=/mnt/loop1/boot.msg
+ install=/mnt/loop1/boot.b
+ map=/mnt/loop1/map
+ prompt
+  
+ image=/mnt/loop1/vmlinuz
+   label=linux
+   initrd=/mnt/loop1/initrd.gz
+   append = "root=/dev/ram0 init=/linuxrc rw"
+   ramdisk=$ISIZE
+
+EOF
+
+
+# run lilo
+chmod 600  $TOPDIR/lilo.conf
+/sbin/lilo -v -v -v -C   $TOPDIR/lilo.conf
+
+rm -f $TOPDIR/lilo.conf
+
+# unmount and divorce from the loop device
+umount /mnt/loop1
+losetup -d /dev/loop1 
+
+echo "done"
+
+# note that after running lilo, we cannot mount the image back. That's why 
+# we make it a throwaway.
+
+# go to the top directory of the future CD
+cd $TOPDIR/cdtree
+
+# and create the CD image
+# you can fill in the info below as follows if you like
+# -p "preparer id" - that's your email, for example
+# -P "publisher_id" - again you
+# -A "Application_id"
+
+echo -n "Creating the CD iso image, $TOPDIR/bootcd.iso... "
+mkisofs -b Boot.img -c boot.catalog \
+               -o $TOPDIR/bootcd.iso \
+               -r \
+               -J \
+               -p "your email address" \
+               -P "your name" \
+               -A "LFS Disk" \
+	       .
+
+echo "done"
+
+# go back where we came from
+cd $oldpwd
+
+# now we can burn this image to a cd. 
+
+Preparing the image system, before creating the iso
+
+/etc/mtab must be a pointer to /proc/mounts
+
+cd $LFS/etc
+ls -l mtab
+and if it is a file
+mv mtab mtab.bak
+ln -s /proc/mounts mtab
+
+You need to replace the $LFS/etc/fstab
+cd $LFS/etc
+mv fstab fstab.bak
+cat > fstab << EOF
+/dev/ram2               /                       ext2    defaults        0 0
+proc                    /proc                   proc    defaults        0 0
+/swapspace              swap                    swap    defaults        0 0
+EOF
+
+You need the script checkcd to replace checkfs and mountfs
+
+cat > $LFS/etc/rc.d/init.d/checkcd << EOF
+#!/bin/sh
+# Begin /etc/rc.d/init.d/checkcd
+#
+# Include the functions declared in the /etc/rc.d/init.d/functions file
+#
+source /etc/rc.d/init.d/functions
+#
+# Activate all the swap partitions declared in the /etc/fstab file
+#
+echo -n "Activating swap..."
+/sbin/swapon -a
+evaluate_retval
+echo -n "Remounting root file system in read-write mode..."
+/bin/mount -n -o remount,rw /
+evaluate_retval
+
+echo "Making /tmp writeable"
+chmod 1777 /tmp
+
+umount  /initrd/proc
+umount  /initrd/dev
+echo "Goodbye to the RAMDISK"
+umount /initrd
+EOF
+
+Note that the umount of /initrd releases the boot image,
+it is no longer needed.
+
+You need the Detect script
+cat > $LFS/etc/rc.d/init.d/Detect << EOF
+#!/bin/bash
+# Begin $rc_base/init.d/
+
+# Based on sysklogd script from LFS-3.1 and earlier.
+# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+case "$1" in
+        start)
+                echo "Starting hardare detection"
+                /sbin/lspci -v >& /tmp/t
+                if grep OHCI /tmp/t >& /dev/null; then
+                     modprobe -a usb-ohci;
+                     modprobe -a hid;
+                fi
+                rm /tmp/t
+                loadproc /sbin/Opendirs
+                if [ -c /dev/input/mouse0 ]; then
+                    ln  -s  /dev/input/mouse0  /dev/mouse;
+                  else
+                    if [ -c /dev/misc/psaux ]; then
+                      ln  -s  /dev/misc/psaux  /dev/mouse;
+                    fi
+                fi
+                evaluate_retval
+                ;;
+
+        stop)
+                echo "Stopping..."
+                killproc
+                ;;
+
+        reload)
+                echo "Reloading..."
+                reloadproc
+                ;;
+
+        restart)
+                $0 stop
+                sleep 1
+                $0 start
+                ;;
+
+        status)
+                statusproc
+                ;;
+
+        *)
+                echo "Usage: $0 {start|stop|reload|restart|status}"
+                exit 1
+                ;;
+esac
+
+# End $rc_base/init.d/
+
+And here is the source of the Opendirs program, (please do not laugh)
+
+#include <sys/types.h>
+#include <dirent.h>
+#include <unistd.h>
+#include <stdlib.h>
+
+int main(void)
+{
+char  CD[12]     =  "/dev/cdroms";
+char  IDEHD[12]  = "/dev/discs";
+char  FLOPPY[12] = "/dev/floppy";
+char  SCSIHD[12] = "/dev/scsi";
+char  USB[12]    = "/dev/usb";
+
+DIR  *D;
+
+       printf("Detecting CDs\n");
+       D = opendir(CD);
+       closedir(D);
+       printf("Detecting IDE HDs\n");
+       D = opendir(IDEHD);
+       closedir(D);
+       printf("Detecting floppy\n");
+       D = opendir(FLOPPY);
+       closedir(D);
+       printf("Detecting SCSI HDs\n");
+       D = opendir(SCSIHD);
+       closedir(D);
+       printf("Detecting USB\n");
+       D = opendir(USB);
+       closedir(D);
+       exit(0);
+
+}
+
+We need to disable some of the target system's start up scripts.
+
+cd $LFS/etc/rc.d/rcsysinit.d
+mv  S10swap      ZZZS10swap
+mv  S20mountproc ZZZS20mountproc
+mv  S30checkfs ZZZS30checkfs
+mv  S40mountfs ZZZS40mountfs 
+
+Check that your $LFS/etc/inittab will start up at level 3
+
+Inspect your level 3 start up scripts and disable any that you think
+are inappropriate.  Add the following links:
+
+ln -s ../init.d/checkcd  S35checkcd
+ln -s ../init.d/Detect   S40Detect
+
+You need to tar $LFS/root and $LFS/etc
+
+cd $LFS
+tar cf root.tar root
+tar cf etc.tar etc
+
+Finally you need to put a marker file LFS-4.1 in the root; so
+that the boot mechanism chooses the right CD.
+
+touch  $LFS/LFS-4.1
+
+7.  Building the image
+
+Return to the build directory and set TOPDIR
+
+cd where_ever_it_is/cd_builder
+export TOPDIR=`pwd`
+
+The directory cdtree must have the LFS root directory mounted.
+On my system it is /dev/hdb6 so:
+
+mount  /dev/hdb6  cdtree
+
+If you have a separate partition for usr then mount this too
+
+mount  /dev/hdxx  cdtree/usr
+
+If you have a partition containing source you may also mount this.
+Mine is /dev/hdb5 so:
+
+mount  /dev/hdb5  cdtree/usr/src
+
+You can now build the image:
+
+bash  build.sh >& Build &
+
+Check the output for any warning or any "file system full". 
+A warning from lilo about lilo.conf not having the correct permissions is normal; the latest lilo will also warn about lba32 and compact.
+
+If you have both the LFS and the LFS/usr/src mounted the image in bootcd.iso
+will be about 300Mb.
+
+Write this to a CD and try the system.
+
+
+Restoration of the LFS system
+There are two changes to be made before the image LFS system will reboot:
+
+$LFS/etc/fstab
+$LFS/etc/rc.d/rcsysinit.d
+
+The fstab
+cd $LFS/etc
+cp fstab  fstab.cd
+cp fstab.bak  fstab
+
+The links
+cd $LFS/etc/rc.d/rcsysinit.d
+mv  ZZZS10swap    S10swap
+mv  ZZZS20mountproc S20mountproc
+mv  ZZZS30checkfs S30checkfs
+mv  ZZZS40mountfs S40mountfs 
+cd ../rc3.d
+mv  S35checkcd ZZZS35checkcd
+mv  S40Detect  ZZZS40Detect 
+
+Your LFS system should now boot; enabling you to change and tune it.
+Then add more software before building a better CD.
+
+7.  Some uses for the boot CD
+
+Broken files
+
+Any partition can be mounted; files edited or replaced by those on the CD.
+Mending a broken lilo
+
+Suppose that the machine just does LILILILI on boot up.
+
+Boot from the CD and mount your root partition to /disk;
+if your not sure which partition; then test the partitions listed in
+/proc/partition until you get the right one.
+
+Once you have the broken root partition mounted do:
+
+chroot /disk
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin
+cd /etc
+vi lilo.conf and fix what is wrong
+then
+lilo -C lilo.conf
+
+Exit (from the chroot), unmount the disk and reboot.
+
+What I have is an automated build of LFS on my CD.  I build LFS
+systems onto empty machines.
+

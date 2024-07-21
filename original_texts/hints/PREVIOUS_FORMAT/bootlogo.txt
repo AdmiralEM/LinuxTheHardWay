@@ -1,0 +1,83 @@
+TITLE:		The lfs bootlogo hint
+LFS VERSION:	any
+AUTHOR:		Martin Imobersteg <imm@gmx.ch>
+
+SYNOPSIS:
+	How to get a logo instead of the LILO prompt.
+
+HINT:
+The lfs bootlogo hint
+(L) 01.03.2001 imm@gmx.ch
+-------------------------
+
+Intro
+-----
+
+With the bootlogo patch from SuSE
+you can get a nice logo instead of the
+lilo prompt. This patch will help you.
+
+Requirements
+------------
+
+You nead:
+ - lilo 21.7 [1]
+ - SuSE's bootlogo patch [2]
+ - a 640x480 256color pcx graphic [3]
+
+I found the sources of the patch for lilo (should also work 
+with 21.6 and 21.6.1) on my SuSE 7.1 source CDs. 
+The author is Steffen Winterfeldt <wfeldt@suse.de>
+
+Installation
+------------
+
+Decompress lilo and aply the patch:
+$ tar xvzf lilo-21.7.tar.gz
+$ bunzip2 lilo-gfx-21.7.patch.bz2
+$ cd lilo-21.7
+$ patch -i ../lilo-gfx-21.7.patch
+
+Build and install lilo:
+$ make
+$ su
+$ make install
+
+Generate the bootlogo:
+$ mklilomsg --logo1 lfsbscreen.pcx 120 20 23 60 290 5 5 4 \
+  0x13 000000 111111 000000 > message 
+$ cp message /boot
+
+[ Could somebody find out how to use the xor rgb value at the
+end of parameters ? It defines the color of the scrollbar
+but i got only rubish on my own picture :o( 
+mklilomsg.c has also two hidden flags (special and shade) but
+none of them won't work for me. ]
+
+Edit /etc/lilo.conf:
+lilo.conf should read something like this
+
+boot    = /dev/hde
+vga     = normal
+read-only
+menu-scheme = Wg:kw:Wg:Wg
+lba32
+prompt
+timeout = 80
+message = /boot/message
+
+Then start /sbin/lilo and reboot :o)
+
+Disclaimer
+---------
+
+This doc is 100% free.
+
+Download locations:
+
+[1] ftp://brun.dyndns.org/pub/linux/lilo/lilo-21.7.tar.gz
+[2] http://www.linuxnews.ch/alfs/lilo-gfx-21.7.patch.bz2
+[3] http://www.linuxnews.ch/alfs/lfsbscreen.pcx
+
+Good luck
+imobi

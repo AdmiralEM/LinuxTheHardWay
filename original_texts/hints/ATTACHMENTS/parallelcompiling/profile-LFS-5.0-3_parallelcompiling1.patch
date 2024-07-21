@@ -1,0 +1,1626 @@
+diff -Naur LFS-5.0-3/LFS-5.0.xml LFS-5.0-3_parallelcompiling/LFS-5.0.xml
+--- LFS-5.0-3/LFS-5.0.xml	2004-01-15 03:12:35.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/LFS-5.0.xml	2004-01-16 02:14:58.000000000 +0100
+@@ -40,6 +40,7 @@
+ 				<variable name="LFS">&LFS;</variable>
+ 				<variable name="LC_ALL">POSIX</variable>
+ 				<variable name="PATH" mode="prepend">/tools/bin:</variable>
++				<variable name="CC_PARALLEL">&gcc_parallel;</variable>
+ 				<variable name="CFLAGS">&gcc_optimizations;</variable>
+ 				<variable name="CXXFLAGS">&gcc_optimizations;</variable>
+ 				<variable name="CC"></variable>
+@@ -89,6 +90,7 @@
+ 				<variable name="TERM">$TERM</variable>
+ 				<variable name="PS1">'\u:\w\$ '</variable>
+ 				<variable name="PATH">/bin:/usr/bin:/sbin:/usr/sbin:/tools/bin</variable>
++				<variable name="CC_PARALLEL">&gcc_parallel;</variable>
+ 				<variable name="CFLAGS">&gcc_optimizations;</variable>
+ 				<variable name="CXXFLAGS">&gcc_optimizations;</variable>
+ 			</environment>
+@@ -160,6 +162,7 @@
+ 				<variable name="TERM">$TERM</variable>
+ 				<variable name="PS1">'\u:\w\$ '</variable>
+ 				<variable name="PATH">/bin:/usr/bin:/sbin:/usr/sbin</variable>
++				<variable name="CC_PARALLEL">&gcc_parallel;</variable>
+ 				<variable name="CFLAGS">&gcc_optimizations;</variable>
+ 				<variable name="CXXFLAGS">&gcc_optimizations;</variable>
+ 			</environment>
+@@ -198,6 +201,7 @@
+ 			<variable name="TERM">$TERM</variable>
+ 			<variable name="PS1">'\u:\w\$ '</variable>
+ 			<variable name="PATH">/bin:/usr/bin:/sbin:/usr/sbin</variable>
++			<variable name="CC_PARALLEL">&gcc_parallel;</variable>
+ 			<variable name="CFLAGS">&gcc_optimizations;</variable>
+ 			<variable name="CXXFLAGS">&gcc_optimizations;</variable>
+ 		</environment>
+diff -Naur LFS-5.0-3/chapter05/binutils-pass1.xml LFS-5.0-3_parallelcompiling/chapter05/binutils-pass1.xml
+--- LFS-5.0-3/chapter05/binutils-pass1.xml	2003-12-06 04:25:45.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/binutils-pass1.xml	2004-01-16 02:21:42.000000000 +0100
+@@ -15,6 +15,7 @@
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
+ 			<environment>
++				<variable name="CC_PARALLEL" />
+ 				<variable name="CFLAGS" />
+ 				<variable name="CXXFLAGS" />
+ 			</environment>
+@@ -31,6 +32,7 @@
+ 		</make>
+ 
+ 		<make>
++			<param>-j $CC_PARALLEL</param>
+ 			<param>LDFLAGS="-all-static"</param>
+ 		</make>
+ 
+@@ -44,6 +46,7 @@
+ 		</make>
+ 
+ 		<make>
++			<param>-j $CC_PARALLEL</param>
+ 			<param>-C ld</param>
+ 			<param>LDFLAGS="-all-static"</param>
+ 			<param>LIB_PATH=/tools/lib</param>
+diff -Naur LFS-5.0-3/chapter05/binutils-pass2.xml LFS-5.0-3_parallelcompiling/chapter05/binutils-pass2.xml
+--- LFS-5.0-3/chapter05/binutils-pass2.xml	2003-12-09 17:49:49.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/binutils-pass2.xml	2004-01-16 02:27:16.000000000 +0100
+@@ -15,6 +15,7 @@
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
+ 			<environment>
++				<variable name="CC_PARALLEL" />
+ 				<variable name="CFLAGS" />
+ 				<variable name="CXXFLAGS" />
+ 			</environment>
+@@ -27,7 +28,9 @@
+ 			<param>--with-lib-path=/tools/lib</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter05/bzip2.xml LFS-5.0-3_parallelcompiling/chapter05/bzip2.xml
+--- LFS-5.0-3/chapter05/bzip2.xml	2003-12-06 04:25:45.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/bzip2.xml	2004-01-16 02:29:24.000000000 +0100
+@@ -9,10 +9,14 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&bzip2-directory;</base>
+ 		</stageinfo>
+ 
+ 		<make>
++			<param>-j $CC_PARALLEL</param>
+ 			<param>PREFIX=/tools</param>
+ 			<param>install</param>
+ 		</make>
+diff -Naur LFS-5.0-3/chapter05/coreutils.xml LFS-5.0-3_parallelcompiling/chapter05/coreutils.xml
+--- LFS-5.0-3/chapter05/coreutils.xml	2003-12-09 17:49:49.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/coreutils.xml	2004-01-16 02:28:59.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&coreutils-directory;</base>
+ 		</stageinfo>
+ 
+@@ -16,7 +19,9 @@
+ 			<param>--prefix=/tools</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter05/dejagnu.xml LFS-5.0-3_parallelcompiling/chapter05/dejagnu.xml
+--- LFS-5.0-3/chapter05/dejagnu.xml	2003-12-06 04:25:45.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/dejagnu.xml	2004-01-16 02:26:00.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&dejagnu-directory;</base>
+ 		</stageinfo>
+ 
+@@ -17,6 +20,7 @@
+ 		</configure>
+ 
+ 		<make>
++			<param>-j $CC_PARALLEL</param>
+ 			<param>install</param>
+ 		</make>
+ 	</stage>
+diff -Naur LFS-5.0-3/chapter05/diffutils.xml LFS-5.0-3_parallelcompiling/chapter05/diffutils.xml
+--- LFS-5.0-3/chapter05/diffutils.xml	2003-12-09 17:49:49.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/diffutils.xml	2004-01-16 02:30:32.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&diffutils-directory;</base>
+ 		</stageinfo>
+ 
+@@ -16,7 +19,9 @@
+ 			<param>--prefix=/tools</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ 		<make>
+ 			<param>install</param>
+diff -Naur LFS-5.0-3/chapter05/expect.xml LFS-5.0-3_parallelcompiling/chapter05/expect.xml
+--- LFS-5.0-3/chapter05/expect.xml	2004-01-14 03:29:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/expect.xml	2004-01-16 02:25:27.000000000 +0100
+@@ -14,6 +14,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&expect-directory;</base>
+ 		</stageinfo>
+ 
+@@ -29,7 +32,9 @@
+ 			<param>--with-x=no</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter05/findutils.xml LFS-5.0-3_parallelcompiling/chapter05/findutils.xml
+--- LFS-5.0-3/chapter05/findutils.xml	2003-12-09 17:49:49.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/findutils.xml	2004-01-16 02:30:53.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&findutils-directory;</base>
+ 		</stageinfo>
+ 
+@@ -16,7 +19,9 @@
+ 			<param>--prefix=/tools</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter05/gawk.xml LFS-5.0-3_parallelcompiling/chapter05/gawk.xml
+--- LFS-5.0-3/chapter05/gawk.xml	2003-12-09 17:49:49.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/gawk.xml	2004-01-16 02:28:31.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&gawk-directory;</base>
+ 		</stageinfo>
+ 
+@@ -16,7 +19,9 @@
+ 			<param>--prefix=/tools</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter05/gcc-pass1.xml LFS-5.0-3_parallelcompiling/chapter05/gcc-pass1.xml
+--- LFS-5.0-3/chapter05/gcc-pass1.xml	2003-12-09 18:01:41.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/gcc-pass1.xml	2004-01-16 02:22:16.000000000 +0100
+@@ -15,6 +15,7 @@
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
+ 			<environment>
++				<variable name="CC_PARALLEL" />
+ 				<variable name="CFLAGS" />
+ 				<variable name="CXXFLAGS" />
+ 			</environment>
+@@ -30,6 +31,7 @@
+ 		</configure>
+ 
+ 		<make>
++			<param>-j $CC_PARALLEL</param>
+ 			<param>BOOT_LDFLAGS="-static"</param>
+ 			<param>bootstrap</param>
+ 		</make>
+diff -Naur LFS-5.0-3/chapter05/gcc-pass2.xml LFS-5.0-3_parallelcompiling/chapter05/gcc-pass2.xml
+--- LFS-5.0-3/chapter05/gcc-pass2.xml	2003-12-09 17:49:49.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/gcc-pass2.xml	2004-01-16 02:26:47.000000000 +0100
+@@ -33,6 +33,7 @@
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
+ 			<environment>
++				<variable name="CC_PARALLEL" />
+ 				<variable name="CFLAGS" />
+ 				<variable name="CXXFLAGS" />
+ 			</environment>
+@@ -68,7 +69,9 @@
+ 			<param>--enable-languages=c,c++</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter05/gettext.xml LFS-5.0-3_parallelcompiling/chapter05/gettext.xml
+--- LFS-5.0-3/chapter05/gettext.xml	2003-12-09 17:49:49.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/gettext.xml	2004-01-16 02:32:35.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&gettext-directory;</base>
+ 		</stageinfo>
+ 
+@@ -16,7 +19,9 @@
+ 			<param>--prefix=/tools</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter05/glibc.xml LFS-5.0-3_parallelcompiling/chapter05/glibc.xml
+--- LFS-5.0-3/chapter05/glibc.xml	2004-01-14 03:29:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/glibc.xml	2004-01-16 02:23:08.000000000 +0100
+@@ -26,6 +26,7 @@
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
+ 			<environment>
++				<variable name="CC_PARALLEL" />
+ 				<variable name="CFLAGS" />
+ 				<variable name="CXXFLAGS" />
+ 			</environment>
+@@ -55,7 +56,9 @@
+ 			<param>--without-gd</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>PARALLELMFLAGS="-j $CC_PARALLEL"</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter05/grep.xml LFS-5.0-3_parallelcompiling/chapter05/grep.xml
+--- LFS-5.0-3/chapter05/grep.xml	2003-12-09 17:49:49.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/grep.xml	2004-01-16 02:31:40.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&grep-directory;</base>
+ 		</stageinfo>
+ 
+@@ -18,7 +21,9 @@
+ 			<param>--with-included-regex</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter05/gzip.xml LFS-5.0-3_parallelcompiling/chapter05/gzip.xml
+--- LFS-5.0-3/chapter05/gzip.xml	2003-12-09 17:49:49.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/gzip.xml	2004-01-16 02:29:57.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&gzip-directory;</base>
+ 		</stageinfo>
+ 
+@@ -16,7 +19,9 @@
+ 			<param>--prefix=/tools</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ 		<make>
+ 			<param>install</param>
+diff -Naur LFS-5.0-3/chapter05/lockingglibc.xml LFS-5.0-3_parallelcompiling/chapter05/lockingglibc.xml
+--- LFS-5.0-3/chapter05/lockingglibc.xml	2004-01-14 15:31:30.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/lockingglibc.xml	2004-01-16 02:24:09.000000000 +0100
+@@ -1,10 +1,14 @@
+ <stage name="Locking glibc.">
+ 	<stage name="Adjusting the linker.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/binutils-build</base>
+ 		</stageinfo>
+ 
+ 		<make>
++			<param>-j $CC_PARALLEL</param>
+ 			<param>-C ld</param>
+ 			<param>install</param>
+ 		</make>
+diff -Naur LFS-5.0-3/chapter05/make.xml LFS-5.0-3_parallelcompiling/chapter05/make.xml
+--- LFS-5.0-3/chapter05/make.xml	2003-12-09 17:49:49.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/make.xml	2004-01-16 02:31:15.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&make-directory;</base>
+ 		</stageinfo>
+ 
+@@ -16,7 +19,9 @@
+ 			<param>--prefix=/tools</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter05/patch.xml LFS-5.0-3_parallelcompiling/chapter05/patch.xml
+--- LFS-5.0-3/chapter05/patch.xml	2003-12-09 18:01:41.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/patch.xml	2004-01-16 02:33:07.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&patch-directory;</base>
+ 		</stageinfo>
+ 
+@@ -17,7 +20,9 @@
+ 			<param>--prefix=/tools</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ 		<make>
+ 			<param>install</param>
+diff -Naur LFS-5.0-3/chapter05/perl.xml LFS-5.0-3_parallelcompiling/chapter05/perl.xml
+--- LFS-5.0-3/chapter05/perl.xml	2003-12-06 04:25:45.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/perl.xml	2004-01-16 02:35:08.000000000 +0100
+@@ -14,6 +14,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&perl-directory;</base>
+ 		</stageinfo>
+ 
+@@ -37,6 +40,7 @@
+ 		</configure>
+ 
+ 		<make>
++			<param>-j $CC_PARALLEL</param>
+ 			<param>perl</param>
+ 			<param>utilities</param>
+ 		</make>
+diff -Naur LFS-5.0-3/chapter05/sed.xml LFS-5.0-3_parallelcompiling/chapter05/sed.xml
+--- LFS-5.0-3/chapter05/sed.xml	2003-12-09 17:49:49.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/sed.xml	2004-01-16 02:32:04.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&sed-directory;</base>
+ 		</stageinfo>
+ 
+@@ -16,7 +19,9 @@
+ 			<param>--prefix=/tools</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter05/tar.xml LFS-5.0-3_parallelcompiling/chapter05/tar.xml
+--- LFS-5.0-3/chapter05/tar.xml	2003-12-09 17:49:49.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/tar.xml	2004-01-16 02:33:33.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&tar-directory;</base>
+ 		</stageinfo>
+ 
+@@ -16,7 +19,9 @@
+ 			<param>--prefix=/tools</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter05/tcl.xml LFS-5.0-3_parallelcompiling/chapter05/tcl.xml
+--- LFS-5.0-3/chapter05/tcl.xml	2004-01-14 03:29:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/tcl.xml	2004-01-16 02:24:51.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&tcl-directory;/unix</base>
+ 		</stageinfo>
+ 
+@@ -16,7 +19,9 @@
+ 			<param>--prefix=/tools</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter05/texinfo.xml LFS-5.0-3_parallelcompiling/chapter05/texinfo.xml
+--- LFS-5.0-3/chapter05/texinfo.xml	2003-12-09 17:49:49.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/texinfo.xml	2004-01-16 02:33:57.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&texinfo-directory;</base>
+ 		</stageinfo>
+ 
+@@ -16,7 +19,9 @@
+ 			<param>--prefix=/tools</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter05/util-linux.xml LFS-5.0-3_parallelcompiling/chapter05/util-linux.xml
+--- LFS-5.0-3/chapter05/util-linux.xml	2003-12-06 04:25:45.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter05/util-linux.xml	2004-01-16 02:34:33.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&util-linux-directory;</base>
+ 		</stageinfo>
+ 
+@@ -21,16 +24,19 @@
+ 		<configure />
+ 
+ 		<make>
++			<param>-j $CC_PARALLEL</param>
+ 			<param>-C lib</param>
+ 		</make>
+ 
+ 		<make>
++			<param>-j $CC_PARALLEL</param>
+ 			<param>-C mount</param>
+ 			<param>mount</param>
+ 			<param>umount</param>
+ 		</make>
+ 
+ 		<make>
++			<param>-j $CC_PARALLEL</param>
+ 			<param>-C text-utils</param>
+ 			<param>more</param>
+ 		</make>
+diff -Naur LFS-5.0-3/chapter06/adjustingtoolchain.xml LFS-5.0-3_parallelcompiling/chapter06/adjustingtoolchain.xml
+--- LFS-5.0-3/chapter06/adjustingtoolchain.xml	2004-01-14 15:31:30.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/adjustingtoolchain.xml	2004-01-16 02:36:46.000000000 +0100
+@@ -1,10 +1,14 @@
+ <stage name="Re-adjusting the toolchain.">
+ 	<stage name="Adjusting the linker.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/binutils-build</base>
+ 		</stageinfo>
+ 
+ 		<make>
++			<param>-j $CC_PARALLEL</param>
+ 			<param>-C ld</param>
+ 			<param>INSTALL=/tools/bin/install</param>
+ 			<param>install</param>
+diff -Naur LFS-5.0-3/chapter06/autoconf.xml LFS-5.0-3_parallelcompiling/chapter06/autoconf.xml
+--- LFS-5.0-3/chapter06/autoconf.xml	2003-12-09 17:49:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/autoconf.xml	2004-01-16 02:45:59.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&autoconf-directory;</base>
+ 		</stageinfo>
+ 
+@@ -16,7 +19,9 @@
+ 			<param>--prefix=/usr</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter06/automake.xml LFS-5.0-3_parallelcompiling/chapter06/automake.xml
+--- LFS-5.0-3/chapter06/automake.xml	2003-12-09 18:21:55.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/automake.xml	2004-01-16 02:46:28.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&automake-directory;</base>
+ 		</stageinfo>
+ 
+@@ -16,7 +19,9 @@
+ 			<param>--prefix=/usr</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter06/binutils.xml LFS-5.0-3_parallelcompiling/chapter06/binutils.xml
+--- LFS-5.0-3/chapter06/binutils.xml	2003-12-06 04:25:45.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/binutils.xml	2004-01-16 02:37:12.000000000 +0100
+@@ -15,6 +15,7 @@
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
+ 			<environment>
++				<variable name="CC_PARALLEL" />
+ 				<variable name="CFLAGS" />
+ 				<variable name="CXXFLAGS" />
+ 			</environment>
+@@ -34,6 +35,7 @@
+ 		</configure>
+ 
+ 		<make>
++			<param>-j $CC_PARALLEL</param>
+ 			<param>tooldir=/usr</param>
+ 		</make>
+ 
+diff -Naur LFS-5.0-3/chapter06/bison.xml LFS-5.0-3_parallelcompiling/chapter06/bison.xml
+--- LFS-5.0-3/chapter06/bison.xml	2003-12-09 17:49:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/bison.xml	2004-01-16 02:41:43.000000000 +0100
+@@ -14,6 +14,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&bison-directory;</base>
+ 		</stageinfo>
+ 
+@@ -27,7 +30,9 @@
+ 			<param>--prefix=/usr</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter06/bzip2.xml LFS-5.0-3_parallelcompiling/chapter06/bzip2.xml
+--- LFS-5.0-3/chapter06/bzip2.xml	2003-12-09 18:21:55.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/bzip2.xml	2004-01-16 02:49:15.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&bzip2-directory;</base>
+ 		</stageinfo>
+ 
+@@ -20,7 +23,9 @@
+ 			<param>clean</param>
+ 		</make>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ 		<make>
+ 			<param>install</param>
+diff -Naur LFS-5.0-3/chapter06/coreutils.xml LFS-5.0-3_parallelcompiling/chapter06/coreutils.xml
+--- LFS-5.0-3/chapter06/coreutils.xml	2003-12-09 18:21:55.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/coreutils.xml	2004-01-16 02:38:18.000000000 +0100
+@@ -15,6 +15,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&coreutils-directory;</base>
+ 		</stageinfo>
+ 
+@@ -34,7 +37,9 @@
+ 			<param>--prefix=/usr</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ 		<make>
+ 			<param>install-root</param>
+diff -Naur LFS-5.0-3/chapter06/diffutils.xml LFS-5.0-3_parallelcompiling/chapter06/diffutils.xml
+--- LFS-5.0-3/chapter06/diffutils.xml	2003-12-09 17:49:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/diffutils.xml	2004-01-16 02:49:49.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&diffutils-directory;</base>
+ 		</stageinfo>
+ 
+@@ -16,7 +19,9 @@
+ 			<param>--prefix=/usr</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ 		<make>
+ 			<param>install</param>
+diff -Naur LFS-5.0-3/chapter06/e2fsprogs.xml LFS-5.0-3_parallelcompiling/chapter06/e2fsprogs.xml
+--- LFS-5.0-3/chapter06/e2fsprogs.xml	2003-12-09 17:49:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/e2fsprogs.xml	2004-01-16 02:51:27.000000000 +0100
+@@ -13,6 +13,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/e2fsprogs-build</base>
+ 		</stageinfo>
+ 
+@@ -22,7 +25,9 @@
+ 			<param>--enable-elf-shlibs</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter06/ed.xml LFS-5.0-3_parallelcompiling/chapter06/ed.xml
+--- LFS-5.0-3/chapter06/ed.xml	2003-12-09 17:49:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/ed.xml	2004-01-16 02:50:16.000000000 +0100
+@@ -14,6 +14,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&ed-directory;</base>
+ 		</stageinfo>
+ 
+@@ -27,7 +30,9 @@
+ 			<param>--prefix=/usr</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter06/findutils.xml LFS-5.0-3_parallelcompiling/chapter06/findutils.xml
+--- LFS-5.0-3/chapter06/findutils.xml	2003-12-09 17:49:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/findutils.xml	2004-01-16 02:39:37.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&findutils-directory;</base>
+ 		</stageinfo>
+ 
+@@ -17,7 +20,9 @@
+ 			<param>--libexecdir=/usr/bin</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter06/flex.xml LFS-5.0-3_parallelcompiling/chapter06/flex.xml
+--- LFS-5.0-3/chapter06/flex.xml	2003-12-09 18:21:55.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/flex.xml	2004-01-16 02:43:20.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++/				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&flex-directory;</base>
+ 		</stageinfo>
+ 
+@@ -16,7 +19,9 @@
+ 			<param>--prefix=/usr</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter06/gawk.xml LFS-5.0-3_parallelcompiling/chapter06/gawk.xml
+--- LFS-5.0-3/chapter06/gawk.xml	2003-12-09 17:49:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/gawk.xml	2004-01-16 02:40:05.000000000 +0100
+@@ -14,6 +14,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&gawk-directory;</base>
+ 		</stageinfo>
+ 
+@@ -28,7 +31,9 @@
+ 			<param>--libexecdir=/usr/bin</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter06/gcc-2953.xml LFS-5.0-3_parallelcompiling/chapter06/gcc-2953.xml
+--- LFS-5.0-3/chapter06/gcc-2953.xml	2003-12-06 04:25:45.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/gcc-2953.xml	2004-01-16 02:57:55.000000000 +0100
+@@ -21,6 +21,7 @@
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
+ 			<environment>
++				<variable name="CC_PARALLEL" />
+ 				<variable name="CFLAGS" />
+ 				<variable name="CXXFLAGS" />
+ 			</environment>
+@@ -58,6 +59,7 @@
+ 		</configure>
+ 
+ 		<make>
++			<param>-j $CC_PARALLEL</param>
+ 			<param>bootstrap</param>
+ 		</make>
+ 
+diff -Naur LFS-5.0-3/chapter06/gcc.xml LFS-5.0-3_parallelcompiling/chapter06/gcc.xml
+--- LFS-5.0-3/chapter06/gcc.xml	2003-12-09 18:21:55.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/gcc.xml	2004-01-16 02:37:47.000000000 +0100
+@@ -33,6 +33,7 @@
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
+ 			<environment>
++				<variable name="CC_PARALLEL" />
+ 				<variable name="CFLAGS" />
+ 				<variable name="CXXFLAGS" />
+ 			</environment>
+@@ -60,7 +61,9 @@
+ 			<param>--enable-languages=c,c++</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ 		<make>
+ 			<param>-k check</param>
+diff -Naur LFS-5.0-3/chapter06/gettext.xml LFS-5.0-3_parallelcompiling/chapter06/gettext.xml
+--- LFS-5.0-3/chapter06/gettext.xml	2003-12-09 17:49:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/gettext.xml	2004-01-16 02:43:51.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&gettext-directory;</base>
+ 		</stageinfo>
+ 
+@@ -16,7 +19,9 @@
+ 			<param>--prefix=/usr</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter06/glibc.xml LFS-5.0-3_parallelcompiling/chapter06/glibc.xml
+--- LFS-5.0-3/chapter06/glibc.xml	2003-12-09 18:21:55.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/glibc.xml	2004-01-16 02:36:00.000000000 +0100
+@@ -26,6 +26,7 @@
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
+ 			<environment>
++				<variable name="CC_PARALLEL" />
+ 				<variable name="CFLAGS" />
+ 				<variable name="CXXFLAGS" />
+ 			</environment>
+@@ -50,7 +51,9 @@
+ 			<param>--with-headers=/usr/include</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>PARALLELMFLAGS="-j $CC_PARALLEL"</param>
++		</make>
+ 
+ 		<make>
+ 			<param>check</param>
+diff -Naur LFS-5.0-3/chapter06/grep.xml LFS-5.0-3_parallelcompiling/chapter06/grep.xml
+--- LFS-5.0-3/chapter06/grep.xml	2003-12-09 17:49:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/grep.xml	2004-01-16 02:51:57.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&grep-directory;</base>
+ 		</stageinfo>
+ 
+@@ -18,7 +21,9 @@
+ 			<param>--with-included-regex</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter06/grub.xml LFS-5.0-3_parallelcompiling/chapter06/grub.xml
+--- LFS-5.0-3/chapter06/grub.xml	2003-12-09 17:49:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/grub.xml	2004-01-16 02:52:19.000000000 +0100
+@@ -15,6 +15,7 @@
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
+ 			<environment>
++				<variable name="CC_PARALLEL" />
+ 				<variable name="CFLAGS" />
+ 				<variable name="CXXFLAGS" />
+ 			</environment>
+@@ -31,7 +32,9 @@
+ 			<param>--prefix=/usr</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ 		<make>
+ 			<param>install</param>
+diff -Naur LFS-5.0-3/chapter06/gzip.xml LFS-5.0-3_parallelcompiling/chapter06/gzip.xml
+--- LFS-5.0-3/chapter06/gzip.xml	2003-12-09 18:21:55.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/gzip.xml	2004-01-16 02:52:45.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&gzip-directory;</base>
+ 		</stageinfo>
+ 
+@@ -22,7 +25,9 @@
+ 			<replace>/bin</replace>
+ 		</search_replace>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ 		<make>
+ 			<param>install</param>
+diff -Naur LFS-5.0-3/chapter06/inetutils.xml LFS-5.0-3_parallelcompiling/chapter06/inetutils.xml
+--- LFS-5.0-3/chapter06/inetutils.xml	2003-12-09 17:49:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/inetutils.xml	2004-01-16 02:44:38.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&inetutils-directory;</base>
+ 		</stageinfo>
+ 
+@@ -23,7 +26,9 @@
+ 			<param>--disable-servers</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ 		<make>
+ 			<param>install</param>
+diff -Naur LFS-5.0-3/chapter06/kbd.xml LFS-5.0-3_parallelcompiling/chapter06/kbd.xml
+--- LFS-5.0-3/chapter06/kbd.xml	2003-12-09 18:21:55.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/kbd.xml	2004-01-16 02:50:55.000000000 +0100
+@@ -14,6 +14,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&kbd-directory;</base>
+ 		</stageinfo>
+ 
+@@ -25,7 +28,9 @@
+ 
+ 		<configure />
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ 		<make>
+ 			<param>install</param>
+diff -Naur LFS-5.0-3/chapter06/less.xml LFS-5.0-3_parallelcompiling/chapter06/less.xml
+--- LFS-5.0-3/chapter06/less.xml	2003-12-09 17:49:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/less.xml	2004-01-16 02:42:14.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&less-directory;</base>
+ 		</stageinfo>
+ 
+@@ -18,7 +21,9 @@
+ 			<param>--sysconfdir=/etc</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ 		<make>
+ 			<param>install</param>
+diff -Naur LFS-5.0-3/chapter06/libtool.xml LFS-5.0-3_parallelcompiling/chapter06/libtool.xml
+--- LFS-5.0-3/chapter06/libtool.xml	2003-12-09 17:49:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/libtool.xml	2004-01-16 02:47:00.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&libtool-directory;</base>
+ 		</stageinfo>
+ 
+@@ -16,7 +19,9 @@
+ 			<param>--prefix=/usr</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter06/m4.xml LFS-5.0-3_parallelcompiling/chapter06/m4.xml
+--- LFS-5.0-3/chapter06/m4.xml	2003-12-09 17:49:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/m4.xml	2004-01-16 02:41:07.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&m4-directory;</base>
+ 		</stageinfo>
+ 
+@@ -16,7 +19,9 @@
+ 			<param>--prefix=/usr</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter06/make.xml LFS-5.0-3_parallelcompiling/chapter06/make.xml
+--- LFS-5.0-3/chapter06/make.xml	2003-12-09 17:49:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/make.xml	2004-01-16 02:53:21.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&make-directory;</base>
+ 		</stageinfo>
+ 
+@@ -16,7 +19,9 @@
+ 			<param>--prefix=/usr</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter06/modutils.xml LFS-5.0-3_parallelcompiling/chapter06/modutils.xml
+--- LFS-5.0-3/chapter06/modutils.xml	2003-12-09 18:21:55.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/modutils.xml	2004-01-16 02:53:53.000000000 +0100
+@@ -9,12 +9,17 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&modutils-directory;</base>
+ 		</stageinfo>
+ 
+ 		<configure />
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ 		<make>
+ 			<param>install</param>
+diff -Naur LFS-5.0-3/chapter06/patch.xml LFS-5.0-3_parallelcompiling/chapter06/patch.xml
+--- LFS-5.0-3/chapter06/patch.xml	2004-01-14 03:29:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/patch.xml	2004-01-16 02:54:38.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&patch-directory;</base>
+ 		</stageinfo>
+ 
+@@ -17,7 +20,9 @@
+ 			<param>--prefix=/usr</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ 		<make>
+ 			<param>install</param>
+diff -Naur LFS-5.0-3/chapter06/perl.xml LFS-5.0-3_parallelcompiling/chapter06/perl.xml
+--- LFS-5.0-3/chapter06/perl.xml	2003-12-09 17:49:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/perl.xml	2004-01-16 02:45:07.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++ 				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&perl-directory;</base>
+ 		</stageinfo>
+ 
+@@ -16,7 +19,9 @@
+ 			<param>--prefix=/usr</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<textdump>
+diff -Naur LFS-5.0-3/chapter06/procinfo.xml LFS-5.0-3_parallelcompiling/chapter06/procinfo.xml
+--- LFS-5.0-3/chapter06/procinfo.xml	2003-12-06 04:25:45.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/procinfo.xml	2004-01-16 02:55:01.000000000 +0100
+@@ -9,10 +9,14 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&procinfo-directory;</base>
+ 		</stageinfo>
+ 
+ 		<make>
++			<param>-j $CC_PARALLEL</param>
+ 			<param>LDLIBS=-lncurses</param>
+ 		</make>
+ 
+diff -Naur LFS-5.0-3/chapter06/procps.xml LFS-5.0-3_parallelcompiling/chapter06/procps.xml
+--- LFS-5.0-3/chapter06/procps.xml	2003-12-09 17:49:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/procps.xml	2004-01-16 02:55:19.000000000 +0100
+@@ -14,6 +14,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&procps-directory;</base>
+ 		</stageinfo>
+ 
+@@ -23,7 +26,9 @@
+ 			<param>-i ../&procps-locale-fix-patch;</param>
+ 		</patch>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ 		<make>
+ 			<param>install</param>
+diff -Naur LFS-5.0-3/chapter06/psmisc.xml LFS-5.0-3_parallelcompiling/chapter06/psmisc.xml
+--- LFS-5.0-3/chapter06/psmisc.xml	2003-12-09 18:21:55.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/psmisc.xml	2004-01-16 02:55:40.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&psmisc-directory;</base>
+ 		</stageinfo>
+ 
+@@ -17,8 +20,10 @@
+ 			<param>--exec-prefix=/</param>
+ 		</configure>
+ 
+-		<make />
+-
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
++ 
+ 		<make>
+ 			<param>install</param>
+ 		</make>
+diff -Naur LFS-5.0-3/chapter06/sed.xml LFS-5.0-3_parallelcompiling/chapter06/sed.xml
+--- LFS-5.0-3/chapter06/sed.xml	2003-12-09 17:49:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/sed.xml	2004-01-16 02:42:44.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&sed-directory;</base>
+ 		</stageinfo>
+ 
+@@ -17,7 +20,9 @@
+ 			<param>--bindir=/bin</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter06/shadow.xml LFS-5.0-3_parallelcompiling/chapter06/shadow.xml
+--- LFS-5.0-3/chapter06/shadow.xml	2003-12-09 18:21:55.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/shadow.xml	2004-01-16 02:56:13.000000000 +0100
+@@ -14,6 +14,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&shadow-directory;</base>
+ 		</stageinfo>
+ 
+@@ -45,7 +48,9 @@
+ 			<param>--enable-shared</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ 		<make>
+ 			<param>install</param>
+diff -Naur LFS-5.0-3/chapter06/sysklogd.xml LFS-5.0-3_parallelcompiling/chapter06/sysklogd.xml
+--- LFS-5.0-3/chapter06/sysklogd.xml	2003-12-09 17:49:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/sysklogd.xml	2004-01-16 02:56:33.000000000 +0100
+@@ -9,10 +9,15 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&sysklogd-directory;</base>
+ 		</stageinfo>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ 		<make>
+ 			<param>install</param>
+diff -Naur LFS-5.0-3/chapter06/sysvinit.xml LFS-5.0-3_parallelcompiling/chapter06/sysvinit.xml
+--- LFS-5.0-3/chapter06/sysvinit.xml	2003-12-06 04:25:45.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/sysvinit.xml	2004-01-16 02:56:49.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&sysvinit-directory;</base>
+ 		</stageinfo>
+ 
+@@ -19,6 +22,7 @@
+ 		</search_replace>
+ 
+ 		<make>
++			<param>-j $CC_PARALLEL</param>
+ 			<param>-C src</param>
+ 		</make>
+ 
+diff -Naur LFS-5.0-3/chapter06/tar.xml LFS-5.0-3_parallelcompiling/chapter06/tar.xml
+--- LFS-5.0-3/chapter06/tar.xml	2003-12-09 17:49:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/tar.xml	2004-01-16 02:57:08.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&tar-directory;</base>
+ 		</stageinfo>
+ 
+@@ -18,7 +21,9 @@
+ 			<param>--libexecdir=/usr/bin</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter06/texinfo.xml LFS-5.0-3_parallelcompiling/chapter06/texinfo.xml
+--- LFS-5.0-3/chapter06/texinfo.xml	2003-12-09 17:49:50.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/texinfo.xml	2004-01-16 02:45:33.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&texinfo-directory;</base>
+ 		</stageinfo>
+ 
+@@ -16,7 +19,9 @@
+ 			<param>--prefix=/usr</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ <!--
+ 		<make>
+diff -Naur LFS-5.0-3/chapter06/util-linux.xml LFS-5.0-3_parallelcompiling/chapter06/util-linux.xml
+--- LFS-5.0-3/chapter06/util-linux.xml	2003-12-09 18:21:55.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/util-linux.xml	2004-01-16 02:57:28.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&util-linux-directory;</base>
+ 		</stageinfo>
+ 
+@@ -26,6 +29,7 @@
+ 		<configure />
+ 
+ 		<make>
++			<param>-j $CC_PARALLEL</param>
+ 			<param>HAVE_SLN=yes</param>
+ 		</make>
+ 
+diff -Naur LFS-5.0-3/chapter06/vim.xml LFS-5.0-3_parallelcompiling/chapter06/vim.xml
+--- LFS-5.0-3/chapter06/vim.xml	2003-12-09 18:21:55.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/vim.xml	2004-01-16 02:40:41.000000000 +0100
+@@ -9,6 +9,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&vim-directory;</base>
+ 		</stageinfo>
+ 
+@@ -24,7 +27,9 @@
+ 			<param>--prefix=/usr</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ 		<make>
+ 			<param>install</param>
+diff -Naur LFS-5.0-3/chapter06/zlib.xml LFS-5.0-3_parallelcompiling/chapter06/zlib.xml
+--- LFS-5.0-3/chapter06/zlib.xml	2003-12-09 18:21:55.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/chapter06/zlib.xml	2004-01-16 02:38:59.000000000 +0100
+@@ -14,6 +14,9 @@
+ 
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&build_dir;/&zlib-directory;</base>
+ 		</stageinfo>
+ 
+@@ -28,7 +31,9 @@
+ 			<param>--shared</param>
+ 		</configure>
+ 
+-		<make />
++		<make>
++			<param>-j $CC_PARALLEL</param>
++		</make>
+ 
+ 		<make>
+ 			<param>install</param>
+diff -Naur LFS-5.0-3/config_seperate/general.ent LFS-5.0-3_parallelcompiling/config_seperate/general.ent
+--- LFS-5.0-3/config_seperate/general.ent	2004-01-15 03:06:12.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/config_seperate/general.ent	2004-01-16 02:19:14.000000000 +0100
+@@ -146,6 +146,12 @@
+ <!-- Directory (inside LFS) where all packages will be compiled. -->
+ <!ENTITY build_dir "/tools/build">
+ 
++<!-- gcc parallel instances
++ see http://www.linuxfromscratch.org/hints/downloads/files/parallelcompiling.txt
++ for more information
++-->
++<!ENTITY gcc_parallel "1">
++
+ <!-- gcc optimizations flags (overridden in packages known
+     to behave badly with optimizations 
+     see http://www.linuxfromscratch.org/hints/downloads/files/optimization.txt for more info
+diff -Naur LFS-5.0-3/config_seperate/kernel.xml LFS-5.0-3_parallelcompiling/config_seperate/kernel.xml
+--- LFS-5.0-3/config_seperate/kernel.xml	2004-01-15 02:41:17.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/config_seperate/kernel.xml	2004-01-16 02:58:54.000000000 +0100
+@@ -1,6 +1,9 @@
+ <package name="linux" version="&linux-version;">
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&linux-src-location;/&linux-directory;</base>
+ 		</stageinfo>
+ 
+@@ -23,11 +26,13 @@
+ 		</make>
+ 
+ 		<make>
++			<param>-j $CC_PARALLEL</param>
+ 			<param>CC=/opt/gcc-2.95.3/bin/gcc</param>
+ 			<param>bzImage</param>
+ 		</make>
+ 
+ 		<make>
++			<param>-j $CC_PARALLEL</param>
+ 			<param>CC=/opt/gcc-2.95.3/bin/gcc</param>
+ 			<param>modules</param>
+ 		</make>
+diff -Naur LFS-5.0-3/config_tarball/general.ent LFS-5.0-3_parallelcompiling/config_tarball/general.ent
+--- LFS-5.0-3/config_tarball/general.ent	2004-01-15 03:06:12.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/config_tarball/general.ent	2004-01-16 02:18:43.000000000 +0100
+@@ -146,6 +146,12 @@
+ <!-- Directory (inside LFS) where all packages will be compiled. -->
+ <!ENTITY build_dir "/tools/build">
+ 
++<!-- gcc parallel instances
++ see http://www.linuxfromscratch.org/hints/downloads/files/parallelcompiling.txt
++ for more information
++-->
++<!ENTITY gcc_parallel "1">
++
+ <!-- gcc optimizations flags (overridden in packages known
+     to behave badly with optimizations 
+     see http://www.linuxfromscratch.org/hints/downloads/files/optimization.txt for more info
+diff -Naur LFS-5.0-3/config_tarball/kernel.xml LFS-5.0-3_parallelcompiling/config_tarball/kernel.xml
+--- LFS-5.0-3/config_tarball/kernel.xml	2004-01-15 02:41:17.000000000 +0100
++++ LFS-5.0-3_parallelcompiling/config_tarball/kernel.xml	2004-01-16 02:59:21.000000000 +0100
+@@ -1,6 +1,9 @@
+ <package name="linux" version="&linux-version;">
+ 	<stage name="Installing a package.">
+ 		<stageinfo>
++			<environment>
++				<variable name="CC_PARALLEL" />
++			</environment>
+ 			<base>&linux-src-location;/&linux-directory;</base>
+ 		</stageinfo>
+ 
+@@ -23,11 +26,13 @@
+ 		</make>
+ 
+ 		<make>
++			<param>-j $CC_PARALLEL</param>
+ 			<param>CC=/opt/gcc-2.95.3/bin/gcc</param>
+ 			<param>bzImage</param>
+ 		</make>
+ 
+ 		<make>
++			<param>-j $CC_PARALLEL</param>
+ 			<param>CC=/opt/gcc-2.95.3/bin/gcc</param>
+ 			<param>modules</param>
+ 		</make>

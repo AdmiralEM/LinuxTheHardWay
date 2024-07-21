@@ -1,0 +1,15 @@
+TITLE:		RedHat 7
+LFS VERSION:	2.4.4
+AUTHOR:		Simon Perreault <nomis80@videotron.ca>
+
+SYNOPSIS:
+	How to tweak RedHat 7 so that it compiles LFS.
+
+HINT:
+RedHat 7 cannot compile gcc-2.95.2 without patching because it uses a snapshot
+of glibc-2.2. A simple solution is using gcc-2.95.2.1 instead, which you can
+find at 
+ftp://packages.linuxfromscratch.org/pub/new-in-cvs/gcc-2.95.2.1.tar.bz2. The
+next version of LFS will use gcc-2.95.2.1, so this hint will be quickly
+obsolete.
+

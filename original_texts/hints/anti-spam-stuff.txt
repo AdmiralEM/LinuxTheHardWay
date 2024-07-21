@@ -1,0 +1,811 @@
+AUTHOR: Declan Moriarty <junk _ mail AT iol.ie>
+
+DATE: 2005-11-12
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: Setting up an Open Source Anti-Spam kit on an lfs box
+
+DESCRIPTION: With an emphasis on configuration, this provides
+Installation & Configuration Instructions for Mail-SpamAssassin-3.1.0
+and it's helper tools.
+
+ATTACHMENTS:
+
+spamstuff.tar.bz2	A config file and init script.
+
+PREREQUISITES: A Basic understanding of unix, and a hatred of spam. This
+hint does _not_ apply to earlier versions of SpamAssassin, but you
+should be OK with most recent (or future) versions of other programs.
+Perl5 is required. A configurable mail server also helps. I would
+suggest postfix instead of qmail, but whatever you know well will
+probably do. If your mail is relayed to you, get procmail also, or some
+other mda, otherwise calling all these will be difficult. I also give
+instructions for formail (part of the postfix package), althouugh any
+similar mail handling utility can do.
+
+HINT:
+
+SECTION 1: INTRODUCTION.
+
+This is long. The only consolation is that it's about all the reading
+you have to do. Some jargon first
+
+	Spam = Unsolicited Bulk email, that is mail that the user did
+not subscribe for. People who subscribe to a mailing list agree to
+receive to bulk mail. That is solicited. Spam is not. The word is from
+the film "Monty Python and the Holy Grail", where knights used as a
+weapon the repition of the word spam.
+
+	Ham = good mail
+	a 'hit' is a test that identifies spam identifying something.
+	false hits are tests that hit ham.
+        False Positive  = Good mail wrongly marked as spam
+        False Negatives  = Spam wrongly let through
+	Lint = Test validity of setup
+
+	Set your goals. Set your spam policy. I don't want bulk mail, I
+don't want any spam in my mail,and I will accept false positives.
+Relying on an isp for relaying mail, I cannot reject at smtp level, so I
+silently delete spam, after checking the subjects and sender. Others
+will be different, and your policy will differ accordingly.
+
+In fighting spam, you have many tools. Collect your first one.
+
+1. From this moment on, start keeping your spam. you need every bit of
+it you can hold onto, for testing. Don't read it, just store it in a
+mailbox somewhere. About a Meg or two is enough. Collect a few
+mailboxes with 50 or so, and at least one with a hundred.
+
+http:razor.sourceforge.net/
+
+2. Razor-agents. This operates by sending checksums of mail to a central
+server. If they have been reported as spam, the mail is markable as
+spam. If not, the checksums are discarded and you are told the mail is
+OK.  It's very good, but relies on reporting. For commercial use, send
+an email (explaining your linux installation) to partners@cloudmark.com
+
+http://www.rhyolite.com/anti-spam/dcc
+
+3. DCC, The Distributed Checksum Clearinghouse. This operates as above,
+sending checksums, but the dcc counts how many times it has received
+that checksum. That is what it reports. The dcc also keeps all
+checksums, so the server database is bigger. It goes back about six
+months. The DCC is an effectiive check for bulk mail. I believe
+commtouch offer a commercial service.
+
+http://spamassassin.apache.org/downloads.cgi
+
+4. SpamAssassin-3.1.0 is a major revision on previous versions. It
+offers heuristic or rule-based vetting of email and employs blocklists,
+and several novel and unusual features. Very configurable - the
+workhorse, and the PITA. Unlike most Perl applications, this one is
+inclined to land 'jam side down' or in a mess, and sorting is necessary.
+
+5. Others exist. Notably, Amavisd-new and clamav. This is a sensible
+balance for a home user. You may want clamav if you are processing mail
+for windoze clients. Amavisd-new is a sort of sweeper process. The
+trouble is, all run on perl, and there's a limit to any box's workload.
+I may include them later.
+
+Ownerships:
+
+Preferred practise is not to run anything as root, and most of the mail
+programs will become user 'nobody' if they find themselves running with
+uid 0. Also, you do not want to make a 'super-luser' who has everything
+set up for him, as then if any process is breached, they have access to
+the whole box. So mail is handled by restricted users with few
+privileges until the delivery, which is done as the user to whom mail is
+delivered. The ultimate in this is qmail, which has a mexican wave of
+processes owned by users with shells like /bin/true, appearing and
+dissappearing playing pass-the-parcel while your mail goes through.
+
+Installation instructions specify a reccomended user. Make your choice
+
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+SECTION 2. INSTALLING: 
+
+Spam:
+
+1. The spam seems to land naturally. If it doesn't, I can probably send
+you some. But if you really want pain, register a domain. You instantly
+go on every spammer's list. Then you get email from spammers offering
+you a mailing list to spam with _every_ address from registered domains
+:-/. If spam doesn't land, what are you doing here?
+
+Razor-agent:
+
+2. Razor agents. You need razor-agents, and razor-agents-sdk.  You also
+need to know that this service is marketed to windoze users at profit,
+and the open source community receive it free, or cheap. Free for
+individuals, cheap for business use under linux. 
+
+This is a perl program. To avoid messing I reccomend a symlink
+between /usr/lib/perl5 and /usr/local/lib/perl5. Presuming you
+are following LFS instructions, only one of those directories
+should exist now. If perl libs are on /usr/local, it will never
+check /usr/lib, and vice versa. This makes sure that what you
+install will be found.
+
+Install razor-agents-sdk first with
+	Perl Makefile.PL &&
+	make &&
+	make test
+These should pass, then install with
+	make install
+
+Repeat for razor-agents	
+
+You get 4 tools, razor-check, razor-report, razor-revoke, and
+razor-admin, each with it's own man page. The default log I have in
+/var/log/razor-agent.log instead of a homedir, but it should be owned
+and writable by the configured user
+
+After install, change to the razor user, and run 'razor-admin
+-create'.  You should now have a ~/.razor subdir. 
+
+Razor-admin -register registers an identity with cloudmark, which you
+need for reporting & revoking. Follow the prompts.  Razor attaches a
+seriousness level to your reports. If you report spam that nobody else
+ever does, you're an idiot. If you report what others subsequently do,
+that's good. Your revokes are also examined; If you revoke what isn't
+spam, that's good.  If you revoke the wrong stuff, you're a twit. That's
+all in their software, and don't worry. As good netizens receiving a
+free service, however, we want to provide feedback.
+
+Tart up ~/.razor-agents.conf to suit your site, copy the entire ~/.razor
+subdir to /etc/razor for a sitewide config. To allow other users to 
+report, let them copy /etc/razor to ~/.razor and the same identity is 
+used.
+
+With the config done up above, you should be able to save off a spam
+email as it's own mailbox (save to a mailbox called 'test' or
+something). In a terminal, type 
+
+        'cat test | razor-check -d'
+
+type 'cat test | razor-report' to report it.
+
+If this doesn't happen, check the firewall. Open Outgoing TCP port 2703
+(Razor2) and TCP port 7 (Echo), then try again. Presuming trouble, 
+
+cat test | razor-report -d > somefile.txt gives you verbose output of
+actions and you can spot problems that way.
+
+Vipul does not want any automatic reporting set up. One exception is if
+you have mail adresses which you know are going to be 100% spam, as
+seeded spamtraps, and you may indeed forward them. We will want to
+report manually, being good netizens. Be aware that the checksums are on
+the body, as the headers will differ anyhow. Further if you report spam
+sent to a mailing list, you're a twit, because they usually add  a
+footer, making the mailing list copy different from the original. The
+list owner can report it, as he gets an unmodified copy.
+
+
+DCC:
+
+3. This is a bit trickier to play with. 
+
+tar -zxvf dcc.tar.Z opens the archive.
+
+There is also dccm, a 'milter' for sendmail. If you use sendmail, and
+figure this out, please send me an appropiate chunk of hint on it, and
+I'll include it. 
+
+This is a small, < 1000 messages per day setup using anonymous
+settings. Over that, contact somebody for a service (e.g.
+Commtouch). Over 100k messages, you start to save bandwidth by
+running your own servers.
+
+Select a user:group for this to live as and insert
+them in lines 2422 & 2423 of the configure script instead of
+'bin:bin'. No matter what options you provide, manpages will not
+install without this mod. Find that user's uid (in /etc/passwd)
+and put in in for UID in this line
+
+./configure --disable-server --disable-dccm with-uid=UID \
+--with-rundir=/tmp  &&
+make 
+Then 'make install' as root. 
+
+--disable-server does just that; --disable-dccm disables building the
+sendmail milter; --with-rundir=/tmp puts the dccifd.pid in /tmp.
+Otherwise it wasnt a user writable /var/run/dcc/ for the pid, and some
+shutdown script clears out /var/run anyhow, removing /var/run/dcc/. This
+is all a pain in LFS.
+
+cd to /var/dcc and edit dcc_conf you need to change
+	DCC_RUNDIR = /tmp
+	GREY_ENABLE = 'off' (blank) unless you know what you're up to.
+	DCCIFD = on
+	DCCIFD_ARGS = -m /var/dcc/map -t cmn, 20 -S mail_host -x
+
+The syslog facility in LFS is not mail.err, but mail.log. Fix that also,
+and anything else to suit your site. Check the final lines. Razor finds it's 
+own servers - dcc wants you to specify yours. Presuming you have a small
+private installation within their license, Connect to the internet,
+backup /var/dcc/map and enter the config shell by typing (as root)
+
+cd /var/dcc
+mv map map.orig
+cdcc  # This gives a cdcc shell. Enter the following:
+
+cdcc>	load map.txt	# Takes in their map.txt of default servers
+cdcc>	trace default  	# this delays, and returns information.
+cdcc> 	info		# This should show resolved dcc servers. If it
+			doesn't check your internet connection.If 127.0.0.1 is 
+			your server, it's no use to you.
+cdcc>	new map		# should write /var/dcc/map, a map of servers
+cdcc> 	quit
+
+You have built
+
+        1. cdcc - a setup program
+        2. dccproc - executable checker - mainly for you
+        3. dccifd - The daemon used by spamassassin's spamd/spamc.
+
+start the daemon with 
+	/var/libexec/dccifd -I user:group
+
+It returns one line about changing uids and then retires into the
+background. 'pgrep dccifd' shows me 2 pids. There should be a (newly
+created) socket in /tmp, or maybe /var/dcc. 'pkill dccifd' should remove
+socket and pids. The user chosen should be able to write to (ie touch
+should succeed) the socket.
+
+Other Configuration:
+
+        1. There is a whitelist /var/dcc/whiteclnt. Whitelist everyone
+you can think of - linuxfromscratch.org, ebay, paypal, and any other
+list server you may be on. This bit '-S mail_host' told dccifd to
+mention check mail_host in the header. This allows you to add mail_hosts
+to /var/dcc/whiteclnt in the appropiate section. Putting in IPs is no
+use. You can specify any header, but it only passes one, so don't
+spacify mail_host if you want to use some other header.
+
+        2. There is a blacklist file, which isn't a lot of use as the
+spammers have to keep hopping from one place to another anyhow.  If
+certain weirdos stay stuck in the same place, they belong in a
+blacklist.
+
+        3. Greylisting is also an option. You may theoretically lose a
+small percentage of mail with this. It works as follows. In every mail
+transaction where this is done, your mail server says "Not right now -
+I'm busy. Send it in half an hour" Proper mail servers will send it
+later. Poorly set up mail servers may lose mail, either by not sending,
+or resending immediately and then giving up. Spammers will not resend in
+99% of cases, seeing as they can't hold messages back while relaying
+illegally through other servers with ease. So you don't get spammed, and
+your name comes off their list. That's the theory. 
+	Forget this if you have pop or imap. You'll reject nothing -
+just leave them on your server. This is for directly connected boxes
+receiving their mail by smtp only.
+
+Some words on querying: dccproc is like razors check, except it reports
+as well by default. If you check & report ham repeatedly with dcc, the
+count keeps going up. Use the -Q option for repeat tests to avoid
+reporting again.  Each user is supposed only to report each mail once.
+For your tests, cat message | dccproc -QC checks and computes checksums
+without reporting.
+I would suggest a startup script for dcc and spamd (The server end of
+spamassassin). Mine is available.
+
+The threshold figure is set by -t. The three checksums are body, fuz1
+and fuz2. All are covered by the 'cmn' setting. DCC say to set them at
+'many'. I found results dissappointing, and set it to 20, where things
+worked better. My dccifd options are
+
+-I luser:group  # Who it runs as. A real person, please.
+		# You need this or it runs as root!
+-p /tmp/dccifd  # Location of socket. 
+-m /var/dcc/map # Location of map [Default /var/dcc/map}
+-d -B set:debug # Debug (both options)
+-x              # Try extra hard to connect to a server (I needed that)
+-t cmn,20       # Set all thresholds to 20
+
+Make sure to finish the 'stop' section with rm -f /tmp/dccifd to
+remove a stray socket if it exists. An old socket or pid will prevent dccifd 
+from restarting.
+
+To test, cat test |dccproc -QC  
+
+It should return something like this
+
+X-DCC-CollegeOfNewCaledonia-Metrics: genius 1189; Body=47 Fuz1=84
+Fuz2=84
+                            reported: 0               checksum  server
+                 env_From: 5469b142 22af2632 54c4c668 28e32b2e
+                     From: 55e30375 f82be1b7 c4cd63f1 1a942cc3
+               Message-ID: 70489480 1a6e3c39 561ad9e9 5d9d6b1d
+                 Received: d6b6cd69 a686160f 3a6cbc4b 0680596e
+                     Body: 213f0668 14a13b4f de8a25e1 3ebf5548      47
+                     Fuz1: 965e5582 e856e858 e775658e 00321ffd      84
+                     Fuz2: 4f6dc268 7b2844ec 6444c79a e3508371      84
+
+
+You should not see 127.0.0.1. If you don't see the count, drop the -Q
+once. Lastly, run your startup command for dccifd. Stdout should see
+
+getpwnam(genius:users): Success.  The socket should be created, thusly
+
+srw-rw-rw-    1 root     root     0 2005-11-21 06:49 /tmp/dccifd=
+
+A favourite failure mode is to start & exit, leaving the socket, & maybe
+even the pid file, thus preventing future startups. Permissions!  
+
+Once dccifd is running, you need to use spamassassin to check that it is
+working, but results from dccproc are a very good indicator.
+
+
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+SPAMASSASSIN:
+
+4. Cancel the day's appointments and buy yourself in some alcaholic
+tranquilizer. You may need it. Open the archive.  Become root. 
+If you had a previous version of Spamassassin, read the UPGRADE
+file.  Heavy going. 
+
+
+	REQUIREMENTS:
+
+IPV6 in kernel (Some module 'requires' ipv6, which needs kernel support)
+OpenSSL-0.9.7	For the SSL modules and fancy encrypted stuff
+DB-4.3.27	for the database stuff. Perhaps mysql would do..tell me.
+Perl + Modules as outlines below.  I had version 5.8.5, and gcc-3.3.1
+
+	OPTIONAL:
+
+pcre		Check mail with Perl Compatible Regular Expressions
+Formail		For playing with mailboxes
+Mysql 		depending on your database preferences.
+mboxsplit	The spamassassin substitute for formail. A real puzzle.
+
+
+	GOTCHA:
+
+Installs will decide for you whether your perl libs are in
+/usr/local/lib/perl5 or /usr/lib/perl5. Only one of those should exist.
+If both exist, modules previously installed  have created the lib in the
+wrong place, and you have a problem there. Prevent it happening by
+symlinking.
+
+ln -s /usr/<existing>/lib/perl5 /usr/<non-existing>/lib
+
+That way, all files end up in one location. Some will reference it as
+/usr/local/lib/perl5, and some (Inc spamassassin) as /usr/lib/perl5
+
+	INSTALLATION:
+
+Open the Mail-SpamAssassin archive, log in as a luser and open
+the INSTALL in one console(1), while you raid CPAN as root in the
+second (2). I would reccomensd another  root console (3), to sort things
+out. The commands you need in (2) are
+
+	perl -MCPAN -e shell	#open a perl shel
+	o conf prerequisites_policy ask # get prerequisites
+
+That sets you up. Then
+
+	i <Module::Name>  # What's the story with <Module::Name>
+
+	install <Module::Name> # guess!
+
+In the spamassassin install file (1) find the section "Modules".
+Optional modules not really optional. Below is my list from
+/usr/local/lib/perl5/5.8.5/i686-linux/perllocal.pod. The order is left
+to right, top to bottom. That will minimize the hitches.
+
+Module::Info            Digest::SHA1
+HTML::Tagset            HTML::Parser
+Digest::HMAC            Net::IP
+Net::DNS                Net::CIDR::Lite
+Sys::Hostname::Long     Mail::SPF::Query
+IP::Country             Time::HiRes
+Business::ISBN::Data    Business::ISBN
+Compress::Zlib          MIME::Base64
+Archive::Tar            Algorithm::Diff
+Text::Diff              Net::SSLeay
+IO::Socket::SSL         Crypt::OpenSSL::Random
+Crypt::OpenSSL::RSA     Mail::DomainKeys
+
+Razor-agents-sdk also installs some of these modules, and some other
+ones. Above is the Spamassassin list.
+
+If you have anything of value in /usr/share/spamassassin or
+/usr/local/share/spamassassin, _back_it_up! It will get overwritten or
+wiped. Any bizarre rulesets can go in /etc/mail/spamassassin. 
+
+Finally, install Spamassassin with
+
+	perl Makefile.PL &&
+	make &&
+	make test (Bless your patience :) &&
+	make install 
+
+If you install it before updating perl, it barfs over some modules.
+Now, you probably will have /usr/share/spamassassin full of the latrest
+rules. 
+
+
+	CONFIG:
+
+Here's where I hope you have pcregrep and formail. This is actually
+basically operable usually, but in a mess. I would suggest surfing to 
+
+http://www.rulesemporium.com/rules.htm
+
+and download whatever rule sets you choose. Pop them in
+/etc/mail/spamassassin. As root, mv the original local.cf (if it exists)
+aside and download mine. Pop it likewise in /etc/mail/spamassassin.
+Download 70_sare_sc_top200.cf also. Don't install it, just keep it handy.
+
+Enable all plugins. The plan apparently is to keep adding .pre files for
+plugins. I suggest leaving init.pre untouched and enabling all plugins
+in v310.pre. The lines are
+
+in init.pre:
+
+loadplugin Mail::SpamAssassin::Plugin::URIDNSBL
+loadplugin Mail::SpamAssassin::Plugin::Hashcash
+loadplugin Mail::SpamAssassin::Plugin::SPF
+
+in v310.pre:
+
+loadplugin Mail::SpamAssassin::Plugin::RelayCountry
+loadplugin Mail::SpamAssassin::Plugin::Razor2
+loadplugin Mail::SpamAssassin::Plugin::TextCat
+loadplugin Mail::SpamAssassin::Plugin::AntiVirus
+loadplugin Mail::SpamAssassin::Plugin::Pyzor
+loadplugin Mail::SpamAssassin::Plugin::DCC
+loadplugin Mail::SpamAssassin::Plugin::SpamCop
+loadplugin Mail::SpamAssassin::Plugin::AutoLearnThreshold
+loadplugin Mail::SpamAssassin::Plugin::AccessDB
+loadplugin Mail::SpamAssassin::Plugin::WhiteListSubject
+loadplugin Mail::SpamAssassin::Plugin::DomainKeys
+loadplugin Mail::SpamAssassin::Plugin::MIMEHeader
+loadplugin Mail::SpamAssassin::Plugin::ReplaceTags
+
+
+Download my init script or write your own. You need to start dccifd
+(because spamc/spamd use that) and spamd. Spamassassin wants to be a
+user, but not a real one. I added the user spamc in the group postfix.
+I have a pause (5 seconds) in the restart option so spamd will let go
+of ports before they try to take hold again. My spamd options are:
+
+-d		# Daemonize = get lost in the background
+-l		# allow learning thus facilitating bayes
+-m 10		# Max processes. These are seriously memory hungry
+I only have 10 to facilitate mass tests. 5 is plenty.
+-u spamc	# run as user spamc. Otherwise it's nobody, and
+things fall over, because nobody can't write.
+
+	Now I presume you will copy in my available config file and edit
+that, rather than your own. I describe a sitewide config, but user
+configs can be created, and maintained by different users. The same process 
+applies. spamassassin -c creates a user config. You can test your setup with 
+(as anybody:)
+
+	cat test | spamc -R - you should get a report, and an extract.
+
+root is a positive disadvantage for all mail tests, as these programs
+refuse to hold onto root priviliges, and drop to a specified user, or to
+nobody. They are all called by the user _receiving_ the mail, so they
+can write in his maildir, which typically has 0600 permissions. Root
+will never receive mail this way, as user nobody certainly can't write
+to root's directory! Alias root to a user. You need root for starting these 
+tools however
+
+	Sorting out the bugs in things (There will be many) is achieved
+by these commands.
+
+	1. spamassassin -D --lint > debug.txt 2>&1 Examine this file for
+negatives 
+	2. Change the -d to -D for spamd and restart from a root
+terminal. It will hold the terminal, and spew information.  
+
+	3. Poring over the entrails of /var/log/mail.log. All mail
+programs write to mail.log. If someone knows how to set up a separate
+syslog facility, let me know and I'll stuff one in for spam. I did have
+a go myself, but things fell over so I reverted.
+
+Look for the things that didn't happen, and config lines not parsed.
+Your rulesets, I presume, will be different from mine. Here's mine:
+
+[root@genius ~]# ls /etc/mail/spamassassin
+20_dec.cf           70_sare_html1.cf    72_sare_bml_post25x.cf
+99_DEC_Tripwire.cf  70_sare_adult.cf    70_sare_obfu.cf      82_antidrug.cf
+99_FVGT_meta.cf     init.pre		70_sare_genlsubj0.cf 70_sare_oem.cf     
+88_FVGT_body.cf	    local.cf		70_sare_genlsubj1.cf 70_sare_spoof.cf   
+88_FVGT_headers.cf  local.orig		70_sare_header0.cf   70_sare_uri0.cf    
+88_FVGT_rawbody.cf  nohits/		70_sare_header1.cf   70_sare_uri1.cf    
+88_FVGT_subject.cf  spam@		70_sare_html0.cf     70_sare_uri_eng.cf 
+88_FVGT_uri.cf	    v310.pre
+
+20_dec.cf are my own rules, nohits/ sidelines dud rulesets, and spam@ is a 
+symlink to /usr/share/spamassassin. 
+
+ln -s /usr/share/spamassassin    /etc/mail/spamassassin
+
+Spamassassin ignores subdirs, so you can have an archive. The bigger
+your throughput, the fewer rules you want to avoid loading the system.
+The best ones of the above lot are the sare header, html, uri, drug &
+adult. The FVGT rules are very efficient by comparison with some sare
+rules.The higher the number, the later it is read, and the more priority
+it has. Presuming you sort your bugs, you now have an integrated
+sitewide anti-spam setup.
+
+	You now need one other item of information. Are your mails being
+checked against blacklists (like spamcop, sorbs.net) upstream? To find
+out, use 70_sare_sc_top200.cf. View it in one console and cd to your
+subdir with the spam mailmoxes (I am presuming they are named spam1,
+spam2, etc). The first entry in 70_sc_top200.cf today is 
+
+Received =~ /\b12\.(?:210\.176\.205|211\.4\.79|217\.81\.151)\b/
+
+Now you can check for that with pcregrep. You cannot restrict your
+search to the Received line too handy, but you can do this
+
+pcregrep '\b12\.(?:210\.176\.205|211\.4\.79|217\.81\.151)\b' spam?
+
+any instances will show. You will notice I removed the /regex/
+delimiters and replaced them with 'regex'. Just one other word of
+warning: pcregrep appears not to like the /i at the end of most regexes
+in the rules. Use pcregrep -i and remove the /i. You can also use -c to
+check the number of times. I do not get any instances of the top200
+spammers, so I presume the top 200 are not getting through directly to
+me. The ruleset is therefore unneccessary for me. I can get hits from
+the more obtuse dns blocklists, so not all are being checked.
+
+If you haven't got prce, egrep -e will apply posix rules which are
+close, but different. The main weakness is in unusual character types
+like \d which do not behave in egrep.
+
+
+INTEGRATION:
+
+Penultimately, Integration. If your mail is relayed to you, use
+procmail. If you are online 24/7 and serious.spammer.co.tw can reach
+your box directly, set up a reject configuration in your mail client.
+The amavisd-new package includes many configuration options for weird and
+wonderful mail clients with a better understanding of them than you
+will usually find in the documentation. 
+
+Think this course through. Mailing lists will get spam, and will forward
+it. If you bounce repeatedly to a mailing list, you will be
+unsubscribed, sometimes automatically.
+
+Procmail's recipe looks like this (in ~/.procmailrc)
+
+:0fw
+| /usr/bin/spamc	
+:0
+* X-Spam-Level: \*\*\*\*\*
+$HOME/Mail/spam
+
+That pipes through spamd (which calls razor & dcc) and dumps it in a
+spam mailbox on 5 stars. man procmail or man procmailex help here.
+Those exact procmail lines put spam in ~/Mail/spam. Make sure it exists.
+If you are content to reject on razor's say so, you cat take the recipe
+from 'man razor-check', not load the spamassassin razor2 plugin, and preline 
+it in procmail. This imposes a memory load (The 'c' in ':0Wc' means 2 message
+copies, 2 procmail instances) but avoids spamassassin. I ran for some
+months with this setup, it plucked 70% of spam and had one false
+positive (From the LFS list :-/.) In this case, reduce your spamd
+instances.
+
+
+
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+SECTION 4: TUNING:
+
+The standard spamassassin config is very soft, and lets some spam
+through. Mine is short on negative rules, and hard on porn particularly.
+Even if you don't want to use mine, download it and lint with it once,
+as it will show you errors on other places. Your friends are
+
+man Mail::SpamAssassin::Conf
+man Mail::SpamAssassin::Plugin::Name  (e.g URIDNSBL)
+
+beware of the latter manpages,as they drift between config options and
+rules pretty seamlessly without telling you. Next tune up! As root,
+
+vim /etc/mail/spamassassin/local.cf  
+
+Looking at my local.cf, The first things are basic setup. Leave the first
+line there unless you are using nfs, in which case it must come out. The
+host 216.171.238.83 is linuxfromscratch.org. 
+
+PYZOR config options are there, but commented out. I tried it, and found
+it very little use. You can run a local server in a large outfit and
+allow your users to blacklist dynamically this way. It also runs in
+python, which is another interpeter and libs to load. They reccomend
+readyexec, which takes care of that some clever way. Suit yourself.
+The install is a doddle, but not worth it, imho.
+
+DCC options are clear enough - paths to everything, and much of the
+stuff on the dccifd command line. The very last option is for dccproc.
+Spamc/spamd use dccifd, the daemon, and if not found, dccproc. Dccproc
+is more resource hungry (starting an interpeter every time). If dccifd
+is there but not running, you barf.
+
+The -B  option sets a check on spamhaus.org, which returns 127.0.0.2 as a 
+positive result. Multiple -B options are allowed. It's there really as
+an example because the docs are _soo_bad.
+
+RAZOR options are simple. It's neat code.
+
+BAYES options allow learning from ham/spam. Also there are uridnsbl
+(blocklist stuff). It you don't need the blocklist, comment these out
+and comment out URIDNSBL in /etc/mail/spamassassin init.pre
+
+SPF is Sender Policy Framework. ISPs should have a policy, and the mail
+is checked against that. Weak, but it catches the occasional thing.
+
+Next come whitelist from. Include Family, friends, business contacts,
+paypal (If you're registered). The bayes_ignore entries should be all
+mailing lists, as some get spam, and their spam score will rise
+otherwise.
+
+Finally we get rules, listed under groups as one progresses through an
+email, and scored. The general policy is to assign a weight to a score,
+and arrive for spam at a score of 5 or above, and for other mail, to
+keep the score at below 5. To check any rule (This is where the'spam'
+symlink comes in handy) cd to /etc/mail/spamassassin and type
+
+grep -r RULE_NAME *
+
+Here's an example
+lfs:/etc/mail/spamassassin$grep -r FORGED_RCVD_HELO *
+
+local.cf:score FORGED_RCVD_HELO 1.22 
+spam/20_head_tests.cf:header FORGED_RCVD_HELO eval:check_for_forged_received_hel
+o() 
+spam/20_head_tests.cf:describe FORGED_RCVD_HELO Received: contains a forged HELO
+spam/50_scores.cf:score FORGED_RCVD_HELO 0 0 0 0.135
+
+20_head_tests is an original spamassassin ruleset. spam/50_scores.cf is
+the default score  0 until the fourth time when it scores 0.135
+
+The scores relate to successive hits of a rule. It scores basically
+nothing, but I have lifted it to 1.22. It is an excellent indicator of
+spam or the linuxfromscratch lists where half cocked mail setups abound.
+If your mailer gives out a domain that a dns check can't resolve, you're
+in trouble here. If you have a legit A and MX record where people would
+expect to find them, you're ok. All broadband modems have urls in the
+range of the isp, so if your private network goes out, something smells.
+
+Mime and html rules are very good. Mind you , I have trained most people
+to send text. If you use html a lot, back some of these off. Some are still
+excellent spam indicators, even if you want to allow for half-assed mail
+from m$ outlook etc. These ones are always good
+
+HTML_EMBEDS 3		HTML_FONT_BIG 3
+HTML_FONT_LOW_CONTRAST 	HTML_FONT_INVISIBLE 	HTML_IMAGE_ONLY_04 
+HTML_IMAGE_ONLY_08 	HTML_IMAGE_ONLY_12   	HTML_IMAGE_RATIO_(all)
+
+The high ratios are also useful. Even outlook sends text as well.
+The MIME tests are excellent also. 
+
+The default spamassassin is ambivelant to porn (Some want this stuff?) I
+don't, so porn words are heavily punished in my config.
+
+Tests that throw false positives are:
+
+FORGED_<SOMEWHERE>_RCVD
+ 
+anything, Example: when a (top post)reply from hotmail.com comes from  
+hotmail to a question from yahoo.com and then you get FORGED_YAHOO_RCVD. 
+
+These clever tests like backhair trip over linux program versions.
+Posted kernel configs are CAPS. Spamsigns are detected in directory
+names.  A subject line like VIA GRATIS (The way of thanks in latin) also
+has VIAGRA in there. You can't make a rule against 'love' because
+'glover' is a surname. Tune accordingly. try this
+
+cat spam1 |formail -n 2 -ds spamc -R >> spam1_reports (presuming ~50 messages)
+
+and repeat for all the others. DO NOT try that on a big mailbox, as
+spamc processes detach from formail, and it starts another before you
+finish. In 400 emails, I had 200 spamc processes looking for 10 spamd
+processes in one test. Then the modem backed up, and I lost all dns
+tests. If you don't have spare memory, drop the '-n 2' option and wait. 
+The '-ds' splits the mailbox and pipes to the following command.
+
+Then try it on your ham, your saved messages, showing fasle positives.
+Also,
+
+cat <mailbox> |formail -n 2 -ds spamc -c, which simply outputs a line per
+test with the score.
+
+Another option is ' cat yourmail | procmail -d $USER ' and then it pops
+into ham or spam boxes appropiately. If you want to retest mail that has
+a header, try this line
+
+cat <mailbox> |formail -ds spamassassin -d >> file
+
+Removing the markups. This is not 100% reliable, so this sed
+
+sed -e '/X-Spam/d' -e '/>From/d' < input_file  > output_file
+
+clears the remains. A sure sign that something has tripped over an old
+markup  is a NO_RELAYS hit in the retests.
+
+Once you get spamd running and working, the above process is necessary
+before repeat checks. Killing dccifd before repeats is also clever. You
+can razor-check all you like. Remember to remove the socket if you kill
+dccifd. Or restart it with the "Query-only" option.
+
+cat ham2 |formail -ds spamc -R |less gives you the reports and an
+extract on successive lines. Open consoles as you need them. On another console,
+get any ham marked as spam onscreen and presuming gpm is working, you
+can find the problem this way.
+
+Get the rule onscreen	grep -r SOME_RULE_NAME /etc/mail/spamassassin/*
+and locate the regex
+
+Set up the test		pcregrep -i 'whatever_regex' yourmail
+
+In the general run of play, you can probably lower my html scores, and
+adjust for your own situation. If you are a doctor, you will obviously
+have to adjust or whitelist any mail sources that send mail about drugs.
+
+Try to find negative rules that apply to your situation. To add a rule,
+Find a similar rule. Don't fiddle with the 'eval do something' type
+rules as they are spamassassin builtins. The various header lines are
+specified by this sort of thing "Received: = ~  and just check those
+lines. Invent your own rules as appropiate. These headers (Received,
+From, Subject, etc.) are all in ram as variables when a message is
+checked. Invent your own regex, and don't forget to run
+
+spamassassin -D --lint afterwards to check it out. Never mind what the
+errors are, (some mistakes redirect) undo what you did last and lint
+again.  Man perlre helps. Unrecognized options are a sign of missing
+plugins. I, for instance, do not use HashCash or RelayCountry plugins.
+If you decide to use them, enter the options off the man page.
+"Score set for nonexistent rule" in the lint means you are not using the
+same rules as me. Just remove the relevant line from local.cf
+
+Keep your spam for a month at least after you set the system running.
+You ideally need reports back of false positives and false negatives. Never
+get cocky, as there will be both. Tune up periodically. Spam changes.
+
+My current ratio is 
+	~ 99% of all spam successfully caught.
+	~ 3% of ham marked as spam (Entirely from the lfs lists) . This
+is a high figure, but I'm lazy. The real problem is that if the query
+goes to spam, the answers do also. I retuned recently, and removed the
+Tripwire ruleset so I expect things will be better. 
+
+What gets through is mail that mimicks your own mail, and genuinely sent
+spam from webmail, short stuff, that doesn't trigger enough to top the
+spam score. What gets wrongly caught usually is misinterpeted signs of spam.
+Regexes are a non thinking tool. This sort of email
+
+"Do you require a timepiece? http://spamsite.com/"
+
+is brief enough to be difficult to hit. Save off false positives and false 
+negatives individually, and get them to land correctly by readjusting scores, 
+linting, and restarting your spamd daemons.
+
+To correct the bayes learning, you can use
+
+sa-learn --ham --mbox <filename>	OR
+sa-learn --ham <filename> for a single email
+sa-learn --forget does just that, and the database can be rebuilt.
+Likewise sa-learn --spam learns the other way. Man sa-learn.
+
+
+ACKNOWLEDGEMENTS:
+
+Authors of all software, and the regex Maestros of the anti-spam
+community.
+
+
+CHANGELOG:
+Nov. 21st 2005 Major Edit of innaccuracies, spellings, self congratulation &
+waffle. Tweak config files.
+
+Nov. 15th 2005: Finsihed this 1st draft.

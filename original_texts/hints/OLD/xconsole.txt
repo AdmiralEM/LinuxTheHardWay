@@ -1,0 +1,52 @@
+TITLE:		Xconsole
+LFS VERSION:	Any if X is installed.
+AUTHOR:		ktb <x.y.f@home.com>
+
+
+SYNOPSIS:
+	Xconsole is included with X.  It's used to monitor system console
+	messages on the desktop.  This is one way to set it up.
+
+
+HINT:
+The first thing to do is create a named pipe to send the Sysklogd
+information xconsole will display.
+
+	# mkfifo /dev/xconsole
+	# chgrp tty /dev/xconsole
+	# chmod 644 /dev/xconsole
+	
+Permissions should be as follows.
+
+	$ ls -l /dev/xconsole
+	prw-r--r--	1 root	tty 	0 Aug 19 13:07	/dev/xconsole
+
+The next step is to edit /etc/syslog.conf to set what you want outputted 
+to /dev/xconsole.  I like to dump everything with a priority of alert or 
+higher, so I add the following line.
+
+	*.*	|/dev/xconsole
+
+To make the change take effect restart Sysklogd. 
+
+	# /etc/init.d/sysklogd restart
+
+Last but not least we need to fire up xconsole itself.
+
+	$ xconsole -file /dev/xconsole
+
+If you aren't happy with the text window space, edit the "XConsole" file 
+which is probably in /etc/X11/app-defaults/XConsole.
+Set text window to the desired size.  For example:
+
+	*text.width:	900
+	*text.height:	100
+
+Xconsole also takes the geometry option so you might end up with a
+command similar to the one below, to put in your ~/.xinitrc file.
+
+	xconsole -file /dev/xconsole -geometry +67+640 & 
+	
+See "man xconsole" for more customizations.
+
+

@@ -1,0 +1,477 @@
+AUTHOR: Chris Wagner <wagnerlia-lists at yahoo.com>
+
+DATE: 2012-10-03
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: How to install Systemd, an alternative system and service
+          manager, on LFS
+
+### DESCRIPTION:
+
+I wanted to better understand the inner workings of systemd. Just having
+finished a LFS install on a test server, I thought LFS 7.2 might be a
+good basis for this. My goal was to eventually replace SysVinit
+completely with systemd. I fully expected lots of things to break, but
+was pleasantly surprised, that getting systemd to work was not all that
+hard. I started out with a guide from Lemon Lime which he posted on this
+list a year ago. Because LFS 7.2 is using a customized non-standard
+installation of Systemd/Udevd, additional steps were required. Systemd
+has matured quite a bit since last year and more distributions are using
+it, among them Arch Linux. Having lots of unit files available from
+other distributions, makes the switch a lot easier. 
+
+I have everything working on my test server with a Plone CMS installed
+and find the built-in monitoring and logging capabilities of systemd
+quite remarkable. Bootup and shutdown times are considerably faster than
+with SysVinit. The following guide was put together as I documented the
+steps I took, and is intended help others to get started with systemd. I
+have put it in a similar format as instructions in the BLFS book to make
+it easier to apply. 
+
+I hope you'll find this guide helpful and would welcome your comments
+and suggestions.
+
+### ATTACHMENTS:
+
+see Package Information below
+
+### PREREQUISITES:
+
+This hint requires that you have sufficient knowledge of LinuxFromScratch 
+and be familiar with adding software from BLFS. Software versions used
+are from LFS 7.2 and BLFS 2012-09-14 or above.
+
+HINT: How to install Systemd-193 on LFS
+=======================================
+
+Introduction to systemd
+-----------------------
+
+systemd is a system and service manager for Linux, compatible with SysV
+and LSB init scripts. systemd provides aggressive parallelization
+capabilities, uses socket and D-Bus activation for starting services,
+offers on-demand starting of daemons, keeps track of processes using
+Linux control groups, supports snapshotting and restoring of the system
+state, maintains mount and automount points and implements an elaborate
+transactional dependency-based service control logic. It can work as a
+drop-in replacement for sysvinit.
+
+I was able to have it build and work properly using an LFS-7.2 platform.
+
+### Package Information
+
+* Download (HTTP): 
+      `http://www.freedesktop.org/software/systemd/systemd-193.tar.xz`
+
+* Download MD5 sum: `732a9de2b1d2a15cab639c987ff9e90e`
+
+#### Required (versions from BLFS 2012-09-14)
+
+libcap2-2.22, D-Bus-1.6.4, Gperf-3.0.4, USB Utils-006, PCI Utils-3.1.10,
+GLib-2.32.4, (D-Bus will have to be re-installed after installing
+systemd!)
+
+Preparation
+-----------
+
+systemd can be installed alongside SysVinit and will start any init
+scripts which do not have systemd equivalent unit files yet. It can also
+be installed to fully replace SysVinit. In this guide systemd will first
+be installed alongside SysVinit, then it can be tested, while optionally
+booting into SysVinit or systemd. When satisfied that everything works
+well in systemd, SysVinit can be completely replaced by systemd, and the
+init scripts can be removed.
+
+The required dependencies above will need a number of their own
+dependencies to be fulfilled and can be installed in the
+following order:
+
+    {(attr-2.4.46), libcap2-2.22 },
+    {(Expat-2.1.0 or libxml2-2.8.0), D-Bus-1.6.4}, 
+    {(XML-Parser-2.41), Intltool-0.50.2}, Gperf-3.0.4,
+    {(libusb-1.0.9), USB Utils-006}, PCI Utils-3.1.10,          
+    {(pkg-config-0.27, libffi-3.0.11, PCRE-8.31, 
+      Python-2.7.3),GLib-2.32.4}
+
+We need a Linux kernel with devtmpfs and cgroups activated while autofs4
+and ipv6 is recommended. systemd will work using the default options on
+a 3.5.2 kernel with just the following two options added:
+`CONFIG_DEVTMPFS=y CONFIG_DEVTMPFS_MOUNT=y`
+
+In `make menuconfig` these options can be found here:
+
+    Device Drivers  --->
+      Generic Driver Options  --->
+        [*] Maintain a devtmpfs filesystem to mount at /dev                                                         
+        [*]   Automount devtmpfs at /dev, after the kernel
+              mounted the rootfs
+
+In LFS chapter six Udev-188, a subset of systemd was installed using a
+LFS specific makefile. I found, that the complete systemd-188 cannot be
+easily installed over it, as this introduces various problems. Thus
+Udev-188 must be uninstalled first, which will also allow us to use a
+newer version of systemd than was used in LFS 7.2.
+
+As the root user stop udevd first
+
+    udevadm control --exit
+
+and then remove most files from Udev-188, while keeping the LFS specific
+scripts:
+
+    rm -v /lib/udev/rules.d/*
+    rm -v /lib/{libudev.so.1,libudev.so.1.0.2}
+    rm -v /usr/lib/pkgconfig/{libudev.pc,udev.pc}
+    rm -v /usr/share/man/man7/udev.7*
+    rm -v /usr/share/man/man8/{udevadm.8*,udevd.8*}
+    rm -v /sbin/udevadm /usr/include/libudev.h /usr/lib/libudev.so
+    rm -v /lib/udev/{accelerometer,ata_id,cdrom_id,collect}
+    rm -v /lib/udev/{mtd_probe,scsi_id,udevd,v4l_id}
+    
+This will leave the following 7 files in place:
+
+/lib/udev:  init-net-rules.sh rule_generator.functions
+           write_cd_rules write_net_rules
+           
+/usr/share/doc/udev/lfs:  55-lfs.txt README
+
+/etc/udev/rules.d:  55-lfs.rules
+
+Installation of systemd
+-----------------------
+
+`systemd-tmpfiles` requires a 'lock' group, thus as the root user,
+create a group:
+
+    groupadd -g 54 lock
+
+Install systemd by running the following commands (you may wish to
+review the output from ./configure --help first and add any desired
+parameters to the configure command shown below):
+
+    ./configure --with-distro=other   \
+                --libexecdir=/usr/lib \
+                --localstatedir=/var  \
+                --sysconfdir=/etc && 
+    make
+
+When running tests before installing sytemd, 4 out of 14 tests will
+fail. If run after systemd is installed, they should complete without
+errors. The tests also require an existing /usr/lib/udev directory. If
+you would like to run the unit tests, issue the following commands:
+        
+    mkdir -pv /usr/lib/udev/rules.d
+    make check
+
+Now, as the root user:
+
+    make install
+    # remove static libraries
+    rm -v /usr/lib/{libgudev-*.la,libsystemd-daemon.la}
+    rm -v /usr/lib/{libsystemd-id128.la,libsystemd-journal.la}
+    rm -v /usr/lib/{libsystemd-login.la,libudev.la}
+
+    ln -sfv /usr/lib/systemd/systemd /bin/systemd
+    mkdir -pv /var/log/journal
+
+Move the rule `73-seat-late.rules`, which causes an error. There are
+probably other rules we do not need, which could be moved out. (With the
+LFS version of Udev, only a subset of rules were installed.)
+        
+    mkdir -pv /usr/lib/udev/rules-unused/
+    mv -v /usr/lib/udev/rules.d/73-seat-late.rules \
+           /usr/lib/udev/rules-unused/
+
+Setup /etc/machine-id, if it does not exist:
+
+    systemd-machine-id-setup
+
+As the path to udevadm is hardcoded in some places, link to it:
+
+    ln -sv /usr/bin/udevadm /sbin/udevadm
+        
+Create other links, because udevd is no longer called udevd, but LFS
+init.d/udev expects it here:
+
+    ln -sv /usr/lib/systemd/systemd-udevd /lib/udev/udevd
+    ln -sv /usr/share/man/man8/systemd-udevd.8 \
+            /usr/share/man/man8/udevd.8
+
+Command Explanations
+--------------------
+
+`--libexecdir=/usr/lib`: Note, that D-Bus ./configure may not find
+systemd, when the systemd install paths are changed to be similar to the
+paths used by Udev-188.
+
+`--with-distro=other`: some major distributions have adapted systemd to
+their distribution. Others will work just fine with the default
+settings.
+
+Configuring systemd
+-------------------
+
+### Config Files
+
+/etc/systemd/*, /etc/dbus-1/system.d/*, /etc/hostname,
+/etc/vconsole.conf, /etc/locale.conf, /etc/modules-load.d/*.conf,
+/etc/sysctl.d/*.conf, /etc/tmpfiles.d/*.conf, /etc/binfmt.d/*.conf,
+/etc/os-release, /etc/machine-id, /etc/machine-info
+
+### Configuration Information
+
+Most of the config files do not need to be modified, as the defaults
+will work just fine.
+
+Create /etc/hostname by running the following command as the root user
+
+    grep '^HOSTNAME=' \
+       /etc/sysconfig/network | sed 's/^HOSTNAME=//' >/etc/hostname
+
+Adapt and create a locale file, by performing the following commands as
+the root user:
+
+    cat > /etc/locale.conf << "EOF"
+    LANG=en_US
+    LC_COLLATE=C
+    EOF
+
+We do not need to create /etc/timezone any more. In the release notes to
+systemd-190:  "timedated will no longer write or process /etc/timezone.
+As we do not support late mounted /usr anymore /etc/localtime always
+being a symlink is now safe, and hence the information in /etc/timezone
+is not necessary anymore." 
+
+### Unit files for services
+
+As the root user create some unit files to start important services.
+Unit files of the appropriate name will mask the init scripts. Therefore
+systemd will use the unit file in preference over the init script, if
+available.
+
+This unit file creates the /run/var directory to avoid errors from LSB
+init scripts:
+
+    cat > /etc/systemd/system/lsb-prep.service << "EOF"
+    [Unit]
+    Description=Network Connectivity
+    Wants=local-fs.target
+    
+    [Service]
+    Type=oneshot
+    RemainAfterExit=yes
+    ExecStart=/bin/mkdir -p /run/var 
+    
+    [Install]
+    WantedBy=multi-user.target
+    EOF
+        
+Create sysklogd service unit files:
+        
+    cat > /etc/systemd/system/syslogd.service << "EOF"
+    [Unit]
+    Description=System Logging Service
+    Requires=syslog.target
+    Before=syslog.target
+    
+    [Service]
+    ExecStart=/sbin/syslogd -p /run/systemd/journal/syslog -n -m 0
+    Sockets=syslog.socket
+    StandardOutput=null
+    
+    [Install]
+    WantedBy=multi-user.target
+    Alias=syslog.service
+    EOF
+    
+    cat > /etc/systemd/system/sysklogd.service << "EOF"
+    [Unit]
+    Description=System Kernel Logging Service
+    Requisite=syslog.service
+    BindTo=syslog.service
+    After=syslog.service
+    RefuseManualStart=true
+    
+    [Service]
+    Type=forking
+    StandardOutput=syslog+console
+    StandardError=syslog+console
+    ExecStart=/sbin/klogd -c 6 -x
+    
+    [Install]
+    WantedBy=multi-user.target
+    EOF
+
+To enable the network, create a simple unit file for a static network
+which uses the settings in /etc/sysconfig/ifconfig.eth0. Alternatively
+enable the dhcpcd at eth0.service. One could also create a unit file which
+will call the network/ifup scripts, that provide more functionality with
+multiple interfaces.
+
+Note, that this unit file requires the BROADCAST ip addr to be set in
+ifconfig.eth0
+        
+    cat > /etc/systemd/system/network.service << "EOF"
+    [Unit]
+    Description=Network Connectivity
+    Wants=network.target
+    Before=network.target
+    
+    [Service]
+    Type=oneshot
+    RemainAfterExit=yes
+    EnvironmentFile=/etc/sysconfig/ifconfig.eth0
+    ExecStart=/sbin/ip link set dev ${IFACE} up
+    ExecStart=/sbin/ip addr add ${IP}/${PREFIX} \
+                  broadcast ${BROADCAST} dev ${IFACE}
+    ExecStart=/sbin/ip route add default via ${GATEWAY}
+    ExecStop=/sbin/ip addr flush dev ${IFACE}
+    ExecStop=/sbin/ip link set dev ${IFACE} down
+    
+    [Install]
+    WantedBy=multi-user.target
+    EOF
+        
+Create the following links, which will enable essential services before
+rebooting into systemd:
+
+    ln -sv /etc/systemd/system/lsb-prep.service \
+      /etc/systemd/system/multi-user.target.wants/lsb-prep.service
+    ln -sv /etc/systemd/system/syslogd.service \
+      /etc/systemd/system/syslog.service
+    ln -sv /etc/systemd/system/syslogd.service \
+      /etc/systemd/system/multi-user.target.wants/syslogd.service
+    ln -sv /etc/systemd/system/sysklogd.service \
+      /etc/systemd/system/multi-user.target.wants/sysklogd.service
+    ln -sv /etc/systemd/system/network.service \
+      /etc/systemd/system/multi-user.target.wants/network.service
+        
+Add a systemd entry to grub, check the `root=` entry to match your disk:
+
+    echo "menuentry \"Linux from Scratch (systemd)\" {" >> \
+         /boot/grub/grub.cfg
+    echo \
+    "       linux /boot/vmlinuz root=/dev/sda1 ro init=/bin/systemd" \
+         >> /boot/grub/grub.cfg
+    echo "}" >> /boot/grub/grub.cfg
+
+Remember to rebuild and reinstall D-Bus-1.6.4, before rebooting into
+systemd.
+
+After booting with systemd, look at the systemd journal log from the 
+boot process:
+
+    journalctl -b 
+
+Optionally Replace SysVinit
+---------------------------
+
+The lfs-bootscripts scripts provide a lot of rich functionality to LFS.
+Care should be taken, that all required features are covered by unit
+files or by systemd itself, before removing them.
+
+### Uninstall SysVinit
+
+After systemd is running well, SysVinit can be removed . Check, that no
+more LSB scripts are used by systemd using the following command:
+
+    systemctl | grep LSB
+
+Remove the files belonging to SysVinit:
+
+    rm -v /usr/bin/{last,lastb,mesg,utmpdump}
+    rm -v /usr/include/initreq.h /etc/inittab /bin/pidof
+    rm -v /usr/share/man/man1/{last.1*,lastb.1*,mesg.1*,utmpdump.1*}
+    rm -v /usr/share/man/man5/{initscript.5*,inittab.5*}
+    rm -v /usr/share/man/man8/{bootlogd.8*,fstab-decode.8*}
+    rm -v /usr/share/man/man8/{fstab-decode.8*,init.8*}
+    rm -v /usr/share/man/man8/{killall5.8*,pidof.8*,sulogin.8*}
+    rm -v /sbin/{bootlogd,fstab-decode,halt,init,killall5,poweroff}
+    rm -v /sbin/{reboot,runlevel,shutdown,sulogin,telinit}  
+        
+Replace sysvinit commands with links to systemd:
+
+    ln -sv /usr/lib/systemd/systemd /sbin/init
+    for tool in runlevel reboot shutdown poweroff halt telinit; do
+        ln -svf '/usr/bin/systemctl' "/sbin/$tool"
+    done
+    
+#### Uninstall LFS-Bootscripts
+
+Now we can also move out the lfs-bootscripts and those services
+installed with other programs:
+
+    mkdir -pv /etc/rc.bak
+    tar -czpvf "/etc/rc.bak/rc.d-backup.tar.gz" /etc/rc.d 
+    
+    rm -v /etc/rc.d/init.d/*    
+    for rcX in rc0 rc1 rc2 rc3 rc4 rc5 rc6 rcS; do
+        rm -v /etc/rc.d/$rcX.d/*
+    done
+
+The files in /etc/sysconfig, which were installed by lfs-bootscripts
+might still come in handy to refer to or to utilize their settings from
+within unit files. We could also keep ipup/ifdown for networking and the
+lsb functions in /lib/services.
+
+#### Mtab symlink
+
+The version of Util-linux used in LFS 7.2 contains support for systems 
+without the /etc/mtab file, which use asymlink to `/proc/mounts`
+instead.
+
+Making `mtab` a symlink to `/proc/mounts` is advised by systemd,
+otherwise there is a reminder during boot: `/etc/mtab is not a symlink
+or not pointing to /proc/self/mounts. This is not supported anymore. 
+Please make sure to replace this file by a symlink to avoid incorrect 
+or misleading mount output.`
+
+Removing /etc/mtab earlier would cause an error in /init.d/mountfs when
+booting LFS via sysvinit. Now that we are not using the init scripts any
+more, we can make this change:
+
+    ln -svf /proc/mounts /etc/mtab
+    
+
+Contents
+--------
+
+**Installed Programs:**     systemctl, journalctl, udevadm,
+systemd-udevd, ...
+                            
+**Installed Libraries:**    libudev.so, libgudev-1.0.so,
+libsystemd-daemon.so, libsystemd-id128.so, libsystemd-journal.so,
+libsystemd-login.so
+
+**Installed Directories:**  /etc/systemd/, /usr/include/systemd/,
+/usr/lib/udev/, /usr/lib/systemd/
+
+### Short Descriptions
+
+* _systemctl_ may be used to control the state of the systemd system and
+service manager
+
+* _journalctl_ may be used to query the contents of the systemd journal
+as written by systemd-journald.service
+        
+### Further information:
+
+[ Official Website ]( http://www.freedesktop.org/wiki/Software/systemd )
+
+[ Arch Linux Wiki ]( https://wiki.archlinux.org/index.php/Systemd )
+
+### ACKNOWLEDGEMENTS:
+
+  * Lemon Lime <lemonlime51 at gmail.com> who posted a similar guide 
+    on lfs-dev in Aug. 2011
+    
+  * Matthew Burgess <matthew at linuxfromscratch.org> and Bruce Dubbs 
+    <bruce.dubbs at gmail.com> for encouraging me to publish this as
+    a hint
+
+### CHANGELOG:
+
+[2012-10-03]
+
+  * Initial hint.

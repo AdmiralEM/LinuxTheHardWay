@@ -1,0 +1,1006 @@
+TITLE:		Getting the best out of MPlayer
+LFS VERSION:	any
+AUTHOR:		Alex Kloss <alex@22-music.com>
+
+SYNOPSIS:
+	How to get the best of the great linux media player MPlayer.
+
+HINT:	
+	Your system is too slow for avifile and you like pure gcc code
+	without object orientation better anyway. Why not trying
+	MPlayer? You don't even need an X-Server to let it run. And now
+	that I've rewritten lots of this hint, it should be easy enough
+	for everyone. And it plays (almost) everything you throw at it.
+
+DOWNLOADS:
+	http://www.MPlayerHQ.hu/downloads.html (CVS version should be
+	fine, but also the stable versions are known to be pretty)
+
+	You should also load a recent package of the windows codecs and
+	of the OSD fonts (if you don't want a On Screen Display anyway,
+	you could leave those alone). Every package is now .bz2-packed,
+	so you don't need unzip anymore. If you don't like those OSD
+	prerendered fonts, you can configure MPlayer to use freetype2
+	for a font renderer with --enable-freetype.
+
+	If you want gui support, you should load a gui skin of your
+	liking, too, plus you'll definitely need XFree86, libpng and
+	gtk+ (which requires glib itself).
+
+	Since 19.11.2002 (CVS) and release 0.90rc1, Sorenson support was
+	added. If you're interested in that feature, additionally click
+	"More binary codecs" on the download page. Get whatever you
+	want. If you load The Quicktime6 dlls, be sure to load the
+	Quicktime5 dlls, too, because the latter provides a file
+	necessary for the usage of the first. The Quicktime "extra"
+	dlls are codecs not yet supported. The rp8/9codecs are shared
+	objects for linux, the xanim codecs are binary modules.
+
+	In further versions, at least the Quicktime codecs might be
+	integrated into the windows codec pack.
+
+OPTIONAL PREREQUISITES:
+
+	Video Output:
+	
+	XFree86 (look at the X hint): http://www.xfree86.org
+	aalib: http://www.aalib.org
+	SDL: (also uses X) http://www.libsdl.org
+	GGI: (if you really want it) http://www.libggi.org
+	SVGAlib: http://www.svgalib.org
+	directfb: (used by SDL as well as by MPlayer)
+	http://www.directfb.org
+	glib/gtk: http://www.gtk.org (only for gui)
+	libpng: http://www.libpng.org (needed for gui, too)
+	
+	Video Codecs / Content Decryption:
+	
+	xvid: http://www.xvid.org OR
+	divx4linux: (Videocodec: http://www.projectmayo.com, look on
+	http://www.divx.com or http://avifile.sourceforge.net for an
+	actual binary version or get the cvs version)
+	ffmpeg (dito: http://ffmpeg.sourceforge.net; use CVS if
+	possible, obsolete when using mplayer release version)
+	LZO: http://www.oberhumer.com/opensource/lzo/
+	XAnim Codecs: http://Xanim.va.pubnix.com/
+	RealPlayer Libs:
+	http://huxley.real.com/real/player/unix/unix.html?src=rpbform
+	libdvdnav: http://dvd.sourceforge.net (DVD Navigation support)
+	unrarlib: http://www.unrarlib.org (can play files directly from
+	.rar archives - even splitted ones!)
+
+	Audio Stuff:
+
+	Ogg Vorbis: (read the Ogg/Vorbis-Hint) http://www.xiph.org
+	MAD (Mpeg Audio Decoder): http://mad.sourceforge.net
+	liba52: (ATSC A/52 Decoder): http://liba52.sourceforge.net
+	cdparanoia: (for CD playing) http://www.xiph.org
+
+INSTALL:
+	aalib:
+	------
+
+	Before installing aalib, you should ask yourself if you really
+	need it. It's not usable to really watch something (in console
+	or not), you'll mostly have a picture like that:
+
+||  00:00:01 ....-..............................................................
+------ PAUSED -------................................. .. ... ..................
+++=++++++++=;;.:.-..-.-.-.......................................................
++++++++|+|+||||==;.::.:.-.--.-.....-...........-.......................-.:..-...
+vIi|++|++|i||Iiilvi;:-------:.:-:.::::-:.:.:.:----:-:.:.:....-.::.:.:.:-:.:.:-::
+IIvlxii|i|||+il%||l|::-:.:-:.:-.:.:.:.:-:-----:.:.:.:-:.:.:<>_::.::-:-:.:.:::::.
+llIIlvvvIliii||Iixlx==:-::-----:-:-:::::::::::.::-:--:.:-:-::)9aa.::.:-:-::::-::
+lvvvIIIIvvIlIIlilIIIi::::::::::-:::::::::::::-::-:-:::::::-::::+Xma;::::::::::::
+vIIIIvvIvIvvvvIllIvIi;::::::::::::::::;:;:::::::::::::::::::::::+xUb;;:;::::::::
+vvvvlIlIvIvvnvvlllvvvi;;:;;;:;:;:;;=;=;;;;;;;;;;;:;:;:;;;=;;;;;::=Idm;==;=;;;;;;
+llvvvlvIlIvvvvvvvlvvvvi;=;=;=;;=;=;;=;=;===;=;=;=;=;====;===;=;=;=|1Zz==========
+llIIIvIvIIIvvvvvvvvvvnI>;=;==;==;=;=================;=;===========<oXX=+========
+lIvIvvvvIIIIvIvvlvvvnIv>====;====;===;=============================iXA++++++++++
+llvIvvvIIlllllvlvvvvnxilii=|=+==========================+===+=+=++|lnc++=+++++++
+lllvIvvvvIliiIIIvIvvnvli|ilIxox====================+=+=+=+++++=++<xww|+++++++|++
+IIIllIIvvIliIIIIIvIvnvvli|ilvvnn>=+===+==+=++=++++++=++++++=++++<idWt=+++|++++|i
+IliIvlvIIvvIIlllIlIIvvvIiiiiinvns=++++=++=+=++=+=+=++++++++++++xumZ(=+|++++|=xn1
+liillvIIvIvIvlIIIIvlIIvvIIIiiI1vi|=+=+++=++++=++++++++++++++|iumZ!=++|=+|++<xnnn
+liliiiilllIvvvvlvIIIIvvvvvvililvlI>+++=+++++=+++++++++++|saoYT!|=+|+|++|++|ISovv
+liiiiilIlvvvvvvlIIvvIvvvvIIlliilII|++=++++++++|=++|++|+|=+++++|+|+|++|+|+|+|3nnv
+i|i||iiilIIvvvIllllvvvlvvxIli|inI|+++|+||+++++++|++++++++|+|+|++|++|+||xsi|ixnnv
+ii|iiiilllIllIIliiillillxvvvvvvvv|||i||||i|||++++++|+|+|++|++|+|++|++xnnnnnnnnnn
+iiiiillllllIIIIlilllllllvvvvlIvvx>||||iiiiii++|+|+|=+++|+|++|++|+|+||IvvIvvnnnon
+vlvIlilillvllllliilll +++ Welcome to ASCII ARTS MPlayer +++ |+|+iixvvnvllIvnoooI
+""^~^~~^~^^~^^~~^~~^"^""^^""""^^~~^^""^^^^~^^^^~-~----~--~--~--~"^^^^^^~^^^""~~~
+
+	Maybe you'll recognize the DreamWorks trailer, but I wouldn't
+	bet on it! It's more a "show off"-feature to make the windows
+	users envious... anyway, to install it, simply type
+
+	./configure --prefix=<e.g. /usr> &&
+	make &&
+	make install
+
+	Don't forget to replace "<e.g. /usr>" with the prefix you want
+	to install aalib to.
+	
+
+	SDL
+	---
+
+	This is a marvellous library for multimedia functions. It
+	provides fast scaling and full screen functions using X,
+	framebuffer or even ascii art. It's also necessary for a lot of
+	other multimedia programs and games, so if you're interested,
+	you should have it installed anyway. On the other hand, it's
+	not really necessary for fast output. If you want it anyway,
+	install it with the following commands:
+
+	./configure --prefix=<e.g. /usr> &&
+	make &&
+	make install
+
+	Don't forget to replace the prefix statement here, too.
+
+
+	GGI
+	---
+
+	Some guys had the nice idea of doing a framework to unify all
+	graphic	"targets" like ascii art console, X server,
+	SDL, svgalib, framebuffer device, and whatever implemented. The
+	drawback was mostly on security. I've tested it in an earlier
+	version, but don't like to install it on my current system.
+	Please refer to the install instructions of the developers.
+
+
+	SVGAlib:
+	--------
+	The framebuffer device in the kernel is still said to be
+	experimental. SVGAlib is what the linux community used before
+	to have full access to their graphics hardware. It's still
+	pretty stable, fast and usable. Only drawbacks: you need root
+	rights to run it and it got no accelerated scaling functions.
+
+	./configure --prefix=<e.g. /usr> &&
+	make &&
+	make install
+
+	Please read the documentation!
+
+
+	directfb:
+	---------
+	Since the framebuffer device is somewhat complicated to use,
+	there's a library called directfb, which is an abstraction
+	graphic layer featuring things like fast resizing, rendering,
+	and so on. Hopefully, the installation works with:
+
+	./configure --prefix=<e.g. /usr> &&
+	make &&
+	make install
+
+	And the prefix should be replaced, too.
+	
+
+	ffmpeg:
+	-------
+
+	MPlayer release versions usually come with an actual copy of
+	libavcodec, so you may want to skip the following steps if you're 
+	using this version. The actual CVS version of libavcodec has
+	divx5 abilities, so you might want to get it when using other
+	versions:
+
+	cvs \
+	-d:pserver:anonymous@cvs.ffmpeg.sourceforge.net:/cvsroot/ffmpeg\
+	login && [press enter for password]
+	cvs -z3 \
+	-d:pserver:anonymous@cvs.ffmpeg.sourceforge.net:/cvsroot/ffmpeg\
+	co ffmpeg/libavcodec &&
+	cd ffmpeg &&
+	./configure --prefix=<e.g. /usr> &&
+	make &&
+	make install
+
+	To use ffmpeg codecs with mplayer, you need to copy the whole
+	libavcodec dir to the mplayer source main dir:
+
+	cp -av libavcodec ../MPlayer-<version>/libavcodec
+
+	Now ffmpegs libavcodec will be available for mplayer.
+
+
+	divx4linux (libdivxdecore)
+	--------------------------
+
+	divx4linux aka OpenDivX is considered closed source since
+	the releases are binary-only. Xvid on the other hand, does
+	nice and frequent source releases (Xvid is discussed in the
+	next section).
+
+	MPlayer can use divx4linux OR xvid. If you choose for one of
+	it, you can't use the other.
+	
+	The CVS version compiled fine for me, at least the decoding
+	stuff was easy. To get all of it, type
+
+	cvs -d:pserver:anonymous@cvs.projectmayo.com:/cvsroot \
+	login &&
+	cvs -d:pserver:anonymous@cvs.projectmayo.com:/cvsroot \
+	co divxcore
+
+	Compile the CVS version:
+
+	cd divxcore/decore/build/linux &&
+	make &&
+	cp libdivxdecore.so /usr/local/lib &&
+	ln -s /usr/local/lib/libdivxdecore.so \
+	/usr/local/lib/libdivxdecore.so.0 &&
+	cp ../../src/decore.h /usr/local/include &&
+	cd ../../../encore/build &&
+	mkdir linux &&
+	cd linux &&
+	cat > Makefile << "EOF"
+CC=gcc
+
+SRCDIR=../../src
+
+CFLAGS_INTEL=-D_ATT_SYNTAX -I$(SRCDIR)
+
+CFLAGS=-g -fPIC -Wall -DLINUX -D_DECORE -I$(SRCDIR) $(CFLAGS_PLATFORM)
+
+SOURCES=$(SRCDIR)/_test_main.c $(SRCDIR)/encore.c \
+    $(SRCDIR)/bitstream.c $(SRCDIR)/mom_access.c $(SRCDIR)/mom_util.c \
+    $(SRCDIR)/mot_code.c $(SRCDIR)/mot_est_comp.c $(SRCDIR)/mot_est_mb.c \
+    $(SRCDIR)/mot_util.c $(SRCDIR)/putvlc.c $(SRCDIR)/rate_ctl.c \
+    $(SRCDIR)/text_bits.c $(SRCDIR)/text_code.c $(SRCDIR)/text_code_mb.c \
+    $(SRCDIR)/text_dct.c $(SRCDIR)/vop_code.c
+                                 
+
+OBJECTS=$(SOURCES:.c=.o) $(SOURCES_PLATFORM:.c=.o)
+
+all: libdivxencore.so
+
+libdivxencore.so: $(OBJECTS)
+        $(CC) -shared -lc -lm $^ -o $@
+
+clean:
+        rm -f libdivxencore.so $(OBJECTS)
+EOF &&
+	make &&
+	cp libdivxencore.so /usr/local/lib &&
+	ln -s /usr/local/lib/libdivxdecore.so \
+	/usr/local/lib/libdivxdecore.so.0 &&
+	cp ../../src/encore.h /usr/local/include &&
+	ldconfig
+
+	You may exchange /usr/local with any prefix of your liking.
+
+	If you want to use the released source library (and since you're
+	on LFS,	I do think so), simply:
+
+	./configure --prefix=<e.g /usr/X11R6> &&
+	make &&
+	make install &&
+	ldconfig
+
+	You could also use the binary version that was shipped w/
+	avifile (http://avifile.sourceforge.net), though it has a very
+	crude installation script and is not really optimised.
+
+
+	xvid
+	----
+
+	Warning: Xvid can't be used if divx4linux is enabled!
+
+	Xvid is another free implementation of an mpeg4/divx-compatible
+	codec. It's very optimized for x86-CPUs and capable of playing
+	most divx-encoded movies. For installing it, type:
+
+	cd xvidcore/build/generic &&
+	# [uncomment if wanted] vim Makefile.linuxx86 &&
+	make -f Makefile.linuxx86 &&
+	make -f Makefile.linuxx86 install &&
+	ldconfig
+
+	Now xvid should be found when you start Mplayer's configure
+	script.
+
+
+	LZO
+	---
+
+	LZO is a fast, lossless-compression library. You can use it
+	to compress raw audio/video data. It's also usable by transcode
+	so you could use it for previewing stuff. It usually achieves
+	compression values around 50%, so a usual TV Signal stream
+	should be compressed to 10MB/sec. It's not that usable to the
+	usual user, as you can see, but since transcode supports this
+	format... it works like everything else:
+
+	./configure --prefix=<e.g. /usr> &&
+	make &&
+	make install
+
+	Replace the prefix at will or leave this switch out.
+
+	
+	xanim
+	-----
+	
+	You could install that old avi player. You also could use but
+	the codecs, but be warned that the unlicensed use of the codec
+	with another program than xanim is illegal. If you don't bother
+	about legality issues, you may proceed, but you've been
+	warned... just unpack the codecs to /usr/local or another
+	directory of your choice and tell MPlayer with the switch
+	--with-xanimlibdir=... where you stored those files.
+
+
+	libdvdnav
+	---------
+
+	This package allows you to use DVD navigation. Mplayer's
+	documentation reports the support to be unstable, so you better
+	try it yourself if you think you need it. Installation is easy:
+
+	./configure --prefix=<e.g. /usr> &&
+	make &&
+	make install
+
+	The prefix could be replaced here, too.
+
+
+	w32-binaries
+	------------
+
+	This package holds the windows codecs currently supported by
+	mplayer. You're supposed to unzip the content to /usr/lib/win32
+	or any other dir specified during the execution of the mplayer
+	configure script with the --with-win32libdir=<directory> option.
+
+	If you have a windows codec not to be in that package and want
+	it supported, you could put it in that package, edit the
+	codec.conf file and try to use it anyway. If it doesn't work,
+	look at the documentation and contact the authors.
+
+
+	Quicktime and other codec packs
+	-------------------------------
+
+	All dll codecs should go right into the /usr/lib/win32
+	directory or whatever you've used for it when you installed the
+	windows codecs. 
+	The realplayer codecs are in linux shared object (.so) format,
+	so you can unpack them directly to /usr/local or another
+	directory of your liking and tell ./configure the place where
+	you've put them: --with-reallibdir=<e.g /usr/local/rp9codecs>.
+
+
+	unrarlib
+	--------
+
+	Unrarlib enables mplayer to play files directly from .rar
+	archives (only those made by WinRAR 2.9 or older, WinRAR 3.0
+	files are not supported yet). A copy of that library comes with
+	every release version. To get it into the CVS versions, simply
+	copy the necessary files to the MPlayer directory:
+
+	cp -v ../unrarlib-<version>/unrarlib/* .
+	
+	<version> should be replaced with the actual version number
+	(which is 0.4.0 at the current date). The unrarlib files are 
+	autodetected, so don't bother.
+
+
+	liba52, MAD, Ogg/Vorbis
+	-----------------------
+
+	Both packages liba52 and MAD are autodetected and compile right
+	out of the box with a short:
+
+	./configure &&
+	make &&
+	make install
+
+	There's a good hint about Ogg/Vorbis, so read this if you need
+	it.
+
+
+	mplayer
+	-------
+
+	This pal has a whole bunch of options, so I will only name a
+	few helpful ones that aren't autodetected anyway to save you a
+	lot of hassle:
+
+	./configure --prefix=<e.g /usr/X11R6> --enable-largefiles \
+        --enable-gui --enable-menu --enable-liblzo --enable-vorbis \
+	--enable-freetype --with-extraincdir=/usr/X11R6/include \
+	--with-extralibdir=/usr/X11R6/lib &&
+	make &&
+	make install
+
+	Replace the prefix with your liking. To explain all those other
+	options, I've done the following list, all options with a hint
+	what to choose (in case you don't know what to do with them).
+
+	--disable-mencoder	mencoder is an <whatever mplayer plays>
+				to divx4-encoder that comes with all
+				newer CVS versions. If you don't want it,
+				you may disable it here. If you don't
+				use divx4linux, it wouldn't be
+				activated anyway.
+				[don't use this switch]
+
+	--enable-gui		If you want mplayer with a gui (and
+				since the developer don't want it for
+				good reasons, it's deactivated by
+				default), you need to enable it here and
+				start mplayer with the -gui option
+				afterwards. You need glib/gtk+ and
+				libpng for the gui!
+				[If you need a gui, OK. It wouldn't
+				make it faster! Otherwise, don't touch
+				it.]
+				If you enable this, don't forget to
+				download the gui skins!
+
+	--enable-largefiles	It so happens that actual file systems
+				are able to manage files larger than
+				2GB. If you want mplayer to be able to
+				play those files, you should use this
+				option.
+				[you probably won't need it, but it
+				doesn't hurt anyway]
+
+	--enable-linux-devfs	Tells mplayer to search for devfs
+				devices.
+				[If you don't know what this is, better
+				not touch this]
+
+	--enable-termcap	The keystroke detection could be
+				managed using libtermcap. I haven't yet
+				found out what use this has.
+				[It's autodetected anyway]
+
+	--disable-iconv		MPlayer should not use the iconv(3) 
+				function. "man iconv" tells us it's
+				something about character conversion.
+				[Autodetected]
+
+	--disable-setlocale	If you don't want locale support, use
+				this switch.
+				[Mplayer will autodetect missing locale
+				support, so don't bother]
+
+	--enable-lirc		If you want to control mplayer via
+				infrared remote control, you need an IR
+				reciever and lirc (since I've never used
+				this, I don't know much about it - so
+				don't bother me).
+				[autodetected too]
+
+	--enable-joystick	Yes! You can control mplayer with your
+				joystick. You've got none? Poor you.
+				[Only if you've got any joystick that's
+				already set up properly, this switch
+				has any use at all]
+
+	--disable-tv		It is a not well known fact that you
+				can use mplayer as well to watch tv
+				using a video4linux or dvb grabber-card.
+				[If you haven't such a card or don't
+				want to use mplayer to watch TV, you
+				may use that switch]
+
+	--disable-tv-v4l	If you have got a dvb grabber card, but
+				no video4linux-card, you may want to
+				disable that annoying "try to find 
+				/dev/video"-stuff.
+				[if you have a bttv-card or similar,
+				don't touch it, otherwise you may use
+				it] 
+
+	--disable-tv-bsdbt848	The BSD interface for Brooktree Chipsets
+				can be disabled. Since this is an LFS
+				hint, you should be running linux, not
+				BSD.
+				[Autodetected anyway]
+
+	--disable-rtc		The usage of /dev/rtc can help 
+				synchronizing audio/video. If you have
+				it, mind. If you want to use it
+				properly without giving mplayer root
+				permissions (which is seriously inse-
+				cure), you may want to add the line
+				"echo 1024 > \
+				/proc/sys/dev/rtc/max-user-freq" to
+				your setclock script.
+				[Autodetected]
+
+	--disable-streaming	Mplayer can play stuff from http://,
+				mms:// or even rtp://. If you don't
+				want this, you can disable it.
+				[If your computer isn't connected to
+				the net in any kind, you can use this
+				switch, otherwise leave it alone]
+
+	--enable-live		LIVE! is a library for streaming media.
+				If you've got it on your system, you
+				may want to enable it. Look into the
+				docs for more info.
+				[Disabled by default; if you don't have
+				the lib, you don't need it]
+
+	--disable-dvdnav	DVD navigational support via libdvdnav
+				can be disabled. The documentation says
+				it would be unstable. I haven't tested
+				it yet.
+				[Autodetected]
+
+	--disable-dvdread	Mplayer's usage of libdvdread can be
+				disabled this way.
+				[Autodetected]
+
+  	--disable-mpdvdkit	Disable Mplayer's own libraries for DVD
+				decryption support.
+				[Autodetected, but it only searches for
+				UDF support anyway, as far as I can see]
+
+	--disable-css		Disable old-style libcss DVD support.
+				Since mplayer comes with it's own libs,
+				you probably don't need that anyway.
+				[Autodetected, rather not mess with it]
+
+	--disable-cdparanoia	Disable cdparanoia support. You can't
+				use mplayer anymore to play audio CDs
+				then.
+				[Autodetected]
+
+	--enable-freetype	Enable freetype2 font rendering support
+				[Disabled by default. If you've got the 
+				font package, you wouldn't need it 
+				anyway]
+
+	--disable-unrarlib	Mplayer can use Unique's RAR File 
+				Library to play files that are packed
+				in a .rar archive.
+				[autodetected if available]
+
+	--disable-new-conf	New configuration parser code, which is
+				necessary for menu support can be
+				disabled. OK, it may be experimental,
+				but it works very well for me.
+				[Don't touch it]
+
+	--enable-menu		Enable On Screen Display (OSD) menu -
+				it's like a command line shell rendered
+				over your movie - def'nitely a show-off
+				option in mplayer.
+				[It's cool, but you don't need it]
+
+	--enable-gif		Using libungif, you can make mplayer
+                                using gif files for a video output.
+				[Autodetected]
+
+	--enable-png		Same for libpng and png images.
+				[Autodetected]
+
+	--enable-jpeg		Same for libjpeg and jpeg images.
+				[Autodetected]
+
+	--enable-liblzo		lzo is a lossless movie compression.
+				Mplayer can use it or not.
+				[Autodetected]
+
+	--disable-win32		If you dislike the thought of
+				using closed-source codecs, you may
+				disable thusly. You could also let this
+				option remain but not use that codec
+				by default (see CONFIGURE section)
+				[Nope]
+
+	--disable-dshow		Only disable the directshow
+				codecs. DirectShow is a multimedia
+				extension to the ms video libraries, so
+				the codecs could use the graphic 
+				hardware almost directly. Strangely, on
+				some systems are these codecs much
+				slower.
+				[Nope]
+
+	--disable-xanim		I hope you've read the section
+				above. Anyway, there's not much stuff
+				only accessible with the xanim codecs
+				(some quicktime movies, though).
+				Remember it's illegal!
+				[If you have xanim or codecs installed
+				and want to avoid legal issues, you
+				should use that switch; nope]
+
+	--disable-real		If you don't want mplayer to use the 
+				libraries that comes with the real
+				player, you can use this switch.
+				[Don't bother unless something goes
+				wrong with Real Player]
+
+	--enable-vorbis		It is possible to use the free 
+				OggVorbis as audio codec. If you have
+				these libs installed, you may use them.
+				[Autodetected anyway]
+
+	--enable-faad		FAAD is the mpeg4/AAC audio codec.
+				[Autodetected]
+
+	--disable-libdv		You can use Mplayer to view your DV 
+				videos, preconditioned you've got libdv
+				installed properly. This switch is to
+				disable those ability.
+				[Autodetected]
+
+	--disable-mad		Disable libmad (mpeg audio) support.
+				[Autodetected]
+
+	--disable-vidix		Vidix is the new output layer
+				of mplayer. It's more powerful than
+				directfb, so you can generally call it
+				useful. But for those who doesn't want
+				it anyway...
+				[Enabled on *nix, not usable otherwise,
+				better not touch it]
+
+	--enable-gl		OpenGL rendering. Not the fastest
+				method of rendering the video output,
+				but nevertheless usable. Good for
+				OpenGL-enabled GFX-cards (like FireGL).
+				[Autodetected]
+
+	--enable-dga=[1/2]	DirectGraphicAccess is XFree's answer
+				to DirectX(tm), so mplayer accesses the
+				gfx hardware almost directly. To run
+				this, you need to run mplayer as root.
+				[Autodetected; if DGA2 gives you
+				errors, you may use that switch to
+				downgrade to DGA1]
+
+	--enable-vesa		Low-level VESA drivers (somewhat faster
+				than svgalib, but still unaccelerated).
+				[Autodetected]
+
+	--enable-svga		SVGAlib support (needs to be run as
+				root).
+				[Autodetected]
+
+	--enable-sdl		libSDL support (read the stuff about
+				SDL). Nice, but doesn't smarten mplayer
+				up, anyway.
+				[Autodetected]
+
+	--enable-aa		AA-lib gives you cool-looking textmode
+				output. It may be not very usable to
+				watch your movies anyway, but provides
+				a nice effect (and you could use it in
+				console too, even via telnet!).
+				[Autodetected]
+
+	--enable-ggi		GGI can handle multiple devices (AA,
+				SDL, X11, DGA, SVGAlib etc. pp). It is
+				also considered to be insecure.
+				[Autodetected]
+
+	--enable-directx	This is somewhat undocumented. I guess
+				it's used for the cygwin port of mplayer
+				(since you seem to be running LFS...)
+				[Autodetected]
+
+	--enable-dxr2		The DXR2 is a Video Decoding Hardware
+				that can be used through that driver.
+				[Autodetected]
+
+	--enable-dxr3		If you have a DXR3/H+ Video Hardware
+				Decoding board, you may use it with
+				that driver.
+				[Autodetected]
+
+	--enable-dvb		Some DVB cards have video output
+				abilities.
+				[Autodetected]
+
+	--enable-mga		If you have a Matrox MGA[200/400/450]
+				card, you may compile the mga_vid
+				module, load it and have really fast
+				overlay graphics.
+				You need to set up the device before
+				you try to use/detect it:
+
+				cd drivers &&
+				make &&
+				cp mga_vod.o /lib/modules/<kernel-
+				version> &&
+				cd .. &&
+				mknod /dev/mga_vid c 178 0 &&
+				insmod mga_vid.o
+
+				You may also add to modules.conf:
+				alias char-major-178 mga_vid
+
+				[Autodetected]
+
+	--enable-xmga		Same for XFree.
+				[Autodetected]
+
+	--enable-xv		X Video extension. Works mostly out of
+				the box. Only on some Trident and some
+				older cards (especially on notebooks),
+				you may get errors with XFree86 4.1 and 
+				older versions. Don't report that
+				errors as MPlayer bugs! That are errors
+				of XFree86!
+				[Autodetected]
+
+	--enable-vm		Enable the changing of video modes. On
+				a normal CRT, you may want that.
+				[Autodetected]
+
+	--enable-xinerama	You could even use more than 1 Screen
+				to display your movie.
+				[Autodetected]
+
+	--enable-x11		X11 software rendering (slow, no
+				scaling). Useful for making screenshots.
+				[Autodetected]
+
+	--enable-fbdev		If you have framebuffer device
+				support in your kernel and want to use
+				it with mplayer, you may enable this.
+				[Yes, if you have /dev/fb0; nope]
+
+	--enable-fbdev=noocpy	If you want to decode directly into the
+				framebuffer (without pre-caching), you
+				can enable it with this switch, but it
+				will possibly result in an untidy image.
+				[Leave it alone]
+
+	--enable-mlib		Solaris uses mlib for graphics output.
+				Considered you're running Linux, you
+				don't need anything of this.
+				[Autodetected anyway]
+
+	--enable-3dfx		Like --enable-mga, only for 3dfx cards
+				(all cards currently supported by the
+				XFree86 tdfx driver). Look at the docs.
+				[You'll need to enable it, if you want
+				to use it; nope]
+
+	--enable-tdfxfb		There's a accelerated framebuffer 
+				driver for 3dfx cards. If you're using
+				this one, it could speed things up.
+				[look above; nope]
+
+	--enable-directfb	That's a library to access fast
+				framebuffers. Nice to watch vids
+				without XServer.
+				[Autodetected]
+
+	--enable-zr		MJPEG capture/playback cards with Zoran
+				chips (like LML33 and Miro DC10/DC10+)
+				can be used. Read the documentation!
+				[Never mind, autodetected]
+
+	--enable-bl		Ever heard of Blinkenlights? If you've
+				want to use the lights of your
+				skyscraper for viewing videos... No?
+				[Don't touch it unless you know what
+				you're doing]
+
+	--disable-ossaudio	If you don't want the normal OSS sound
+				driver to be used (ALSA-only system?).
+				[Autodetected]
+
+	--disable-arts		KDE's sounddemon arts can be used or
+				not. If you're not anymore using KDE,
+				but have arts available, this switch
+				can come handy.
+				[Autodetected otherwise]
+
+	--disable-alsa		If you don't want the ALSA driver to be 
+				used...
+				[Autodetected]
+
+	--disable-sunaudio	Disable SUN audio support. I can't
+				imagine where this option should be
+				usable.
+				[Autodetected]
+
+	--disable-win32waveout	Another option for the cygwin
+				compilation, don't bother.
+				[Autodetected]
+
+	--disable-select	If you want to disable OSS soundcard
+				selection. Some older OSS drivers can't
+				cope w/ that.
+				[If you have new OSS drivers/hardware,
+				you may give it a try; nope]
+
+	--enable-runtime-cpudetection
+				You can compile an mplayer binary
+				that'll run on any CPU.
+				[Not recommended]
+
+	--language=xx		xx: cz de dk en es fr hu nl no pl ro ru
+				Select your language. It happened on
+				earlier versions that this could cause
+				errors due to unfinished
+				internationalisation. If you encounter
+				such errors, try to leave that switch
+				away.
+				[Since you're reading this, you
+				understand english: nope]
+
+	--enable-shared-pp	Makes a shared post-processing library
+				that can be used e.g. by transcode.
+				[If you've want to use transcode, use
+				this switch!]
+
+	Most of the following CPU instruction set enhancements options
+	can only be used if you have a recent 2.4. kernel!
+
+	--enable-mmx		Intel's MultiMediaeXtension can be used
+				to archieve faster decoding.
+				[Autodetected]
+
+	--enable-mmx2		P3 and Athlon have an newer version of
+				that codeset.
+				[Autodetected]
+
+	--enable-3dnow		AMD K6-II/III have 3D-now! instead of 
+				MMX.
+				[Autodetected]
+
+	--enable-3dnowex	3D-now!-DSP support on K7 (older Athlon)
+				[Autodetected]
+
+	--enable-sse		Newer Celeron/P3/P4 CPUs have an
+				enhanced instruction set that helps to
+				decode movies.
+				[Autodetected]
+
+	--disable-fastmemcpy	Some systems may have problems on fast
+				memory copy. If you get such troubles,
+				you may disable this here.
+				[nope]
+
+	--enable-debug=[1-3]	If you're interested in how the code
+				works... but then you'd probably
+				wouldn't need this hint anyway...
+				[nope]
+
+	--enable-profile	Another debugging option...
+				[nope]
+
+	--disable-gcc-checking	If you're in the habit of using
+				a flawed gcc version (like the ones
+				from redhat), you could do with that
+				switch.
+				[nope]
+
+	--with-extraincdir=...	If you have videocodecs etc in another
+				dir than /usr/local/include, you should
+				set it here.
+				[=/usr/X11R6/include can never hurt]
+
+	--with-extralibdir=...	Same for libs.
+				[=/usr/X11R6/lib wouldn't hurt]
+
+	--with-csslibdir=...	You could use lib(dvd)css to watch
+				encrypted DVDs.
+				[nope (illegal)]
+
+	--with-madlibdir=...	MAD, the mpeg audio decoder can be used
+				to decode mp2/3 audio with astonishing
+				precision. Point mplayer to where it's
+				installed.
+				[mostly autofound]
+
+	--with-win32libdir=...	Normally, the windows codecs are stored 
+				to /usr/lib/win32. If you want another
+				place, you can set it here.
+				[nope]
+
+	--with-xanimdir=...	Where the xanim codecs are installed.
+				[nope (illegal)]
+
+	--with-reallibdir=...	Where the real codecs are installed.
+				[e.g. =/usr/local/rp9codecs]
+
+	--with-sdl-config=...	If it's not found automatically
+				[e.g. =/usr/X11R6/bin/sdl-config]
+
+	--with-gtk-config=...	For gui support...
+				[e.g. =/usr/X11R6/bin/gtk-config]
+
+	--with-glib-config=...	Dito.
+				[e.g. =/usr/X11R6/bin/sdl-config]
+				
+
+	To use mplayer, you may want to make an .mplayer directory in
+	your home directory:
+
+	cd ~ &&
+	mkdir .mplayer &&
+	cp <where the Mplayer sources are>/etc/codecs.conf .mplayer/
+
+	You can also put a config file into that directory that causes
+	mplayer to start with some predefined options, e.g. for sound
+	or video. Please read the documentation for the syntax.
+
+
+USAGE:
+	You could look at the manpage, the very good docs in html format
+	or the helppage. Mplayer itself is very helpful indeed, too: try
+
+	mplayer -help
+	mplayer -vo help
+	mplayer -aahelp
+	mplayer -ao help
+	mplayer -vc help
+
+	and so on...
+
+
+ADDITIONAL UTILITIES:
+
+	mencoder
+	--------
+	With mplayer comes an "everything to divx4"-encoder. You can
+	convert everything you can watch with mplayer to every encoder
+	you've installed before mplayer! Since the docs are pretty
+	good, only a short example of a three-pass libavcodec divx5
+	encoding of a dvd:
+
+
+	rm frameno.avi 
+	mencoder -dvd 1 -aid 128 -ovc frameno -oac mp3lame \
+	-lameopts vbr=3 -o frameno.avi
+
+	# mencoder should output bitrates for average encodings
+	# now, choose one of your liking! In the following lines,
+	# replace <bitrate> and <name.avi> with statements of your
+	# liking
+
+	mencoder -dvd 1 -aid 128 -oac copy -ovc lavc \
+	-lavcopts vcodec=mpeg4:vpass=1:vhq:vbitrate=<bitrate> \
+	-o <name.avi>
+
+	mencoder -dvd 1 -aid 128 -oac copy -ovc lavc \
+	-lavcopts vcodec=mpeg4:vpass=2:vhq:vbitrate=<bitrate> \
+	-o <name.avi>
+
+	mencoder -forceidx <name.avi>
+
+
+	Will encode first audio and then 2-pass video and finally
+	build the index (so you can jump back and forth in the movie).
+
+
+OTHER USEFUL PROGRAMS:
+
+	http://avifile.sourceforge.net
+
+	To cut avi videos a mix of transcode and mplayer is really
+	great. mplayer to find out where to cut and transcode to do the
+	cutting.
+
+	Read the transcode hint of the same author.
+
+	Another neat program for avi cutting is avidemux. You'll find
+	it at
+
+	http://fixounet.free.fr/avidemux/
+
+Since this hint will never ever be complete nor perfect, I'd like your
+updates send to alex@22-music.com!
+
+Hope this was helpful anyway!
+
+Alex (LX)

@@ -1,0 +1,630 @@
+AUTHOR:         Bryan Mason <bmason@bmason.com>
+
+DATE:           2004-05-24
+        
+LICENSE:        GNU Free Documentation License Version 1.2 
+                Copyright (c) 2003-2004, Bryan Mason.
+                Permission is granted to copy, distribute and/or modify
+                this document under the terms of the GNU Free
+                Documentation License, Version 1.2 or any later version
+                published by the Free Software Foundation. A copy of the
+                license can be found at
+                http://www.gnu.org/copyleft/fdl.html.
+
+SYNOPSIS:       APCUPSD Power Protection from an APC UPS Connected via USB
+
+ATTACHMENTS:    Init script for starting apcupsd:
+                http://www.bmason.com/LFS/apcupsd/apcupsd
+
+DESCRIPTION:    This hint describes how to install some of the new
+                Uninterruptable Power Supplies (UPS's) from American
+                Power Conversion (APC) that use a Universal Serial Bus
+                (USB) interface to connect to the host.
+
+PREREQUISITES:  This hint assumes that you have already a working system
+                and are comfortable with configuring and re-compiling
+                the Linux kernel.  Although this hint was written based
+                on LFS 3.3, it should work equally well on newer LFS
+                installations as well, although they have not been 
+                fully tested.
+
+HINT:
+
+Contents
+========
+
+    1. Introduction
+    2. Configuring the LFS Kernel for USB and HID Support 
+    3. Installing apcupsd with USB Support
+    4. Configuring Apcupsd
+    5. Testing the Installation
+    6. Creating Scripts
+    7. Advanced Testing
+    8. Tested Configurations
+    9. Troubleshooting
+
+
+1. Introduction
+===============
+
+    John McSwain's hint, "Apcupsd power protection for your LFS
+    connected to an APC UPS via serial port" describes how to install an
+    Uninterruptable Power Supply (UPS) made by American Power Conversion
+    (APC) using apcupsd as the software interface between the UPS and
+    the LFS system.  Apcupsd monitors the UPS and informs the system
+    when a power loss has occurred and can subsequently shutdown the
+    system if power is not restored within a predetermined time.
+    
+    John's hint works fine for those UPS's that use a serial cable to
+    interface to the host computer, but many of APC's new UPS's use a
+    Universal Serial Bus (USB) hardware interface to connect to the
+    system that is being provided power by the UPS.  Versions 3.9.4 and
+    later of apcupsd provide direct support for USB UPS's.  This hint is
+    based on version 3.10.13 of apcupsd, the latest stable version of
+    apcupsd available at the time of writing.
+    
+    Installation of a USB UPS consists of the following basic steps,
+    which are described in more detail below:
+    1) Configuring the LFS Kernel for USB and HID support
+    2) Installing apcupsd with USB support
+    3) Configuring apcupsd
+    3) Testing the installation
+    4) Creating scripts
+    
+    If you have any comments or corrections to be made to this document,
+    please send an e-mail message to the author at <bmason@bmason.com>.
+    
+
+2. Configuring the LFS Kernel for USB and HID Support 
+=====================================================
+
+    To enable the use of a USB UPS in Linux, not only USB support is
+    required, but also support for Human Interface Devices (HIDs). The
+    documentation on the apcupsd Web site states that Alan Cox's patch
+    are required to enable HID support.  This may have been true on
+    older kernels, but HID support now seems to be an integral part of
+    kernel version 2.4.18 which was the version used in creating this
+    hint.
+    
+    To enable USB and HID, make sure that the following items are
+    enabled either as a module or as part of the kernel.  Generally it's
+    easier to install these as part of the kernel; otherwise the modules
+    will have to be loaded in the boot script and a delay will need to
+    be made so that the USB drivers can recognize the UPS.
+        
+    Kernel options to be enabled:
+    
+    - "Input Core Support" (CONFIG_INPUT)
+    - "Support for USB" (CONFIG_USB)
+    - "Preliminary USB File System" (CONFIG_USB_DEVICEFS)
+    - "USB Human Interface Device (full HID) support" (CONFIG_USB_HID)
+    - "/dev/hiddev raw HID device support" (CONFIG_USB_HIDDEV)
+    - One of:
+        "UHCI (Intel PIIX4, VIA, ...) support" (CONFIG_USB_UHCI)
+        or "UHCI Alternate Driver (JE) support" (CONFIG_USB_UHCI_ALT)
+        or "OHCI (Compaq, iMacs, OPTi, SiS, ALi, ...) support" 
+           (CONFIG_USB_OHCI)
+      Which one of these last options is enabled will depend on the chip
+      set used in the system on which LFS is running.  See your
+      motherboard documentation and the help system within menuconfig
+      for additional information.
+      
+    After the kernel is configured, proceed with the normal process of
+    building and installing a new Linux kernel (make bzImage, make
+    modules, make modules_install, copy the bzImage file, etc.)
+
+    Strictly speaking, the "Preliminary USB File System" support isn't
+    required, but it should make debugging easier if there are problems.
+
+
+3. Installing apcupsd with USB Support
+======================================
+
+    3.1 Review Existing Documentation
+
+    Before you install apcupsd, it might be a good idea to review the
+    documentation for the latest version of apcupsd on the apcupsd Web
+    site (<http://www.apcupsd.com/>). Specifically, the following
+    sections might be useful:
+    - Quick Start for Beginners
+    - Compiling and Installing
+    - Using Apcupsd with a USB UPS
+    
+    Also, reviewing John McSwain's apcupsd hint is also probably a good
+    idea.
+
+    Much of what follows is based on the documentation listed above --
+    I've just put it in a convenient, easy to swallow format (I hope).
+
+
+    3.2 Download and Unpack Apcupsd
+
+    The source tarballs for apcupsd are located on SourceForge at
+    <http://sourceforge.net/projects/apcupsd/>
+    
+    
+    3.3 Create the HID Devices
+    
+    After the source has been unpacked, use the "make-hiddev" script in
+    the "examples" directory of the apcupsd source tree to make the HID
+    devices.  Make-hiddev performs the following commands:
+    
+        #!/bin/sh
+        mkdir -p /dev/usb/hid
+        mknod /dev/usb/hid/hiddev0 c 180 96
+        mknod /dev/usb/hid/hiddev1 c 180 97
+        mknod /dev/usb/hid/hiddev2 c 180 98
+        mknod /dev/usb/hid/hiddev3 c 180 99
+        mknod /dev/usb/hid/hiddev4 c 180 100
+        mknod /dev/usb/hid/hiddev5 c 180 101
+        mknod /dev/usb/hid/hiddev6 c 180 102
+        mknod /dev/usb/hid/hiddev7 c 180 103
+        mknod /dev/usb/hid/hiddev8 c 180 104
+        mknod /dev/usb/hid/hiddev9 c 180 105
+        mknod /dev/usb/hid/hiddev10 c 180 106
+        mknod /dev/usb/hid/hiddev11 c 180 107
+        mknod /dev/usb/hid/hiddev12 c 180 108
+        mknod /dev/usb/hid/hiddev13 c 180 109
+        mknod /dev/usb/hid/hiddev14 c 180 110
+        mknod /dev/usb/hid/hiddev15 c 180 111
+    
+    After running make-hiddev, connect your UPS to your LFS system, and
+    then build and run the "hid-ups" test program to test the connection
+    between your system and the UPS.
+
+    If you compiled USB and/or HID support into modules, make sure that
+    you have loaded the modules before running hid-ups.  The following
+    modules should be loaded:
+    - "hid"
+    - "input"
+    - "usbcore"
+    - "usb-uhci" (or "usb-ohci" or whatever module you created)
+
+    To compile and execute hid-ups, execute the following commands
+    (substituting "<apcupsd-src>" with the directory to which you
+    unpacked the apcupsd source tarballs.
+      
+        cd <apcupsd-src>/examples
+        make hid-ups
+        ./hid-ups
+    
+    If hid-ups is successful, the tail of the output from hid-ups should
+    look similar to the following:
+    
+        FeatureReport 121
+          Field 0, app UPS, phys ---
+            Usage 0, APCPanelTest = 0
+
+        FeatureReport 120
+          Field 0, app UPS, phys ---
+            Usage 0, AudibleAlarmControl = 2
+
+        FeatureReport 117
+          Field 0, app UPS, phys ---
+            Usage 0, APC860029_?????? = 34
+
+        FeatureReport 116
+          Field 0, app UPS, phys ---
+            Usage 0, APC86002A_?????? = 0
+
+        Waiting for events ... (interrupt to exit)
+        Event: Voltage = 122
+        Event: CommunicationLost = 0
+    
+    Press Ctrl-C to exit hid-ups.
+    
+
+    3.4 Install Apcupsd
+
+    Now configure, compile, and install apcupsd by running the following
+    commands from the top of the source code tree:
+
+        ./configure --prefix=/usr --sbindir=/sbin \
+            --with-serial-dev=/dev/usb/hid/hiddev[0-9] \
+            --with-upstype=usb --with-upscable=usb --enable-usb \
+            --enable-pthreads --enable-powerflute &&
+        make &&
+        make install
+    
+    Below are descriptions of the options passed to the configure
+    script:
+    
+    --with-serial-dev=/dev/usb/hid/hiddev[0-9]: This is not a typo, and
+    should be entered exactly as shown.  This syntax allows apcupsd to
+    search all the USB devices to find the UPS.
+
+    --with-upstype=usb: This tells apcupsd to default to a USB UPS. This
+    option can be changed at runtime by modifying apcupsd's
+    configuration file.
+    
+    --with-upscable=usb: This tells apcupsd to default to a USB cable.
+    This option can be changed at runtime by modifying apcupsd's
+    configuration file.
+    
+    --enable-usb: This enables the USB support in apcupsd.
+    
+    --enable-pthreads: This option enables pthreads support causing
+    apcupsd to be built as a threaded program rather than forking to
+    create separate processes. This should cause apcupsd to be more
+    efficient with memory and resources.  This is not strictly needed
+    for USB support, but is a good idea.
+    
+    --enable-powerflute: This enables the building of powerflute, which
+    is an ncurses-based program that can be used to monitor the UPS.
+    This is not strictly need for USB support or even to build apcupsd,
+    but it could be a useful program.
+    
+    Additional information on features that can be enabled through use
+    of the configure utility can be viewed by executing
+        
+        ./configure --help
+    
+    Executing these commands will put the following files in the
+    following directories:
+
+        Executable Binaries
+            Location:   /sbin
+            Files:      powerflute
+                        apcaccess
+                        apcnisd
+                        apcupsd
+
+        Configuration and Script Files
+            Location:   /etc/apcupsd
+            Files:      masterconnect
+                        mastertimeout
+                        apcupsd.conf
+                        commfailure
+                        apccontrol
+                        mainsback
+                        onbattery
+                        changeme
+                        commok
+
+        Help Files
+            Location:   /usr/share/man/man8
+            File:       apcupsd.8  
+      
+4. Configuring Apcupsd      
+======================
+
+    The apcupsd configuration file is located by default at
+    /etc/apcupsd/apcupsd.conf.  There shouldn't be much of a need to
+    change anything in this file, since most of the important settings
+    have already been specified during the compilation of apcupsd in
+    Section 3.4 above.
+    
+    The only thing that might be a good idea is to modify the behavior
+    of apcupsd and syslogd so that apcupsd events are sent to their own
+    file, /var/log/apcupsd.log. To do this, modify the following line in
+    apcupsd.conf:
+    
+    From:   #FACILITY local0
+    To:     FACILITY local1
+    
+    Then add the following lines to /etc/syslog.conf:
+    
+        # Logging for apcupsd
+        local1.*            -/var/log/apcupsd.log
+
+    If the "local1" facility is already being used by another program,
+    then change "local1" in the examples above to "local2" or another
+    free local facility.
+
+    After this is done, syslogd needs to be reloaded by executing the
+    following command:
+    
+        /etc/rc.d/init.d/sysklogd reload
+    
+5. Testing the Installation
+===========================
+
+    5.1 Running apcupsd
+    
+    The first step in testing is to run the apcupsd program itself.
+    Load the USB modules (if not compiled directly into the kernel) by 
+    executing
+    
+        modprobe hid
+        modprobe usb-uhci
+        apcupsd
+        
+    (The last command may need to be "modprobe usb-ohci") if you've
+    compiled kernel support for an OHCI compliant USB controller instead
+    of UHCI compliant one.)  
+    
+    Wait for apcupsd to configure itself and establish contact with the
+    UPS, and then execute
+    
+        ps fax | grep apcupsd
+    
+    The output should look something like
+    
+        8525 ?        SN     0:00 /sbin/apcupsd
+        8527 ?        SN     0:00  \_ /sbin/apcupsd
+        8528 ?        SN     0:00      \_ /sbin/apcupsd
+        8529 ?        SN     0:00      \_ /sbin/apcupsd
+
+    or 
+    
+        4492 ?        S      0:00 apcmain
+        4496 ?        S      0:00  \_ apcser
+        4497 ?        S      0:00  \_ apcnis
+        
+    if you did not use the "--enable-pthreads" option in configure.
+
+    Next, take a look at the contents of the apcupsd log file by
+    executing
+    
+        tail /var/log/apcupsd.log
+    
+    The result should be something similar to the following:
+    
+        May 24 13:49:56 linux apcupsd[8217]: apcupsd 3.10.13 \
+            (16 April 2004) unknown startup succeeded
+
+    If apcupsd generates an error code and then exits, see the
+    "Troubleshooting Your Installation" section of the apcupsd
+    documentation on the apcupsd Web site (<http://www.apcupsd.com/>)
+    for information on possible sources of problems.
+    
+    
+    5.2 Getting UPS status
+    
+    Once apcupsd is successfully loaded, the next step is to get status
+    from the UPS.  To do this, execute
+
+        apcaccess status
+    
+    The result should be similar to the following:
+    
+        APC      : 001,035,0853
+        DATE     : Mon May 24 13:50:28 PDT 2004
+        HOSTNAME : linux
+        RELEASE  : 3.10.13
+        VERSION  : 3.10.13 (16 April 2004) unknown
+        UPSNAME  : linux
+        CABLE    : USB Cable
+        MODEL    : Back-UPS RS 1000
+        UPSMODE  : Net Master
+        STARTTIME: Mon May 24 13:49:50 PDT 2004
+        SHARE    : NetworkUPS
+        STATUS   : ONLINE
+        LINEV    : 122.0 Volts
+        LOADPCT  :  18.0 Percent Load Capacity
+        BCHARGE  : 100.0 Percent
+        TIMELEFT :  50.1 Minutes
+        MBATTCHG : 10 Percent
+        MINTIMEL : 10 Minutes
+        MAXTIME  : 0 Seconds
+        LOTRANS  : 097.0 Volts
+        HITRANS  : 138.0 Volts
+        ALARMDEL : Always
+        BATTV    : 27.1 Volts
+        NUMXFERS : 0
+        TONBATT  : 0 seconds
+        CUMONBATT: 0 seconds
+        XOFFBATT : N/A
+        SELFTEST : NO
+        STATFLAG : 0x02000008 Status Flag
+        MANDATE  : 2002-10-13
+        SERIALNO : JB0241034799
+        BATTDATE : 2001-09-25
+        NOMBATTV :  24.0
+        FIRMWARE : .g2 .D USB FW:g2
+        APCMODEL : Back-UPS RS 1000
+        END APC  : Mon May 24 13:50:55 PDT 2004
+        
+    
+6. Creating Scripts
+===================
+
+    6.1 Creating the boot script
+    
+    The following boot script will start, stop, restart, etc. apcupsd.
+    It is based on the LFS boot script template
+    (/etc/rc.d/init.d/template) and the file apcupsd in the
+    platforms/unknown directory of the apcupsd source tree.
+
+    --------------------------------------------------------------------
+    #!/bin/bash
+    # Begin /etc/rc.d/init.d/apcupsd
+    
+    # Based on sysklogd script from LFS-3.1 and earlier.
+    # Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+    # Apcupsd version written by Bryan Mason - bmason@bmason.com
+    
+    source /etc/sysconfig/rc
+    source $rc_functions
+    
+    case "$1" in
+        start)
+    #       Comment the following lines if the USB and HID 
+    #       drivers were built into the kernel
+    #       Use "modprobe usb-ohci" instead of "modprobe usb-uhci"
+    #       if you have an OHCI compliant USB controller.
+    
+            echo "Installing modules for USB and HID..."
+            modprobe usb-uhci &&
+            modprobe hid
+            evaluate_retval
+
+            echo "Starting APC UPS Daemon (apcupsd)..."
+            rm -f /etc/apcupsd/powerfail
+            rm -f /etc/nologin
+            loadproc /sbin/apcupsd
+            ;;
+    
+        stop)
+            echo "Stopping APC UPS Daemon (apcupsd)..."
+            killproc /sbin/apcupsd
+    
+    #       Comment the following lines if the USB and HID 
+    #       drivers were built into the kernel
+    #       Replace "usb-ohci" with "usb-uhci"
+    #       if you have an OHCI compliant USB controller.
+    
+            echo "Removing modules for USB and HID..."
+            rmmod usb-uhci hid input usbcore
+            evaluate_retval
+    
+    #       Sometimes killproc can't kill apcupsd, which
+    #       interrupts the shutdown process.  
+    #       That isn't good.  So lets make sure to always
+    #       exit with a status of 0.
+    
+            exit 0        
+            ;;
+    
+        reload)
+            echo "Reloading APC UPS Daemon (apcupsd)..."
+            reloadproc /sbin/apcupsd
+            ;;
+    
+        restart)
+            $0 stop
+            sleep 1
+            $0 start
+            ;;
+    
+        status)
+            /sbin/apcaccess status
+            statusproc /sbin/apcupsd
+            ;;
+    
+        *)
+            echo "Usage: $0 {start|stop|reload|restart|status}"
+            exit 1
+            ;;
+    
+     esac
+    
+    # End /etc/rc.d/init.d/apcupsd
+    --------------------------------------------------------------------
+    
+    The commands to load the USB kernel modules in the script can
+    probably be removed entirely if you're running hotplug.  I don't use
+    hotplug, so I'm not sure about this.  If anybody would like to
+    comment on this one way or another, please contact me and I'll add
+    the information into this document.
+    
+    This file can be made by copying /etc/rc.d/init.d/template to
+    /etc/rc.d/init.d/apcupsd, made from scratch, or be downloaded from 
+    <http://www.bmason.com/LFS/apcupsd/apcupsd>.
+    
+    
+    6.2 Creating the links for the boot script
+    
+    Apcupsd should be started as soon as possible during the boot
+    process, right after sysklogd is started.  Since sysklogd uses S10,
+    apcupsd can be started at S15 or S20.  Apcupsd should also be one of
+    the last things to be stopped, right before sysklogd is stopped.
+    Create the symbolic links by executing the following commands:
+    
+        cd /etc/rc.d &&
+        cd rc0.d &&
+        ln -s ../init.d/apcupsd K35apcupsd &&
+        cd ../rc1.d &&
+        ln -s ../init.d/apcupsd K75apcupsd &&
+        cd ../rc2.d &&
+        ln -s ../init.d/apcupsd S15apcupsd &&
+        cd ../rc3.d &&
+        ln -s ../init.d/apcupsd S15apcupsd &&
+        cd ../rc4.d &&
+        ln -s ../init.d/apcupsd S15apcupsd &&
+        cd ../rc5.d &&
+        ln -s ../init.d/apcupsd S15apcupsd &&
+        cd ../rc6.d &&
+        ln -s ../init.d/apcupsd K35apcupsd
+    
+    Of course, if you've renumbered your boot scripts, then you'll need
+    to link the apcupsd boot script accordingly.
+    
+    
+    6.3 Creating the UPS Powerdown Script
+    
+    Normally, the last thing that needs to happen before the system
+    shuts down is to power off the UPS.  Unfortunately, one of the known
+    limitations of apcupsd interfacing to a USB UPS is that the 
+    "--killpower" option to apcupsd doesn't work, which means that it is
+    not possible to power off a USB UPS.  Although the apcupsd
+    documentation states that the UPS should shut itself down one to two
+    minutes after the system, I did not observe this in my testing.  In
+    my case, the UPS continued to supply power to the computer until the
+    batteries drained to a critically low level.  Of course, this wasn't
+    a problem because the system had already been shut down.
+
+    
+7. Advanced Testing
+===================
+    
+    Many tests that should be run on the system before the installation
+    is considered complete and stable.  The "Testing Apcupsd" section of
+    the documentation on the apcupsd Web site
+    (<http://www.apcupsd.com/>) contains a list of such tests. The first
+    three tests were performed in Section 6 above.  Briefly, the rest of
+    the test sequence runs as follows:
+    
+    - Remove the USB cable from the UPS to make sure communications
+      are working
+    - Modify some of the scripts used by apcupsd so that they are
+      "safe" (i.e. they won't actually shut down the system) and
+      disconnect the UPS from utility power.
+    - Perform a full shutdown test, but do not allow the UPS to
+      power down.
+    - Perform a full shutdown test, allowing the UPS to cut power to
+      the system.
+
+
+8. Tested Configurations
+========================
+
+    The following configuration has been tested and is fully functional
+    after following the instructions in this hint:
+    
+    * APC Back-UPS XS 1000 
+      Note: Apcupsd reports this as a Back-UPS RS 1000
+    * APC Back-UPS LS 700 on Slackware 9.1
+    * APC Back-UPS RS 1000 on Slackware 9.1
+    * APC Back-UPS XS 1000 on SuSE 8.2
+    
+    If you have successfully installed another APC USB UPS on your LFS
+    system, please send an e-mail message to <bmason@bmason.com> so I
+    can add your model number to the above list.
+    
+9. Troubleshooting
+==================
+
+    The installation of my USB UPS went very smoothly.  I didn't have to
+    do much troubleshooting, so I don't have any troubleshooting steps
+    to report.  If you experience problems with your installation and
+    have a way to overcome them, please send an e-mail message to
+    <bmason@bmason.com> with your experience, and I'll add it to this
+    section.
+
+
+ACKNOWLEDGEMENTS:
+    * John M. McSwain <jmcswain@infoave.net> for providing the original
+      apcupsd hint.
+    * Artur Kedzierski <Artur@Kedzierski.org> for providing information 
+      on the Back-UPS LS 700 and Back-UPS RS 1000.
+    * Brett Delmage <Brett.Delmage@twobikes.ottawa.on.ca> for providing
+      information on the Back-UPS XS 1000 running on SuSE 8.2.
+      
+
+CHANGELOG:
+    [2003-01-23]
+    * Original Hint
+    [2003-10-03]
+    * Modified to conform to new hint format.  Updated some links.
+    [2003-12-02]
+    * Added information on Back-UPS LS 700 and RS 1000 on Slackware 9.1.
+    [2004-05-24]
+    * Updated for apcupsd version 3.10.13.
+    * Added more detail on what files would be created and where they
+      are placed.
+    * Fixed a couple of mistakes and oversights.
+    * Added information on Back-UPS XS 1000 on SuSE 8.2
+    
+
+

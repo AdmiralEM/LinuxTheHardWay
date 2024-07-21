@@ -1,0 +1,339 @@
+
+TITLE:		Multiple GCC Installations
+LFS VERSION:	All
+AUTHOR:		Eric Crahen <crahen@cse.buffalo.edu>
+
+SYNOPSIS:
+
+	
+	This is a set of instructions for people interested in installing 
+	and using several versions of gcc on thier system. The compiler's
+	public interfaces are renamed to include version numbers (e.g.
+	gcc-2.95.3), version specific dependancies, such as includes and 
+	shared libraries are storeed in different locations and evironment 
+	variables replace can be used to select a compiler (rather than 
+	global names such as /usr/bin or /lib/cpp)
+
+
+OBTAIN THE SOURCE:
+
+
+	First, you need to obtain the version of gcc you wish to compile 
+	and install along with any patches that come with it. The example, 
+	will demonstrate how to install two common versions of the compiler.
+	
+	EGCS-1.1.2:
+
+	ftp://sourceware.cygnus.com/pub/gcc/old-releases/egcs/
+	http://gcc.gnu.org/install/glibc-2.2.patch
+
+	GCC-2.95.3:
+
+	ftp://ftp.gnu.org/pub/gnu/gcc/
+
+
+COMPILE THE SOURCE & INSTALL:
+
+	
+	Next, the source needs to be configured. This is done in the usual 
+	way, the important configuration options are the following:
+  
+
+	--enable-version-specific-runtime-libs
+ 
+	Keeps the version specific runtime libraries in a compiler specific 
+	directory rather than placing them right in ${libdir}. You can read 
+	more about this in the gcc documentation (install/CONFIGURE).
+
+	--program-transform-name
+
+	Transforms the binary file names when they are installed using a 
+	sed regular expression. This option will be used to append the version
+	number as a suffix to the binary names. You can read more about this 
+	by running configure (./configure --help).
+
+
+	The following two examples demonstrate a typical use of these options.
+
+	ECGS-1.1.2:
+
+	sed -e s/gcc-2.95.2/egcs-1.1.2/ glibc-2.2.patch | patch -p0; \
+	mkdir egcs-build && cd egcs-build && \
+	../egcs-1.1.2/configure --prefix=/usr  \
+	--enable-languages --enable-languages=c,c++ \
+	--enable-threads=posix \
+	--enable-version-specific-runtime-libs \
+	--program-transform-name="s/\\\\(.*\\\\)/\\\\1-2.91.66/" && \
+	make bootstrap && make install && \
+	ln -s /usr/bin/gcc-2.91.66 cc-2.91.66
+	
+	GCC-2.95.3:
+
+	bzip2 -dc gcc-2.95.3-2.patch.bz2 | patch -Np1; &&
+	mkdir ../gcc-build && cd ../gcc-build &&
+	../gcc-2.95.3/configure --prefix=/usr \
+	--enable-languages --enable-languages=c,c++ \
+	--enable-threads=posix \
+	--enable-version-specific-runtime-libs \
+	--program-transform-name="s/\\\\(.*\\\\)/\\\\1-2.95.3/" && \
+	make bootstrap && make install \
+	ln -s /usr/bin/gcc-2.95.3 cc-2.95.3
+
+
+CONFIGURE YOUR ENVIRONMENT:
+
+
+	To configure the environment, several variables need to be set. One
+	is the PATH, it should include the path to wherever the binaries
+	have been installed. If the binaries are installed in a location like
+	/usr/bin then that location needs to be in your PATH. The two 
+	variables that are used to select the compiler also need to be set.
+	These are CC and CXX and they should point to cc-version and 
+	c++-version respectively.
+
+	For example, if you want gcc-2.95.3 to be the default, the following
+	commands can be used.
+
+	CC=cc-2.95.3 && \
+	CXX=c++-2.95.3 && \
+	export CC CXX
+
+	These commands can be placed in an rc file that will be executed when 
+	your shell is spawned. For example, /etc/profile or ~/.bashrc.
+	
+	GNU tools, such as autoconf or make can detect your compiler by 
+	looking at these variables. In most cases, there is nothing extra that
+	will need to be done to use these variables to select a compiler. 
+	However, there are exceptions and there are notes at the end of the 
+	document about those exceptions.
+
+
+SELECTING A DIFFERENT COMPILER:
+
+	
+	Selecting a different compiler simply becomes a matter of chaning 
+	the value of the CC and CXX variables.
+
+	For instance, to switch from the currently selected compiler to 
+	egcs the following commands can be used 
+ 
+	CC=cc-2.91.66 && \
+	CXX=c++-2.91.66 && \
+	export CC CXX
+
+
+
+NOTES:
+
+
+
+	1.) The '--program-transform-name' option doesn't do anything!?
+
+
+	This is can be frustrating because you won't find the error until
+	you have compiled and installed the source and notices the binary
+	names have not changed. The reason is almost certainly because the
+	regular expression has not been escaped properly. Test your expression
+	with sed and quadruple the number of \'s used to escape it.
+
+	Why? Well, suppose you want to add a suffix to a word. The following 
+	sed expression does this. You need to escape special characters for 
+	sed.
+
+	echo name | sed -e "s/\(.*\)/\1-suffix/"
+	
+	If you want to get that expression into a Makefile as a string that 
+	the Makefile will eventually execute, you have to escape that 
+	expression.
+
+	s/\\(.*\\)/\\1-suffix/
+
+	So, to get the string show above from a shell prompt into any program 
+	you have to escape it again for the shell. So you end up with,
+
+	s/\\\\(.*\\\\)/\\\\1-suffix/
+
+	And the configure option becomes,
+
+	--program-transform-name="s/\\\\(.*\\\\)/\\\\1-suffix/"
+
+
+	2.) Things compile, but they are broken!?
+
+
+	You may be are mixing compiler versions. Make sure your CC and CXX
+	variables are both using the binaries with the same suffix.
+	
+
+	DON'T (suffixes are mismatched)
+
+	CC=cc-2.91.66
+	CXX=cc-2.95.3
+
+	DO (suffixes are matched)
+
+	CC=cc-2.95.3 
+	CXX=cc-2.95.3
+
+
+	3.) glibc doesn't compile now!?
+
+	Because glibc assumes your c preprocessor is named cpp and is
+	located in /lib/cpp you may have difficulty compiling glibc.
+	To make glibc choose the correct preprocessor binary the following
+	path can be applied to the source for glibc-2.2.4 so the correct
+	compiler will be chosen for a linux system.
+
+cat > glibc-2.2.4-cpp0.patch << "EOF"		 
+
+2002-20 Eric Crahen <crahen@cse.buffalo.edu>
+
+Make sunrpc compile selecting the version specific 
+c preprocessor reported by whatever gcc CC points at.
+
+--- glibc-2.2.4-vanilla/sunrpc/rpc_main.c	Thu Apr 12 17:02:07 2001
++++ glibc-2.2.4/sunrpc/rpc_main.c	Sun Jan 20 20:35:51 2002
+@@ -1323,7 +1323,7 @@
+ 		    return 0;
+ 		  {
+ 		    size_t len = strlen (argv[i]);
+-		    pathbuf = malloc (len + 5);
++		    pathbuf = malloc (len + 6);
+ 		    if (pathbuf == NULL)
+ 		      {
+ 			perror (cmdname);
+@@ -1331,7 +1331,7 @@
+ 		      }
+ 		    stpcpy (stpcpy (pathbuf,
+ 				    argv[i]),
+-			    "/cpp");
++			    "/cpp0");
+ 		    CPP = pathbuf;
+ 		    cppDefined = 1;
+ 		    goto nextarg;
+--- glibc-2.2.4-vanilla/sunrpc/Makefile	Mon Jul 23 13:55:17 2001
++++ glibc-2.2.4/sunrpc/Makefile	Sun Jan 20 20:31:26 2002
+@@ -126,8 +126,8 @@
+ 	$(+link)
+ 
+ # Tell rpcgen where to find the C preprocessor.
+-rpcgen-cmd = $(built-program-cmd) -Y `$(CC) -print-file-name=cpp | \
+-				      sed 's|/cpp$$||'`
++rpcgen-cmd = $(built-program-cmd) -Y `$(CC) -print-file-name=cpp0 | \
++				      sed 's|/cpp0$$||'`
+ 
+ # Install the rpc data base file.
+ $(inst_sysconfdir)/rpc: etc.rpc $(+force)
+EOF
+
+
+	4.) The kernel doesn't compile now!?
+
+
+	In the kernel, 'gcc' is hard coded gcc into the Makefile. One way to 
+	overcome this is to use sed.
+
+	sed -e s/gcc/$CC/ Makefile | make -f - dep && \
+	sed -e s/gcc/$CC/ Makefile | make -f - modules && \
+	sed -e s/gcc/$CC/ Makefile | make -f - modules_install && \
+	sed -e s/gcc/$CC/ Makefile | make -f - bzImage
+
+
+	5.) XFree86 doesn't compile now / An X11 program doesn't compile !?
+
+
+	Compiling this is tricky when you don't have a common name for your 
+	compiler. XFree86 is setup using imake which keeps a database of 
+	dependancies. Typically, imake assumes certain compilers are installed
+	and looks for them using the common names and locations /lib/cpp and 
+	/usr/bin/gcc. These assumptions can be changed by updating the correct
+	configuration file in the xc/config/cf directory.
+
+	For a linux system, you can update that file with the following 
+	commands.
+
+	cp config/cf/linux.cf config/cf/linux.cf.orig && \
+	IMAKECPP=`$CC -print-file-name=cpp0` && export IMAKECPP && \
+	sed -e "s/gcc/$CC/;s/.++/$CXX/;" config/cf/linux.cf.orig > \
+	/tmp/linux.cf && \
+	sed -e s,\\\/lib\\\/cpp,`echo $IMAKECPP | sed 's|/|\\\\/|g'`, \
+	/tmp/linux.cf | sed '/# define CppCmd/a \
+	# ifndef RawCppCmd \
+	#  define RawCppCmd CppCmd -A- \
+	# endif \
+	' > config/cf/linux.cf && \
+	rm -f /tmp/linux.cf
+
+	The top part of this command allows both make and imake to 
+	use the compiler names you specify in CC and CXX.
+
+	The lower portion,
+
+	sed '/# define CppCmd/a\
+	# ifndef RawCppCmd \
+	#  define RawCppCmd CppCmd -A- \
+	# endif \
+	'
+	Tells the preprocessor to use the correct undef option. 
+	By default, it will attempt to used -undef, which may not 
+	work with your compiler depending on the version and how you've 
+	compiled it. The wrong undef option will cause you to end up with
+	a bunch of blank man pages.
+
+	Some X11 program use imake, so you might want to place those 
+	first few lines (those that define IMAKECPP) in an rc file.
+ 	
+	6.) Another program doesn't compile now!?
+
+
+	I've shown two of the trickier programs to compile. The vast majority
+	of source not configurable using autoconf will set a variable for the 
+	compiler in a Makefile. To overcome that, all that needs to be done is 
+	to override that variable.
+
+	You can tell make to look at your environment using 'make -e'.
+	OR
+	You can set some vairables 'using make VAR=val'.
+	
+
+	7.) My cross compiler isn't renamed!?
+
+
+	This is because of how gcc built. You can change the 
+	program_transform_name variable in the Makefile, but you can't change 
+	the program_transform_cross_name variable. To update that you'd need
+	to edit the Makefile template in the gcc subdirectory of your gcc 
+	source tree. Below is a patch for this that will patch the two
+	compilers used as examples throughout the document.
+
+cat > gcc-cross-rename.patch << "EOF"		 
+
+2002-21 Eric Crahen <crahen@cse.buffalo.edu>
+	
+	* Rename the cross compiler binaries to have a version
+	  suffix for GCC-2.95.3 and EGCS-1.1.2
+ 
+--- gcc-2.95.3/gcc/Makefile.in.orig	Mon Jan 21 09:19:33 2002
++++ gcc-2.95.3/gcc/Makefile.in	Mon Jan 21 09:20:47 2002
+@@ -2569,7 +2569,7 @@
+ 	  $(INSTALL_PROGRAM) xgcc$(exeext) $(bindir)/$(GCC_INSTALL_NAME)$(exeext); \
+ 	  rm -f $(bindir)/$(target_alias)-gcc-1$(exeext); \
+ 	  $(LN) $(bindir)/$(GCC_INSTALL_NAME)$(exeext) $(bindir)/$(target_alias)-gcc-1$(exeext); \
+-	  mv $(bindir)/$(target_alias)-gcc-1$(exeext) $(bindir)/$(target_alias)-gcc$(exeext); \
++	  mv $(bindir)/$(target_alias)-gcc-1$(exeext) $(bindir)/$(target_alias)-gcc-2.95.3$(exeext); \
+ 	fi
+ 
+ # Install the info files.
+
+--- egcs-1.1.2/gcc/Makefile.in.orig	Mon Jan 21 08:41:22 2002
++++ egcs-1.1.2/gcc/Makefile.in	Mon Jan 21 08:57:45 2002
+@@ -2403,7 +2403,7 @@
+ 	  $(INSTALL_PROGRAM) xgcc$(exeext) $(bindir)/$(GCC_INSTALL_NAME)$(exeext); \
+ 	  rm -f $(bindir)/$(target_alias)-gcc-1$(exeext); \
+ 	  $(LN) $(bindir)/$(GCC_INSTALL_NAME)$(exeext) $(bindir)/$(target_alias)-gcc-1$(exeext); \
+-	  mv $(bindir)/$(target_alias)-gcc-1$(exeext) $(bindir)/$(target_alias)-gcc$(exeext); \
++	  mv $(bindir)/$(target_alias)-gcc-1$(exeext) $(bindir)/$(target_alias)-gcc-2.91.66$(exeext); \
+ 	fi
+ 
+ # Install the info files.
+EOF

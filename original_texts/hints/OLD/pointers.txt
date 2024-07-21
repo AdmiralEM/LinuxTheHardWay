@@ -1,0 +1,8 @@
+TITLE:		Pointers to useful resources
+LFS VERSION:	any
+AUTHOR:		Simon Perreault <nomis80@videotron.ca>
+
+SYNOPSIS:
+	These are links to hard-to-find information.
+
+HINT:

@@ -1,0 +1,133 @@
+AUTHOR: Richard A Downing FBCS CITP (geek109 at hotmail dot com)
+
+DATE: 2004-03-29
+
+LICENSE: Creative Commons Attribution-NonCommercial-ShareAlike License
+http://creativecommons.org/licenses/by-nc-sa/1.0/
+
+
+SYNOPSIS: How to replace SysVinit with runit when you build LFS.
+
+PRIMARY URI:
+http://wiki.linuxfromscratch.org/index.php?pagename=Building%20LFS%20with%20Runit
+
+IMPORTANT NOTE:
+-------------------------------------------------------------------------
+This hint is NOW UNMAINTAINED.  The Author no longer uses runit
+and does not support using it.  The copyright is not chnged by this fact.
+-------------------------------------------------------------------------
+
+DESCRIPTION:
+
+The LFS book installs SysVinit and a set of bootscripts. Together
+these provide the mechanism for starting processes that run under the
+Linux Kernel, and every process is a child of 'init', process
+one. Other schemes exist, notably the BSD-init scripts, but these are
+just an alternative set of scripts. This hint uses runit
+http://smarden.org/runit/ by Gerrit Pape, a completely different
+scheme that replaces init, and all its paraphernalia (with its own
+paraphernalia). Runit is derived from the ideas of DJ Bernstein, but
+the applications can easily be installed in FHS conformant places.
+
+
+PREREQUISITES: None. This hint should apply to all versions of LFS.
+
+HINT:
+
+Introduction
+------------
+
+There is a hint at http://109bean.org.uk/betterboot that explains how
+to modify an existing LFS system to use runit. Those pages contain a
+lot of explanatory text that is not repeated here. If you want
+explanation, go and read that.
+
+
+This hint will just show the minimal steps to build a fresh LFS system
+using the book as modified by these instructions.
+
+
+    Note: If you are reading this as a text document, you might find
+    it better to look at the wiki version, which is maintained
+    on-line. http://wiki.linuxfromscratch.org
+
+
+Obtaining Sources and Scripts
+-----------------------------
+
+Download the latest version of Gerrit Pape's packages from his website:
+
+http://smarden.org/runit/runit-1.0.1.tar.gz
+
+http://smarden.org/socklog/socklog-1.4.2.tar.gz
+
+http://smarden.org/ipsvd/ipsvd-0.8.2.tar.gz
+
+Note: There may be later versions - the ones above are the ones that
+have been tested with these instructions
+
+Follow the LFS book up to SysVInit
+----------------------------------
+
+Carefully follow the LFS book through all its chapters until you get
+to the page concerning SysVInit. Now follow these instructions:
+
+Building and installing runit
+-----------------------------
+
+A word of warning, runit is designed to be unpacked into a directory,
+/package, which is neither LFS nor FHS conformant. These instructions
+therefore build an LFS and FHS conformant version.
+
+
+Unpack the runit tarball, it will unpack as admin/runit-1.0.1.
+
+cd admin/runit-1.0.1
+package/compile
+cd command
+install runit runit-init /sbin
+install runsvdir runsvchdir runsv runsvstat runsvctrl  /usr/sbin
+install svlogd svwaitdown svwaitup chpst utmpset /usr/sbin
+cp ../man/* /usr/share/man/man8
+ln -s /sbin/runit-init /sbin/init
+
+Install runit's bootscripts
+---------------------------
+
+These scripts tell runit how to boot your system, how to run the
+initial tty terminals, and how to shut down the system (including
+forcing a shutdown with ctrl-alt-del). They depend on the
+LFS-bootscripts that you will install in chapter 7 of the LFS book.
+
+Obtain the scripts from the LFS Hints webpage's attachments link.
+http://www.linuxfromscratch.org/hints/downloads/attachments/
+
+Continue from the LFS book
+--------------------------
+
+Now continue from the LFS book starting with the section after SysVInit.
+
+The section How does the booting process with these scripts work? is
+not relevant, and can be skipped.
+
+Finally, you will want to understand what you have built, so visit the
+runit webpages at http://smarden.org/runit.
+
+You will also want to know how to build BLFS packages with runit
+support, if so, visit the author's runit pages at
+http://109bean.org.uk/betterboot.
+
+
+ACKNOWLEDGEMENTS:
+
+This hint started life on the LFS wiki (and the best version is still
+maintained there).  Kind people make improvements to it there, so far
+these are: Uli Fahrenberg, Anderson Lizardo.
+
+CHANGELOG:
+
+    [2004-03-25]
+	*  Wrote the first draft on the wiki.
+    [2004-03-29]
+	*  Issued 1st Text version for the Hints project.
+

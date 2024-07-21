@@ -1,0 +1,154 @@
+AUTHOR: Jimmy Anderson <jimmy.anderson1057@gmail.com>
+
+DATE: 2011-11-10
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: How to build LFS 7.0 for ARM
+
+DESCRIPTION:
+
+This hint describes how to build LFS version 7.0 on an ARM system.
+
+Most of the LFS book instructions also work, as is, for building an ARM
+LFS system.   But not all of them.   A few deviations from the instructions 
+found in the LFS books are needed to build an ARM LFS system.
+
+This hint does not describe how to build the ARM kernel or boot
+loader.   There is a number of variations of bootloader and kernel
+configurations used on ARM systems.  This hint doesn't try to 
+address that and so the bootloading and kernel building portions of
+LFS on ARM are left as an exercise for the reader.  
+
+This hint is specifically tested with LFS 7.0 only.   Building other
+versions of LFS for ARM might be similar to that described in this
+hint but be aware that this hint is only tested to work with LFS 7.0.
+
+ATTACHMENTS:
+
+The attachment is a diff of the LFS 7.0 book which contains the 
+changes to the user command changes that are needed to build for ARM. 
+The instructions in this hint should be sufficient for building ARM.
+However the attachment may be useful so the reader more clearly 
+understands what needs to be done differently for building on the ARM 
+architecture.  The user could also use the attachment to create 
+a version of the book which can be used by jhalfs to do an 
+automated build of an ARM lfs system.
+
+PREREQUISITES:
+
+An ARM machine running the proper tool set is required to build LFS.   
+This hint was tested specifically on a Seagate Dockstar which has
+Arch Linux ARM installed (version approx 8/2011 -- Arch Linux uses a 
+'rolling release' model).   Crux ARM 2.6 or 2.7 will also likely work
+as an LFS ARM build host but was not specifically tested.
+
+Familiarity with building LFS for x86 machines.  The reader ought to
+have built LFS for x86 at least once prior to attempting a build for
+ARM.
+
+You will need to download the following additional (besides those
+already listed in the book...) tarballs to build LFS 7.0 for ARM:
+
+u-boot-2011.06.tar.bz2:
+
+wget ftp://ftp.denx.de/pub/u-boot/u-boot-2011.06.tar.bz2
+
+glibc-ports-2.14.1.tar.bz2:
+
+wget http://ftp.gnu.org/gnu/libc/glibc-ports-2.14.1.tar.bz2
+
+
+HINT:
+
+Always follow the instructions in the LFS book exactly as written 
+except for the deviations as described in this hint...
+
+JHALFS can be used to build LFS for ARM but the user must download
+the LFS book, apply the needed ARM changes to it, and then point JHALFS
+at the modified book to use as a 'working copy'.  Also jhalfs internally
+generates it's own version of LFS_TARGET that does not work for ARM
+(at least not the eabi version of ARM) and so, if using jhalfs, you 
+must change the jhalfs source to make it set LFS_TARGET for ARM as 
+you need it to be set.   jhalfs is usable for building LFS ARM but 
+some tweaking is needed to make it work.
+
+----------------------------------------------------------
+In chapter 4, set your LFS TARGET as needed for ARM:
+
+LFS_TGT=$(uname -m)-lfs-linux-gnueabi
+
+This specific ARM target builds the 'eabi' version of the system.   
+Other possible ARM targets exist and may work also but were not tried.  
+The 'eabi' target, seems to be a more recent and preferred 
+ARM target.   So, that target is what this hint was developed with.
+----------------------------------------------------------
+
+----------------------------------------------------------
+In chapter 5, gcc pass1, add the ARM include files linux-eabi.h
+and linux-elf.h to the list of include files to be modified.  i.e.:
+
+$(find gcc/config -name linux64.h -o -name linux.h -o -name sysv4.h -o -name linux-eabi.h -o -name linux-elf.h)
+----------------------------------------------------------
+
+----------------------------------------------------------
+In chapter 5, glibc, right after unpacking and cd'ing into the
+glibc source directory, unpack the glibc ports tarball as 
+follows:
+
+tar xvfj ../glibc-ports-2.14.1.tar.bz2; mv glibc-ports-2.14.1 ports
+----------------------------------------------------------
+
+----------------------------------------------------------
+And again, in chapter 6, glibc, unpack the glibc ports tarball as 
+done in chapter 5.
+----------------------------------------------------------
+
+----------------------------------------------------------
+In chapter 6, zlib, omit '-mstackrealign' from the
+definition of CFLAGS.   It is an unsupported compiler option on
+ARM.   
+----------------------------------------------------------
+
+----------------------------------------------------------
+In chapter 6, grub, always skip building grub.
+It is not needed on ARM and typically will not even compile for 
+ARM.  You can skip the download of the grub tarball if you like.
+----------------------------------------------------------
+
+----------------------------------------------------------
+At the end of chapter 6, build and install the 'mkimage' tool from 
+the Das u-boot package:
+
+tar xvfj u-boot-2011.06.tar.bz2
+cd u-boot-2011.06
+make tools-all
+cp tools/mkimage /usr/bin
+cd .. ;rm -fr u-boot-2011.06
+
+U-boot is often used as the bootloader on ARM boards.    The 'mkimage' 
+tool is needed when building a kernel that is will be booted by u-boot.
+Thus, the mkimage utility is typically needed for building ARM kernels.   If 
+your kernel build does not utilize the 'mkimage' utility, then you
+can just skip it.   (Although mkimage is a quick build and 
+it does no harm even when not needed...).
+----------------------------------------------------------
+
+
+
+Be prepared for a long build.   On a 1.2Ghz ARM system it took 
+about 48 hours of continuous building to complete the build of 
+LFS 7.0 (including all final system test suites...).   
+
+The test suites in an ARM build have more failures than is seen
+when building for X86.  However, the resulting system runs without any
+obvious problems.   
+
+
+ACKNOWLEDGEMENTS:
+
+The excellent work of the LFS development team.
+
+CHANGELOG:
+[2011-11-10]
+  * Initial hint.

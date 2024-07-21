@@ -1,0 +1,358 @@
+TITLE:		Installing a bootsplash screen with progress bar
+LFS VERSION:	3.3+
+AUTHOR:		Bryan Gale <bryan@2dz.co.uk>
+
+SYNOPIS:
+	How to beautify the boot process with splash screen, progress bar and
+	animation. Will also give you a pretty background on text consoles
+
+HINT:
+
+Required Packages
+-----------------
+
+The SuSE bootsplash kernel patch (versions available for 2.4.18 and 2.4.20
+kernels):
+	ftp://ftp.suse.com/pub/people/stepan/bootsplash/kernel/
+	bootsplash-3.0.7-2.4.18-vanilla.diff
+	
+Or
+	ftp://ftp.suse.com/pub/people/stepan/bootsplash/kernel/
+	bootsplash-3.0.7-2.4.20-vanilla.diff
+
+The splashutils package:
+	ftp://ftp.suse.com/pub/people/stepan/bootsplash/rpm-sources/bootsplash/
+	splashutils.tar.bz2
+
+The frame-buffer mng player:
+	ftp://ftp.suse.com/pub/people/stepan/bootsplash/rpm-sources/bootsplash/
+	fbmngplay-0.5a.tar.bz2
+
+Some helper scripts:
+	ftp://ftp.suse.com/pub/people/stepan/bootsplash/rpm-sources/bootsplash/
+	scripts.tar.bz2
+
+A sample theme:
+	ftp://ftp.suse.com/pub/people/stepan/bootsplash/themes/
+	Theme-Linux.tar.bz2
+	
+This hint will assume these have been downloaded to /tmp
+
+You should also have installed libmng and libjpeg and as described in the Beyond
+Linux From Scratch book
+
+
+Installing the kernel patch
+---------------------------
+
+Change to the directory containing your kernel sources, and apply the patch. You
+will then need to configure your kernel
+
+	cd /usr/src/linux &&
+	patch -p1 < /tmp/bootsplash-3.0.7-2.4.*-vanilla.diff &&
+	make menuconfig
+	
+You should enable the following options. Make sure they are compiled into the
+kernel, and not as modules
+
+	Code maturity level options  --->
+		Prompt for development and/or incomplete code/drivers
+	Block devices  ---> RAM disk support
+	Block devices  ---> Initial RAM disk (initrd) support
+	Console drivers  ---> Video mode selection support
+	Console drivers  ---> Frame-buffer support --->
+		Support for frame buffer devices
+		VESA VGA graphics console
+		Use splash screen instead of boot logo
+		
+Now compile and install the kernel
+
+	make dep &&
+	make bzImage &&
+	make modules &&
+	make modules_install &&
+	cp arch/i386/boot/bzImage /boot/lfskernel
+
+
+Installing user space stuff
+---------------------------
+
+Unpack splashutils.tar.bz2, compile and copy the required binaries to /sbin
+
+	cd /tmp &&
+	tar xvjf splashutils.tar.bz2 &&
+	cd splashutils &&
+	make &&
+	cp splash fbresolution /sbin &&
+	cd ..
+
+The two binaries we need are splash and fbresolution, so the rest can be
+deleted. We also need one script from the scripts.tar.bz2 package
+
+	tar xvjf scripts.tar.bz2 &&
+	cd scripts &&
+	chmod +x bootanim &&
+	cp bootanim /sbin &&
+	cd ..
+	
+The rest of the scripts are largely distro specific, so they can be deleted. The
+one we save, bootanim, is used by splash to start and stop animations. The mng
+player will also neeed to be installed to actually play the animations
+
+	tar xvjf fbmngplay-0.5a.tar.bz2 &&
+	cd fbmngplay &&
+	make
+	
+You may get compile errors, but hopefully the fbmngplay binary will be there
+
+	cp fbmngplay /sbin
+	
+If you do experence build errors they probably occured while building
+fbmngplay.static. If you want a static version of fbmngplay, see the note at the
+end of this hint
+	
+
+Installing a bootsplash theme
+-----------------------------
+
+We need to create a directory for our themes
+
+	mkdir -p /etc/bootsplash/themes
+
+Move the sample theme (or any other theme from http://www.bootsplash.og) to this
+directory, and un-tar it
+
+	cd /etc/bootsplash/themes &&
+	tar xvjf /tmp/Theme-Linux.tar.bz2
+
+The programs installed earlier will search for the theme in
+/etc/bootsplash/themes/current, so we need to create a symlink
+
+	ln -s Linux current
+
+When you want to use a different theme you should delete this symlink and create
+another one to your new un-tarred theme
+
+	rm current &&
+	ln -s MYNEWTHEME current
+	
+
+Updating Lilo and rebooting
+---------------------------
+
+You will need to edit /etc/lilo.conf. Under the entry for your linux kernel add
+the line
+
+	vga=791
+	
+This is so linux boots into a screen resolution that matches the size of the
+bootsplash screen. You will also need to add
+
+	initrd=/boot/initrd
+
+To boot into silent mode (i.e. boot messages hidden), you will need also to add
+
+	append="splash=silent"
+	
+Not all themes have a silent mode, so this will not always apply.
+
+The following will need to be done now, and everytime you want to change theme.
+Use splash to create a ram disk image of the bootsplash screen
+
+	splash -s -f \
+	/etc/bootsplash/themes/current/config/bootsplash-1024x768.cfg > \
+	/boot/initrd
+
+Now update the mbr and reboot, and you should see your new splash screen
+
+	lilo &&
+	shutdown -r now
+	
+
+Utilising the progress bar
+--------------------------
+
+If your theme is enabled with a progress bar, you will need to make some changes
+to your bootscripts to get it to work. The progress bar can be contolled by
+echoing commands to /proc/splash. For a tidy way to use this, you should add the
+following code to your /etc/rc.d/init.d/functions script
+
+	progressbar()
+	{
+
+		if [ $# != 1 ]
+       		then
+                	echo "Usage: progressbar {progress}"
+        		exit 1
+        	fi
+		
+		echo "show $(( 65534 * $1 / 100 ))" > /proc/splash
+
+	}
+
+Now edit your bootscripts in /etc/rc.d/rcsysinit.d and (by default)
+/etc/rc.d/rc3.d to use this function. In general, before each instance of
+loadproc, you should add
+
+	progressbar XXX
+
+Where XXX is boot progress out of 100. The LFS book explains the order in
+which the scripts will be run, and it will take some trial and error to get a
+smooth running progress bar. Remeber not to use this function before /proc
+has been mounted
+
+
+Utilising animation
+-------------------
+
+The splash program handles animation, examining the
+/etc/bootsplash/themes/current/config/animations.cfg file, if your theme has
+one. Again, a function should be added to /etc/rc.d/init.d/functions file
+
+	animate()
+	{
+
+		if [ $# = 0 ]
+       		then
+                	echo "Usage: animate {hook}"
+        		exit 1
+        	fi
+
+		splash "$*"
+
+	}
+
+To use it place the following line in your bootscripts wherever an animation
+should be played
+
+	animate HOOK
+
+To determine values for HOOK, you need to look at
+/etc/bootsplash/themes/current/config/animations.cfg. The file takes the format
+
+	HOOK:command
+	HOOK:command
+
+This is from the Redmond theme at http://www.bootsplash.org
+	
+	fsck start:bootanim start bounce.mng
+	master:bootanim stop
+	shutdown: bootanim start bounce.mng
+	
+The command bootanim is the script we installed earlier, which handles the
+animations, and uses the fbmngplay command to actually play the things. To see
+a full list of paramemters, simply run bootanim. In this example we should add
+the following to the bootscript where fsck is run
+
+	animate fsck start
+
+You should place the line
+
+	animate master
+
+just before the bootscripts finish, as this will stop all animations.
+
+The line
+	
+	animate shutdown
+
+should be placed somewhere in the shutdown scripts. Look in
+/etc/rc.d/rc6.d to see what will be run, and insert the line somewhere
+before the killproc-ing begins.
+
+There is consistency between theme about these hooks, so once you have them in
+place, they should not need changing. No harm should come from trying to play a
+non existent animation.
+
+
+Miscellaneous
+-------------
+
+Using splash, you can add or change a background on any of your terminals
+
+	splash -n -s -u 1 \
+	/etc/bootsplash/themes/tty2-theme/config/bootsplash-1024x768.cfg
+
+	splash -n -s -u 2 \
+	/etc/bootsplash/themes/tty3-theme/config/bootsplash-1024x768.cfg
+
+	splash -n -s -u 3 \
+	/etc/bootsplash/themes/tty4-theme/config/bootsplash-1024x768.cfg
+	
+	splash -n -s -u 4 \
+	/etc/bootsplash/themes/tty5-theme/config/bootsplash-1024x768.cfg
+	
+	splash -n -s -u 5 \
+	/etc/bootsplash/themes/tty6-theme/config/bootsplash-1024x768.cfg
+	
+You can remove the background with
+
+	splash -s -n -u CONSOLENUMBER
+	
+You can retrun to silent mode using
+
+	echo "silent" > /proc/splash
+
+This may be useful for creating a shutdown screen
+
+Verbose mode can be triggered with F2 or
+	
+	echo "verbose" > /proc/splash
+
+You may want to place this in the print_status function of
+/etc/rc.d/init.d/functions, inside the failure case, or use it when your hard
+drive is being scanned for errors. You may also want to insert it somewhere
+into your bootscripts if silent mode doesn't automatically give way to verbose
+when your system finishes booting.
+
+If you want to boot into a resolution other than 1024x768, simply follow the
+instructions as usual, but replace each mention of bootsplash-1024x768.cfg with
+bootsplash-XRESxYRES.cfg (you will of course need to make sure this file exists
+within your theme). You will also need to change the vga=791 line in lilo.conf
+appropriately. Here's a table I borrowed from the Gentoo forums:
+
+Colors-----640x480-----800x600-----1024x768-----1280x1024
+
+256----------769---------771----------773----------775
+32000--------784---------787----------790----------793
+65000--------785---------788----------791----------794
+16.7 Mill.---786---------789----------792----------795
+
+
+Compiling a static fbmngplay
+----------------------------
+
+If you keep /usr on a different partition to /, then you will need to use the
+static version of fbmngplay. This is so it does not depend on any libraries that
+are on a partition that may not have yet been mounted. To rid yourself of the
+compile error, edit the line in /tmp/fbmngplay/Makefile
+
+	LIBSS    = $(LIBDIR)/libmng-mini.a $(LIBDIR)/libz.a -lm
+
+To
+
+	LIBSS    = $(LIBDIR)/libmng.a $(LIBDIR)/libjpeg.a $(LIBDIR)/libz.a -lm
+
+Then copy /tmp/fbmngplay/fbmngplay.static to /sbin/fbmngplay
+
+The splash command does not have any such dependencies problems, as it links
+only to glibc.
+
+(Thanks to Dagmar d'Surreal for this bit)
+
+Sources
+-------
+
+http://www.bootsplash.org
+http://forums.gentoo.org/viewtopic.php?t=26494 (Thanks to kachaffeous)
+The blfs-support mailing list
+
+
+
+
+
+
+	
+
+
+

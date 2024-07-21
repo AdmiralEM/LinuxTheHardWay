@@ -1,0 +1,79 @@
+#!/bin/sh
+# [Based on the website script by Olivier Pérès]
+# [Modified by Tushar Teredesai]
+# [License: GPL]
+# 
+# Script to verify that the hint meets the basic formatting standards.
+# Additional checks are performed by the maintainer before committing.
+# The section checks if all the required sections are present in the
+# hint file.
+#
+# It outputs the sections that are used for the online hint index.
+# Verify the output for correctness.
+
+if [ "$DEBUG" = "yes" ]
+then
+	set -x
+fi
+
+if [ "$1" = "" ]
+then
+	echo "ERROR: Hint File not specified."
+	echo "Usage: `basename $0` hint_file.txt"
+	exit 1
+fi
+HINT_FILE="$1"
+if [ ! -f "$HINT_FILE" ]
+then
+	echo "ERROR: Hint File not found"
+	exit 1
+fi
+
+AUTHORS=`echo \`grep "^AUTHOR:" $HINT_FILE | cut -f2 -d: | sed 's/$/,/'\` | sed 's/,$//'`
+DATE=`echo \`grep -h "^DATE:" $HINT_FILE | cut -f2 -d:\``
+LICENSE=`echo \`grep -h "^LICENSE:" $HINT_FILE | cut -f2 -d:\``
+SYNOPSIS=`echo \`grep -h "^SYNOPSIS:" $HINT_FILE | cut -f2 -d:\``
+DESCRIPTION=`grep -h "^DESCRIPTION:" $HINT_FILE`
+PREREQUISITES=`grep -h "^PREREQUISITES:" $HINT_FILE`
+HINT=`grep -h "^HINT:" $HINT_FILE`
+CHANGELOG=`grep -h "^CHANGELOG:" $HINT_FILE`
+if [ -z "$AUTHORS" ]
+then
+	echo "No author specified..."
+else
+	echo "Authors: $AUTHORS"
+fi
+if [ -z "$DATE" ]
+then
+	echo "DATE is missing..."
+else
+	echo "Date: $DATE"
+fi
+if [ -z "$LICENSE" ]
+then
+	echo "LICENSE is missing..."
+else
+	echo "License: $LICENSE"
+fi
+if [ -z "$SYNOPSIS" ]
+then
+	echo "SYNOPSIS is missing..."
+else
+	echo "Synopsis: $SYNOPSIS"
+fi
+if [ -z "$DESCRIPTION" ]
+then
+	echo "DESCRIPTION is missing..."
+fi
+if [ -z "$PREREQUISITES" ]
+then
+	echo "PREREQUISITES is missing..."
+fi
+if [ -z "$HINT" ]
+then
+	echo "HINT is missing..."
+fi
+if [ -z "$CHANGELOG" ]
+then
+	echo "CHANGELOG is missing..."
+fi

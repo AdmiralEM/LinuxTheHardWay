@@ -1,0 +1,163 @@
+AUTHOR: Martial Daumas <martial@nasgaia.org>
+
+DATE: 2003-09-18
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: How to create a basic mk_initrd command that works nice with LFS and devfs.
+
+DESCRIPTION:
+Initial Ram-disk (AKA initrd) is a minimal linux system that is run before the 
+actual root partition is mounted, it contains an executable file called linuxrc 
+(either a simple script as well as a more complicated compiled program) which is 
+automatically run, and when it's finished, normal boot sequence goes on. This 
+is mostly needed to load kernel modules needed to mount the root partition, thus
+it can be either a FS module (ie: reiserfs, jfs...), hardware modules (scsi, 
+raid controller, lvm...).
+
+If you use LFS for your own usage, you generally know in advance what will
+be the modules needed to get your root partition mounted, so you can simply 
+have theses supports compiled in the kernel, and forget about initrd, 
+and this hint. Initrd can be helpful in the following circumstances:
+
+-You want to distribute a pre-compiled kernel and keep it as small and scalable
+ as possible and you build a modular kernel, so that only needed modules are
+ loaded in memory (that's my case).
+
+-You are building an embedded system, for example on a live CD-ROM, and you 
+ don't know in advance on what kind of hardware it will be run, in which 
+ case linuxrc can be handy to proceed tests or interactive actions, or 
+ further tweakings.
+ 
+-Mounting your root partition requires features that are only available as 
+ a separate module for some reason.
+ 
+-Some features are impossible to compile at the same time in the kernel,
+ due to conflicts, once again initrd can help.
+
+In previous versions of the kernel, creating an initrd was possibly 
+complicated task, mainly in writing a correct linuxrc.  This hint is 
+intended for those using devfs, with a 2.4.x kernel, version 2.4.19
+and later. 2.6 kernel is not covered here but this hint will be updated 
+soon.
+
+You can build an initrd by hands easily, but here we'll rather create a
+mk_initrd command (as found on some other distros), that is strictly minimal, 
+and can be reused whenever you setup change. This is primarily intended to
+explain how thing works.
+
+PREREQUISITES:
+- linux kernel 2.4.19 or later, compiled with maximum modules use.
+- the ash shell (optionnal).
+- sufficient knowledge of how kernel works at boot time, as well
+as modules and boot loaders usage.
+- You also need the latest versions of these files (subject to possible 
+updates):
+
+	http://nasgaia.org/~martial/lfs/initrd.conf
+	http://nasgaia.org/~martial/lfs/linuxrc
+	http://nasgaia.org/~martial/lfs/mk_initrd
+
+HINT:
+1. Create the configuration file
+================================
+
+This file cans be use to scale the initrd to your needs.  Copy the
+initrd.conf file in /etc, remember to edit it as needed to suit your
+libraries version.
+
+Syntax: 
+
+In LFS_INITRD_BINARIES and LFS_INITRD_SHLIBS, the first fields specify
+where to find the needed file on the current system, the second ones specify 
+where to place this file in the initrd, and its name (if you need to change it
+for some reasons).
+
+LFS_INITRD_LNS allows to create symbolic links within the initrd (the second
+field is the name of the link)
+
+Other options are quite self-explanatory, feel free to adapt to your needs. If
+you don't have the ash shell, you can replace by bash, but you'll have less
+space left for modules, just remember to replace #!/bin/ash by #!/bin/bash
+later on in linuxrc. 
+
+2. Create the linuxrc script
+============================
+
+When the kernel is passed an initrd option via the boot loader, it uncompresses
+the ram-disk into the memory, and always try to execute the /linuxrc command.
+
+What we create here is strictly minimal, and thanks to the use of devfs, we 
+don't have to deal anymore with mounting the real root partition and no more
+needs for pivot_root, everything is done automatically by the kernel itself
+(which eases a _lot_ the whole process).
+
+Note: the value of the root partition is stored in the kernel at compile
+time, it that value is not correct (ie: you compiled the kernel somewhere
+else), see rdev(8) to change it.
+
+Create a /usr/share/mk_initrd directory to store linuxrc with:
+mkdir -p /usr/share/mk_initrd
+
+Now copy the file linuxrc  as /usr/share/mk_initrd/linuxrc - please make
+it executable as needed (chmod +x).
+
+3.Create the mk_initrd command
+==============================
+
+Last but not the least, we now create the mk_initrd command itself. The use
+of that script is explained later.
+
+Copy mk_initrd in /usr/sbin/ and make it executable:
+
+4. Using mk_initrd
+==================
+
+As usage() tells, you simply have to call mk_initrd passing a space
+separated list of modules with full paths (most of the time only one module
+is needed). The important thing to remind is that modules will be probed in the
+same order as given on the command line, thus, if you want to load both a
+device support (let's SCSI or RAID controller) and a FS support (let's
+say reiserfs or jfs) the hardware support logically should be activated prior
+to the FS support. If the hardware support comes in several modules, the order
+is generally significant too; use lsmod to determine which is the modules order.
+
+The linuxrc provided here is to be considered as an example, in many cases you'll
+have to include an other set of binaries and libs, and have linuxrc behave in
+a more complicated (or safer) manner.
+
+5. A word on booting with grub
+==============================
+
+To boot with initrd enabled, it's really simple, just add an initrd line
+in /boot/grub/menu.lst , like this:
+
+initrd (hdX,Y)/boot/initrd.gz
+
+under the line starting with "kernel /boot/...."
+
+Remember that devfs auto-mounting is required for this to work, so if
+you didn't compiled your kernel with the "mount at boot time" option,
+add devfs=mount on the kernel line (or append line with lilo).
+
+6. Ideas to make it better
+==========================
+
+Since it's possible to use larger initrd (either specify it when compiling
+the kernel, or use special boot option), you might want to use initrd in other
+contexts, and it worth having more available commands; give BusyBox a try, you
+can obtain a nice set of Unix commands in something like 200Ko (dynamically 
+linked against glibc, even less against ulibc or dietlibc).
+
+ACKNOWLEDGEMENTS:
+I especially wish to thank Richard Lightman for his help and explanations on how
+initrd now works, I'd certainly still be stuck with outdated docs without him :-)
+
+CHANGELOG:
+[2002-10-26]
+	* initial release
+[2003-09-16]
+	* new hints format update
+	* English correctness updates
+[2003-09-18]
+	* making separate files for scripts

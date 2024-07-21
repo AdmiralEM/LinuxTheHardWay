@@ -1,0 +1,989 @@
+AUTHOR: Ted Bullock <tbullock at Canada.com>
+
+DATE: 2005-10-12
+
+LICENSE: GNU General Public License
+
+SYNOPSIS: How to build LFS for different sub-architectures.
+
+PRIMARY URI:
+http://www.comlore.com/i386-pc-linux-gnu
+
+DESCRIPTION:
+Additive instructions on how to cross-build a LFS-system for different x86 sub-architectures.
+
+PREREQUISITES:
+The command-replacements are applicable for LFS 6.1+SVN20051009.  Similar changes will probably work 
+fine on other versions of the book; however your mileage may vary since the resources to 
+build a Linux system are under constant revision and replacement.  You should probably have 
+either completed a run through the book already or at least read the procedures before you 
+start.
+
+Note: There is a nicely formatted pdf and MS *.doc file available at the webpage listed above.  
+Please forgive my horrible web design aesthetics and meaningless babble on that webpage, 
+but the hint is available there so go take a peek!
+
+HINT:
+1.	CROSSCOMPILING-X86
+
+This hint is originally written by Nicholas Dille <webmaster at rakshas.de>.
+Later it was updated and maintained by Daniel Baumann.
+Now maintenance is done by Theodore Bullock <tbullock at Canada.com>
+
+1.1.	INTRODUCTION
+
+The GNU Compiler Collection (GCC) can build binaries for multiple platforms.
+
+It is not especially complicated to cross-compile between different sub-architectures, for 
+example, to build i386 binary executables on an i686 computer.  On the other hand, to cross-
+compile between totally different architectures, for example, building PowerPC binary 
+executables on an i386 machine, an entirely different tool-chain is required and is beyond the 
+scope of this hint.
+
+Ideally, all packages should get their information about the target from autoconf configuration 
+parameters and compiler flags.  Unfortunately this is not the reality.  Some packages use 
+different flags and a few packages, (notably GCC and Glibc), need other trickery to fake their 
+auto-detection in place of flags.
+
+Additionally, if you are trying to build LFS on a very old 386 then there is an extra trick to 
+completing the procedure.
+
+This hint does not cover building LFS onto i286 or older machines as these processors lack 
+some critical functionality to handle modern memory management.  For information on that 
+topic search the internet for embedded Linux solutions.
+
+1.2.	About $CHOST
+
+As with $LFS, we will use the variable $CHOST to specify the type of computer we are 
+compiling on. To cross-compile you have to replace $CHOST with a value matching for your 
+target computer.
+
+If your target machine is currently running a flavour of Linux then you can get the correct 
+value from your target computer with
+
+	# uname -m
+
+If you have not already a running Linux system on the target machine, use the corresponding 
+value from this list instead:
+
+	Intel 386:					i386
+	Intel 486:					i486
+	Intel Pentium 1 and MMX:			i586
+	Intel Pentium Pro, 2, 3, 4 and M:		i686
+	AMD K5, K6-1, K6-2 and K6-3:			i586
+	AMD Athlon 1, 2, 3, 4 and 5:			i686
+	IDT WinChip-C6, WinChip2:			i486
+	VIA C3:						i486
+
+The rest of the hint assumes you have set $CHOST as an environment variable, for example
+
+	# export CHOST="i386-pc-linux-gnu"
+
+1.3.	About $CFLAGS and $CXXFLAGS
+
+$CFLAGS and $CXXFLAGS are environment variable that pass user flags to GCC and G++ 
+respectively.  Often, they are used to set the optimization level (-On, where n is an integer). 
+For details about optimization, please refer to the optimization hint. Here, we force GCC to 
+compile for the desired sub-architecture using -march.
+
+Choose from this list:
+
+	Intel 386			i386
+	Intel 486			i486
+	Intel Pentium 1:		pentium
+	Intel Pentium MMX:		pentium-mmx
+	Intel Pentium Pro:		pentiumpro
+	Intel Pentium 2:		pentium2
+	Intel Pentium 3:		pentium3
+	Intel Pentium 4 and M:		pentium4
+
+	AMD K5:				pentium
+	AMD K6-1:			k6
+	AMD K6-2:			k6-2
+	AMD K6-3:			k6-3
+	AMD Athlon 1 (Classic):		athlon
+	AMD Athlon 2 (Thunderbird):	athlon-tbird
+	AMD Athlon 3 (XP):		athlon-xp
+	AMD Athlon 4 (Palomino):	athlon-4
+	AMD Athlon 5 (MP):		athlon-mp
+
+	IDT WinChip-C6:			winchip-c6
+	IDT WinChip-2:			winchip2
+	VIA C3:				c3
+
+The rest of the hint assumes you have set $CFLAGS and $CXXFLAGS as environment 
+variables, for example:
+
+	export CFLAGS="-march=i386"
+	export CXXFLAGS="-march=i386"
+
+1.3.1.	ATTENTION REGARDING OPTIMIZATION
+
+If you use optimization, in the majority of cases the binaries can only be used on the target 
+machine. This means, sharing self-generated binary-packages between different hosts is not 
+possible.
+
+2.	LFS-Book
+
+The following sections are ordered as a skeleton of the information in the LFS book
+2.1.	Chapter 4: Final Preparations
+
+2.1.1.	About $LFS
+
+Add:
+export CHOST="<value>"
+export CFLAGS="<value>"
+export CXXFLAGS="<value>"
+
+Note:	Please replace <value> with the proper strings as was discussed earlier
+
+
+
+2.2.	Chapter 5: Constructing a Temporary System
+
+2.2.1.	Binutils-2.16.1
+
+Change:
+
+../binutils-2.16.1/configure --prefix=/tools --disable-nls
+
+To:
+../binutils-2.16.1/configure --host="$CHOST" --target="$CHOST" \
+--prefix=/tools --disable-nls
+
+2.2.2.	GCC-4.0.2 - Pass 1
+
+Change:
+../gcc-4.0.2/configure --prefix=/tools \
+--libexecdir=/tools/lib --with-local-prefix=/tools \
+--disable-nls --enable-shared --enable-languages=c
+
+To:
+../gcc-4.0.2/configure --host="$CHOST" --target="$CHOST" \
+--prefix=/tools --libexecdir=/tools/lib \
+--with-local-prefix=/tools --disable-nls \
+--enable-shared --enable-languages=c
+
+And then, change:
+make bootstrap
+
+To:
+make BOOT_CFLAGS="$CFLAGS" bootstrap
+
+2.2.3.	Linux-Libc-Headers-2.6.12.0
+
+No changes - we are just copying the header files here.
+
+2.2.4.	Glibc-2.3.5
+
+Ok, this one is a bit trickier and what you put here can have some important ramifications 
+later.  If your target machine is a 486 or higher you should follow the (>=486) instructions 
+otherwise you should follow the (386) instructions.  The reason for this is that the basic 386 
+instruction set is missing one of the atomic instructions important to multi-threading with the 
+NPTL threading system.  Instead you will use the linuxthreads library which does not require 
+this instruction.
+
+Change:
+
+../glibc-2.3.5/configure --prefix=/tools \
+--disable-profile --enable-add-ons \
+--enable-kernel=2.6.0 --with-binutils=/tools/bin \
+--without-gd --with-headers=/tools/include \
+--without-selinux
+
+(>=486)To:
+../glibc-2.3.5/configure --host="$CHOST" --target="$CHOST" \
+--prefix=/tools --disable-profile --enable-kernel=2.6.0 \
+--with-binutils=/tools/bin --without-gd \
+--with-headers=/tools/include --without-selinux
+
+(386)To:
+../glibc-2.3.5/configure --host="$CHOST" --target="$CHOST" \
+--prefix=/tools --disable-profile --enable-add-ons=linuxthreads \
+--with-tls --without-__thread --enable-kernel=2.6.0 \
+--with-binutils=/tools/bin --without-gd \
+--with-headers=/tools/include --without-selinux
+
+Since glibc needs to be compiled with some level of optimization we need to add an 
+optimization flag to $CFLAGS.  Please change this to suit your needs.
+
+
+And then change:
+make
+
+To:
+make CFLAGS="$CFLAGS -O2"
+
+And then change:
+make install
+
+To:
+make CFLAGS="$CFLAGS -O2" cross-compiling=no install
+
+2.2.5.	Adjusting the tool-chain
+
+No changes - we are using preconfigured code.
+
+2.2.6.	Tcl-8.4.11
+
+Change:
+./configure --prefix=/tools
+
+To
+./configure --host="$CHOST" --target="$CHOST" --prefix=/tools
+
+2.2.7.	Expect-5.43.0
+
+Change:
+./configure --prefix=/tools --with-tcl=/tools/lib --with-x=no \
+--with-tclinclude=$TCLPATH
+
+To:
+./configure --host="$CHOST" --target="$CHOST" \
+--prefix=/tools --with-tcl=/tools/lib --with-x=no \
+--with-tclinclude=$TCLPATH
+
+2.2.8.	DejaGnu-1.4.4
+
+No need to do anything, just installing a script.
+
+2.2.9.	GCC-4.0.2- Pass 2
+
+Change:
+../gcc-4.0.2/configure --prefix=/tools \
+--libexecdir=/tools/lib --with-local-prefix=/tools \
+--enable-clocale=gnu --enable-shared \
+--enable-threads=posix --enable-__cxa_atexit \
+--enable-languages=c,c++ --disable-libstdcxx-pch
+
+To:
+../gcc-4.0.2/configure --host="$CHOST" --target="$CHOST" \
+--prefix=/tools --libexecdir=/tools/lib \
+--with-local-prefix=/tools --enable-clocale=gnu \
+--enable-shared --enable-threads=posix \
+--enable-__cxa_atexit --enable-languages=c,c++ \
+--disable-libstdcxx-pch
+
+And then change:
+make
+
+To:
+make BOOT_CFLAGS="$CFLAGS" BOOT_CXXFLAGS="$CXXFLAGS"
+
+2.2.10.	Binutils-2.16.1 - Pass 2
+
+Change:
+../binutils-2.16.1/configure --prefix=/tools \
+--enable-shared --with-lib-path=/tools/lib \
+--disable-nls
+
+To:
+../binutils-2.16.1/configure --host="$CHOST" --target="$CHOST" \
+--prefix=/tools --enable-shared --with-lib-path=/tools/lib \
+--disable-nls
+
+2.2.11.	Gawk-3.1.5
+
+Change:
+./configure --prefix=/tools
+
+To:
+./configure --host="$CHOST" --target="$CHOST" --prefix=/tools
+
+2.2.12.	Coreutils-5.2.1
+
+Change:
+DEFAULT_POSIX2_VERSION=199209 ./configure --prefix=/tools
+
+To:
+DEFAULT_POSIX2_VERSION=199209 ./configure \
+--host="$CHOST" --target="$CHOST" --prefix=/tools
+
+2.2.13.	Bzip2-1.0.3
+
+Add:
+cp Makefile Makefile.backup &&
+sed -e 's%$(BIGFILES)%$(BIGFILES) $(OPT)%' \
+Makefile.backup > Makefile &&
+cp Makefile-libbz2_so Makefile-libbz2_so.backup &&
+sed -e 's%$(BIGFILES)%$(BIGFILES) $(OPT)%' \
+Makefile-libbz2_so.backup > Makefile-libbz2_so
+
+Change:
+make
+
+To:
+make OPT="$CFLAGS" PREFIX=/tools
+
+Change:
+make PREFIX=/tools install
+	
+To:
+make OPT="$CFLAGS" PREFIX=/tools install
+
+2.2.14.	Gzip-1.3.5
+
+Change:
+./configure --prefix=/tools
+
+To:
+./configure --host="$CHOST" --target="$CHOST" --prefix=/tools
+
+2.2.15.	Diffutils-2.8.1
+
+Change:
+./configure --prefix=/tools
+
+To:
+./configure --host="$CHOST" --target="$CHOST" --prefix=/tools
+
+2.2.16.	Findutils-4.2.25
+
+Change:
+./configure --prefix=/tools
+
+To:
+./configure --host="$CHOST" --target="$CHOST" --prefix=/tools
+
+2.2.17.	Make-3.80
+
+Change:
+./configure --prefix=/tools
+
+To:
+./configure --host="$CHOST" --target="$CHOST" --prefix=/tools
+
+2.2.18.	Grep-2.5.1a
+
+Change:
+./configure --prefix=/tools --disable-perl-regex
+
+To:
+./configure --host="$CHOST" --target="$CHOST" --prefix=/tools \
+--disable-perl-regexp
+
+2.2.19.	Sed-4.1.4
+
+Change:
+./configure --prefix=/tools
+
+To:
+./configure --host="$CHOST" --target="$CHOST" --prefix=/tools
+
+2.2.20.	Gettext-0.14.5
+
+Change:
+./configure --prefix=/tools --disable-libasprintf \
+    --without-csharp
+
+To:
+./configure --host="$CHOST" --target="$CHOST" --prefix=/tools \
+--disable-libasprintf --without-csharp
+
+2.2.21.	Ncurses-5.4
+
+Change:
+./configure --prefix=/tools --with-shared \
+--without-debug --without-ada --enable-overwrite
+
+To:
+./configure --host="$CHOST" --target="$CHOST" \
+--prefix=/tools --with-shared \
+--without-debug --without-ada --enable-overwrite
+
+2.2.22.	Patch-2.5.4
+
+Change:
+CPPFLAGS=-D_GNU_SOURCE ./configure --prefix=/tools
+
+To:
+CPPFLAGS=-D_GNU_SOURCE ./configure \
+--host="$CHOST" --target="$CHOST" --prefix=/tools
+
+2.2.23.	Tar-1.15.1
+
+Change:
+./configure --prefix=/tools
+
+To:
+./configure --host="$CHOST" --target="$CHOST" --prefix=/tools
+
+2.2.24.	Texinfo-4.8
+
+Change:
+./configure --prefix=/tools
+
+To:
+./configure --host="$CHOST" --target="$CHOST" --prefix=/tools
+
+2.2.25.	Bash-3.0
+
+Change:
+./configure --prefix=/tools --without-bash-malloc
+
+To:
+./configure --host="$CHOST" --target="$CHOST" --prefix=/tools \
+--without-bash-malloc
+
+2.2.26.	M4-1.4.3
+
+Change:
+./configure --prefix=/tools
+
+To:
+./configure --host="$CHOST" --target="$CHOST" --prefix=/tools
+
+2.2.27.	Util-linux-2.12r
+
+Change:
+./configure
+
+To:
+./configure --host="$CHOST" --target="$CHOST"
+
+2.2.28.	Perl-5.8.7
+
+Change:
+./configure.gnu --prefix=/tools -Dstatic_ext='IO Fcntl POSIX'
+
+To:
+./configure.gnu \
+-Dhost="$CHOST" -Dtarget="$CHOST" -Darchname="$CHOST" \
+--prefix=/tools -Dstatic_ext='IO Fcntl POSIX'
+
+
+2.3.	Chapter 6: Installing Basic System Software
+
+2.3.1.	Entering the chroot environment
+
+After:
+chroot "$LFS" /tools/bin/env -i \
+HOME=/root TERM="$TERM" PS1='\u:\w\$ ' \
+PATH=/bin:/usr/bin:/sbin:/usr/sbin:/tools/bin \
+/tools/bin/bash --login +h
+
+Add:
+export CHOST="i386-pc-linux-gnu" &&
+export CFLAGS="-march=i386" &&
+export CXXFLAGS="-march=i386"
+
+Note:	Please replace i386 with the proper strings according to the introduction.
+
+2.3.2.	Linux-Libc-Headers-2.6.12.0
+
+No changes - we are just copying the header files here.
+
+2.3.3.	Man-pages-2.08
+
+No changes - we are just copying the man-pages here.
+
+2.3.4.	Glibc-2.3.5
+
+Ok, this one is a bit trickier and what you put here can have some important ramifications 
+later.  If your target machine is a 486 or higher you should follow the (>=486) instructions 
+otherwise you should follow the (386) instructions.  The reason for this is that the basic 386 
+instruction set is missing one of the atomic instructions important to multi-threading with the 
+NPTL threading system.  Instead you will use the linuxthreads library which does not require 
+this instruction.
+
+Change:
+
+../glibc-2.3.5/configure --prefix=/usr \
+--disable-profile --enable-add-ons \
+--enable-kernel=2.6.0 --libexecdir=/usr/lib/glibc
+
+(>=486)To:
+../glibc-2.3.5/configure --host="$CHOST" --target="$CHOST" \
+--prefix=/usr --disable-profile --enable-add-ons=nptl \
+--with-tls --with-__thread --enable-kernel=2.6.0 \
+--libexecdir=/usr/lib/glibc
+
+(386)To:
+../glibc-2.3.5/configure --host="$CHOST" --target="$CHOST" \
+--prefix=/usr --disable-profile --enable-add-ons=linuxthreads \
+--with-tls --without-__thread --enable-kernel=2.6.0 \
+--libexecdir=/usr/lib/glibc
+
+Since glibc needs to be compiled with optimization, we have to modify our $CFLAGS 
+environment variable.  Change this to suite your own needs.
+
+And then change:
+make
+
+To:
+make CFLAGS="$CFLAGS -O2"
+
+And then change:
+make install
+
+To:
+make CFLAGS="$CFLAGS -O2" cross-compiling=no install
+
+Note:	This does not affect cross compiling for sub-architectures (it prevents Glibc to look for a 
+cross compiler and uses the native one).
+
+2.3.5.	Re-adjusting the toolchain
+
+No changes - we are using preconfigured code.
+
+2.3.6.	Binutils-2.16.1
+
+Change:
+
+../binutils-2.16.1/configure --prefix=/usr --enable-shared
+
+To:
+../binutils-2.16.1/configure --host="$CHOST" --target="$CHOST" \
+--prefix=/usr --enable-shared
+
+2.3.7.	GCC-4.0.2
+
+Change:
+../gcc-4.0.2/configure --prefix=/usr \
+--libexecdir=/usr/lib --enable-shared \
+--enable-threads=posix --enable-__cxa_atexit \
+--enable-clocale=gnu --enable-languages=c,c++
+
+To:
+../gcc-4.0.2/configure --host="$CHOST" --target="$CHOST" \
+--prefix=/usr \
+--libexecdir=/usr/lib --enable-shared \
+--enable-threads=posix --enable-__cxa_atexit \
+--enable-clocale=gnu --enable-languages=c,c++
+
+And change:
+make
+
+To:
+make BOOT_CFLAGS="$CFLAGS" BOOT_CXXFLAGS="$CXXFLAGS"
+
+2.3.8.	Coreutils-5.2.1
+
+Change:
+DEFAULT_POSIX2_VERSION=199209 ./configure --prefix=/usr
+
+To:
+DEFAULT_POSIX2_VERSION=199209 ./configure \
+--host="$CHOST" --target="$CHOST" --prefix=/usr
+
+2.3.9.	Zlib-1.2.3
+
+No need to change anything!
+2.3.10.	Mktemp-1.5
+
+Change:
+./configure --prefix=/usr --with-libc
+
+To:
+./configure --host="$CHOST" --target="$CHOST" \
+--prefix=/usr --with-libc
+
+2.3.11.	Iana-Etc-2.00
+
+No changes - we are just copying files.
+
+2.3.12.	Findutils-4.2.25
+
+Change:
+./configure --prefix=/usr --libexecdir=/usr/lib/locate \
+--localstatedir=/var/lib/locate
+
+To:
+./configure --host="$CHOST" --target="$CHOST" \
+--prefix=/usr --libexecdir=/usr/lib/locate \
+--localstatedir=/var/lib/locate
+
+2.3.13.	Gawk-3.1.5
+
+Change:
+./configure --prefix=/usr --libexecdir=/usr/lib
+
+To:
+./configure --host="$CHOST" --target="$CHOST" \
+--prefix=/usr --libexecdir=/usr/lib
+
+2.3.14.	Ncurses-5.4
+
+Change:
+./configure --prefix=/usr --with-shared --without-debug
+
+To:
+./configure --host="$CHOST" --target="$CHOST" \
+--prefix=/usr --with-shared --without-debug
+
+2.3.15.	Readline-5.0
+
+Change:
+./configure --prefix=/usr --libdir=/lib
+
+To:
+./configure --prefix=/usr --libdir=/lib --host="$CHOST" --target="$CHOST"
+
+2.3.16.	Vim-6.3
+
+Change:
+./configure --prefix=/usr --enable-multibyte
+
+
+To:
+./configure --host="$CHOST" --target="$CHOST" \
+--enable-multibyte --prefix=/usr
+
+2.3.17.	M4-1.4.3
+
+Change:
+./configure --prefix=/usr
+
+To:
+./configure --host="$CHOST" --target="$CHOST" --prefix=/usr
+
+2.3.18.	Bison-2.1
+
+Change:
+./configure --prefix=/usr
+
+To:
+./configure --host="$CHOST" --target="$CHOST" --prefix=/usr
+
+2.3.19.	Less-382
+
+Change:
+./configure --prefix=/usr --bindir=/bin --sysconfdir=/etc
+
+To:
+./configure --host="$CHOST" --target="$CHOST" \
+--prefix=/usr --bindir=/bin --sysconfdir=/etc
+
+2.3.20.	Groff-1.19.2
+
+Change:
+PAGE=letter ./configure --prefix=/usr
+
+To:
+PAGE=letter ./configure --host="$CHOST" --target="$CHOST" \
+--prefix=/usr
+
+2.3.21.	Sed-4.1.4
+
+Change:
+./configure --prefix=/usr --bindir=/bin
+
+To:
+./configure --host="$CHOST" --target="$CHOST" \
+--prefix=/usr --bindir=/bin
+
+2.3.22.	Flex-2.5.31
+
+Change:
+./configure --prefix=/usr
+
+To:
+./configure --host="$CHOST" --target="$CHOST" --prefix=/usr
+
+2.3.23.	Gettext-0.14.5
+
+Change:
+./configure --prefix=/usr
+
+To:
+./configure --host="$CHOST" --target="$CHOST" --prefix=/usr
+
+2.3.24.	Inetutils-1.4.2
+	
+Assuming CFLAGS are set, don?t change anything.
+2.3.25.	IPRoute2-051007
+
+After: 
+./configure
+
+Add:
+mv Makefile Makefile.backup &&
+sed 's/$(CCOPTS)/$(CCOPTS) $(OPT)/' Makefile.backup > Makefile
+
+Change:
+make SBINDIR=/sbin
+
+To:
+make SBINDIR=/sbin OPT="$CFLAGS"
+
+2.3.26.	Perl-5.8.7
+
+Change:
+./configure.gnu --prefix=/usr -Dpager="/bin/less -isR"
+
+To:
+./configure.gnu --prefix=/usr -Dpager="/bin/less -isR" \
+-Dhost="$CHOST" -Dtarget="$CHOST" -Darchname="$CHOST"
+
+2.3.27.	Texinfo-4.8
+
+Change:
+./configure --prefix=/usr
+
+To:
+./configure --host="$CHOST" --target="$CHOST" --prefix=/usr
+
+2.3.28.	Autoconf-2.59
+
+Uses Perl and M4 to do stuff so no need to do anything!
+2.3.29.	Automake-1.9.6
+
+Uses Perl and M4 to do stuff so no need to do anything!
+2.3.30.	Bash-3.0
+
+Change:
+./configure --prefix=/usr --bindir=/bin
+
+To:
+./configure --host="$CHOST" --target="$CHOST" \
+--prefix=/usr --bindir=/bin --with-bash-malloc --with-installed-readline
+
+2.3.31.	File-4.15
+
+Change:
+./configure --prefix=/usr
+
+To:
+./configure --host="$CHOST" --target="$CHOST" --prefix=/usr
+
+2.3.32.	Libtool-1.5.20
+
+Change:
+./configure --prefix=/usr
+
+To:
+./configure --host="$CHOST" --target="$CHOST" --prefix=/usr
+
+2.3.33.	Bzip2-1.0.3
+
+Add:
+cp Makefile Makefile.backup
+sed -e 's%$(BIGFILES)%$(BIGFILES) $(OPT)%' \
+Makefile.backup > Makefile
+cp Makefile-libbz2_so Makefile-libbz2_so.backup
+sed -e 's%CFLAGS=-fpic%CFLAGS=$(OPT) -fpic%' \
+Makefile-libbz2_so.backup > Makefile-libbz2_so
+
+Change:
+make -f Makefile-libbz2_so
+
+To:
+make OPT="$CFLAGS" -f Makefile-libbz2_so
+
+Change:
+make
+
+To:
+make OPT="$CFLAGS"
+
+2.3.34.	Diffutils-2.8.1
+
+Change:
+./configure --prefix=/usr
+
+To:
+./configure --host="$CHOST" --target="$CHOST" --prefix=/usr
+
+2.3.35.	Kbd-1.12
+
+Change:
+make
+
+To:
+make CFLAGS="$CFLAGS"
+
+2.3.36.	E2fsprogs-1.38
+
+Change:
+../e2fsprogs-1.35/configure --prefix=/usr --with-root-prefix="" \
+--enable-elf-shlibs --disable-evms 
+
+To:
+../e2fsprogs-1.35/configure --host="$CHOST" --target="$CHOST" \
+--prefix=/usr --with-root-prefix="" \
+--enable-elf-shlibs --disable-evms 
+
+2.3.37.	Grep-2.5.1a
+
+Change:
+./configure --prefix=/usr --bindir=/bin \
+--with-included-regex
+
+To:
+./configure --host="$CHOST" --target="$CHOST" \
+--prefix=/usr --bindir=/bin
+2.3.38.	Grub-0.97
+
+Change:
+./configure --prefix=/usr
+
+To:
+./configure --host="$CHOST" --target="$CHOST" --prefix=/usr
+
+2.3.39.	Gzip-1.3.5
+
+Change:
+./configure --prefix=/usr
+
+To:
+./configure --host="$CHOST" --target=$CHOST --prefix=/usr
+
+2.3.40.	Man-1.6b
+
+Add:
+cp man2html/Makefile.in man2html/Makefile.in.backup
+sed -e "s/CFLAGS = /CFLAGS = $CFLAGS /" \
+man2html/Makefile.in.backup > man2html/Makefile.in
+
+2.3.41.	Make-3.80
+
+Change:
+./configure --prefix=/usr
+
+To:
+./configure --host="$CHOST" --target="$CHOST" --prefix=/usr
+
+2.3.42.	Module-Init-Tools-3.1
+
+Change: 
+./configure --prefix="" --enable-zlib
+
+To:
+./configure --prefix="" --enable-zlib --host="$CHOST" --target="$CHOST"
+
+2.3.43.	Patch-2.5.4
+
+Change:
+CPPFLAGS=-D_GNU_SOURCE ./configure --prefix=/usr
+
+To:
+CPPFLAGS=-D_GNU_SOURCE ./configure \
+--host="$CHOST" --target="$CHOST" --prefix=/usr
+
+2.3.44.	Procps-3.2.5
+
+Change:
+make
+
+To:
+make CFLAGS="$CFLAGS"
+
+Note:	The build process will fail if your $CFLAGS does not contain the -On switch. If that is 
+the case, please use the line
+
+make CFLAGS="$CFLAGS -O2"
+
+instead.
+
+2.3.45.	Psmisc-21.6
+
+Change:
+./configure --prefix=/usr --exec-prefix=/
+
+To:
+./configure --host="$CHOST" --target="$CHOST" \
+--prefix=/usr --exec-prefix=""
+
+2.3.46.	Shadow-4.0.12
+
+Change:
+./configure --libdir=/usr/lib --enable-shared
+
+To:
+./configure --host="$CHOST" --target="$CHOST" \
+--libdir=/usr/lib --enable-shared
+
+2.3.47.	Sysklogd-1.4.1
+
+Change:
+make
+
+To:
+make RPM_OPT_FLAGS="$CFLAGS"
+
+2.3.48.	Sysvinit-2.86
+
+Change:
+make -C src
+
+To:
+make CFLAGS="-Wall -D_GNU_SOURCE $CFLAGS" -C src
+
+2.3.49.	Tar-1.15.1
+
+Change:
+./configure --prefix=/usr --bindir=/bin --libexecdir=/usr/sbin
+
+To:
+./configure --host="$CHOST" --target="$CHOST" \
+--prefix=/usr --bindir=/bin --libexecdir=/usr/sbin
+
+2.3.50.	Udev-070
+
+No changes should be necessary assuming that the CFLAGS is set appropriately as discussed 
+in Section 1.3 About $CFLAGS and $CXXFLAGS
+
+2.3.51.	Util-linux-2.12r
+
+Change:
+./configure
+
+To:
+./configure --host="$CHOST" --target="$CHOST"
+
+2.4.	Chapter 7: Setting up System Bootscripts
+
+2.4.1.	LFS-Bootscripts-3.2.1
+
+No changes - we are just copying the scripts here.
+
+2.5.	Chapter 8: Making the LFS system bootable
+
+2.5.1.	Linux-2.6.13.1
+
+Select your processor under 'Processor family' in the 'Processor type and features' menu.
+
+
+2.6.	The End
+
+It may be a good idea to keep the compiler flags for future use
+
+echo "export CFLAGS=\"$(echo $CFLAGS)\"" >> /etc/profile
+echo "export CXXFLAGS=\"$(echo $CXXFLAGS)\"" >> /etc/profile
+
+3.	ACKNOWLEDGEMENTS:
+*	Daniel Baumann <daniel.baumann at panthera-systems.net> for updating and 
+maintaining the hint to LFS 5.1.1
+*	Nicholas Dille <webmaster at rakshas.de> for the original hint
+*	Tommy Wareing for the uname hack
+*	Christophe Devine <devine at cr0.net> for the uname kernel-module
+*	Yann Guidon <whygee at f-cpu.org> for extending the uname kernel-module
+
+
+
+CHANGELOG:
+
+[2005-10-12]
+*	Updated hint to SVN-20051009 (LFS-6.1+)
+*	Fixed multiple typographic errors
+[2005-09-12]
+*	Fixed typographic mistakes
+[2005-06-22]
+*	Updated to LFS-6.0
+*	Added 386 specific commands to glibc
+*	Fixed typographic mistakes and extended some explanation
+[2004-07-10]
+*	Updated to LFS-5.1.1
+*	Glibc-command revised (Thanks to Kevin White <kwhite at kevbo.org>
+*	Typographic mistakes corrected
+[2004-05-29]
+*	Typographic mistakes corrected
+[2004-05-22]
+*	Updated to LFS 5.1.
+*	Minor text changes.
+[2004-01-26]
+*	Updated to LFS 5.0.
+*	New hint format.
+*	Major text changes.
+[2003-07-23]
+*	Initial revision.

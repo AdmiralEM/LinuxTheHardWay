@@ -1,0 +1,607 @@
+AUTHOR:       David Rosal i Ricart <david.rosal@upf.edu>
+
+DATE:         2005-10-24
+
+LICENSE:      GNU Free Documentation License Version 1.2
+
+SYNOPSIS:     Using paco in ALFS
+
+PRIMARY URI:  http://paco.sourceforge.net/doc/
+
+
+
+DESCRIPTION:
+The program paco can be used along with nALFS to track the installation of an
+entire LFS system. This is done by editing the XML ALFS profiles properly.
+This hint intends to provide instructions to edit those profiles and integrate
+paco in ALFS in the most neat and safe way.
+
+
+
+ATTACHMENTS:
+
+  * The LFS-6.1 profile paco patch:
+    --> http://paco.sourceforge.net/dl/profile-LFS-6.1-paco.patch
+
+
+
+PREREQUISITES:
+
+  * The program nALFS >= 1.2.4
+    --> http://www.linuxfromscratch.org/alfs/downloads/stable/
+
+  * The ALFS profiles for LFS-6.1:
+    --> http://www.linuxfromscratch.org/alfs/downloads/profiles/stable/
+  
+  * The program paco. Version 1.10.0 or later.
+    --> http://sourceforge.net/project/showfiles.php?group_id=118115
+ 
+
+
+HINT:
+
+
+
+0. INTRODUCTION
+===============
+There are mainly two ways to integrate paco in ALFS: the "brute force" way, and
+the neat way.
+In this hint I'm going to describe the neat way in detail, but first I wanted to
+say a few words about the "brute force" way, which indeed works fine, and has
+been happily used by some ALFS'ers until today.
+
+Note: Regardless the method used, before running nALFS, the tarball of paco has
+to be copied into the directory where the other LFS packages reside.
+
+
+1. THE BRUTE FORCE WAY
+======================
+In a nutshell, this method consists of (ab)using the element
+<execute command="paco"> to wrap each command that installs files into the
+system.
+As an example, let's look at the following piece of XML "code", taken from the
+file chapter06/binutils.xml in the LFS-6.1 profile, which installs the package
+binutils:
+
+    ---[ begin XML ]---
+
+    <make>
+      <param>tooldir=/usr</param>
+      <param>install</param>
+    </make>
+    <copy>
+      <source>../&binutils-directory;/include/libiberty.h</source>
+      <destination>/usr/include</destination>
+    </copy>
+
+    ---[ end XML ]---
+
+The above fragment could be paco'ized thusly:
+
+    ---[ begin XML ]---
+
+    <execute command="paco">
+      <param>-lp binutils-&binutils-version;</param>
+      <param>make tooldir=/usr install</param>
+    </execute>
+    <execute command="paco">
+      <param>-lp+ binutils-&binutils-version;</param>
+      <param>cp ../&binutils-directory;/include/libiberty.h</param>
+      <param>/usr/include</param>
+    </execute>
+
+    ---[ end XML ]---
+
+If you're familiar with paco, this is quite straightforward.
+With this method is always possible to track package installations, no matter
+the complexity or number of the commands involved, but it's not very... you
+know, clever, because it does not take advantage of the variety of elements
+defined in the ALFS DTD, and replaces each of them with the element <execute>.
+
+Next I'm gonna describe in detail the process of building an LFS system with
+nALFS and paco in a definitely better way.
+
+
+2. THE NEAT WAY
+===============
+[ Note for impatients: Go directly to section 2.1 of this hint. ]
+
+
+2.0. Technichal notes
+=====================
+To log package installations, paco uses a shared library to wrap the commands
+that install files into the system.
+Internally, right before spawning those commands, paco sets the following
+environment variables:
+
+  LD_PRELOAD contains the path to the mentioned libpaco-log shared library,
+  which is responsible to catch the system calls that install files into the
+  system. Once libpaco-log is preloaded, it retrieves the rest of the variables
+  from the environment.
+
+  PACO_TMPFILE contains the path to the intermediate temporary log file used to
+  comunicate libpaco-log and paco.
+
+  If PACO_DEBUG is set to "yes", then libpaco-log prints debugging information.
+
+  PACO_INCLUDE and PACO_EXCLUDE are a colon-separated list of paths to include
+  or exclude when logging the created files.
+
+
+What we'll going to do in ALFS is to use the XML element <variable> to set those
+variables "by hand".
+
+From now on, the files in the LFS-6.1 profile will be referenced using paths
+relative to the LFS-6.1 profile directory, as created when unpacking the
+profile-LFS-6.1.tar.bz2 tarball.
+
+All of PACO_* variables may be set in the file LFS.xml, at the beggining of each
+chapter in which any package is installed, though it does not hurt if they are
+set throughout the whole LFS installation.
+
+The variable LD_PRELOAD must be set separately in each XML profile in which any
+package is installed. More strictly, it must be set whenever any install command
+(or group of them) are executed whithin those profiles.
+To ensure that the libpaco-log library is loaded only during the execution of
+the install commands, we have to join them toghether in a separate <stage>.
+Thus, the LD_PRELOAD variable is only set whithin that stage, and we prevent the
+log to be contaminated with all the files created during the configure, patch
+and build commands.
+
+Currently, in the LFS-6.1 profiles, the whole process of building and installing
+a package take place in a single stage called "Installing". We're going to split
+that stage into different smaller pieces, defining these new kinds of stages:
+
+  "Building":   Patches are applied. The package is configured and built.
+  "Installing": LD_PRELOAD is set, and the package is installed.
+  "Logging":    Paco is used to create a log for the installed package, reading
+                the list of files to log from the PACO_TMPFILE.
+  
+The stages "Unpacking" and "Cleanup" are not modified.
+
+The "Building" stage can be omitted in those packages that don't need to be
+configured or built, like lfs-bootscripts or man-pages.
+
+IMPORTANT: The file PACO_TMPFILE must be removed at the beggining of the
+"Installing" stage, and at the end of the "Logging" stage, to clear the list of
+files to log.
+
+See an example of how should it be done in section 2.3 below.
+
+
+2.1. Patching the LFS profile
+=============================
+All changes can be done automatically in one step, by applying the patch
+profile-LFS-6.1-paco.patch from the LFS-6.1 profiles directory:
+
+    $ patch -Np1 -i </path/to/the/patch>
+
+This hint could finish here, since the above patch makes all needed
+modifications, but I'll give detailed information on what is actually done by
+that patch, for those who want to know more, or tune it to their own
+preferences.
+
+
+2.2. Cookbook to make it by hand
+================================
+We'll consider that we are not interested on tracking the installations of the
+packages in chapter 5 ("Constructing a Temporary System"), so all XML files in
+directory chapter05 that install packages will be left untouched.
+
+
+chapter05/creatingtoolsdir.xml
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+An additional <source> element has to be added, to copy the paco package into
+the LFS partition:
+
+    ---[ begin file fragment ]---
+
+    <source>&ncurses-package;</source>
+    <source>&paco-package;</source>
+    <source>&patch-package;</source>
+
+    ---[ end file fragment ]---
+
+
+config/package.ent
+~~~~~~~~~~~~~~~~~~
+The following 3 lines have to be added:
+
+    ---[ begin file fragment ]---
+
+    <!ENTITY paco-version "1.10.0">
+    <!ENTITY paco-package "paco-&paco-version;.tar.bz2">
+    <!ENTITY paco-directory "paco-&paco-version;">
+
+    ---[ end file fragment ]---
+
+
+config/paco.ent
+~~~~~~~~~~~~~~~
+We have to create the file config/paco.ent, containing the paco related
+entities:
+
+    ---[ begin file ]---
+
+    <!-- PACO_TMPFILE -->
+    <!ENTITY paco-tmpfile "/tmp/paco.tmp">
+
+    <!-- LD_PRELOAD (path to the libpaco-log  shared library) -->
+    <!ENTITY paco-lib "/usr/lib/libpaco-log.so">
+
+    <!-- path to the paco log directory -->
+    <!ENTITY paco-logdir "/var/log/paco">
+
+    <!-- PACO_INCLUDE and PACO_EXCLUDE -->
+    <!ENTITY paco-include "/">
+    <!ENTITY paco-exclude "/tmp:/tools:/sources">
+
+    <!-- PACO_DEBUG -->
+    <!ENTITY paco-debug "no_thanks">
+
+    <!-- different XML "macros":
+      'paco-clear'        removes the temporary log file.
+      'paco-ld-preload'   sets the LD_PRELOAD variable.
+      'paco-log-dirname'  runs "paco -lD" to log packages.
+    -->
+    <!ENTITY paco-clear "<remove>&paco-tmpfile;</remove>">
+
+    <!ENTITY paco-ld-preload
+      "<environment>
+        <variable name='LD_PRELOAD'>&paco-lib;</variable>
+      </environment>">
+  
+    <!ENTITY paco-log-dirname
+      "<execute command='paco'>
+        <param>-lD &lt; &paco-tmpfile;</param>
+      </execute>
+      &paco-clear;">
+
+    ---[ end file ]---
+
+
+chapter06/paco.xml
+~~~~~~~~~~~~~~~~~~
+Paco itself should be installed as the first package in chapter 6, so we have to
+create the file chapter06/paco.xml, with the commands needed to install it:
+
+    ---[ begin file ]---
+
+    <?xml version="1.0" encoding="iso-8859-1"?>
+    <!DOCTYPE alfs SYSTEM "../DTD/ALFS.dtd"
+    [
+    <!ENTITY % general_entities SYSTEM "../config/general.ent">
+    <!ENTITY % package_entities SYSTEM "../config/package.ent">
+    <!ENTITY % paco_entities SYSTEM "../config/paco.ent">
+    %general_entities;
+    %package_entities;
+    %paco_entities;
+    ]>
+    <alfs>
+      <package name="paco" version="&paco-version;">
+        <stage name="Unpacking">
+          <unpack>
+            <archive>&packages_dir;/&paco-package;</archive>
+            <destination>&build_dir;</destination>
+          </unpack>
+        </stage>
+        <stage name="Installing">
+          <stageinfo>
+            <base>&build_dir;/&paco-directory;</base>
+          </stageinfo>
+          <configure>
+            <param>--prefix=/usr</param>
+            <param>--disable-gpaco</param>
+            <param>--sysconfdir=/etc</param>
+          </configure>
+          <make />
+          <make>
+            <param>install</param>
+          </make>
+          <textdump>
+            <file>/etc/pacorc</file>
+            <content>
+              =LOGDIR=&paco-logdir;
+              =INCLUDE=&paco-include;
+              =EXCLUDE=&paco-exclude;
+            </content>
+          </textdump>
+        </stage>
+        <stage name="Cleanup">
+          <remove>&build_dir;/&paco-directory;</remove>
+        </stage>
+      </package>
+    </alfs>
+
+    ---[ end file ]---
+
+
+LFS.xml
+~~~~~~~
+The file LFS.xml has to be edited to include the installation of paco, right
+after the 'basic-dev' section in chapter 6:
+
+    ---[ begin file fragment ]---
+
+    <xi:include href="chapter06/basic-dev.xml" />
+    <xi:include href="chapter06/paco.xml" />
+    <xi:include href="chapter06/libc-headers.xml" />
+  
+    ---[ end file fragment ]---
+
+The paco environment variables have to be set in chapters 6, 7, 8 and 9.
+For each of these chapters, in the <environment> element, the following variable
+settings must be inserted:
+
+    ---[ begin file fragment ]---
+
+    <variable name="PACO_DEBUG">&paco-debug;</variable>
+    <variable name="PACO_TMPFILE">&paco-tmpfile;</variable>
+    <variable name="PACO_INCLUDE">&paco-include;</variable>
+    <variable name="PACO_EXCLUDE">&paco-exclude;</variable>
+
+    ---[ end file fragment ]---
+
+
+chapter0?/*.xml
+~~~~~~~~~~~~~~~
+Finally, the hard work: Each and every XML profile in which any package is
+installed has to be modified, if we want that package to be logged.
+Since not all packages are installed the same way, it's not easy to make the
+modifications in an automatized way.
+
+An example of how should it be done in practice follows.
+
+
+2.3. Example
+============
+Let's take the file chapter06/zlib.xml. I have stripped some parts like the
+"Patching" stage and the md5 checksum to make it simpler. This file is a good
+example, because install and non-install commands take place alternatively.
+
+Whithout using paco the file looks thusly:
+
+    ---[ begin file ]---
+
+    <?xml version="1.0" encoding="iso-8859-1"?>
+    <!DOCTYPE alfs SYSTEM "../DTD/ALFS.dtd"
+    [
+    <!ENTITY % general_entities SYSTEM "../config/general.ent">
+    <!ENTITY % package_entities SYSTEM "../config/package.ent">
+    %general_entities;
+    %package_entities;
+    ]>
+    <alfs>
+      <package name="zlib" version="&zlib-version;">
+        <stage name="Unpacking">
+          <unpack>
+            <archive>&packages_dir;/&zlib-package;</archive>
+            <destination>&build_dir;</destination>
+          </unpack>
+        </stage>
+        <stage name="Installing">
+          <stageinfo>
+            <base>&build_dir;/&zlib-directory;</base>
+          </stageinfo>
+          <configure>
+            <param>--prefix=/usr</param>
+            <param>--shared</param>
+          </configure>
+          <make />
+          <make>
+            <param>install</param>
+          </make>
+          <remove>/lib/libz.so</remove>
+          <link>
+            <option>force</option>
+            <target>../../lib/libz.so.&zlib-version;</target>
+            <name>/usr/lib/libz.so</name>
+          </link>
+          <make>
+            <param>clean</param>
+          </make>
+          <configure>
+            <param>--prefix=/usr</param>
+          </configure>
+          <make />
+          <make>
+            <param>install</param>
+          </make>
+          <permissions mode="644">
+            <name>/usr/lib/libz.a</name>
+          </permissions>
+        </stage>
+        <stage name="Cleanup">
+          <remove>&build_dir;/&zlib-directory;</remove>
+        </stage>
+      </package>
+    </alfs>
+
+    ---[ end file ]---
+
+
+And here's the same file, but using paco to track the installation.
+Newly added lines are marked with '+' at the beggining. Modified lines are
+marked with '!':
+
+    ---[ begin file ]---
+
+    <?xml version="1.0" encoding="iso-8859-1"?>
+    <!DOCTYPE alfs SYSTEM "../DTD/ALFS.dtd"
+    [
+    <!ENTITY % general_entities SYSTEM "../config/general.ent">
+    <!ENTITY % package_entities SYSTEM "../config/package.ent">
++   <!ENTITY % paco_entities SYSTEM "../config/paco.ent">
++   %paco_entities;
+    %general_entities;
+    %package_entities;
+    ]>
+    <alfs>
+      <package name="zlib" version="&zlib-version;">
+        <stage name="Unpacking">
+          <unpack>
+            <archive>&packages_dir;/&zlib-package;</archive>
+            <destination>&build_dir;</destination>
+          </unpack>
+        </stage>
+!       <stage name="Building">
+          <stageinfo>
+            <base>&build_dir;/&zlib-directory;</base>
+          </stageinfo>
+          <configure>
+            <param>--prefix=/usr</param>
+            <param>--shared</param>
+          </configure>
+          <make />
++       </stage>
++       <stage name="Installing">
+          <stageinfo>
++           &paco-ld-preload;
+            <base>&build_dir;/&zlib-directory;</base>
+          </stageinfo>
++         &paco-clear;
+          <make>
+            <param>install</param>
+          </make>
+          <remove>/lib/libz.so</remove>
+          <link>
+            <option>force</option>
+            <target>../../lib/libz.so.&zlib-version;</target>
+            <name>/usr/lib/libz.so</name>
+          </link>
++       </stage>
++       <stage name="Building">
++         <stageinfo>
++           <base>&build_dir;/&zlib-directory;</base>
++         </stageinfo>
+          <make>
+            <param>clean</param>
+          </make>
+          <configure>
+            <param>--prefix=/usr</param>
+          </configure>
+          <make />
++       </stage>
++       <stage name="Installing">
++         <stageinfo>
++           &paco-ld-preload;
++           <base>&build_dir;/&zlib-directory;</base>
++         </stageinfo>
+          <make>
+            <param>install</param>
+          </make>
+          <permissions mode="644">
+            <name>/usr/lib/libz.a</name>
+          </permissions>
++       </stage>
++       <stage name="Logging">
++         <stageinfo>
++           <base>&build_dir;/&zlib-directory;</base>
++         </stageinfo>
++         &paco-log-dirname;
+        </stage>
+        <stage name="Cleanup">
+          <remove>&build_dir;/&zlib-directory;</remove>
+        </stage>
+      </package>
+    </alfs>
+
+    ---[ end file ]---
+
+
+Let's analyze the different changes that have been made:
+
+First, the paco entities are included. This is done by the lines:
+
+    <!ENTITY % paco_entities SYSTEM "../config/paco.ent">
+    %paco_entities;
+
+The original "Installing" stage, has been splitted into different stages:
+
+# "Building" (1st pass):
+The package is configure'd and make'd. No files are installed into the system,
+so we leave the commands untouched.
+
+# "Installing" (1st pass):
+Some files are installed, so we have to set the LD_PRELOAD environment variable
+at the beggining of the stage. This is done by the XML "macro" paco-ld-preload:
+
+    <stageinfo>
+      &paco-ld-preload;
+      <base>&build_dir;/&zlib-directory;</base>
+    </stageinfo>
+
+And because it's the first "Installing" stage in this file, the libpaco-log
+temporary file is removed to ensure that we don't log any file installed by any
+previously installed package:
+
+    &paco-clear;
+
+# "Building" (2nd pass):
+The package is reconfigured again in order to install the static library.
+The LD_PRELOAD variable is automatically unset because the environment set in
+the <stageinfo> of the previous stage is not seen by the current one.
+
+# "Installing" (2nd pass):
+The static library is installed. We set the LD_PRELOAD variable again, but this
+time "&paco-clear" is not used, because we do not want to overwrite the already
+logged files, but to add new files into the log.
+
+# "Logging":
+This is a completely new stage.
+Now that the list of files to be logged is saved in the libpaco-log temporary
+file, a "paco -lp" command creates the log for the package. This is done with
+the XML "macro" paco-log-dirname. It's worth noting that this macro works when
+the name of the directory from which the package is built is the same as the
+name of the package as we want it to be logged. This is generally true for all
+packages, with the following exceptions:
+
+  - vim and tcl: because the directory created when unpacking the tarballs has a
+    "non standard" name (vim63 and tcl5.8.3).
+  - All packages that need to be built in a dedicated directory, separated from
+    the sources (gcc, glibc, e2fsprogs).
+
+In these cases, the macro &paco-log-dirname; should be replaced by the following
+lines:
+
+    <execute command="paco">
+      <param>-lp foo-&foo-version;</param>
+      <param>&lt; &paco-tmpfile;</param>
+    </execute>
+    &paco-clear;
+
+where 'foo' is the name of the package to log.
+
+
+
+3. THE END
+==========
+This hint finishes here. Now it should be up to the reader to build an entire
+LFS system with a single press on the Enter key, having control over almost
+every byte written in the hard disk.  Ha!
+
+And this is only the beggining. With litle modifications, the above instructions
+can be applied to install all the BLFS stuff too...
+
+
+
+ACKNOWLEDGEMENTS:
+
+I'd like to thank specially the ALFS staff. I'm really impressed with the
+possibilities of the ALFS system.
+No more nights wasted in front of the computer screen, typing "./configure &&
+make && make install" like a zombie...
+
+I'd also like to thank Brad Bailey for creating an initial version of the
+alfs-paco patch, and to encourage me to write this hint.
+
+And finally, I can't forget the people who aid me in the development of paco.
+
+
+
+CHANGELOG:
+
+[2005-10-24]
+  * Initial hint.
+
+

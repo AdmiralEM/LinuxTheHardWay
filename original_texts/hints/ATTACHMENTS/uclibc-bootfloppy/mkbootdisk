@@ -1,0 +1,344 @@
+#!/bin/bash
+
+#
+# A script for making the bootdisk creation process easy and safe 
+#
+# If you develop your own floppy linux, then it is advised to do it as a 
+# non-privileged user (in order to not suck if you happen to do
+# something  stupid :), and use this (root owned and executable) script
+# via the sudo utility. 
+
+# Below are some values set. Adjust them if necessary.
+
+
+DISK=/dev/fd0
+DEVICE="$DISK"
+FSDIR=rfloppy
+unset FSGZ
+KERNEL=linux-`uname -r`/arch/i386/boot/bzImage
+TOADD=16384 # Comes from kernel internals, do no change!
+MKE2FSAPP=/sbin/mke2fs
+RDEVAPP=/usr/sbin/rdev # The $MKE2FSAPP and $RDEVAPP variables contain \
+# an absolute path because of the following: \
+# by my idea this script is used by a non-privileged user (via sudo) \
+# whose path does not contain the mke2fs, rdev executables 
+MKBOOTREC="$HOME"/.mkbootdisk
+EXTRA_SIZE=150 # Free space left on root filesystem of floppy
+EXTRA_INODES=100 # Free inodes left on filesystem of floppy
+FLOPPYSIZE=1440
+VERSION="0.5"
+
+# Do not edit what follows unless your intention is hacking!
+
+firstcheck=yes  
+compress=yes # Any value other than "no" defaults to production of a \
+#gzipped rootfs 
+KERNELSIZE=x
+[ -s "$MKBOOTREC" ] && KERNELSIZE=`cat "$MKBOOTREC"`
+dokernelcopy=no # Becomes yes if $KERNELSIZE set to a numerical value
+unset TMPDIR
+manuallysetkernelsize=no # This variable tracks down whether -r option is used
+
+#
+# Usage
+#
+
+if [ "$1" = "-h" -o "$1" = "--help" ]; then 
+	echo "\
+----------------
+Bootdisk creation utility, version $VERSION. Usage:
+With -h or --help being the 1st arg, this help is shown; otherwise
+
+`basename "$0"` -k kernelimg -f filesys_dir -s filesys_size -i filesys_inodes \\
+-r kernelimg_size -c floppy_size [-g gzipped_filesys -d]
+
+where \"kernelimg\" is the linux kernel image to be booted by the floppy,
+and \"filesys_dir\" contains the files to be put in the root filesystem.
+
+Default values are: 
+-k $KERNEL 
+-f $FSDIR 
+-s <size of files in filesys_dir + ${EXTRA_SIZE}k> 
+-i <number of files in filesys_dir + ${EXTRA_INODES}>
+-r \`cat ~/`basename "$MKBOOTREC"`\`, or x if ~/`basename \
+"$MKBOOTREC"` is empty or does not exist 
+-c $FLOPPYSIZE
+
+Explanations of options:
+-r kernelimg_size	a kernelimg of the given size (in kb) is supposed to be
+ 			on the disk and kernel copying is skipped, unless size 
+			is x instead of a number
+-g gzipped_filesys	gzipped_filesys is copied to the disk
+			(instead of the contents of filesys_dir)
+-d  			the floppyimage is written to stdout instead of $DISK
+-c floppy_size 		if the floppy image were bigger than floppy_size 
+			(in kb), the process is aborted, unless floppy_size is 
+			x instead of a number
+
+Further comments:
+
+If kernel is copied and -r was used with a non-numerical value, its size
+is stored in ~/`basename "${MKBOOTREC}"` (delete that file before using a
+new kernel image, or use -r x !!)
+
+For sake of safety, `basename "$0"` utilizes mktemp; if you don't have it
+temporary file creation is still done as safely as it's possible
+
+Example:
+* A compressed filesystem is produced from the contents of filesys_dir by
+	`basename "$0"` -r 0 -d > rootfs.gz
+* A floppy can be made using this compressed filesystem by
+	`basename "$0"` -g rootfs.gz
+----------------"
+	exit 1
+fi
+
+
+#
+# Getting options
+#
+
+while getopts "g:k:f:dr:c:s:i:" option; do
+	case $option in 
+		g) FSGZ="$OPTARG"
+		   compress=no;;
+		k) KERNEL="$OPTARG";;
+		f) FSDIR="$OPTARG";;
+		d) DEVICE="&1";;
+		r) KERNELSIZE="$OPTARG"
+		   [ "$OPTARG" -ge 0 ] &>/dev/null && 
+		   manuallysetkernelsize=yes;;
+		c) FLOPPYSIZE="$OPTARG";;
+		i) INODES="$OPTARG";; 
+		s) SIZE="$OPTARG";;
+		*) exit 1;;
+	 esac
+done
+
+
+
+
+#
+# Functions
+#
+
+#
+# Auxiliary fnc's
+
+
+# gzipimp -- the concrete way of doing the compression
+
+gzipimp()
+{
+	dd if=$1 bs=1k | gzip -v9 > $2
+	# I could not figure out why it is the way to do gzipping, but this is
+	# what is suggested by the clever guys. I'd be happy to be informed
+	# about it...
+} 
+
+#cleanup -- removes temporary files
+
+cleanup()
+{
+	[ -e "$TMPDIR" ] && echo "Removing temporary files..." >&2 
+	rm -rf "$TMPDIR" >&2 
+}
+
+#error -- if something goes wrong... 
+
+error()
+{
+	echo Error: "$1" >&2
+	cleanup
+	exit 1
+} 
+
+#maketmpdir -- creates a tmp dir as safely as possible
+
+maketmpdir()
+{
+	if ! TMPDIR=`mktemp -d /tmp/mkbootdisk.$$.XXXXXXXXXX 2>/dev/null`
+	then
+		TMPDIR=/tmp/mkbootdisk.$$.$RANDOM$RANDOM &&
+		rm -rf "$TMPDIR" &&
+		mkdir -m 700 "$TMPDIR"
+	fi ||
+	error "Unable to create temporary directory"	 
+}
+
+#findoutFSGZ -- finds out the appropriate value of $FSGZ
+
+findoutFSGZ()
+{
+	[ $compress = yes ] && FSGZ="$TMPDIR"/mkbootdisk-gzipped_fs
+}
+
+#
+# Important fnc's
+
+
+# check -- checks the validity of arguments
+
+check()
+{
+	for v in RDEVAPP MKE2FSAPP; do #Checking whether these apps can be found
+		[ -x "`eval echo \\$$v`" ] ||
+		error \
+"the value of \$$v is wrong -- `eval echo \\$$v` is not an executable"
+	done
+
+	for v in SIZE INODES; do # Syntax check of variables
+		[ -z "`eval echo \\$$v`" ] ||
+		[ "`eval echo \\$$v`" -ge 0 ] &>/dev/null || 
+		error \
+"wrong value for option -- \$$v is not a non-negative integer"  
+	done
+
+	for v in FLOPPYSIZE KERNELSIZE; do 
+		[ "`eval echo \\$$v`" = x ] ||
+		[ "`eval echo \\$$v`" -ge 0 ] &>/dev/null ||
+		error \
+"Wrong value for option -- \$$v is neither x, nor non-negative integer"
+	done
+
+	if [ "$compress" != no ]; then # checking whether $FSDIR is a directory
+		[ "`file -bL "$FSDIR"`" = directory ] ||
+		error "$FSDIR is not a directory."
+	fi
+
+	if [ $KERNELSIZE = x ]; then #checking whether the kernelimg exists
+		[ "`file -bL "$KERNEL"`" = 'x86 boot sector' ] || 
+		error "$KERNEL is not a kernelimg." 
+	else 
+		[ "$firstcheck" = yes ] && 
+		echo \
+"A kernelimg of size $KERNELSIZE is supposed to be on the disk,
+kernel copying is skipped" >&2 
+	fi
+ 
+	if [ "$compress" = no ]; then #checking whether the gzipped fs exists
+		file -bL "$FSGZ" | grep \
+		'gzip compressed data' > /dev/null || 
+		error "$FSGZ is not a gzipped file"
+		[ "$firstcheck" = yes ] && 
+		echo \
+"An existing compressed filesystem is used as root filesystem,
+filesystem creation is skipped." >&2 
+	fi
+
+	firstcheck= 
+}
+
+# getfsdata -- Finds out size and inode number param's of the filesystem
+# to be created
+
+getfsdata()
+{
+	if [ $compress = yes ]; then
+		[ -z "$SIZE" ] &&
+		SIZE=$(expr $EXTRA_SIZE + `du -sD "$FSDIR" | awk '{print $1}'`)
+	
+		[ -z "$INODES" ] &&
+		INODES=$(expr $EXTRA_INODES + `find "$FSDIR" -follow | wc -l`)
+
+	fi
+}
+
+# compressfs -- Adjusts and compresses the filesystem
+# (Now also creates the filesys but the name is kept)
+
+compressfs()
+{
+	[ "$compress" = no ] && return 0
+	compress=no
+
+	tmpfs="$TMPDIR"/mkbootdisk-rfloppy
+	tmpmountpt="$TMPDIR"/mkbootdisk-mountpt
+ 
+	echo \
+"Creating an ext2 filesystem of size ${SIZE}k and with $INODES inodes" >&2
+	dd if=/dev/zero of="$tmpfs" bs=1k count=$SIZE
+	yes | "$MKE2FSAPP" -m 0 -N $INODES "$tmpfs" > /dev/null 
+	mkdir -p "$tmpmountpt"
+	mount "$tmpfs" -o loop "$tmpmountpt"
+	rmdir "$tmpmountpt"/lost+found 
+	cp -a "$FSDIR"/* "$tmpmountpt"
+	chown -R 0:0 "$tmpmountpt"/*
+	if umount "$tmpmountpt"; then
+		echo "Compressing the filesystem..." >&2
+		gzipimp "$tmpfs" "$FSGZ"
+	else
+		error "some problem occured with unmounting the file system."
+	fi
+}
+
+
+# floppysizecheck -- checks whether will be enough space on floppy
+
+floppysizecheck()
+{
+	[ $FLOPPYSIZE = x ] && return 0
+	FSGZSIZE=$(( `dd if="$FSGZ" of=/dev/null bs=1k 2>&1 |
+	 sed -n '1s%\([0-9][0-9]*\).*%\1%p'` + 1 ))
+	[ $(($KERNELSIZE + $FSGZSIZE)) -gt $FLOPPYSIZE ] &&
+	error "
+size of kernel: 	       $KERNELSIZE
+size of compressed filesystem: $FSGZSIZE
+are altogether:		       $KERNELSIZE + $FSGZSIZE = \
+$(($KERNELSIZE + $FSGZSIZE))
+which exceeds your floppy size ($FLOPPYSIZE)"
+}
+
+# kernelcopy -- copies and installs the kernelimg to disk
+
+kernelcopy()
+{
+	[ $KERNELSIZE = x ] || return 0
+ 
+	tmpdiskimg="$TMPDIR"/mkbootdisk-diskimg 
+	echo Copying kernel to diskimage file... >&2
+	KERNELSIZE=$(( `dd if="$KERNEL" of="$tmpdiskimg" bs=1k 2>&1 |
+	 sed -n '1s%\([0-9][0-9]*\).*%\1%p'` + 1 )) ||
+	error "cannot create disk image file" 
+	echo $(( $KERNELSIZE - 1 ))+1 records in/out >&2
+	[ $manuallysetkernelsize = yes ] || echo $KERNELSIZE > "$MKBOOTREC" 
+
+	echo Adjusting the kernelimg to mount the file system as rootfs... >&2 
+	"$RDEVAPP" "$tmpdiskimg" 0,0 
+	"$RDEVAPP" -R "$tmpdiskimg" 0
+	"$RDEVAPP" -r "$tmpdiskimg" `expr $TOADD + $KERNELSIZE`
+	dokernelcopy=yes
+}
+
+diskwrite()
+{
+	if [ $dokernelcopy = yes ]; then 
+		echo "Completing the diskimage..." >&2
+		dd if="$FSGZ" of="$tmpdiskimg" bs=1k seek=$KERNELSIZE 
+		echo Writing the diskimage to device... >&2
+		eval "dd if=$tmpdiskimg bs=1k >$DEVICE" 
+	elif [ $dokernelcopy = no ]; then
+		echo Writing the compressed file system to device... >&2
+		eval "dd bs=1k seek=$KERNELSIZE >$DEVICE" < "$FSGZ"
+	else
+		error 'bogus value for $dokernelcopy' 
+	fi || 
+	error "it seems that there is some problem with the target device."
+}
+
+
+#
+# Program body
+#
+
+maketmpdir
+findoutFSGZ
+check
+getfsdata
+compressfs
+kernelcopy
+floppysizecheck
+check
+diskwrite
+cleanup
+exit 0

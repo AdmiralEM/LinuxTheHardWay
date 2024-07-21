@@ -1,0 +1,149 @@
+TITLE:		How to set up and use OpenSSH to connect from Windows machines
+LFS VERSION:	All
+AUTHOR:		Arturo Rangel <izaram@yahoo.com>
+
+SYNOPSIS:
+
+	How to configure OpenSSH to be even more secure and how to make a
+floppy disk that you can use on almost any Windows machine to access your
+machine remotely.
+	
+HINT:
+	09/03/2001 - First publication
+	09/04/2001 - Minor changes in formatting
+	10/11/2002 - Yay! Updated for SSH2, portable
+		     between different versions of Windos (tested in 98SE, ME
+		     and XP Professional)
+	
+INTRODUCTION
+
+	Once I had my shiny LFS system I wanted to be with it all the time. I
+wanted to work on it from work, from my girlfriend's house, from school,
+everywhere. So I went out and read some documentation on how to set up OpenSSH
+(including Daniel's hint on
+http://hints.linuxfromscratch.org/hints/openssh.txt). Here's a summary of what
+I came up with. I hope it helps you out and that you learn from it.
+	
+
+DISCLAIMER
+
+	Just like the one the great Kevin Smith has at the beginning of Dogma
+(go watch that movie if you have no idea what I'm talking about). Please make
+sure you know what you are doing (or at least have an idea of what you are
+doing) when you follow this hint. The author cannot be made responsible for any
+missed configuration, run-over cats, hair loss or any other problem that arises
+directly or indirectly from following the simple instructions stated here. Now
+that we got that out of the way, let's move on.
+		
+SETTING UP THE SERVER	
+
+	First of all, in order to make your machine more secure you need to
+disable the regular telnet daemon and make sure that OpenSSH gets started at
+bootup (read Daniel's hint on how to do this). Once you have a running OpenSSH
+fire up your favorite editor to change its configuration (the file in my system
+is /etc/ssh/sshd_config).
+	
+	Make sure that the following options are set (1):
+	
+	IgnoreRhosts no
+	RhostsAuthentication no
+	RhostsRSAAuthentication yes
+	RSAAuthentication yes
+	PasswordAuthentication no
+	
+	Optionally, you can set this line:
+	
+	Protocol 2
+	
+
+	To make sure your server always uses the (more secure) version 2 protocol.
+	
+	What you are doing with these options is telling sshd to make sure that
+all the people trying to log into your system have a valid encryption key and
+not to allow login with a simple username/password combination. What this means
+is that your users  will need to create a new key pair for themselves in your
+system and they will need to have their file key handy (in a floppy or copied
+into their laptop) whenever they want to log into the system. This might sound
+a little cumbersome but the increased security is well worth it in my opinion.
+		
+	Please make sure you read the Domain mini-HOWTO (1) if you want to
+learn how to do do some other tricks (such as tunneling X over the connection)
+
+CREATING YOUR PRIVATE/PUBLIC KEY COMBO
+	
+This is the part of this hint where configuration varies slightly is you use
+Protocol v1 or v2. To create an RSA key for v1, the user has to type this
+command:
+	
+        ssh-keygen -b 1024 -f new_rsa_key
+        
+	This command will create two files in the curent directory: new_rsa_key
+and new_rsa_key.pub. The first file is the private key and the second is the
+public key (hence the .pub extension :). This key pair is v1 by default, read
+on to create a v2 key.
+        
+	For a v2 key, the key has to be created using PuTTYgen, available from
+the same place PuTTY is (2). Start up PuTTYgen and select SSH2 RSA as the type
+of key you want to generate. Click on Generate and follow the instructions
+while you wait for your key pair to be created. Once it's done, copy the text
+that's supposed to go into your authorized_keys2 file, and save it into a file.
+This is your public key. Click on Save private key and keep that file somewhere
+handy. We'll come back to it. 
+	
+	Using either method, the user will be asked for a pass phrase.
+Make_sure_this_is_not_blank. Doing that would mean that if someone found the
+private key they would be able to use it to gain easy acces to your system.
+Now have them copy the public key file into their $HOME/.ssh/authorized_keys
+file for v1 or $HOME/.ssh/authorized_keys2 for v2. (You can simply type 'cat
+new_rsa_key.pub >> $HOME/.ssh/authorized_keys (or) authorized_keys2' depending
+on the protocol version you are using).
+	
+CREATING YOUR PORTABLE CLIENT
+
+	Now the fun part. Copy the private key (new_rsa_key, or the one you
+saved from PuTTYgen) file into a floppy and also put a copy of PuTTY (2), the
+great ssh client for Windows, into the same floppy. Configure PuTTY with your
+server parameters, etc. Make sure you select the appropiate protocol version
+and that you point to the private key you saved before.
+	
+	PuTTY saves the fingerprint of every host it connects to in the Windows
+registry to make sure that you are connecting to a host that has confirmed its
+"identity" with you. The only downside to this is that you are not able to
+carry this information with you, at least not easily.
+	
+	Here's what to do to save that information (as well as any changes you
+make to the PuTTY configuration) and have it ready on the go. You can either
+follow the instructions from the PuTTY authors and create a batch file with
+some .reg files (3), or you can download a small VB program I wrote (4). The
+difference between the two methods is that my program works between different
+versions of Windows, since starting with Win2K, the files exported from the
+registry are Unicode as opposed to regular ANSI files. This prevents older
+versions of Windows from importing files that come from Win2K and WinXP
+machines.
+	
+	Please be aware that using any of these two methods (a batch file or my
+little program) might cause your current settings to be deleted from the
+registry. (Well, ahem, at least *my* program warns you if that might happen :)
+	
+CONCLUSION
+
+	Like I said at the beginning; I hope that you learned from this hint
+and that it helps you have a far more secured server. Feel free to contact me
+if you have any questions. I will try to answer the best I can.
+			
+NOTES
+
+	I have tested these instructions on Win 98SE/ME/XP machines. I have yet
+to try on 95/NT/2K, but I see no reason for it not to work. I will update this
+hint if I receive confirmations of it working on said machines.
+		
+FOOTNOTES
+
+(1) The OpenSSH configuration was obtained from the Domain mini-HOWTO:
+    http://www.linuxdoc.org/HOWTO/mini/Domain.html
+(2) PuTTYgen and PuTTY can be downloaded from:  
+    http://www.chiark.greenend.org.uk/~sgtatham/putty/
+(3) Instruction on how to set up a DOS batch file for PuTTY are found here:
+    http://www.tartarus.org/~owen/putty-docs/Section3.13.html
+(4) Or you can use the small program I wrote downloadable from:
+    http://izaram.net/pages/misc/PuTTYwrap.zip

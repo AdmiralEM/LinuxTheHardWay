@@ -1,0 +1,144 @@
+AUTHOR: Joe Locash <jlocash at gmail dot com>
+
+DATE: 2022-03-26
+
+LICENSE: GNU Free Documentation License Version 1.3
+
+SYNOPSIS: How to put a LFS OS tree into a qemu qcow2 virtual drive.
+
+DESCRIPTION:
+  This hint will describe the steps necessary to place the contents of a
+  directory containing a LFS system into a qemu qcow2 image file so that it can
+  be booted using qemu.
+
+PREREQUISITES:
+  The following packages must be installed to use this hint.  The instructions
+  for building any missing packages can be found in the BLFS book.
+    * qemu (for the qemu-img and qemu-nbd commands, and obviously booting the
+            virtual drive)
+    * gptfdisk (for the sgdisk command)
+    * parted (for the partprobe command)
+
+    * the kernel nbd module
+      If the nbd module isn't available in your kernel you will need to enable
+      it in your kernel config and build the module:
+      Device Drivers  --->
+        Block devices  --->
+          <M>   Network block device support
+
+HINT:
+  IMPORTANT: The instructions below assume that you are performing all commands
+             as the root user!
+
+  First identify the directory where your LFS directory is and assign it to the
+  LFS variable:
+    $ LFS=/my/lfs/directory
+  Next, assign a filename to the LFS_QCOW2 variable to where you would like to
+  place the .qcow2 image file for qemu:
+    $ LFS_QCOW2=/some/directory/lfs.qcow2
+
+  Now create the qcow2 image.  In this example I use a virtual drive size of
+  15GB.  A 1MB boot partition, 13GB for LFS, and 2GB for swap.  Adjust to meet
+  your needs.
+
+  Use qemu-img to create the virtual drive:
+    $ qemu-img create -f qcow2 $LFS_QCOW2 15G
+
+  Load the nbd kernel module:
+    $ modprobe nbd max_part=8
+
+  Use qemu-nbd to connect to the virtual drive:
+    $ qemu-nbd --connect=/dev/nbd0 $LFS_QCOW2
+
+  Use sgdisk to create the partitions.  The partition table will be a GPT table.
+  Partition 1 is the boot partion where grub will be installed, 2 is the Linux
+  partition with LFS on it, and 3 is swap.
+    $ sgdisk -n 0:0:+1M  -t 0:ef02 -c 0:"Boot"       /dev/nbd0
+    $ sgdisk -n 0:0:+13G -t 0:8300 -c 0:"Linux"      /dev/nbd0
+    $ sgdisk -n 0:0:0    -t 0:8200 -c 0:"Linux Swap" /dev/nbd0
+    $ sync
+    $ partprobe
+
+  Format the partitions:
+    $ mkfs.ext4 /dev/nbd0p2
+    $ mkswap /dev/nbd0p3
+
+  Mount the Linux partition and copy the LFS directory to it:
+    $ mount /dev/nbd0p2 /mnt
+    $ pushd $LFS
+    $ tar cf - . | (cd /mnt ; tar xf -)
+    $ sync
+    $ popd
+
+  Create the fstab and grub.cfg files for the virtual drive.
+  
+  First get the PARTUUID's for the root and swap partitions:
+    $ blkid /dev/nbd0p2 -s PARTUUID -o value
+    $ blkid /dev/nbd0p3 -s PARTUUID -o value
+
+  If /mnt/etc/fstab exists, replace it with the following.  If it doesn't, use
+  the following when creating it:
+
+# Begin /etc/fstab
+
+# file system  mount-point  type     options             dump  fsck
+#                                                              order
+
+PARTUUID=ROOT_UUID  /            ext4     defaults            1     1
+PARTUUID=SWAP_UUID  swap         swap     pri=1               0     0
+proc           /proc        proc     nosuid,noexec,nodev 0     0
+sysfs          /sys         sysfs    nosuid,noexec,nodev 0     0
+devpts         /dev/pts     devpts   gid=5,mode=620      0     0
+tmpfs          /run         tmpfs    defaults            0     0
+devtmpfs       /dev         devtmpfs mode=0755,nosuid    0     0
+
+# End /etc/fstab
+
+*** NOTE: Replace ROOT_UUID and SWAP_UUID with the PARTUUID's gathered above
+          for root and swap respectively.
+
+  Now install grub to the GPT boot partition and create the grub.cfg file.
+  First, create a device.map file.  The purpose of this file is to remap
+  hd0 to the ndb device so that when grub-install is run it will find the
+  correct installation on the virtual drive:
+    $ echo "(hd0) /dev/nbd0" > /tmp/device.map 
+
+  Install grub:
+    $ grub-install --no-floppy --grub-mkdevicemap=/tmp/device.map \
+                   --modules="part_msdos part_gpt" --boot-directory=/mnt/boot \
+                   --target=i386-pc /dev/nbd0
+    $ sync
+    $ rm /tmp/device.map
+
+  Create /mnt/boot/grub/grub.cfg if it doesn't exist or replace it with the
+  following contents:
+
+# Begin /boot/grub/grub.cfg
+set default=0
+set timeout=5
+
+insmod ext2
+set root=(hd0,2)
+
+menuentry "GNU/Linux, Linux X.Y.Z" {
+    linux   /boot/vmlinuz-X.Y.Z root=PARTUUID=ROOT_UUID ro
+}
+# End /boot/grub/grub.cfg
+
+*** NOTE: Replace X.Y.Z with your kernel version and ROOT_UUID with the UUID
+          value when the blkid command was run for /dev/nbd0p2 above
+
+  Now unmount the virtual drive, disconnect the nbd device, and remove the
+  kernel module:
+    $ sync
+    $ umount /mnt
+    $ qemu-nbd --disconnect /dev/nbd0
+    $ rmmod nbd
+
+  Your qemu drive is now ready for testing.  When starting qemu use
+    -drive file=$LFS_QCOW2
+
+
+CHANGELOG:
+[2022-03-26]
+  * Initial hint.

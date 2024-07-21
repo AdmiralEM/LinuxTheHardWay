@@ -1,0 +1,171 @@
+TITLE:		x86-optimization
+LFS VERSION:	any
+AUTHOR:		Eric Olinger <eric@supertux.com>
+
+SYNOPSIS:
+	How to use compiler-optimization setting with GCC to optimize binaries for an x86 systems
+
+HINT:
+------
+THANKS
+------
+
+Gerard Beekmans <gerard@linuxfromscratch.org>
+        One of the Authors of the original Compiler-optimization hint
+        and I paraphrased some of lfs-book 2.4.3 in the intro section.
+
+Thomas -Balu- Walter <tw@itreff.de>
+        One of the Authors of the original Compiler-optimization hint,
+        which I got some info for this hint from.
+
+The people at the Athlon Linux Project <www.AthlonLinux.org>
+        They have one of the few pages I found on optimization flags 
+        and what they mean besides the GCC online documentation.
+
+------------
+INTRODUCTION
+------------
+
+Most binaries are compiled with the -O2 option and little if any other 
+optimization options. While this makes the binary portable, as its 
+compiled for the i386 processor by default, it doesn't do much for the 
+speed. 
+
+There's a few way to change the default compile options. One is to 
+Manually edit or patch the all the Makefile(s) in the src tree. This can 
+be a time consuming process and not very efficient. The second is to set 
+the CFLAGS and the CXXFLAGS environment variables.
+
+----------------
+COMPILER OPTIONS
+----------------        
+
+For the minimal set of optimizations you can enter the following and 
+'unset' the environmental variably when your done the put it in your 
+.bashrc file if you plan to us it all the time. 
+
+export CFLAGS="-O3 -march=<cpu-type>" &&
+CXXFLAGS=$CFLAGS
+
+or for the maximum optimization possible, try the following:
+
+export CFLAGS="-s -O3 -fomit-frame-pointer -Wall \
+        -march=<cpu-type> -malign-functions=4 \
+        -funroll-loops -fexpensive-optimizations -malign-double \
+        -fschedule-insns2 -mwide-multiply" &&
+CXXFLAGS=$CFLAGS
+
+The minimal optimizations will almost always work on your system but you 
+wont always be able to copy the binaries to other systems with a lower 
+cpu. 
+
+Some packages don't like either of these optimizations and either wont
+built or seg fault when you try to run it. If your having trouble getting 
+a package to compile or run properly, try turning off most if not all the 
+options, it probably has something to do with your compiler options.
+
+The fact that you don't have any problems compiling everything with -O3 
+doesn't mean you won't have any problems in the future. Another problem 
+ the Binutils version that's installed on your bootstrap system 
+often causes compilation problems in Glibc (most noticeable in 
+ because RedHat often uses beta software which aren't always very 
+.
+
+"RedHat likes living on the bleeding edge, but leaves the bleeding up to you" 
+(quoted from somebody on the lfs-discuss mailinglist).
+
+----------------------
+DEFINITIONS FOR FLAGS
+----------------------
+
+For more information on compiler optimization flags see the GCC Command 
+s page in the Online GCC 3.0 docs at: 
+
+.gnu.org/onlinedocs/gcc-3.0/gcc_3.html
+
+Section 3.10 deals with option flags for general compiler optimization.
+n 3.17.15 deals with compiler optimization flags specific to the 
+x86 line. 
+
+-s
+        A linker option that remove all symbol table and relocation 
+        information from the binary.
+
+-O3
+        This flag sets the optimizing level for the binary.
+                3       Highest level, machine specific code is generated.
+   Auto-magically adds the -finline-functions and 
+   -frename-registers flags. 
+                2       Most make files have this set up as Default, performs all  
+   supported optimizations that do not involve a space-speed 
+   tradeoff. Adds the -fforce-mem flag auto-magically.
+                1  Minimal optimizations are performed. Default for the compiler, 
+   if nothing is given.
+                0       Don't optimize.
+                s       Same as O2 but does additional optimizations for size.
+
+-fomit-frame-pointer 
+        Tells the compiler not to keep the frame pointer in 
+        a register for functions that don't need one.  This 
+        avoids the instructions to save, set up and restore 
+        frame pointers; it also makes an extra register available 
+        in many functions. It also makes debugging impossible 
+        on some machines.
+
+-Wall 
+        Enables all warning messages.
+
+-march=i686 
+        Defines the instructions set to use when compiling. -mpcu is implied 
+be the same as -march when only -march is used.
+                i386                    Default cpu type
+                i486                    Intel/AMD 486 processor
+                i586                    First generation pentium
+                i686                    Second generation pentium
+                pentium                 Same as i586
+                pentiumpro      Same as i686
+                pentium4                Intel Pentium 4 processor
+                k6                              k6, k6-2, k6-3
+                athlon          Athlon/Duron
+
+-mcpu=i686
+        Sets the machine cpu-type to use when scheduling instructions.
+        The definitions are the same as -mcpu.
+
+-malign-functions=4 
+        This is an i386 option. Aligns the start of functions to a 2 raised 
+        to 4 byte boundary. If `-malign-functions' is not specified, the 
+        default is 2 if optimizing for a 386, and 4 if optimizing ior a 486.
+
+-funroll-loops 
+        This is an optimization option. Performs the optimization of loop 
+        unrolling. This is only done for loops whose number of iterations 
+        can be determined at compile time or run time. `-funroll-loops' 
+        implies both `-fstrength-reduce' and `-frerun-cse-after-loop'.
+
+-fexpensive-optimizations 
+        Another optimization option that performs a number of minor 
+        optimizations that are relatively expensive.
+
+-malign-double 
+        This is an i386 option. Controls whether GCC aligns double, long 
+        double, and long long variables on a two word boundary or a one 
+        word boundary. Aligning double variables on a two word boundary 
+        will produce code that runs somewhat faster on a `Pentium' at the 
+        expense of more memory. Warning: if you use the `-malign-double' 
+        switch, structures containing the above types will be aligned 
+        differently than the published application binary interface 
+        specifications for the 386.
+
+-fschedule-insns2 
+        This is an optimization option. Similar to `-fschedule-insns', 
+        but requests an additional pass of instruction scheduling after 
+        register allocation has been done. This is especially useful on 
+        machines with a relatively small number of registers and where 
+        memory load instructions take more than one cycle.
+
+-mwide-multiply
+        Control whether GCC uses the mul and imul that produce 64-bit 
+        results in eax:edx from 32-bit operands to do long long 
+        multiplies and 32-bit division by constants.
+

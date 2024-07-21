@@ -1,0 +1,128 @@
+TITLE:          Lilo beautified
+LFS VERSION:    3.3
+AUTHOR:	        yoonsoo <yoonsoo@gmx.net>
+		
+
+SYNOPSIS:
+	How to get a nice picture as boot prompt
+
+HINT:
+Version 0.3
+23/07/2002
+
+Contents
+--------
+
+    1. What do you need ?
+    2. Copying the bmp-file
+    3. preparing lilo.conf
+    4. Finish
+    5. Additional Remarks and Warnings
+
+
+1. What do you need 
+   ----------------
+
+     lilo-22.2 
+
+	 or
+
+	 lilo-22.3.2
+	 nasm-0.98.34
+
+	 (just install nasm the way you usually install packages) 
+
+     640x480x16 bmp file
+
+
+2. Copying BMP
+   -----------
+
+	You can use any BMP with the dimensions 640x480 and a colordepth 
+        of 16Bit. If you decide to use one of the BMP's shipped with 
+        the lilo-package, you can find them at lilo-src/sample/ 
+        Just copy one of them to /boot (or somewhere else if 
+        you want to). Imho logo64a.bmp looks good so I will refer 
+        to this on.
+
+             	 
+3. Preparing lilo.conf
+   -------------------
+
+        There are two ways
+
+	a) set the symlink /boot/boot.b to /boot/boot-bmp.b
+        b) add install=boot/boot-bmp.b to lilo.conf
+       
+        I prefer to change the symlink for several reasons, so you 
+        will find no install= in my lilo.conf below
+
+        add the following lines to lilo.conf
+
+------------------------------------------------------
+bitmap = /boot/logo64a.bmp (or whatever bmp you took)
+bmp-colors = 6,9,0,15,9,0
+bmp-table = 59,5,1,18,
+bmp-timer = 66,28,6,8,0
+-----------------------------------------------------
+
+bmp-colors: here is where you set the colors used in your menu 
+ the first three entries belongs to the normal menu-text and the
+ last three entries specifies the colors of the highlighted
+ menu-text.
+
+bmp-table: location of the menu-table. First two entries gives
+ the x, and y cooridiantes of the menu table. 59 means column 59, 
+ you cal also use (eg) p400 to adress in pixels instead. The next
+ two entries are the numbers of the rows and columns in our menu table.
+ The last entry will specify the space between the columns if there are
+ more than one.  
+
+bmp-timer: location of the timer-box for the countdown. The first two
+ entries are the coordinates and the next last values specifies  the colors  
+
+alternatively, if you use a lilo version greater than 22.3 you could also do:
+
+add the followjng lines to lilo.conf
+
+--------------------------------------------------------------
+bitmap = /boot/logo64a.bmp (or whatever bmp you took)
+-------------------------------------------------------------
+
+cat > /boot/logo64a.dat << "EOF"
+bmp-colors = 6,9,0,15,9,0
+bmp-table = 59,5,1,18,
+bmp-timer = 66,28,6,8,0
+EOF
+
+lilo -E /boot/logo64a.dat
+
+(see the manpage and the README's shipped with your lilo-Source for
+ further details)
+
+
+4. Finish
+   ------
+
+	run lilo and reboot
+	Enjoy your new Boot-menu ;)
+
+5. Additional Remarks & Warnings
+   -----------------------------
+
+	As it can be very risky to use lilo you should always have a
+    working boot disk to 'repair' your boot image if things went
+    wrong, and it will go wrong for sure ;)
+    Be sure, that your bmp-file exists and will not be erased
+    accidently. 
+    And last not least : never forget to run lilo after you have
+    made some changes.
+	There are advantages and disadvantages which comes with 
+	upgrading to lilo-22.3. Just check which is more important for 
+	you.
+  
+------------------------------------------------------------------
+ If you have any ideas, suggestions or found a bug you can send a
+ mail to:
+ yoon soo <yoonsoo@gmx.net>
+------------------------------------------------------------------

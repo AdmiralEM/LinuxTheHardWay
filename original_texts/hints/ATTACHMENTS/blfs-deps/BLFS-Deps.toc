@@ -1,0 +1,16 @@
+BLFS-Deps/README
+BLFS-Deps/README.html
+BLFS-Deps/HarvestPackages.py
+BLFS-Deps/AuditPackages.py
+BLFS-Deps/ReportPackages.py
+BLFS-Deps/PrerequisitePackages.py
+BLFS-Deps/MaskDonePackages.py
+BLFS-Deps/DownloadPackages.py
+BLFS-Deps/InstallPackages.py
+BLFS-Deps/UninstallPackages.py
+BLFS-Deps/PackageDB.py
+BLFS-Deps/pkgs.dat
+BLFS-Deps/alllist.txt
+BLFS-Deps/xml.sax.expatreader.patch.README
+BLFS-Deps/xml.sax.expatreader.patch
+BLFS-Deps/BLFS-Deps.toc

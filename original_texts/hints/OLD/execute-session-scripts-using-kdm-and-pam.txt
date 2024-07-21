@@ -1,0 +1,314 @@
+AUTHOR: Stef Bon <stef at bononline dot nl>
+
+DATE: 2006-01-30
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: Execute scripts at begin and end of a KDE-session using KDM and PAM.
+
+DESCRIPTION:
+
+This hint is about the ability to execute scripts when a KDE session starts 
+and when it stops. 
+
+Earlier I wrote a hint about this using PAM, with the help of the module pam_script. 
+I discovered that PAM is not the best place to do so. PAM is not the place to start 
+scripts, KDM is. KDM provides a very easy way via the Xstartup and Xreset files to 
+execute scripts. PAM has the abilty to do something with the credentials provided 
+at login, with the help of a module called pam_script. 
+
+I'm trying to combine those two.
+
+
+warning:
+
+I use PAM and a module called pam_script to store the credentials provided at
+login (the username and the password!!) for authentication against SMB servers, when 
+mounting shares or browsing the network with fusesmb.
+This looks a little bit like Single Sign On, but it isn't!! The credentials are stored in 
+a subdirectory of the homedir (~/.cifs/mount.cifs.conf and ~/.smb/fusesmb.conf), with enough security at runtime.
+But somebody can still find them being root, or with a LiveCD. The credentials are stored
+plaintext, no encryption!!
+
+So, this should never be used in an environment where you can't trust your users!
+
+
+ATTACHMENTS:
+
+
+PREREQUISITES:
+This hint requires sufficient knowledge of LINUX in general, and scripts in particular.
+
+HINT:
+
+Content:
+1. KDM: the files
+2. PAM: the files
+2.1 Installation of pam_script
+2.2 Adjusting pam configuration
+2.3 Creating the onauth script
+3. TODO and suggestions
+
+
+1. KDM: the files
+-----------------
+
+KDM uses some files to start and stop:
+
+. Xstartup 
+run as root, after a user succesfully logs in. 
+
+. Xsession
+runs with permissions of the authorized user, to start the desired session (KDE).
+
+. Xreset
+run as root, after the user session has ended.
+
+Where Xstartup is the place to start things up, Xreset is the place to undo these commands.
+
+For more information about these files look at the handbook of KDM.
+
+By adding the following code to the Xstartup file:
+
+
+-- snip --
+
+for script in /etc/session.d/kdm/startup/*.sh; do
+
+	if [ -x $script ]; then
+	
+		eval $script $USER
+
+	fi;
+
+done;
+
+
+and the code to the Xreset file:
+
+
+-- snip --
+
+for script in /etc/session.d/kdm/reset/*.sh; do
+
+	if [ -x $script ]; then
+	
+		eval $script $USER
+
+	fi;
+
+done;
+
+
+Create the directories where the scripts go:
+
+install -m755 -d /etc/session.d/kdm/startup
+install -m755 -d /etc/session.d/kdm/reset
+
+The files in these directories must be accessible for every ordinary user: 
+therefore the permissions are 755. 
+All scripts in these directories should have the same permissions: 755.
+
+Every user should be able to execute the script, but only root is able to modify 
+them.
+
+
+2. PAM: the files
+-----------------
+
+My version of PAM is 0.80. 
+I using pam-script to make credentials provided at login available for password
+sensitive programs like mount.cifs and fusesmb. If this is not what you want, skip 
+this section. 
+Also be aware of the "danger" of this construction, as already stated in the 
+DESCRIPTION.
+
+
+2.1 installation of pam_script
+------------------------------
+
+Get the module pam_script from http://freshmeat.net/projects/pam_script. 
+I'm using version 0.1.6.
+
+unpack:
+
+tar -xzf pam-script-*.tar.gz
+
+compile and move to the proper place:
+
+cd pam-script-*
+
+make
+mv pam_script.so /lib/security
+chown root:root /lib/security/pam_script.so
+chmod 755 /lib/security/pam_script.so
+
+
+2.2 Adjusting pam configuration
+-------------------------------
+
+
+Adjusting the /etc/pam.d/login file:
+
+
+Pam_script has the ability (from version 0.1.5) to get the password provided at login, 
+and make this available via an environmentvariable PAM_AUTHTOK to scripts. 
+Insert it in the authpart:
+
+-- snip --
+
+auth		required	pam_shells.so
+auth		required	pam_script.so expose=1
+auth		sufficient	pam_unix.so use_first_apss
+auth		required	pam_ldap.so use_first_pass
+
+
+When using other ways for users to login than the standard, like a X-based login as kdm,
+adjust them the same way. On my machine I login frequently in with kdm, and that uses the 
+kde-service, which is a symlink to the login-service:
+
+cd /etc/pam.d
+
+lrwxrwxrwx   1 root root    5 2005-07-11 13:59 kde -> login
+lrwxrwxrwx   1 root root    5 2005-07-11 13:59 kde-np -> login
+-rw-r--r--   1 root root  931 2005-07-19 13:20 login
+
+
+Notes:
+
+- the pam_script.so uses some parameters. All of them are described in the README in the
+source directory.
+I use expose=1 in the autpart because I want the password to be used by fusesmb and mount.cifs.
+
+
+2.3 Creating the onauth script
+------------------------------
+
+
+The pam_script works with two standard scripts, onsessionopen and onsessionclose in the
+/etc/security directory. 
+
+
+cat >> /etc/security/onauth << "EOF"
+#!/bin/bash
+
+userid=$1
+service=$2
+userproperties=$(getent passwd | grep -E "^$userid")
+
+if [ -z "$userproperties" ]; then
+
+    #
+    # userproperties not found: something wrong
+    #
+
+    echo "User not found."
+    exit
+
+fi;
+
+homedir=$(echo $userproperties | cut -d ":" -f 6);
+gidnr=$(echo $userproperties | cut -d ":" -f 4);
+uidnr=$(echo $userproperties | cut -d ":" -f 3);
+
+nrusers=$(w -h $userid | wc -l);
+
+if [ $nrusers -eq 0 ]; then
+
+    if [ -d /etc/session.d/pam ]; then
+
+	for script in /etc/session.d/pam/onauth/*.sh; do
+	
+	    if [ -x $script ]; then
+
+		eval $script $userid $service $PAM_AUTHTOK
+
+	    fi;
+	done;
+	
+    fi;
+
+fi;
+
+exit 0
+
+EOF
+
+chown root:root /etc/security/onauth
+chmod 755 /etc/security/onauth
+
+
+Create the following directories:
+
+mkdir -p /etc/session.d/pam/onauth
+
+Here is where the scripts will go.
+
+
+Notes:
+
+-  as you can see I use the command "w" to determine the users logged in. 
+Other utilities as who, users and last gave not reliable information. It 
+looks as if the utmp file is not always presenting the right values. 
+Utilities as who,users and last show information from utmp without any check, so 
+they inherit the faults. 'w' does some extra checking, which makes it more 
+usable. 
+
+Other pammodules, like pam_mount, have other ways to keep track of the amount of logins 
+per user. With pam_mount a seperate file (/var/run/pam_mount/$userid) is created for
+this purpose.
+
+Anyone knowing a better way to determine how many times a user is logged 
+in, please let me know.
+
+- I choose to execute the script only when it's the first time a user logs in.
+It's also possible to leave that to the scripts (in /etc/session.d/pam/).
+
+- pam_script is able to execute scripts when a sessions starts, and when is ends 
+(pam_script calls it onsessionopen and onsessionclose). 
+I've used this, but not anymore. These scripts I now put in /etc/session.d/kdm/startup and 
+/etc/session.d/kdm/reset.
+
+
+
+3. TODO and suggestions
+-----------------------
+
+The construction is working, but is not complete:
+
+- it does no logging and proper userfeedback (on the screen) 
+with the hint xconsole_setup.txt (unmaintained: in hints/downloads/files)
+you'll find a way to launch xconsole at startup by root. Using logger and 
+adjusting /etc/syslog.conf it's possible to write messages to it, which
+appear just before the splash screen of KDE comes up.
+
+
+- scripts are executed in the order the command
+
+for script in /etc/session.d/kdm/startup/*.sh; do
+
+works.
+
+Maybe there should be an order. Some scripts first and others later. Just like
+the rc script works to start and stop scripts in the /etc/rc.d structure.
+
+
+- I'm testing FreeNX now. It turns your desktop into a terminalserver for
+X11 sessions. You should test it!
+There is a hint for LFS already!! 
+It does not work with KDM, so does nothing with the construction I'm using.
+I'll check this is a sollution.
+
+
+ACKNOWLEDGEMENTS:
+  * Thanks to the author of pam_script, Izak Burger, for his module and 
+    some usefull hints.
+
+CHANGELOG:
+[2006-01-15]
+  * Initial hint.
+[2006-01-30]
+  * added chapter 3. TODO and suggestions
+
+TODO:
+  * add logging via xconsole

@@ -1,0 +1,188 @@
+AUTHOR: Joern Abatz <joern@abatz.de>
+DATE: 2003-09-23
+LICENSE: GNU Free Documentation License
+SYNOPSIS: Bring a Dependency Tree into linear Order
+PRIMARY URI: http://www.abatz.de/linux/blfs-dependencies.html
+
+DESCRIPTION:
+This is for newbies who install things from the BLFS book for the very
+first time. You cannot install the BLFS book from top to bottom. Sooner or
+later you will get to some package, that depends on other packages, that
+depend on even more other packages. This hint shall help you to keep track
+of what you're doing and where you are.
+
+PREREQUISITES: BLFS-BOOK-1.0.txt blfs-dependencies.tar.gz
+
+HINT:
+
+Index:
+------
+1. How to work with depsort
+2. What's in the tarball
+3. Compiling depsort.c
+4. Virtual packages
+5. Omitted dependencies
+6. Format of deps.txt
+7. Extracting dependencies from the BLFS book
+8. To do
+
+
+1. How to work with depsort:
+----------------------------
+
+That tarball http://www.abatz.de/linux/blfs-dependencies.tar.gz contains:
+
+deps.txt - a list of packages and their dependencies (from the BLFS book)
+depsort - a program that brings those dependencies into a linear order
+
+1. There are two lines in "deps.txt" that need editing before use:
+
+In the line
+mta sendmail-8.12.9 or postfix-2.0.7 or qmail-1.03 or exim-4.14
+choose one MTA to install and remove the others (and remove the 'or's too)
+
+In the line
+xine-lib-1-beta9 xfree86-4.3.0 alsa-0.9.2 esound-0.2.29 or arts-1.1 ....
+choose either esound-0.2.29 or arts-1.1 and remove the other one
+
+2. Now write a list of those packages from the BLFS book, that you have
+already installed (one name per line) and save it as "inst.txt". If you
+have installed nothing of BLFS yet (only LFS), create an empty file, with:
+
+
+>> inst.txt
+
+
+3. Now write a list of packages that you want to install and save it as
+"wish.txt". To make a list of all the packages in "deps.txt", say:
+
+cat deps.txt | awk '{print $1}' > wish.txt
+
+(You shouldn't do that, though. Things get much clearer, if you install
+one package - with dependencies - at a time.)
+
+4. Then call:
+
+./depsort
+
+That produces a file named "result.txt", with a list of packages, that can
+be installed top to bottom.
+
+
+2. What's in the tarball:
+-------------------------
+
+deps.txt - a list of packages and their dependencies (from the BLFS book)
+depsort - a program that brings dependencies into a linear order
+depsort.c - the source code
+mkrawdeps1 - script to extract dependencies from the BLFS book (text
+  version)
+mkrawdeps2 - script to add version numbers to the package names
+mkrawdeps3 - script to bring dependencies morepkgs.txt - packages to
+resolve open dependencies
+
+
+3. Compiling depsort.c:
+-----------------------
+
+Say:
+
+make depsort
+
+
+4. Virtual packages:
+--------------------
+
+There are some package names in the list, that don't really exist:
+"mta", "alsa" and "cvs-server". I put them in, because there are packages
+in the BLFS book, that depend on "alsa" or on "an MTA from chapter 22" and
+there is a package named "cvs-server" being discussed in the book.
+
+Let's look at "alsa", "mta" and "cvs-server" as "virtual packages".
+They don't have tarballs of their own, just dependencies:
+"alsa" depends on 3 packages: alsa-lib, alsa-utils and alsa-tools.
+"mta" depends on 1 of 4 packages: sendmail or postfix or qmail or exim.
+"cvs-server" depends on 2 packages: cvs and openssh.
+
+
+5. Omitted dependencies:
+------------------------
+
+The following dependencies from the BLFS book are not contained in this
+hint:
+- oss (because I prefer alsa, and oss was an optional dependency anyway)
+
+
+6. Format of deps.txt:
+----------------------
+
+The first word on each line is the name of the package to be installed.
+The following words are the names of packages it depends on.
+The words must be separated by one space only.
+Leading or trailing whitespace is not allowed.
+
+
+7. Extracting dependencies from the BLFS book:
+----------------------------------------------
+
+You need three files: mkrawdeps1,  mkrawdeps2,  mkrawdeps3, (all set
+executable) and a copy of the BLFS book (text version) in the same
+directory.
+
+mkrawdeps1 scans the book for lines containing "depends on:" and collects
+those lines (and the following five lines too) in a file "rawdeps1.txt".
+It also collects the package names (short names without version numbers)
+in a file "shortnames.txt". And it extracts the long package names (with
+version numbers) from the index part of the book and saves them in
+"longnames.txt".
+
+You are supposed to remove errors from those three files by hand. There
+are some line breaks, some smaller inconsistencies like dash "-" and
+underscore "_" used in package names, and some garbage to be removed.
+
+The format of the packages in the KDE section slightly differs from the
+rest of the book. The output of "mkrawdeps1" is somewhat garbled there.
+That must be fixed by hand too.
+
+And please don't delete the package separating lines "--".
+
+mkrawdeps2 then reads the file rawdeps1.txt and tries to add version
+numbers from "longnames.txt" and saves the result in "rawdeps2.txt".
+
+You are supposed to edit "rawdeps2.txt", remove remaining errors and add
+package names that the script did not find in the book. (Please add
+separator lines "--" if you add package names.)
+
+mkrawdeps3 then reads the file rawdeps2.txt and reformats it as the
+"depsort" program expects: one package name and its dependencies on one
+line, separated by spaces. The output is saved in "rawdeps3.txt", where it
+is still in book order.
+
+Compare the content of rawdeps3.txt to the dependencies in the book for a
+last time, then "sort | uniq" it to "deps.txt", and run ./depsort
+
+
+8. TODO:
+--------
+- Handle version information as "... or newer"
+- Distinguish between "depends on" and "will utilize"
+- Create "deps.txt" automatically from the BLFS book (XML)
+
+
+
+CHANGELOG:
+
+2003-09-16
+- added 3 scripts to extract the dependencies from 'the book' (text
+  version) 
+- all package names have now a version number (not yet handled as
+  '... or later') - added virtual package 'mta' depending on 'sendmail or
+  postfix or qmail or exim' - added virtual package 'cvs-server' depending
+  on cvs and openssh 2002-9-30
+- removed a bug in the program that let it see "gal" too when "galeon" was
+  in the list
+- removed additional package mozilla because it is the book now - added
+  abiword, at-spi, gconf-editor, gdm, gnumeric, libgail-gnome, mozilla,
+  pan to the dependencies
+- changed dependencies for mozilla, docbook - added additional packages
+  mentioned in the book.

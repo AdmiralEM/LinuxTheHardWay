@@ -1,0 +1,313 @@
+TITLE:		proftpd server, lukemftp client and wget
+LFS VERSION:	3.0-pre3
+AUTHOR:		Richard Lightman <richard@reika.demon.co.uk>
+
+SYNOPSIS:
+	proftpd is an ftp server designed with security in mind. I have heard nasty things about the (lack of) security in wu-ftp. There are about as many ftp clients as there are window manglers. I have found lukemftp to be reliable, and it prvides completion of file names. The one thing lukemftp does not do is continue where it left off if a download fails. For large downloads, I recommend wget.
+
+HINT:
+CHANGES:
+	lukemftp does not require readline
+	Major overhaul based on feedback from Joao Clemente
+
+
+Why these packages
+==================
+
+publicfile
+
+I now use publicfile instead of proftpd. FTP passwords are stored and sent
+over the net in plain text, so people will be able to sniff passwords off
+any network the carries them. For this reason sensible people do not allow
+the ftp daemon to add/remove/change files on the server. publicfile is not
+even capable of this, and so is immune to configuration errors that would
+allow it. (You can still accidently allow people to download files you would
+rather have kept to yourself.)
+
+I have not included documentation on how to install publifile because the
+website is so good.
+
+
+proftpd
+
+I picked this one because it is well maintained and has been built with
+careful consideration for security. ProFTPD powers many well-known,
+high-volume anonymous FTP sites, including debian.org, kernel.org,
+redhat.com and sourceforge.net. If you need to have clients add /
+remove / modify files on the server, then publicfile is will not
+do that, use openssh as well. It is possible to get proftpd to work
+with openssh. Take a look at the documentation on proftpd's web page,
+and when you have it working, update this hint.
+
+
+lukemftp
+
+There are dozens of ftp clients. Some of them even work. I dumped
+two before settling on lukemftp. It has behaved perfectly, has
+good command line editing with filename completion, and is a port
+of the NetBSD ftp client. BSD has an exellent reputation for high
+quality secure software.
+
+
+wget
+
+I am too lazy to do things myself, and write scripts to get the
+computer to do things for me (It only takes twice as long ;-)
+wget is is good for scripts, and for the actual download. I use
+lukemftp to find out what I want, then have wget fetch it. My
+ISP likes to break the connection when I have downloaded 90%
+of something big, like X. I do not care because the -c option
+tells wget to continue where it left off.
+
+
+
+Downloads
+=========
+
+A read-only ftp server:
+http://cr.yp.to/publicfile.html
+
+Full ftp server:
+ftp://ftp.proftpd.org/distrib/proftpd-1.2.1.tar.bz2
+
+Documentation is now included with the sources, but there is more
+at the web site (NAT and SSH HOWTO's).
+http://www.proftpd.org/
+
+ftp client:
+ftp://ftp.netbsd.org/pub/NetBSD/misc/lukemftp/lukemftp-1.5.tar.gz
+
+Automated ftp client that can continue failed downloads:
+ftp://ftp.gnu.org/gnu/wget/wget-1.7.tar.gz
+
+
+
+Installing proftp
+=================
+
+Unpack the source, and change to its directory. If you use PAM, read
+README.PAM, and when you have it working, update this hint. If you use
+postgresql or mysql, read README.mod_sql and when you have it working,
+update this hint.
+
+If you like installing as root, miss out the the lines starting with #
+
+install_user=$(id -nu) install_group=$(id -ng) \
+  ./configure --prefix=\${DESTDIR}/usr --enable-shadow\
+        --sysconfdir=\${DESTDIR}/etc --with-modules=mod_linuxprivs\
+     --localstatedir=\${DESTDIR}/var
+  mv config.h config.h~
+  sed 's@proftpd.pid@run/proftpd.pid@' >config.h config.h~
+  make
+  #mkdir -p ~/proftpd
+  #make DESTDIR=~/proftpd install # instead of the next line:
+  make DESTDIR= install
+  #cd ~/proftpd
+  ## Take a look around to see if you like it, and make any
+  ## corrections, eg: mkdir usr/share && mv usr/man usr/share
+  #su
+  #chown -R root.root *
+  #cp -a * /
+
+HTML documentation is now included with the sources. You may wish
+to put the following in something like /usr/share/doc/proftpd
+  doc/FAQ-config.html
+  doc/Configuration.html
+
+I keep a local web page with links to the htlm docs that come
+with each package. If things are going really badly I even read
+them. These docs make configuring proftpd far to easy.
+
+
+configuring proftpd
+===================
+
+Take a look through /etc/proftpd.conf and fiddle with any settings
+you do not like. Make any users or groups mentioned in this file.
+If you did not change anything they are: ftp.ftp and nobody.nogroup
+The third field of /etc/group or /etc/password contains the group
+or user id.
+
+$ cat /etc/group
+root:x:0:
+bin:x:1:
+sys:x:2:
+kmem:x:3:
+tty:x:4:
+uucp:x:5:
+daemon:x:6:
+floppy:x:7:
+disk:x:8:
+users:x:9:
+nofiles:x:10:
+$ cat /etc/passwd
+root:x:0:0:root:/root:/bin/bash
+richard:x:1000:9::/home/richard:/bin/bash
+
+On my system the first available system group id's are 11 & 12.
+The first available system user id's are 1 & 2.
+
+groupadd -g 11  ftp
+useradd -u 1 -g ftp -s /bin/sh -m ftp
+groupadd -g 12  nogroup
+useradd -u 2 -g nogroup -d /home nobody
+
+Make ftp's home directory (/home/ftp) put some files in there, and make
+them readable by user ftp. If you think that anonymous users should be
+able to modify these files, make them writable by ftp, but get you head
+examined first.
+
+
+Starting proftpd
+================
+
+You could start proftd from inetd, by removing any existing ftp
+server from /etc/inetd.conf, and adding:
+ftp stream tcp nowait root      /usr/sbin/proftpd proftpd
+
+You can improve security a little with tcpwrappers:
+ftp stream tcp nowait root      /usr/sbin/tcpd /usr/sbin/proftpd
+
+You could improve security a bit more with xinetd. You could
+do a really thorough job with ucspi-tcp and daemontools, but
+then you should be using publicfile/openssh instead of proftpd.
+For more information, take a look at:
+
+http://cr.yp.to/daemontools.html
+http://cr.yp.to/ucspi-tcp.html
+
+If you use any of inetd, xinetd or tcpserver (ucspi-tcp), remember
+to change the ServerType to inetd in /etc/proftpd.conf
+This would be a good place to add some instructions for installing
+inetd, but its getting late and I want to take a break.
+
+If you are not using inetd/xinetd/tcpserver, you will need a boot
+script for proftpd in /etc/init.d:
+
+#!/bin/bash
+#/etc/init.d/proftpd
+
+source /etc/init.d/functions
+
+case "$1" in
+  start)
+    echo -n "Summoning Pro FTP daemon..."
+    loadproc /usr/sbin/proftpd
+    print_status
+    ;;
+
+  stop)
+    echo -n "Exorcising Pro FTP daemon..."
+    killproc /usr/sbin/proftpd
+    print_status
+    ;;
+
+  reload)
+    echo -n "Reloading Pro FTP daemon..."
+    reloadproc /usr/sbin/proftpd -HUP
+    ;;
+
+  restart)
+    $0 stop
+    sleep 1
+    $0 start
+    ;;
+
+  status)
+    statusproc /usr/sbin/proftpd
+    ;;
+
+  *)
+    echo "Usage: $0 {start|stop|restart|reload|status}"
+    ;;
+
+esac
+
+
+
+Enable proftpd on future reboots, and start it now:
+
+chmod 754 /etc/init.d/proftpd
+ln -s  ../init.d/proftpd /etc/rc0.d/K400proftpd
+ln -s  ../init.d/proftpd /etc/rc1.d/K400proftpd
+ln -s  ../init.d/proftpd /etc/rc2.d/K400proftpd
+ln -s  ../init.d/proftpd /etc/rc3.d/S600proftpd
+ln -s  ../init.d/proftpd /etc/rc4.d/S600proftpd
+ln -s  ../init.d/proftpd /etc/rc5.d/S600proftpd
+ln -s  ../init.d/proftpd /etc/rc6.d/K400proftpd
+/etc/init.d/proftpd start
+
+Try out your new ftp server:
+ftp 127.0.0.1
+
+If it does not work, no matter how much you shout at it, threaten it,
+hit the computer or mallign the authors, and all else has failed, try
+reading the FAQ in the sources: doc/FAQ-config.html
+
+
+
+lukemftp
+========
+
+This one will install with configure/make/make install, but
+messes around with a pre-formatted man page (a common BSDism).
+Prefix is supported properly, so non-root installs do not
+require extra fiddling. If you like to install as root, miss
+out the lines that start with #.
+
+../configure --prefix=/usr 
+make
+#mkdir -p ~/lukemftp/usr/share/man/man1
+#make prefix=~/lukemftp install # And miss out the next line
+make install
+# cp src/ftp.1 ~/lukemftp/usr/share/man/man1/ # And skip the next line
+cp   src/ftp.1           /usr/share/man/man1/
+#cd ~/lukemftp
+## Take a look around to see if you like it, and make any
+## corrections, eg: rm -r usr/man
+#su
+#chown -R root.root *
+#cp -a * /
+
+
+Many ftp sites want you to use you e-mail address as a password for
+anonymous access. If you are too lazy to type it, try:
+
+echo 'default login anonymous password user@site' >~/.netrc
+chmod 600 ~/.netrc
+
+You can add all the passwords to your ftp sites to .netrc and wget
+will use them too. This is not a sensible thing to do. The passwords
+are stored in plain text, and cross the internet in plain text, where
+any competent cracker can collect them. For more information on .netrc,
+read "man ftp". If you need password controlled access to files, you
+should be using openssh remember their is no point in securing read
+access when ftp transfers the file over the internet without
+encryption.
+
+
+
+installing wget
+===============
+
+This one will install with the standard configure/make/make install.
+Apart from one glitch with wgetrc it supports DESTDIR properly!
+
+Unpack the source, and change to its directory. If you have the socks
+library, you could configure --with-socks. If you have openssl, you
+could configure --with-ssl=SSL_ROOT. If you like to install as root,
+miss out the lines starting with #
+
+./configure --prefix=/usr --sysconfdir=/etc\
+make
+#mkdir -p ~/wget/etc
+#cp doc/sample.wgetrc ~/wget/etc/wgetrc
+#make DESTDIR=~/wget install # And skip the next line
+make install
+#cd ~/wget
+## Take a look around to see if you like it, and make any
+## corrections, eg: mv usr/man usr/info usr/share
+#su
+#chown -R root.root *
+#cp -a * /
+#install-info /usr/share/info/wget.info /usr/share/info/dir

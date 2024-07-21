@@ -1,0 +1,3120 @@
+293
+ Name:ATK
+  Ver:ATK-1.2.4
+  Num:1
+ Arch:u'ftp://ftp.gtk.org/pub/gtk/v2.2/atk-1.2.4.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'GLib2'
+  Num:1
+  Cmd:u'# Installation of ATK\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:AbiWord
+  Ver:AbiWord-2.0.0
+  Num:1
+ Arch:u'http://telia.dl.sourceforge.net/sourceforge/abiword/abiword-2.0.0.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'libglade'
+  Dep:u'fribidi-0.10.4'
+  Num:1
+  Cmd:u'# Installation of AbiWord\ncd abi &&\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:CDParanoia
+  Ver:CDParanoia-III-9.8
+  Num:1
+ Arch:u'ftp://ftp.yars.free.net/pub/software/unix/util/cd/cdparanoia-III-alpha9.8.src.tgz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of CDParanoia\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:DirectFB
+  Ver:DirectFB-0.9.19
+  Num:1
+ Arch:u'ftp://ftp.lug.udel.edu/pub/linux/distributions/gentoo/distfiles/DirectFB-0.9.19.tar.gz'
+  Num:1
+Patch:u'http://www.directfb.org/download/DirectFB-extra/DirectFB-extra-0.9.16.tar.gz'
+  Num:3
+  Dep:u'freetype2'
+  Dep:u'libjpeg'
+  Dep:u'libpng'
+  Num:2
+  Cmd:u'# Installation of DirectFB\n./configure --prefix=/usr &&\nmake &&\nmake install'
+  Cmd:u'# Installation of DirectFB\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:DocBook
+  Ver:DocBook XML DTD-4.2
+  Num:1
+ Arch:u'ftp://ftp.us.sinuspl.net/pub/src/docbook-xml-4.2.zip'
+  Num:0
+  Num:2
+  Dep:u'libxml2'
+  Dep:u'unzip'
+  Num:3
+  Cmd:u'# Installation of DocBook XML DTD\ninstall -d /usr/share/xml/docbook/xml-dtd-4.2 &&\ncp -af docbook.cat *.dtd ent/ *.mod /usr/share/xml/docbook/xml-dtd-4.2 &&\nif [ ! -e /etc/xml/catalog ]; then mkdir -p /etc/xml; xmlcatalog --noout \\\n--create /etc/xml/catalog; fi &&\nif [ ! -e /etc/xml/docbook ]; then xmlcatalog --noout --create \\\n/etc/xml/docbook; fi &&\nxmlcatalog --noout --add "public" \\\n"-//OASIS//ELEMENTS DocBook XML Information Pool V4.2//EN" \\\n"file:///usr/share/xml/docbook/xml-dtd-4.2/dbpoolx.mod" \\\n/etc/xml/docbook &&\nxmlcatalog --noout --add "public" \\\n"-//OASIS//DTD DocBook XML V4.2//EN" \\\n"http://oasis-open.org/docbook/xml/4.2/docbookx.dtd" \\\n/etc/xml/docbook &&\nxmlcatalog --noout --add "public" \\\n"-//OASIS//ENTITIES DocBook XML Character Entities V4.2//EN" \\\n"file:///usr/share/xml/docbook/xml-dtd-4.2/dbcentx.mod" \\\n/etc/xml/docbook &&\nxmlcatalog --noout --add "public" \\\n"-//OASIS//ENTITIES DocBook XML Notations V4.2//EN" \\\n"file:///usr/share/xml/docbook/xml-dtd-4.2/dbnotnx.mod" \\\n/etc/xml/docbook &&\nxmlcatalog --noout --add "public" \\\n"-//OASIS//ENTITIES DocBook XML Additional General Entities V4.2//EN" \\\n"file:///usr/share/xml/docbook/xml-dtd-4.2/dbgenent.mod" \\\n/etc/xml/docbook &&\nxmlcatalog --noout --add "public" \\\n"-//OASIS//ELEMENTS DocBook XML Document Hierarchy V4.2//EN" \\\n"file:///usr/share/xml/docbook/xml-dtd-4.2/dbhierx.mod" \\\n/etc/xml/docbook &&\nxmlcatalog --noout --add "public" \\\n"-//OASIS//DTD XML Exchange Table Model 19990315//EN" \\\n"file:///usr/share/xml/docbook/xml-dtd-4.2/soextblx.dtd" \\\n/etc/xml/docbook &&\nxmlcatalog --noout --add "public" \\\n"-//OASIS//DTD DocBook XML CALS Table Model V4.2//EN" \\\n"file:///usr/share/xml/docbook/xml-dtd-4.2/calstblx.dtd" \\\n/etc/xml/docbook &&\nxmlcatalog --noout --add "rewriteSystem" \\\n"http://www.oasis-open.org/docbook/xml/4.2" \\\n"file:///usr/share/xml/docbook/xml-dtd-4.2" \\\n/etc/xml/docbook &&\nxmlcatalog --noout --add "rewriteURI" \\\n"http://www.oasis-open.org/docbook/xml/4.2" \\\n"file:///usr/share/xml/docbook/xml-dtd-4.2" \\\n/etc/xml/docbook &&\nxmlcatalog --noout --add "delegatePublic" \\\n"-//OASIS//ENTITIES DocBook XML" \\\n"file:///etc/xml/docbook" /etc/xml/catalog &&\nxmlcatalog --noout --add "delegatePublic" \\\n"-//OASIS//DTD DocBook XML" \\\n"file:///etc/xml/docbook" /etc/xml/catalog &&\nxmlcatalog --noout --add "delegateSystem" \\\n"http://www.oasis-open.org/docbook/" \\\n"file:///etc/xml/docbook" /etc/xml/catalog &&\nxmlcatalog --noout --add "delegateURI" \\\n"http://www.oasis-open.org/docbook/" \\\n"file:///etc/xml/docbook" /etc/xml/catalog'
+  Cmd:u'# Configuration Information\nxmlcatalog --noout --add "delegateSystem" \\\n"/usr/share/docbook/" \\\n"file:///etc/xml/docbook" /etc/xml/catalog &&\nxmlcatalog --noout --add "delegateURI" \\\n"/usr/share/docbook/" \\\n"file:///etc/xml/docbook" /etc/xml/catalog &&\nxmlcatalog --noout --add "rewriteSystem" \\\n"/usr/share/docbook" \\\n"file:///usr/share/xml/docbook/xml-dtd-4.2" \\\n/etc/xml/docbook &&\nxmlcatalog --noout --add "rewriteURI" \\\n"/usr/share/docbook" \\\n"file:///usr/share/xml/docbook/xml-dtd-4.2" \\\n/etc/xml/docbook'
+  Cmd:u'# Configuration Information\nxmlcatalog --noout --add "public" \\\n"-//OASIS//DTD DocBook XML V4.1.2//EN" \\\n"http://oasis-open.org/docbook/xml/4.1.2/docbookx.dtd" \\\n/etc/xml/docbook &&\nxmlcatalog --noout --add "delegateSystem" \\\n"http://oasis-open.org/docbook/xml/4.1.2/" \\\n"file:///etc/xml/docbook" /etc/xml/catalog &&\nxmlcatalog --noout --add "delegateURI" \\\n"http://oasis-open.org/docbook/xml/4.1.2/" \\\n"file:///etc/xml/docbook" /etc/xml/catalog &&\nxmlcatalog --noout --add "rewriteSystem" \\\n"http://oasis-open.org/docbook/xml/4.1.2" \\\n"file:///usr/share/xml/docbook/xml-dtd-4.2" \\\n/etc/xml/docbook &&\nxmlcatalog --noout --add "rewriteURI" \\\n"http://oasis-open.org/docbook/xml/4.1.2" \\\n"file:///usr/share/xml/docbook/xml-dtd-4.2" \\\n/etc/xml/docbook'
+ Name:GConf
+  Ver:GConf-2.2.1
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/GConf/2.2/GConf-2.2.1.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'ORBit2'
+  Dep:u'GTK2'
+  Num:1
+  Cmd:u'# Installation of GConf\n./configure --prefix=$GNOME_PREFIX --libexecdir=$GNOME_PREFIX/sbin \\\n--sysconfdir=/etc/gnome --disable-gtk-doc &&\nmake &&\nmake install'
+ Name:GConf1
+  Ver:GConf-1.0.9
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/GConf/1.0/GConf-1.0.9.tar.bz2'
+  Num:0
+  Num:3
+  Dep:u'oaf'
+  Dep:u'GTK'
+  Dep:u'gdk'
+  Num:1
+  Cmd:u'# Installation of GConf\n./configure --prefix=/opt/gnome &&\nmake &&\nmake install'
+ Name:GLib
+  Ver:GLib-1.2.10
+  Num:1
+ Arch:u'ftp://ftp.gtk.org/pub/gtk/v1.2/glib-1.2.10.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of GLib\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:GLib2
+  Ver:GLib-2.2.3
+  Num:1
+ Arch:u'ftp://ftp.gtk.org/pub/gtk/v2.2/glib-2.2.3.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'pkgconfig'
+  Num:1
+  Cmd:u'# Installation of GLib\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:GTK
+  Ver:GTK+-1.2.10
+  Num:1
+ Arch:u'ftp://ftp.gtk.org/pub/gtk/v1.2/gtk+-1.2.10.tar.gz'
+  Num:0
+  Num:5
+  Dep:u'GLib'
+  Dep:u'libpng'
+  Dep:u'libtiff'
+  Dep:u'libjpeg'
+  Dep:u'xfree86'
+  Num:1
+  Cmd:u'# Installation of GTK+\n./configure --prefix=/usr --sysconfdir=/etc &&\nmake &&\nmake install'
+ Name:GTK2
+  Ver:GTK+-2.2.4
+  Num:1
+ Arch:u'ftp://ftp.gtk.org/pub/gtk/v2.2/gtk+-2.2.4.tar.bz2'
+  Num:0
+  Num:7
+  Dep:u'GLib2'
+  Dep:u'xfree86'
+  Dep:u'Pango'
+  Dep:u'ATK'
+  Dep:u'libpng'
+  Dep:u'libtiff'
+  Dep:u'libjpeg'
+  Num:1
+  Cmd:u'# Installation of GTK+\n./configure --prefix=/usr --sysconfdir=/etc &&\nmake &&\nmake install'
+ Name:LPRng
+  Ver:LPRng-3.8.22
+  Num:1
+ Arch:u'ftp://ftp.lprng.com/pub/LPRng/LPRng/LPRng-3.8.22.tgz'
+  Num:0
+  Num:0
+  Num:3
+  Cmd:u'# Installation of LPRng\n./configure --prefix=/usr --libexecdir=/usr/sbin --sysconfdir=/etc &&\nmake &&\nmake install'
+  Cmd:u'# Configuration Information\nmv /etc/rc.d/init.d/lpd /etc/rc.d/init.d/lpd.orig &&\ncat > /etc/rc.d/init.d/lpd << "EOF"\n#!/bin/sh\n# Begin $rc_base/init.d/lpd\n\n# Based on sysklogd script from LFS-3.1 and earlier.\n# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org\n\nsource /etc/sysconfig/rc\nsource $rc_functions\n\ncase "$1" in\n        start)\n                echo "Starting lpd..."\n                loadproc /usr/sbin/lpd\n                ;;\n\n        stop)\n                echo "Stopping lpd..."\n                killproc /usr/sbin/lpd\n                ;;\n\n        reload)\n                echo "Reloading lpd..."\n                reloadproc /usr/sbin/lpd\n                ;;\n\n        restart)\n                $0 stop\n                sleep 1\n                $0 start\n                ;;\n\n        status)\n                statusproc /usr/sbin/lpd\n                ;;\n\n        *)\n                echo "Usage: $0 {start|stop|reload|restart|status}"\n                exit 1\n                ;;\nesac\n\n# End $rc_base/init.d/lpd\nEOF\nchmod 755 /etc/rc.d/init.d/lpd'
+  Cmd:u'# Configuration Information\ncd /etc/rc.d/init.d &&\nln -sf ../init.d/lpd ../rc0.d/K00lprng &&\nln -sf ../init.d/lpd ../rc1.d/K00lprng &&\nln -sf ../init.d/lpd ../rc2.d/S99lprng &&\nln -sf ../init.d/lpd ../rc3.d/S99lprng &&\nln -sf ../init.d/lpd ../rc4.d/S99lprng &&\nln -sf ../init.d/lpd ../rc5.d/S99lprng &&\nln -sf ../init.d/lpd ../rc6.d/K00lprng'
+ Name:LZO
+  Ver:LZO-1.08
+  Num:1
+ Arch:u'http://ftp.uni-koeln.de/util/arc/lzo-1.08.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of LZO\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:Links
+  Ver:Links-2.1pre11
+  Num:1
+ Arch:u'ftp://atrey.karlin.mff.cuni.cz/pub/local/clock/links/links-2.1pre11.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of Links\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:Linux_PAM
+  Ver:Linux-PAM-0.77
+  Num:1
+ Arch:u'ftp://ftp.kernel.org/pub/linux/libs/pam/pre/library/Linux-PAM-0.77.tar.bz2'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/Linux-PAM-0.77-linkage-1.patch'
+  Num:0
+  Num:1
+  Cmd:u'# Installation of Linux-PAM\n\npatch -Np1 -i ../Linux-PAM-0.77-linkage-1.patch &&\n./configure --enable-static-libpam --with-mailspool=/var/mail \\\n--enable-read-both-confs --sysconfdir=/etc &&\nmake &&\nmake install &&\nmv /lib/libpam.a /lib/libpam_misc.a /lib/libpamc.a /usr/lib &&\nln -sf ../../lib/libpam.so.0.77 /usr/lib/libpam.so &&\nln -sf ../../lib/libpam_misc.so.0.77 /usr/lib/libpam_misc.so &&\nln -sf ../../lib/libpamc.so.0.77 /usr/lib/libpamc.so'
+ Name:NASM
+  Ver:NASM-0.98.38
+  Num:1
+ Arch:u'ftp://ftp.iasi.roedu.net/pub/mirrors/download.sourceforge.net/nasm/nasm-0.98.38.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of NASM\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:ORBit
+  Ver:ORBit-0.5.17
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/ORBit/0.5/ORBit-0.5.17.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'popt'
+  Dep:u'GLib'
+  Num:1
+  Cmd:u'# Installation of ORBit\n./configure --prefix=/opt/gnome &&\nmake &&\nmake install'
+ Name:ORBit2
+  Ver:ORBit2-2.6.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/ORBit2/2.6/ORBit2-2.6.2.tar.bz2'
+  Num:0
+  Num:4
+  Dep:u'GLib2'
+  Dep:u'linc'
+  Dep:u'libIDL'
+  Dep:u'popt'
+  Num:1
+  Cmd:u'# Installation of ORBit2\nldconfig &&\n./configure --prefix=$GNOME_PREFIX &&\nmake &&\nmake install'
+ Name:Pango
+  Ver:Pango-1.2.5
+  Num:1
+ Arch:u'ftp://ftp.gtk.org/pub/gtk/v2.2/pango-1.2.5.tar.gz'
+  Num:0
+  Num:2
+  Dep:u'GLib2'
+  Dep:u'freetype2'
+  Num:1
+  Cmd:u'# Installation of Pango\n./configure --prefix=/usr --sysconfdir=/etc &&\nmake &&\nmake install'
+ Name:Python
+  Ver:Python-2.3.2
+  Num:1
+ Arch:u'ftp://ftp.python.org/pub/python/2.3.2/Python-2.3.2.tgz'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/Python-2.3.2-gdbm-2.patch'
+  Num:0
+  Num:1
+  Cmd:u'# Installation of Python\npatch -Np1 -i ../Python-2.3.2-gdbm-2.patch &&\n./configure --prefix=/usr --enable-shared &&\nmake &&\nmake install '
+ Name:SDL
+  Ver:SDL-1.2.6
+  Num:1
+ Arch:u'http://www.libsdl.org/release/SDL-1.2.6.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of SDL\n./configure --prefix=/usr --disable-debug &&\nmake &&\nmake install'
+ Name:SVGAlib
+  Ver:SVGAlib-1.4.3
+  Num:1
+ Arch:u'ftp://ftp.ibiblio.org/pub/Linux/libs/graphics/svgalib-1.4.3.tar.gz'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/svgalib-1.4.3-gcc3-1.patch'
+  Num:0
+  Num:1
+  Cmd:u'# Installation of SVGAlib\npatch -Np1 -i ../svgalib-1.4.3-gcc3-1.patch &&\nmake prefix=/usr install &&\ncd doc &&\nfor dir in man?; do for file in $dir/*; do \\\ngunzip /usr/share/man/$file; done; done'
+ Name:a2ps
+  Ver:a2ps-4.13b
+  Num:1
+ Arch:u'ftp://ftp.gnu.org/gnu/a2ps/a2ps-4.13b.tar.gz'
+  Num:1
+Patch:u'ftp://ftp.enst.fr/pub/unix/a2ps/i18n-fonts-0.1.tar.gz'
+  Num:0
+  Num:1
+  Cmd:u'# Installation of a2ps\ncd contrib &&\ncp Makefile.in Makefile.in.orig &&\nsed -e "s:emacs::" Makefile.in.orig > Makefile.in &&\ncd .. &&\ncp configure{,.orig} &&\nsed -e \'s|/usr/local/share/ghostscript|/usr/share/ghostscript|g\' \\\n    configure.orig > configure\n./configure --prefix=/usr \\\n    --sysconfdir=/etc/a2ps --localstatedir=/var \\\n    --with-medium=letter &&\nmake &&\nmake install'
+ Name:aalib
+  Ver:AAlib-1.4rc5
+  Num:1
+ Arch:u'ftp://ftp.sourceforge.net/pub/sourceforge/aa-project/aalib-1.4rc5.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of AAlib\n./configure --prefix=/usr && \nmake &&\nmake install'
+ Name:alsa
+  Ver:ALSA-0.9.6
+  Num:0
+  Num:0
+  Num:5
+  Dep:'alsa-driver'
+  Dep:'alsa-lib'
+  Dep:'alsa-oss'
+  Dep:'alsa-tools'
+  Dep:'alsa-utils'
+  Num:0
+ Name:alsa-driver
+  Ver:ALSA Driver-0.9.6
+  Num:1
+ Arch:u'ftp://ftp.alsa-project.org/pub/driver/alsa-driver-0.9.6.tar.bz2'
+  Num:0
+  Num:0
+  Num:5
+  Cmd:u'# Installation of ALSA Driver\nCC=/opt/gcc-2.95.3/bin/gcc ./configure \\\n   --with-moddir=/lib/modules/`uname -r`/kernel/drivers/sound \\\n   --with-kernel=/lib/modules/`uname -r`/build \\\n   --with-sequencer=yes \\\n   --with-oss=yes \\\n   --with-isapnp=no \\\n   --with-cards=all &&\nmake &&\nmake install'
+  Cmd:u'# Installation of ALSA Driver\n./snddevices'
+  Cmd:u'# Configuration Information\ncat >> /etc/modules.conf << "EOF"\nalias char-major-14 soundcore\nalias char-major-116 snd\n\nalias snd-card-0 snd-[soundcard-name]\n\nalias sound-slot-0 snd-card-0\n\nalias sound-service-0-0 snd-mixer-oss\nalias sound-service-0-1 snd-seq-oss\nalias sound-service-0-3 snd-pcm-oss\nalias sound-service-0-8 snd-seq-midi\nEOF'
+  Cmd:u'# Configuration Information\ndepmod'
+  Cmd:u'# Configuration Information\ndepmod -a 2.4.22 -F /boot/System.map-2.4.22\n'
+ Name:alsa-lib
+  Ver:ALSA Library-0.9.6
+  Num:1
+ Arch:u'ftp://ftp.alsa-project.org/pub/lib/alsa-lib-0.9.6.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'alsa-driver'
+  Num:1
+  Cmd:u'# Installation of ALSA Library\n\n./configure &&\nmake &&\nmake install'
+ Name:alsa-oss
+  Ver:ALSA OSS-0.9.6
+  Num:1
+ Arch:u'ftp://ftp.alsa-project.org/pub/oss-lib/alsa-oss-0.9.6.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'alsa-lib'
+  Num:1
+  Cmd:u'# Installation of ALSA OSS\n./configure &&\nmake &&\nmake install'
+ Name:alsa-tools
+  Ver:ALSA Tools-0.9.6
+  Num:1
+ Arch:u'ftp://ftp.alsa-project.org/pub/tools/alsa-tools-0.9.6.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'alsa-lib'
+  Num:1
+  Cmd:u'# Installation of ALSA Tools\n./configure &&\nmake &&\nmake install'
+ Name:alsa-utils
+  Ver:ALSA Utilities-0.9.6
+  Num:1
+ Arch:u'ftp://ftp.alsa-project.org/pub/utils/alsa-utils-0.9.6.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'alsa-lib'
+  Num:4
+  Cmd:u'# Installation of ALSA Utilities\n./configure &&\nmake &&\nmake install'
+  Cmd:u'# Configuration Information\ncat > /etc/rc.d/init.d/alsa << "EOF"\n#!/bin/sh\n# Begin $rc_base/init.d/alsa\n\n# Based on sysklogd script from LFS-3.1 and earlier.\n# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org\n# ALSA specific parts by Mark Hymers - markh@linuxfromscratch.org\n# Stores mixer settings in the default location: /etc/asound.state\n\nsource /etc/sysconfig/rc\nsource $rc_functions\n\ncase "$1" in\n    start)\n        echo "Starting ALSA...    Restoring volumes..."\n        loadproc /usr/sbin/alsactl restore\n        #echo "                    Loading MIDI font..."\n        #loadproc sfxload /path/to/soundfont\n        ;;\n\n    stop)\n        echo "Stopping ALSA...    Saving volumes......"\n        loadproc /usr/sbin/alsactl store\n        #echo "            Removing MIDI font.........."\n        #loadproc sfxload -i\n        ;;\n\n    restart)\n        $0 stop\n        /usr/bin/sleep 1\n        $0 start\n        ;;\n\n    *)\n        echo "Usage: $0 {start|stop|restart}"\n        exit 1\n        ;;\n\nesac\n\n# End $rc_base/init.d/alsa\nEOF\nchmod 755 /etc/rc.d/init.d/alsa'
+  Cmd:u'# Configuration Information\ncd /etc/rc.d/init.d &&\nln -sf ../init.d/alsa ../rc0.d/K35alsa &&\nln -sf ../init.d/alsa ../rc1.d/K35alsa &&\nln -sf ../init.d/alsa ../rc2.d/S40alsa &&\nln -sf ../init.d/alsa ../rc3.d/S40alsa &&\nln -sf ../init.d/alsa ../rc4.d/S40alsa &&\nln -sf ../init.d/alsa ../rc5.d/S40alsa &&\nln -sf ../init.d/alsa ../rc6.d/K35alsa'
+  Cmd:u'# Configuration Information\ntouch /etc/asound.state &&\nalsactl store'
+ Name:apache
+  Ver:Apache-2.0.47
+  Num:1
+ Arch:u'ftp://ftp.tux.org/pub/net/apache/dist/httpd/httpd-2.0.47.tar.gz'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/httpd-2.0.47-config.patch'
+  Num:0
+  Num:6
+  Cmd:u'# Installation of Apache\ngroupadd apache &&\nuseradd -c apache -d /dev/null -g apache -s /bin/false apache'
+  Cmd:u'# Installation of Apache\npatch -Np1 -i ../httpd-2.0.47-config.patch'
+  Cmd:u'# Installation of Apache\n./configure --enable-layout=LFS \\\n            --enable-mods-shared=all &&\nmake &&\nmake install &&\nchown root:root /usr/sbin/{apxs,apachectl,dbmmanage,envvars-std,envvars} &&\nchown -R root:root /usr/{include,lib}/apache &&\nchown -R root:root /var/www &&\nchown -R root:root /usr/share/man'
+  Cmd:u'# Configuration Information\nsed -i -e "s%User nobody%User apache%" -e "s%^Group #-1%Group apache%" /etc/apache/httpd.conf'
+  Cmd:u'# Configuration Information\ncat > /etc/rc.d/init.d/apache << "EOF"\n#!/bin/bash\n\nsource /etc/sysconfig/rc\nsource $rc_functions\n\ncase "$1" in\n        start)\n                echo "Starting Apache daemon..."\n                /usr/sbin/apachectl -k start\n                evaluate_retval\n                ;;\n\n        stop)\n                echo "Stopping Apache daemon..."\n                /usr/sbin/apachectl -k stop\n                evaluate_retval\n                ;;\n\n        restart)\n                echo "Restarting Apache daemon..."\n                /usr/sbin/apachectl -k restart\n                evaluate_retval\n                ;;\n\n        status)\n                statusproc /usr/sbin/httpd\n                ;;\n                \n        *)\n                echo "Usage: $0 {start|stop|restart|status}"\n                exit 1\n                ;;\nesac\nEOF\nchmod 755 /etc/rc.d/init.d/apache'
+  Cmd:u'# Configuration Information\ncd /etc/rc.d/init.d &&\nln -sf ../init.d/apache ../rc0.d/K28apache &&\nln -sf ../init.d/apache ../rc1.d/K28apache &&\nln -sf ../init.d/apache ../rc2.d/K28apache &&\nln -sf ../init.d/apache ../rc3.d/S32apache &&\nln -sf ../init.d/apache ../rc4.d/S32apache &&\nln -sf ../init.d/apache ../rc5.d/S32apache &&\nln -sf ../init.d/apache ../rc6.d/K28apache'
+ Name:ash
+  Ver:ASH-0.4.0
+  Num:1
+ Arch:u'ftp://distro.ibiblio.org/pub/Linux/distributions/slackware/slackware_source/ap/ash/ash-0.4.0.tar.gz'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/ash-0.4.0-cumulative-fixes.patch'
+  Num:0
+  Num:2
+  Cmd:u'# Installation of ASH\npatch -Np1 -i ../ash-0.4.0-cumulative-fixes.patch &&\nmake &&\ninstall -m 755 sh /bin/ash &&\ninstall -m 644 sh.1 /usr/share/man/man1/ash.1'
+  Cmd:u'# Installation of ASH\nln -sf ash /bin/sh'
+ Name:aspell
+  Ver:aspell-0.50.3
+  Num:1
+ Arch:u'ftp://ftp.gnu.org/gnu/aspell/aspell-0.50.3.tar.gz'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/aspell-0.50.3-gcc33-1.patch'
+  Num:0
+  Num:2
+  Cmd:u'# Installation of aspell\npatch -Np1 -i ../aspell-0.50.3-gcc33-1.patch &&\n./configure --prefix=/usr &&\nmake &&\nmake install'
+  Cmd:u'# Configuration Information\n./configure &&\nmake &&\nmake install'
+ Name:at-spi
+  Ver:AT SPI-1.1.9
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/at-spi/1.1/at-spi-1.1.9.tar.bz2'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/at-spi-1.1.9-lspi.patch'
+  Num:2
+  Dep:u'gail'
+  Dep:u'libbonobo'
+  Num:1
+  Cmd:u'# Installation of AT SPI\npatch -Np1 -i ../at-spi-1.1.9-lspi.patch &&\n./configure --prefix=$GNOME_PREFIX --libexecdir=$GNOME_PREFIX/sbin \\\n--disable-gtk-doc &&\nmake &&\nmake install'
+ Name:audiofile
+  Ver:Audio File-0.2.3
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/audiofile/0.2/audiofile-0.2.3.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of Audio File\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:avifile
+  Ver:Avifile-0.7.38
+  Num:1
+ Arch:u'http://heanet.dl.sourceforge.net/sourceforge/avifile/avifile-0.7-0.7.38.tar.gz'
+  Num:1
+Patch:u'http://flow.dl.sourceforge.net/sourceforge/avifile/binaries-011002.tgz'
+  Num:2
+  Dep:u'qt'
+  Dep:u'SDL'
+  Num:1
+  Cmd:u'# Installation of Avifile\ninstall -d /usr/lib/avifile-0.7/win32 &&\ntar xzvf ../binaries-011002.tgz -C /usr/lib/avifile-0.7 &&\n./autogen.sh &&\n./configure &&\nmake maintainer-clean &&\n./autogen.sh &&\n./configure --prefix=/usr --with-qt-prefix=/opt/qt \\\n--with-win32-path=/usr/lib/avifile-0.7/win32 &&\nmake &&\nmake install'
+ Name:balsa
+  Ver:Balsa-2.0.14
+  Num:1
+ Arch:u'http://balsa.gnome.org/balsa-2.0.14.tar.bz2'
+  Num:0
+  Num:5
+  Dep:u'libgtkhtml'
+  Dep:u'libgnomeprintui'
+  Dep:u'openssl'
+  Dep:u'aspell'
+  Dep:u'libesmtp'
+  Num:1
+  Cmd:u'# Installation of Balsa\n./configure --prefix=$GNOME_PREFIX --localstatedir=/var/lib --with-ssl \\\n--sysconfdir=/etc/gnome --with-ldap --with-gpgme &&\nmake &&\nmake install'
+ Name:bc
+  Ver:bc-1.06
+  Num:1
+ Arch:u'ftp://ftp.gnu.org/gnu/bc/bc-1.06.tar.gz'
+  Num:0
+  Num:1
+  Dep:u'readline'
+  Num:1
+  Cmd:u'# Installation of bc\npatch -Np1 -i ../bc-1.06-flex-invocation.patch &&\npatch -Np1 -i ../bc-1.06-readline.patch &&\n./configure --prefix=/usr --with-readline &&\nmake &&\nmake install'
+ Name:bind
+  Ver:BIND-9.2.2
+  Num:1
+ Arch:u'ftp://ftp.isc.org/isc/bind9/9.2.2/bind-9.2.2.tar.gz'
+  Num:0
+  Num:0
+  Num:14
+  Cmd:u'# Installation of BIND\n./configure --prefix=/usr --sysconfdir=/etc &&\nmake &&\nmake install'
+  Cmd:u'# Configuration Information\ngroupadd -g 200 named &&\nuseradd -m -g named -u 200 -s /bin/false named'
+  Cmd:u'# Configuration Information\ncd /home/named &&\nmkdir -p dev etc/namedb/slave var/run &&\nmknod /home/named/dev/null c 1 3 &&\nmknod /home/named/dev/random c 1 8 &&\nchmod 666 /home/named/dev/{null,random} &&\nmkdir /home/named/etc/namedb/pz &&\ncp /etc/localtime /home/named/etc'
+  Cmd:u'# Configuration Information\ncat > /home/named/etc/named.conf << "EOF"\n options {\n     directory "/etc/namedb";\n    pid-file "/var/run/named.pid";\n    statistics-file "/var/run/named.stats";\n       \n };\n controls {\n     inet 127.0.0.1 allow { localhost; } keys { rndc_key; };\n };\n key "rndc_key" {\n     algorithm hmac-md5;\n     secret "c3Ryb25nIGVub3VnaCBmb3IgYSBtYW4gYnV0IG1hZGUgZm9yIGEgd29tYW4K";\n };\n zone "." {\n     type hint;\n     file "root.hints";\n };\n zone "0.0.127.in-addr.arpa" {\n     type master;\n     file "pz/127.0.0";\n };\nEOF'
+  Cmd:u'# Configuration Information\ncat > /home/named/etc/namedb/pz/127.0.0 << "EOF"\n$TTL 3D\n@      IN      SOA     ns.local.domain. hostmaster.local.domain. (\n                        1       ; Serial\n                        8H      ; Refresh\n                        2H      ; Retry\n                        4W      ; Expire\n                        1D)     ; Minimum TTL\n                NS      ns.local.domain.\n1               PTR     localhost.\nEOF'
+  Cmd:u'# Configuration Information\ncat > /home/named/etc/namedb/root.hints << "EOF"\n.                       6D  IN      NS      A.ROOT-SERVERS.NET.\n.                       6D  IN      NS      B.ROOT-SERVERS.NET.\n.                       6D  IN      NS      C.ROOT-SERVERS.NET.\n.                       6D  IN      NS      D.ROOT-SERVERS.NET.\n.                       6D  IN      NS      E.ROOT-SERVERS.NET.\n.                       6D  IN      NS      F.ROOT-SERVERS.NET.\n.                       6D  IN      NS      G.ROOT-SERVERS.NET.\n.                       6D  IN      NS      H.ROOT-SERVERS.NET.\n.                       6D  IN      NS      I.ROOT-SERVERS.NET.\n.                       6D  IN      NS      J.ROOT-SERVERS.NET.\n.                       6D  IN      NS      K.ROOT-SERVERS.NET.\n.                       6D  IN      NS      L.ROOT-SERVERS.NET.\n.                       6D  IN      NS      M.ROOT-SERVERS.NET.\nA.ROOT-SERVERS.NET.     6D  IN      A       198.41.0.4\nB.ROOT-SERVERS.NET.     6D  IN      A       128.9.0.107\nC.ROOT-SERVERS.NET.     6D  IN      A       192.33.4.12\nD.ROOT-SERVERS.NET.     6D  IN      A       128.8.10.90\nE.ROOT-SERVERS.NET.     6D  IN      A       192.203.230.10\nF.ROOT-SERVERS.NET.     6D  IN      A       192.5.5.241\nG.ROOT-SERVERS.NET.     6D  IN      A       192.112.36.4\nH.ROOT-SERVERS.NET.     6D  IN      A       128.63.2.53\nI.ROOT-SERVERS.NET.     6D  IN      A       192.36.148.17\nJ.ROOT-SERVERS.NET.     6D  IN      A       192.58.128.30\nK.ROOT-SERVERS.NET.     6D  IN      A       193.0.14.129\nL.ROOT-SERVERS.NET.     6D  IN      A       198.32.64.12\nM.ROOT-SERVERS.NET.     6D  IN      A       202.12.27.33\nEOF'
+  Cmd:u'# Configuration Information\ncat > /etc/rndc.conf << "EOF"\nkey rndc_key {\nalgorithm "hmac-md5";\n    secret\n    "c3Ryb25nIGVub3VnaCBmb3IgYSBtYW4gYnV0IG1hZGUgZm9yIGEgd29tYW4K";\n    };\noptions {\n    default-server localhost;\n    default-key    rndc_key;\n};\nEOF'
+  Cmd:u'# Configuration Information\ncp /etc/resolv.conf /etc/resolv.conf.bak &&\ncat > /etc/resolv.conf << "EOF"\nsearch yourdomain.com\nnameserver 127.0.0.1\nEOF'
+  Cmd:u'# Configuration Information\nchown -R named.named /home/named'
+  Cmd:u'# Configuration Information\ncat > /etc/rc.d/init.d/bind << "EOF"\n#!/bin/bash\n# Begin $rc_base/init.d/bind\n# Based on sysklogd script from LFS-3.1 and earlier.\n# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org\nsource /etc/sysconfig/rc\nsource $rc_functions\ncase "$1" in\n\tstart)\n\t\techo "Starting named..."\n\t\tloadproc /usr/sbin/named -u named -t /home/named -c \\\n\t\t        /etc/named.conf\n\t\t;;\n\tstop)\n\t\techo "Stopping named..."\n\t\tkillproc /usr/sbin/named\n\t\t;;\n\trestart)\n\t\t$0 stop\n\t\tsleep 1\n\t\t$0 start\n\t\t;;\n   reload)\n                echo "Reloading named..."\n                /usr/sbin/rndc -c /etc/rndc.conf reload\n                ;;\n\t\t\t       \t\t\n\tstatus)\n\t\tstatusproc /usr/sbin/named\n\t\t;;\n\t*)\n\t\techo "Usage: $0 {start|stop|restart|status}"\n\t\texit 1\n\t\t;;\nesac\n# End $rc_base/init.d/bind\nEOF'
+  Cmd:u'# Configuration Information\nchmod 754 /etc/rc.d/init.d/bind &&\nln -s  /etc/rc.d/init.d/bind /etc/rc.d/rc0.d/K49bind &&\nln -s  /etc/rc.d/init.d/bind /etc/rc.d/rc1.d/K49bind &&\nln -s  /etc/rc.d/init.d/bind /etc/rc.d/rc2.d/K49bind &&\nln -s  /etc/rc.d/init.d/bind /etc/rc.d/rc3.d/S22bind &&\nln -s  /etc/rc.d/init.d/bind /etc/rc.d/rc4.d/S22bind &&\nln -s  /etc/rc.d/init.d/bind /etc/rc.d/rc5.d/S22bind &&\nln -s  /etc/rc.d/init.d/bind /etc/rc.d/rc6.d/K49bind'
+  Cmd:u'# Configuration Information\n/etc/rc.d/init.d/bind start'
+  Cmd:u'# Testing BIND\ndig -x 127.0.0.1'
+  Cmd:u'# Testing BIND\ndig beyond.linuxfromscratch.org &&\ndig beyond.linuxfromscratch.org'
+ Name:bind-utils
+  Ver:BIND Utilities-9.2.2
+  Num:1
+ Arch:u'ftp://ftp.isc.org/isc/bind9/9.2.2/bind-9.2.2.tar.gz'
+  Num:0
+  Num:0
+  Num:3
+  Cmd:u'# Installation of BIND Utilities\n./configure --prefix=/usr &&\nmake -C lib/dns &&\nmake -C lib/isc &&\nmake -C bin/dig &&\nmake -C bin/dig install'
+  Cmd:u'# Command explanations\nmake -C lib/...'
+  Cmd:u'# Command explanations\nmake -C bin/dig'
+ Name:bonobo-activation
+  Ver:Bonobo Activation-2.2.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/bonobo-activation/2.2/bonobo-activation-2.2.2.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'ORBit2'
+  Num:1
+  Cmd:u'# Installation of Bonobo Activation\n./configure --prefix=$GNOME_PREFIX --libexecdir=$GNOME_PREFIX/sbin \\\n--sysconfdir=/etc/gnome --disable-gtk-doc &&\nmake &&\nmake install'
+ Name:bonobo14
+  Ver:Bonobo-1.0.22
+  Num:1
+ Arch:u'http://ftp.gnome.org/pub/GNOME/sources/bonobo/1.0/bonobo-1.0.22.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'gnome-print'
+  Num:1
+  Cmd:u'# Installation of Bonobo\n./configure --prefix=/opt/gnome &&\nmake &&\nmake install'
+ Name:bug-buddy
+  Ver:bug-buddy-2.2.106
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/bug-buddy/2.2/bug-buddy-2.2.106.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'libgnomeui'
+  Num:1
+  Cmd:u'# Installation of bug-buddy\n./configure --prefix=$GNOME_PREFIX --localstatedir=/var/lib &&\nmake &&\nmake install'
+ Name:cdrdao
+  Ver:Cdrdao-1.1.7
+  Num:1
+ Arch:u'ftp://sunsite.lanet.lv/pub/mirror/Slackware/source/ap/cdrdao/cdrdao-1.1.7.src.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of Cdrdao\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:cdrtools
+  Ver:Cdrtools-2.00.3
+  Num:1
+ Arch:u'ftp://ftp.berlios.de/pub/cdrecord/cdrtools-2.00.3.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of Cdrtools\nmake INS_BASE=/usr DEFINSUSR=root DEFINSGRP=root &&\nmake INS_BASE=/usr DEFINSUSR=root DEFINSGRP=root install'
+ Name:compface
+  Ver:Compface-1.4
+  Num:1
+ Arch:u'ftp://ftp.ibiblio.org/pub/Linux/apps/graphics/convert/compface-1.4.tar.gz'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/compface-1.4-errno-2.patch'
+  Num:0
+  Num:1
+  Cmd:u'# Installation of Compface\npatch -Np1 -i ../compface-1.4-errno-2.patch &&\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:control-center
+  Ver:Control Center-2.2.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/control-center/2.2/control-center-2.2.2.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'gnome-desktop'
+  Dep:u'metacity'
+  Num:1
+  Cmd:u'# Installation of Control Center\n./configure --prefix=$GNOME_PREFIX --localstatedir=/var/lib \\\n--sysconfdir=/etc/gnome &&\nmake &&\nmake install'
+ Name:courier
+  Ver:Courier-0.43.2
+  Num:1
+ Arch:u'ftp://ftp.pu.edu.tw/Unix/Mail/maildrop/courier-0.43.2.tar.bz2'
+  Num:0
+  Num:3
+  Dep:u'gdbm'
+  Dep:u'db'
+  Dep:'or'
+  Num:31
+  Cmd:u"# Installation of Courier\ngroupadd courier &&\nuseradd -c 'Courier Mail Server' -d /dev/null -g courier -s /bin/false courier"
+  Cmd:u'# Installation of Courier\n./configure --prefix=/usr --sysconfdir=/etc/courier --with-piddir=/var/run \\\n--libexecdir=/usr/sbin --datadir=/usr/share/courier \\\n--localstatedir=/var/spool/courier --disable-root-check --with-db=gdbm \\\n--with-mailuser=courier --with-mailgroup=courier \\\n--enable-workarounds-for-imap-client-bugs \\\n--with-ispell=/usr/bin/aspell &&\nmake &&\nmake install &&\nmake install-configure'
+  Cmd:u'# Configuration Information\nMYSQL_SERVER            localhost\nMYSQL_USERNAME          courier\nMYSQL_PASSWORD          (your choice) \nMYSQL_SOCKET            /tmp/mysql.sock\nMYSQL_PORT              3306\nMYSQL_DATABASE          courier-mail\nMYSQL_USER_TABLE        users\nMYSQL_CLEAR_PWFIELD     clear\nDEFAULT DOMAIN          (your domain)\nMYSQL_QUOTA_FIELD       quota'
+  Cmd:u'# Configuration Information\ncat > /etc/pam.d/esmtp << "EOF\n# Begin /etc/pam.d/esmtp\n\nauth            required                pam_unix.so try_first_pass\naccount         required                pam_unix.so\nsession         required                pam_unix.so\n\n# End /etc/pam.d/esmtp\nEOF\ncat > /etc/pam.d/pop3 << "EOF\n# Begin /etc/pam.d/pop3\n\nauth            required                pam_unix.so try_first_pass\naccount         required                pam_unix.so\nsession         required                pam_unix.so\n\n# End /etc/pam.d/pop3\nEOF\ncat > /etc/pam.d/imap << "EOF\n# Begin /etc/pam.d/imap\n\nauth            required                pam_unix.so try_first_pass\naccount         required                pam_unix.so\nsession         required                pam_unix.so\n\n# End /etc/pam.d/imap\nEOF\ncat > /etc/pam.d/webmail << "EOF\n# Begin /etc/pam.d/webmail\n\nauth            required                pam_unix.so try_first_pass\naccount         required                pam_unix.so\nsession         required                pam_unix.so\n\n# End /etc/pam.d/webmail\nEOF'
+  Cmd:u'# Configuration Information\nmysqladmin -uroot -p[password] create courier-mail'
+  Cmd:u"# Configuration Information\nmysql -uroot -p[password] courier-mail\n\n        CREATE TABLE users (\n        id                    char(128) DEFAULT '' NOT NULL,\n        crypt                 char(128) DEFAULT '' NOT NULL,\n        clear                 char(128) DEFAULT '' NOT NULL,\n        name                  char(128) DEFAULT '' NOT NULL,\n        uid                   int(10) unsigned DEFAULT '65534' NOT NULL,\n        gid                   int(10) unsigned DEFAULT '65534' NOT NULL,\n        home                  char(255) DEFAULT '' NOT NULL,\n        quota                 char(255) DEFAULT '' NOT NULL,\n        KEY id (id(128))\n        );"
+  Cmd:u"# Configuration Information\nmysql -uroot -p[password] mysql\n\ngrant all privileges on *.* to courier@localhost identified by '[password]' with grant option;"
+  Cmd:u'# Configuration Information\ncat > /etc/courier/defaultdomain << "EOF"\n[yourdomain]\nEOF'
+  Cmd:u'# Configuration Information\ncat > /etc/courier/me << "EOF"\n[servername.yourdomain]\nEOF'
+  Cmd:u'# Configuration Information\ncat > /etc/courier/locals << "EOF"\nlocalhost\n[yourdomain]\nEOF'
+  Cmd:u'# Configuration Information\ncat >/etc/courier/esmtpacceptmailfor.dir/system << "EOF"\nlocalhost\n[yourdomain]\nEOF'
+  Cmd:u'# Configuration Information\npostmaster: [your administrator email]'
+  Cmd:u'# Configuration Information\nmakesmtpaccess\nmakehosteddomains\nmakealiases'
+  Cmd:u'# Configuration Information\nESMTPDSTART=YES'
+  Cmd:u'# Configuration Information\nESMTPDSSLSTART=YES'
+  Cmd:u'# Configuration Information\nPOP3DSTART=YES'
+  Cmd:u'# Configuration Information\nPOP3DSLLSTART=YES'
+  Cmd:u'# Configuration Information\nIMAPDSTART=YES'
+  Cmd:u'# Configuration Information\nIMAPDSSLSTART=YES'
+  Cmd:u'# Configuration Information\ncd /home/[username]\nmaildirmake Maildir\nchown [username].[username] Maildir -R'
+  Cmd:u'# Configuration Information\necho "vmailman:x:9000:9000:Virtual Mailman:/home/vmailman:/bin/bash" >> /etc/passwd\necho "vmailman:x:9000:" >> /etc/group'
+  Cmd:u'# Configuration Information\ncd /home/vmailman\nmkdir [virtual_user]\ncd [virtual_user]\nmaildirmake Maildir\nchown vmailman.vmailman Maildir -R'
+  Cmd:u"# Configuration Information\nmysql -ucourier -p[password] courier-mail\n\ninsert into users values('[virtual_users]@[domain.com],\n'[encrypted password or blank]','[clear text password or blank]',\n'[User's Name]',9000,9000,'[location of Maildir]','[Quota in Bytes']);"
+  Cmd:u"# Configuration Information\ninsert into users values ('blfsuser@linuxfromscratch.org','\n','password','BLFS User',9000,9000,'/home/vmailman/blfsuser','');"
+  Cmd:u'# Configuration Information\ncp -a /usr/sbin/courier/webmail/webmail /var/www/cgi-bin'
+  Cmd:u'# Configuration Information\ncp -a /usr/share/courier/sqwebmail/images /var/www/htdocs/webmail'
+  Cmd:u'# Configuration Information\ncp -a /usr/sbin/courier/webmail/webadmin /var/www/cgi-bin'
+  Cmd:u'# Configuration Information\ncat > /etc/courier/webadmin/password << "EOF"\n[password]\nEOF'
+  Cmd:u'# Configuration Information\ntouch /etc/courier/webadmin/unsecureok'
+  Cmd:u'# Courier init.d script\ncp /usr/src/courier-0.43.2/courier.sysvinit /etc/rc.d/init.d/courier &&\nchmod 755 /etc/rc.d/init.d/courier'
+  Cmd:u'# Courier init.d script\ncd /etc/rc.d/init.d &&\nln -sf ../init.d/courier ../rc0.d/K25courier &&\nln -sf ../init.d/courier ../rc1.d/K25courier &&\nln -sf ../init.d/courier ../rc2.d/K25courier &&\nln -sf ../init.d/courier ../rc3.d/S35courier &&\nln -sf ../init.d/courier ../rc4.d/S35courier &&\nln -sf ../init.d/courier ../rc5.d/S35courier &&\nln -sf ../init.d/courier ../rc6.d/K25courier'
+ Name:cpio
+  Ver:cpio-2.5
+  Num:1
+ Arch:u'ftp://ftp.gnu.org/pub/gnu/cpio/cpio-2.5.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of cpio\n./configure --prefix=/usr --libexec=/usr/sbin \\\n--bindir=/bin &&\nmake &&\nmake install'
+ Name:cups
+  Ver:CUPS-1.1.19
+  Num:1
+ Arch:u'ftp://ftp.easysw.com/pub/cups/1.1.19/cups-1.1.19-source.tar.bz2'
+  Num:0
+  Num:0
+  Num:3
+  Cmd:u'# Installation of\nCUPS\n./configure &&\nmake &&\nmake install'
+  Cmd:u'# Configuring CUPS\ncat > /etc/rc.d/init.d/cups << "EOF"\n#!/bin/sh\n# Begin $rc_base/init.d/cups\n\n# Start or stop the CUPS server based upon the first argument to the script.\n\nsource /etc/sysconfig/rc\nsource $rc_functions\n\ncase $1 in\n    start)\n           echo "Starting CUPS Printserver..."\n           loadproc /usr/sbin/cupsd\n           ;;\n    stop)\n           echo "Stopping CUPS Printserver..."\n           killproc cupsd\n           ;;\n\n    reload)\n           echo "Reloading CUPS Printserver..."\n           reloadproc /usr/sbin/cupsd\n           ;;\n\n    restart)\n           $0 stop\n           sleep 1\n           $0 start\n           ;;\n\n    status)\n           statusproc cupsd\n           ;;\n\n    *)\n           echo "Usage: $0 {start|stop|reload|restart|status}"\n           exit 1\n           ;;\nesac\n\n# End $rc_base/init.d/cups startup script.\nEOF'
+  Cmd:u'# Configuring CUPS\ncd /etc/rc.d/init.d &&\nln -sf ../init.d/cups ../rc0.d/K00cups &&\nln -sf ../init.d/cups ../rc2.d/S99cups &&\nln -sf ../init.d/cups ../rc3.d/S99cups &&\nln -sf ../init.d/cups ../rc5.d/S99cups'
+ Name:curl
+  Ver:cURL-7.10.7
+  Num:1
+ Arch:u'ftp://ftp.sunet.se/pub/www/utilities/curl/curl-7.10.7.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of cURL\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:cvs
+  Ver:CVS-1.11.6
+  Num:1
+ Arch:u'ftp://ftp.cvshome.org/pub/release/stable/cvs-1.11.6/cvs-1.11.6.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of CVS\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:daemontools
+  Ver:daemontools
+  Num:1
+ Arch:u'ftp://ftp.lug.udel.edu/pub/network/mail/qmail/daemontools-0.76.tar.gz'
+  Num:2
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/daemontools-0.76-errno.patch'
+Patch:u'http://smarden.org/pape/djb/manpages/daemontools-0.76-man.tar.gz'
+  Num:0
+  Num:2
+  Cmd:u"# Installation of daemontools\ncd admin/daemontools-0.76 && \npatch -Np1 -i ../../daemontools-0.76-errno.patch &&\npackage/compile &&\ncd package && \nsed 's|command|usr/sbin|' boot.inittab > boot.inittab~ && \nmv boot.inittab~ boot.inittab &&\ncd ../command &&\nsed -e 's|/command:/usr/local/bin:/usr/local/sbin:||' \\\n    -e 's|command|usr/sbin|' \\\n    -e 's|/service|/etc/service|g' svscanboot > svscanboot~ &&\nmv svscanboot~ svscanboot &&\nchmod 555 svscanboot &&\ncp * /usr/sbin &&\ncd ../package && \ncat /etc/inittab boot.inittab > /etc/inittab~ && \nmv -f /etc/inittab~ /etc/inittab && \nmkdir /etc/service &&\ntelinit Q"
+  Cmd:u'# Installation of daemontools\ntar xzvf daemontools-0.76-man.tar.gz &&\ncp daemontools-man/*.8 /usr/share/man/man8'
+ Name:db
+  Ver:Berkeley DB-4.1.25
+  Num:1
+ Arch:u'ftp://ftp.us.xemacs.org/pub/xemacs/aux/db-4.1.25.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of Berkeley DB\ncd build_unix &&\n../dist/configure --prefix=/usr \\\n    --enable-compat185 \\\n    --enable-cxx &&\nmake &&\nmake docdir=/usr/share/doc/db-4.1.25 install'
+ Name:db-3.3
+  Ver:Berkeley DB-3.3.11
+  Num:1
+ Arch:u'ftp://ftp.pu.edu.tw/Unix/Database/BerkeleyDB/db-3.3.11.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u"# Installation of Berkeley DB\ncd build_unix &&\n../dist/configure --prefix=/opt/db-3.3 --enable-compat185 &&\nmake &&\nmake docdir=/opt/db-3.3/doc/Berkeley-DB install &&\ncd /opt/db-3.3/lib/ &&\nrm -f libdb.so &&\nfor i in $(ls); do mv $i /usr/lib; ln -sf /usr/lib/$i; done &&\ncd /opt/db-3.3/include/ &&\nsed 's/^DB185/DB/' db_185.h > db_185.h.new &&\nmv db_185.h.new db_185.h &&\nln -nsf /opt/db-3.3/include /usr/include/db3"
+ Name:dhcp
+  Ver:DHCP-3.0pl2
+  Num:1
+ Arch:u'ftp://ftp.isc.org/isc/dhcp/dhcp-3.0pl2.tar.gz'
+  Num:0
+  Num:0
+  Num:4
+  Cmd:u'# Installation of DHCP\n./configure &&\nmake &&\nmake LIBDIR=/usr/lib INCDIR=/usr/include install'
+  Cmd:u'# Configuration Information\ncat > /etc/rc.d/init.d/dhcp << "EOF"\n#!/bin/sh\n# Begin $rc_base/init.d/dhcp\n\n# Based on sysklogd script from LFS-3.1 and earlier.\n# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org\n\nsource /etc/sysconfig/rc\nsource $rc_functions\n\ncase "$1" in\n        start)\n                echo "Starting DHCP Server..."\n                loadproc dhcpd -q eth1\n                ;;\n\n        stop)\n                echo "Stopping DHCP Server..."\n                killproc dhcpd\n                ;;\n\n        reload)\n                echo "Reloading DHCP Server..."\n                reloadproc dhcpd\n                ;;\n\n        restart)\n                $0 stop\n                sleep 1\n                $0 start\n                ;;\n\n        status)\n                statusproc dhcpd\n                ;;\n\n        *)\n                echo "Usage: $0 {start|stop|reload|restart|status}"\n                exit 1\n                ;;\nesac\n\n# End $rc_base/init.d/dhcp\nEOF\nchmod 755 /etc/rc.d/init.d/dhcp'
+  Cmd:u'# Configuration Information\ntouch /var/state/dhcp/dhcpd.leases'
+  Cmd:u'# Configuration Information\ncat > /etc/dhcpd.conf << "EOF"\ndefault-lease-time 72000;\nmax-lease-time 144000;\nddns-update-style ad-hoc;\n\nsubnet 192.168.5.0 netmask 255.255.255.0 {\n  range 192.168.5.10 192.168.5.240;\n  option broadcast-address 195.168.5.255;\n  option routers 192.168.5.1;\n}\nEOF'
+ Name:dhcpcd
+  Ver:dhcpcd-1.3.22-pl4
+  Num:1
+ Arch:u'ftp://ftp.phystech.com/pub/dhcpcd-1.3.22-pl4.tar.gz'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/dhcpcd-1.3.22-pl4-fhs.patch'
+  Num:0
+  Num:2
+  Cmd:u'# Installation of dhcpcd\npatch -Np1 -i ../dhcpcd-1.3.22-pl4-fhs.patch &&\n./configure --prefix="" --sysconfdir=/var/lib \\\n--mandir=/usr/share/man &&\nmake &&\nmake install'
+  Cmd:u'# Configuration Information\ncd /etc/sysconfig/network-devices &&\ncat > ifconfig.eth0 << "EOF"\nONBOOT=yes\nDHCP_PROG=/sbin/dhcpcd\nDHCP_START=<appropriate start parameters>\nDHCP_STOP=-k\nEOF'
+ Name:dillo
+  Ver:Dillo-0.7.3
+  Num:1
+ Arch:u'http://www.dillo.org/download/dillo-0.7.3.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'GTK'
+  Num:1
+  Cmd:u'# Installation of Dillo\n./configure --prefix=/usr --sysconfdir=/etc &&\nmake &&\nmake install'
+ Name:docbook-dsssl
+  Ver:DocBook DSSSL Stylesheets-1.78
+  Num:1
+ Arch:u'http://telia.dl.sourceforge.net/sourceforge/docbook/docbook-dsssl-1.78.tar.gz'
+  Num:0
+  Num:1
+  Dep:u'sgml-common'
+  Num:3
+  Cmd:u'# Installation of DocBook DSSSL Stylesheets\nmkdir -p /usr/share/sgml/docbook/dsssl-stylesheets-1.78/dtds/decls &&\nmkdir -p /usr/share/sgml/docbook/dsssl-stylesheets-1.78/lib &&\nmkdir -p /usr/share/sgml/docbook/dsssl-stylesheets-1.78/common &&\nmkdir -p /usr/share/sgml/docbook/dsssl-stylesheets-1.78/html &&\nmkdir -p /usr/share/sgml/docbook/dsssl-stylesheets-1.78/print &&\nmkdir -p /usr/share/sgml/docbook/dsssl-stylesheets-1.78/test &&\nmkdir -p /usr/share/sgml/docbook/dsssl-stylesheets-1.78/images &&\ninstall bin/collateindex.pl /usr/bin &&\ncp catalog VERSION /usr/share/sgml/docbook/dsssl-stylesheets-1.78 &&\ncp dtds/decls/*.dcl \\\n/usr/share/sgml/docbook/dsssl-stylesheets-1.78/dtds/decls &&\ncp lib/dblib.dsl /usr/share/sgml/docbook/dsssl-stylesheets-1.78/lib &&\ncp common/*.dsl /usr/share/sgml/docbook/dsssl-stylesheets-1.78/common &&\ncp common/*.ent /usr/share/sgml/docbook/dsssl-stylesheets-1.78/common &&\ncp html/*.dsl /usr/share/sgml/docbook/dsssl-stylesheets-1.78/html &&\ncp lib/*.dsl /usr/share/sgml/docbook/dsssl-stylesheets-1.78/lib &&\ncp print/*.dsl /usr/share/sgml/docbook/dsssl-stylesheets-1.78/print &&\ncp images/*.gif /usr/share/sgml/docbook/dsssl-stylesheets-1.78/images &&\ninstall-catalog --add /etc/sgml/dsssl-docbook-stylesheets.cat \\\n/usr/share/sgml/docbook/dsssl-stylesheets-1.78/catalog &&\ninstall-catalog --add /etc/sgml/sgml-docbook.cat \\\n/etc/sgml/dsssl-docbook-stylesheets.cat'
+  Cmd:u'# Configuration Information\nln -sf [your home directory]/BLFS/BOOK/blfs.dsl \\\n/usr/share/sgml/docbook/dsssl-stylesheets-1.78/html/'
+  Cmd:u'# Configuration Information\nmkdir introduction postlfs general connect basicnet server \\\ncontent x kde gnome xsoft multimedia pst preface appendices other &&\nopenjade -t sgml \\\n-d /usr/share/sgml/docbook/dsssl-stylesheets-1.78/html/blfs.dsl \\\n/usr/share/sgml/docbook/dsssl-stylesheets-1.78/dtds/decls/xml.dcl \\\n~/BLFS/BOOK/index.xml'
+ Name:docbook-xsl
+  Ver:DocBook XSL Stylesheets-1.62.4
+  Num:1
+ Arch:u'http://telia.dl.sourceforge.net/sourceforge/docbook/docbook-xsl-1.62.4.tar.gz'
+  Num:0
+  Num:1
+  Dep:u'libxslt'
+  Num:1
+  Cmd:u'# Installation of DocBook XSL Stylesheets\ninstall -d /usr/share/xml/docbook/xsl-stylesheets-1.62.4 &&\ncp -af VERSION common extensions fo html htmlhelp images javahelp lib \\\nmanpages params profiling template tools xhtml \\\n/usr/share/xml/docbook/xsl-stylesheets-1.62.4 &&\ninstall -d /usr/share/doc/xml &&\ncp -af doc/* /usr/share/doc/xml &&\nif [ ! -f /etc/xml/catalog ]; then mkdir -p /etc/xml; xmlcatalog --noout \\\n--create /etc/xml/catalog; fi &&\nif [ ! -e /etc/xml/docbook ]; then xmlcatalog --noout --create \\\n/etc/xml/docbook; fi &&\nxmlcatalog --noout --add "rewriteSystem" \\\n"http://docbook.sourceforge.net/release/xsl/1.45" \\\n"/usr/share/xml/docbook/xsl-stylesheets-1.62.4" /etc/xml/catalog &&\nxmlcatalog --noout --add "rewriteURI" \\\n"http://docbook.sourceforge.net/release/xsl/1.45" \\\n"/usr/share/xml/docbook/xsl-stylesheets-1.62.4" /etc/xml/catalog &&\nxmlcatalog --noout --add "rewriteSystem" \\\n"http://docbook.sourceforge.net/release/xsl/current" \\\n"/usr/share/xml/docbook/xsl-stylesheets-1.62.4" /etc/xml/catalog &&\nxmlcatalog --noout --add "rewriteURI" \\\n"http://docbook.sourceforge.net/release/xsl/current" \\\n"/usr/share/xml/docbook/xsl-stylesheets-1.62.4" /etc/xml/catalog &&\nxmlcatalog --noout --add "delegateSystem" \\\n"http://docbook.sourceforge.net/release/xsl/" \\\n"file:///etc/xml/docbook" /etc/xml/catalog &&\nxmlcatalog --noout --add "delegateURI" \\\n"http://docbook.sourceforge.net/release/xsl/" \\\n"file:///etc/xml/docbook" /etc/xml/catalog'
+ Name:eel
+  Ver:EEL-2.2.4
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/eel/2.2/eel-2.2.4.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'libgnomeui'
+  Dep:u'gail'
+  Num:1
+  Cmd:u'# Installation of EEL\n./configure --prefix=$GNOME_PREFIX &&\nmake &&\nmake install'
+ Name:enscript
+  Ver:enscript-1.6.1
+  Num:1
+ Arch:u'ftp://ftp.gnu.org/gnu/enscript/enscript-1.6.1.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of enscript\n./configure --prefix=/usr --sysconfdir=/etc/enscript \\\n--localstatedir=/var --with-media=letter &&\nmake &&\nmake install'
+ Name:eog
+  Ver:EOG-2.2.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/eog/2.2/eog-2.2.2.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'libgnomeui'
+  Dep:u'libgnomeprint'
+  Num:1
+  Cmd:u'# Installation of EOG\n./configure --prefix=$GNOME_PREFIX --libexecdir=$GNOME_PREFIX/sbin \\\n--localstatedir=/var/lib --sysconfdir=/etc/gnome &&\nmake &&\nmake install'
+ Name:esound
+  Ver:EsounD-0.2.30
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/esound/0.2/esound-0.2.30.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'audiofile'
+  Num:1
+  Cmd:u'# Installation of EsounD\n./configure --prefix=/usr --sysconfdir=/etc &&\nmake &&\nmake install'
+ Name:espgs
+  Ver:ESP Ghostscript-7.07.1rc2
+  Num:1
+ Arch:u'http://heanet.dl.sourceforge.net/sourceforge/espgs/espgs-7.07.1rc2-source.tar.bz2'
+  Num:5
+Patch:u'http://ftp.gnu.org/pub/gnu/ghostscript/gnu-gs-fonts-std-6.0.tar.gz'
+Patch:u'http://ftp.gnu.org/pub/gnu/ghostscript/gnu-gs-fonts-other-6.0.tar.gz'
+Patch:u'ftp://ftp.gnome.ru/fonts/urw/release/urw-fonts-1.0.7pre22.tar.bz2'
+Patch:u'http://keihanna.dl.sourceforge.net/sourceforge/omniprint/Omni-0.9.0.tar.gz'
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/espgs-7.07.1rc2-gdevpng.patch'
+  Num:0
+  Num:5
+  Cmd:u'# Installation of Ghostscript\ntar xzvf ../Omni-0.9.0.tar.gz'
+  Cmd:u'# Installation of Ghostscript\n./configure --prefix=/usr &&\nmake &&\nmake install'
+  Cmd:u'# Installation of Ghostscript\nln -s glib-1.2/glib.h /usr/include/glib.h &&\nln -s glib-1.2/gmodule.h /usr/include/gmodule.h &&\nln -s ../lib/glib/include/glibconfig.h /usr/include/glibconfig.h'
+  Cmd:u'# Installation of Ghostscript\npatch -Np1 -i ../espgs-7.07.1rc2-gdevpng.patch &&\nmake so &&\nmake soinstall'
+  Cmd:u'# Installation of Ghostscript\nrm /usr/include/g{lib,module,libconfig}.h'
+ Name:evolution
+  Ver:Evolution-1.4.4
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/evolution/1.4/evolution-1.4.4.tar.bz2'
+  Num:1
+Patch:u'http://ftp2.nchu.edu.tw/UNIX/Database/BerkeleyDB/db-3.1.17.tar.gz'
+  Num:3
+  Dep:u'openssl'
+  Dep:u'libgnomeprintui'
+  Dep:u'gtkhtml2'
+  Num:3
+  Cmd:u'# Installation of Evolution\ncd build_unix &&\n../dist/configure --prefix=/opt/db-3.1.17 --enable-compat185\n&&\nmake &&\nmake install'
+  Cmd:u'# Installation of Evolution\n./configure --prefix=$GNOME_PREFIX --with-db3=/opt/db-3.1.17 --enable-openssl &&\nmake &&\nmake install'
+  Cmd:u'# Installation of Evolution\nrm -rf /opt/db-3.1.17'
+ Name:exim
+  Ver:Exim-4.24
+  Num:1
+ Arch:u'ftp://ftp.exim.org/pub/exim/exim4/exim-4.24.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'db'
+  Num:5
+  Cmd:u'# Installation of Exim\ngroupadd exim &&\nuseradd -d /dev/null -g exim -s /bin/false exim'
+  Cmd:u"# Installation of Exim\nsed -e 's/^BIN_DIR.*$/BIN_DIRECTORY=\\/usr\\/sbin/' src/EDITME | \\\n  sed -e 's/^CONF.*$/CONFIGURE_FILE=\\/etc\\/exim.conf/' | \\\n  sed -e 's/^EXIM_USER.*$/EXIM_USER=exim/' | \\\n  sed -e 's/^EXIM_MONITOR/#EXIM_MONITOR/' > Local/Makefile &&\nmake &&\nmake install &&\ncp doc/exim.8 /usr/share/man/man8 &&\nln -s exim-4.24-1 /usr/sbin/exim &&\nln -s exim /usr/sbin/sendmail"
+  Cmd:u'# Configuration Information\ncat >> /etc/aliases << "EOF"\npostmaster: root\nMAILER-DAEMON: root\nEOF\nexim -v -bi &&\n/usr/sbin/exim -bd -q1m'
+  Cmd:u'# Configuration Information\ncat > /etc/rc.d/init.d/exim << "EOF"\n#!/bin/sh\n# Begin $rc_base/init.d/exim\n\n# Based on sysklogd script from LFS-3.1 and earlier.\n# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org\n\nsource /etc/sysconfig/rc\nsource $rc_functions\n\ncase "$1" in\n\n        start)\n        echo "Starting exim..."\n        loadproc /usr/sbin/exim -bd -q1m\n        ;;\n\n        stop)\n        echo "Stopping exim..."\n        killproc exim\n        ;;\n\t\t\n\tstatus)\n\tstatusproc exim\n\t;;\n\t\n        restart)\n        $0 stop\n        sleep 1\n        $0 start\n        ;;\n\n        *)\n        echo "Usage: $0 {start|stop|status|restart}"\n        exit 1\n        ;;\nesac\n\n# End $rc_base/init.d/exim\nEOF\nchmod 755 /etc/rc.d/init.d/exim'
+  Cmd:u'# Configuration Information\ncd /etc/rc.d/init.d &&\nln -sf ../init.d/exim ../rc0.d/K25exim &&\nln -sf ../init.d/exim ../rc1.d/K25exim &&\nln -sf ../init.d/exim ../rc2.d/K25exim &&\nln -sf ../init.d/exim ../rc3.d/S35exim &&\nln -sf ../init.d/exim ../rc4.d/S35exim &&\nln -sf ../init.d/exim ../rc5.d/S35exim &&\nln -sf ../init.d/exim ../rc6.d/K25exim'
+ Name:expat
+  Ver:expat-1.95.6
+  Num:1
+ Arch:u'ftp://ftp.yars.free.net/pub/software/unix/util/xml/expat-1.95.6.tar.gz'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/expat-1.95.6-fix-declaration-order.patch'
+  Num:0
+  Num:2
+  Cmd:u'# Installation of expat\npatch -Np1 -i ../expat-1.95.6-fix-declaration-order.patch'
+  Cmd:u'# Installation of expat\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:fcron
+  Ver:Fcron-2.9.3
+  Num:1
+ Arch:u'ftp://ftp.seul.org/pub/fcron/fcron-2.9.3.src.tar.gz'
+  Num:0
+  Num:0
+  Num:6
+  Cmd:u'# Installation of Fcron\ncat >> /etc/syslog.conf << "EOF"\n# Begin fcron addition to /etc/syslog.conf\n\ncron.* -/var/log/cron.log\n\n# End fcron addition\nEOF'
+  Cmd:u'# Installation of Fcron\n/etc/rc.d/init.d/sysklogd reload'
+  Cmd:u'# Installation of Fcron\ngroupadd fcron &&\nuseradd -c fcron -g fcron fcron'
+  Cmd:u'# Installation of Fcron\n./configure --without-sendmail --with-answer-all=no &&\nmake &&\nmake install'
+  Cmd:u'# Configuration Information\ncat > /etc/rc.d/init.d/fcron << "EOF"\n#!/bin/sh\n# Begin $rc_base/init.d/fcron\n\n# Based on sysklogd script from LFS-3.1 and earlier.\n# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org\n\nsource /etc/sysconfig/rc\nsource $rc_functions\n\ncase "$1" in\n        start)\n                echo "Starting fcron..."\n                loadproc fcron\n                ;;\n\n        stop)\n                echo "Stopping fcron..."\n                killproc fcron\n                ;;\n\n        restart)\n                $0 stop\n                sleep 1\n                $0 start\n                ;;\n\n        status)\n                statusproc fcron\n                ;;\n\n        *)\n                echo "Usage: $0 {start|stop|restart|status}"\n                exit 1\n                ;;\nesac\n\n# End $rc_base/init.d/fcron\nEOF\nchmod 755 /etc/rc.d/init.d/fcron'
+  Cmd:u'# Configuration Information\ncd /etc/rc.d/init.d &&\nln -sf ../init.d/fcron ../rc0.d/K08fcron &&\nln -sf ../init.d/fcron ../rc2.d/S40fcron &&\nln -sf ../init.d/fcron ../rc3.d/S40fcron &&\nln -sf ../init.d/fcron ../rc4.d/S40fcron &&\nln -sf ../init.d/fcron ../rc5.d/S40fcron &&\nln -sf ../init.d/fcron ../rc6.d/K08fcron'
+ Name:fetchmail
+  Ver:Fetchmail
+  Num:1
+ Arch:u'ftp://gnome.dti.ad.jp/.1/unix/net/mail/fetchmail/fetchmail-6.2.3.tar.gz'
+  Num:0
+  Num:2
+  Dep:u'openssl'
+  Dep:u'procmail'
+  Num:1
+  Cmd:u'# Installation of Fetchmail\n./configure --prefix=/usr --with-ssl --enable-fallback=procmail &&\nmake &&\nmake install'
+ Name:ffmpeg
+  Ver:FFmpeg-0.4.7
+  Num:1
+ Arch:u'ftp://sunsite.ccu.edu.tw/pub14/sourceforge/f/ffmpeg/ffmpeg-0.4.7.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of FFmpeg\n./configure --prefix=/usr --enable-shared &&\nmake &&\nmake install'
+ Name:flac
+  Ver:FLAC-1.1.0
+  Num:1
+ Arch:u'http://flow.dl.sourceforge.net/sourceforge/flac/flac-1.1.0.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of FLAC\n./configure --prefix=/usr\nmake &&\nmake install'
+ Name:fluxbox
+  Ver:Fluxbox-0.1.14
+  Num:1
+ Arch:u'http://telia.dl.sourceforge.net/sourceforge/fluxbox/fluxbox-0.1.14.tar.bz2'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/fluxbox-0.1.14-gcc33.patch'
+  Num:1
+  Dep:u'xfree86'
+  Num:3
+  Cmd:u'# Installation of Fluxbox\npatch -Np1 -i ../fluxbox-0.1.14-gcc33.patch &&\n./configure --prefix=/usr --enable-kde --enable-gnome &&\nmake &&\nmake install'
+  Cmd:u'# Configuration Information\ncat >> ~/.xinitrc << "EOF"\nexec fluxbox\nEOF'
+  Cmd:u'# Configuration Information\nmkdir ~/.fluxbox &&\ncp /usr/share/fluxbox/init ~/.fluxbox/init &&\ncp /usr/share/fluxbox/keys ~/.fluxbox/keys &&\ncp /usr/share/fluxbox/menu ~/.fluxbox/menu '
+ Name:fontconfig
+  Ver:Fontconfig-2.2.1
+  Num:1
+ Arch:u'ftp://ftp.us.sinuspl.net/pub/src/fontconfig-2.2.1.tar.gz'
+  Num:0
+  Num:2
+  Dep:u'freetype2'
+  Dep:u'expat'
+  Num:1
+  Cmd:u'# Installation of Fontconfig\n./configure --prefix=/usr --sysconfdir=/etc &&\nmake &&\nmake install'
+ Name:freetype2
+  Ver:FreeType-2.1.5
+  Num:1
+ Arch:u'ftp://ftp.pu.edu.tw/Unix/Graphics/freetype/freetype2/freetype-2.1.5.tar.bz2'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/freetype-2.1.5-ahhint.patch'
+  Num:0
+  Num:1
+  Cmd:u'# Installation of FreeType2\npatch -Np1 -i ../freetype-2.1.5-ahhint.patch &&\ncp include/freetype/config/ftoption.h include/freetype/config/ftoption.h.orig &&\nsed -e "s%\\/\\* #define  TT_CONFIG_OPTION_BYTECODE_INTERPRETER \\*\\/%#define  TT_CONFIG_OPTION_BYTECODE_INTERPRETER%" \\\ninclude/freetype/config/ftoption.h.orig > include/freetype/config/ftoption.h &&\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:gail
+  Ver:GAIL-1.2.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gail/1.2/gail-1.2.2.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'GTK2'
+  Dep:u'libgnomecanvas'
+  Num:1
+  Cmd:u'# Installation of GAIL\n./configure --prefix=$GNOME_PREFIX --disable-gtk-doc &&\nmake &&\nmake install'
+ Name:gal
+  Ver:GAL-0.24
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gal/0.24/gal-0.24.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'gnome-print'
+  Dep:u'libglade'
+  Num:1
+  Cmd:u'# Installation of GAL\n./configure --prefix=/opt/gnome --disable-gtk-doc &&\nmake &&\nmake install'
+ Name:gal2
+  Ver:GAL-1.99.9
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/gnome/sources/gal/1.99/gal-1.99.9.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of GAL\n./configure --prefix=$GNOME_PREFIX &&\nmake &&\nmake install'
+ Name:galeon
+  Ver:Galeon-1.3.10
+  Num:1
+ Arch:u'http://telia.dl.sourceforge.net/sourceforge/galeon/galeon-1.3.10.tar.gz'
+  Num:0
+  Num:3
+  Dep:u'libgnomeui'
+  Dep:u'scrollkeeper'
+  Dep:u'mozilla'
+  Num:1
+  Cmd:u'# Installation of Galeon\n./configure --prefix=$GNOME_PREFIX --sysconfdir=/etc/gnome \\\n--localstatedir=/var/lib &&\nmake &&\nmake install'
+ Name:gcc
+  Ver:GCC-3.3.1
+  Num:1
+ Arch:u'ftp://cs.nyu.edu/pub/gnat/3.15p/gnat-3.15p-i686-pc-redhat71-gnu-bin.tar.gz'
+  Num:2
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/gcc-3.3.1-no_fixincludes-2.patch'
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/gcc-3.3.1-suppress-libiberty.patch'
+  Num:1
+  Dep:u'tcsh'
+  Num:5
+  Cmd:u'# Installation of GNAT\n./doconfig'
+  Cmd:u'# Installation of GNAT\n./doinstall'
+  Cmd:u'# Return to Installation of GCC\npatch -Np1 -i ../gcc-3.3.1-no_fixincludes-2.patch &&\npatch -Np1 -i ../gcc-3.3.1-suppress-libiberty.patch'
+  Cmd:u'# Return to Installation of GCC\nPATH_HOLD=$PATH &&\nexport PATH=/opt/gnat/bin:$PATH &&\ncd gcc/ada &&\ntouch treeprs.ads [es]info.h nmake.ad[bs] &&\ncd ../.. &&\nmkdir ../gcc-build &&\ncd ../gcc-build &&\nCC=/usr/bin/gcc ../gcc-3.3.1/configure --prefix=/usr --enable-shared \\\n--enable-languages=c,c++,objc,f77,ada,java --enable-threads=posix \\\n--enable-__cxa_atexit --enable-clocale=gnu &&\nmake bootstrap &&\nmake -C gcc gnatlib_and_tools &&\nmake install &&\nln -sf g77 /usr/bin/f77 &&\nexport PATH=$PATH_HOLD'
+  Cmd:u'# Return to Installation of GCC\nrm -rf /opt/gnat'
+ Name:gcc2
+  Ver:GCC-2.95.3
+  Num:1
+ Arch:u'ftp://ftp.gnu.org/gnu/gcc/gcc-2.95.3.tar.gz'
+  Num:3
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/gcc-2.95.3-2.patch'
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/gcc-2.95.3-no-fixinc.patch'
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/gcc-2.95.3-returntype-fix.patch'
+  Num:0
+  Num:7
+  Cmd:u'# Installation of GCC\npatch -Np1 -i ../gcc-2.95.3-2.patch &&\npatch -Np1 -i ../gcc-2.95.3-no-fixinc.patch &&\npatch -Np1 -i ../gcc-2.95.3-returntype-fix.patch'
+  Cmd:u'# Installation of GCC\nmkdir ../gcc-build &&\ncd ../gcc-build'
+  Cmd:u'# Installation of GCC\n../gcc-2.95.3/configure \\\n--prefix=/opt/gcc-2.95.3 \\\n--enable-shared --enable-languages=c,c++ \\\n--enable-threads=posix'
+  Cmd:u'# Installation of GCC\nmake bootstrap &&\nmake install'
+  Cmd:u'# Installation of GCC\nL=`find /opt/gcc-2.95.3/lib -name "*libstdc++*.so" -type f` &&\nIL=`basename $L`'
+  Cmd:u'# Installation of GCC\nfor i in /opt/gcc-2.95.3/lib/*.so*; do mv -f $i /usr/lib;\nln -sf /usr/lib/`basename $i` /opt/gcc-2.95.3/lib; done'
+  Cmd:u'# Installation of GCC\nln -sf $IL /usr/lib/libstdc++-libc6.1-1.so.2 &&\nln -sf $IL /usr/lib/libstdc++-libc6.2-2.so.3 &&\nln -sf $IL /usr/lib/libstdc++-libc6.3-2.so.3'
+ Name:gconf-editor
+  Ver:GConf Editor-0.4.1
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gconf-editor/0.4/gconf-editor-0.4.1.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'GConf'
+  Num:1
+  Cmd:u'# Installation of GConf Editor\n./configure --prefix=$GNOME_PREFIX &&\nmake &&\nmake install'
+ Name:gdbm
+  Ver:GDBM-1.8.3
+  Num:1
+ Arch:u'ftp://ftp.gnu.org/gnu/gdbm/gdbm-1.8.3.tar.gz'
+  Num:0
+  Num:0
+  Num:2
+  Cmd:u'# Installation of GDBM\n./configure --prefix=/usr --infodir=/usr/share/info --mandir=/usr/share/man &&\nmake &&\nmake BINOWN=root BINGRP=root install'
+  Cmd:u'# Installation of GDBM\nmake BINOWN=root BINGRP=root install-compat'
+ Name:gdk
+  Ver:GDK Pixel Buffer-0.22.0
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gdk-pixbuf/0.22/gdk-pixbuf-0.22.0.tar.bz2'
+  Num:0
+  Num:4
+  Dep:u'GTK'
+  Dep:u'libpng'
+  Dep:u'libjpeg'
+  Dep:u'libtiff'
+  Num:1
+  Cmd:u'# Installation of GDK Pixel Buffer\n./configure --prefix=/opt/gnome --disable-gtk-doc &&\nmake &&\nmake install'
+ Name:gdm
+  Ver:GDM-2.4.1.4
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gdm/2.4/gdm-2.4.1.4.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'librsvg'
+  Dep:u'libgnome'
+  Num:4
+  Cmd:u'# Installation of GDM\ngroupadd gdm &&\nuseradd -c gdm -d /dev/null -g gdm -s /bin/bash gdm &&\n./configure --prefix=$GNOME_PREFIX --sysconfdir=/etc/gnome \\\n--localstatedir=/var/lib --with-pam-prefix=/etc &&\nmake &&\nmake install'
+  Cmd:u'# Configuration Information\ncat > /etc/pam.d/gdm << "EOF"\nauth        required    pam_unix.so\nauth        required    pam_nologin.so\naccount     required    pam_unix.so\npassword    required    pam_unix.so\nsession     required    pam_unix.so\nEOF\ncat > /etc/pam.d/gdm-autologin << "EOF"\nauth        required    pam_env.so\nauth        required    pam_nologin.so\nauth        required    pam_permit.so\naccount     required    pam_unix.so\npassword    required    pam_unix.so\nsession     required    pam_unix.so\nEOF'
+  Cmd:u'# Configuration Information\ncat > /etc/rc.d/init.d/gdm << "EOF"\n#!/bin/bash\n# Begin $rc_base/init.d/gdm\n\n# Based on sysklogd script from LFS-3.1 and earlier.\n# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org\n\nsource /etc/sysconfig/rc\nsource $rc_functions\n\ncase "$1" in\n        start)\n                echo "Starting GDM..."\n                loadproc /opt/gnome-2.2/bin/gdm\n                ;;\n\n        stop)\n                echo "Stopping GDM..."\n\t\tif [ -f /var/run/gdm.pid ]; then\n                loadproc /opt/gnome-2.2/sbin/gdm-stop\n\t\tfi\n                ;;\n\n        reload)\n                echo "Reloading GDM..."\n                reloadproc /opt/gnome-2.2/sbin/gdm-safe-restart\n                ;;\n\n        restart)\n                echo "Restarting GDM..."\n\t\tloadproc /opt/gnome-2.2/sbin/gdm-restart\n                ;;\n\n        *)\n                echo "Usage: $0 {start|stop|reload|restart}"\n                exit 1\n                ;;\nesac\n\n# End $rc_base/init.d/gdm\nEOF\nchmod 755 /etc/rc.d/init.d/gdm'
+  Cmd:u'# Configuration Information\ncd /etc/rc.d/init.d &&\nln -sf ../init.d/gdm ../rc0.d/K05gdm &&\nln -sf ../init.d/gdm ../rc1.d/K05gdm &&\nln -sf ../init.d/gdm ../rc2.d/K05gdm &&\nln -sf ../init.d/gdm ../rc3.d/K05gdm &&\nln -sf ../init.d/gdm ../rc4.d/K05gdm &&\nln -sf ../init.d/gdm ../rc5.d/S95gdm &&\nln -sf ../init.d/gdm ../rc6.d/K05gdm'
+ Name:gedit
+  Ver:gedit-2.2.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gedit/2.2/gedit-2.2.2.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'libgnomeui'
+  Num:1
+  Cmd:u'# Installation of gedit\n./configure --prefix=$GNOME_PREFIX --localstatedir=/var/lib \\\n--sysconfdir=/etc/gnome &&\nmake &&\nmake install'
+ Name:gimp
+  Ver:GIMP-1.2.5
+  Num:1
+ Arch:u'ftp://ftp.gimp.org/pub/gimp/v1.2/v1.2.5/gimp-1.2.5.tar.bz2'
+  Num:2
+Patch:u'ftp://ftp.gimp.org/pub/gimp/fonts/freefonts-0.10.tar.gz'
+Patch:u'ftp://ftp.gimp.org/pub/gimp/v1.2/v1.2.5/gimp-data-extras-1.2.0.tar.bz2'
+  Num:1
+  Dep:u'GTK'
+  Num:1
+  Cmd:u'# Installation of GIMP\n./configure --prefix=/usr --sysconfdir=/etc --disable-print &&\nmake &&\nmake install'
+ Name:gmp
+  Ver:GMP-4.1.2
+  Num:1
+ Arch:u'ftp://ftp.gnu.org/gnu/gmp/gmp-4.1.2.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of GMP\n./configure --prefix=/usr --infodir=/usr/share/info  --mandir=/usr/share/man &&\nmake &&\nmake install'
+ Name:gnet
+  Ver:GNet-2.0.4
+  Num:1
+ Arch:u'ftp://ftp.man.olsztyn.pl/pub/linux/slackware/slackware-current/source/l/gnet/gnet-2.0.4.tar.gz'
+  Num:0
+  Num:1
+  Dep:u'GLib2'
+  Num:1
+  Cmd:u'# Installation of GNet\n./configure --prefix=/usr  &&\nmake &&\nmake install'
+ Name:gnome-applets
+  Ver:GNOME Applets-2.2.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gnome-applets/2.2/gnome-applets-2.2.2.tar.bz2'
+  Num:0
+  Num:3
+  Dep:u'gail'
+  Dep:u'libgtop'
+  Dep:u'gnome-panel'
+  Num:1
+  Cmd:u'# Installation of GNOME Applets\n./configure --prefix=$GNOME_PREFIX --libexecdir=$GNOME_PREFIX/sbin \\\n--localstatedir=/var/lib --sysconfdir=/etc/gnome &&\nmake &&\nmake install'
+ Name:gnome-core
+  Ver:Gnome
+  Num:0
+  Num:0
+  Num:10
+  Dep:'gnome-desktop'
+  Dep:'gnome-panel'
+  Dep:'gnome-session'
+  Dep:'control-center'
+  Dep:'xfree86'
+  Dep:'GRK2'
+  Dep:'libpng'
+  Dep:'libjpeg'
+  Dep:'libtiff'
+  Dep:'popt'
+  Num:0
+ Name:gnome-desktop
+  Ver:GNOME Desktop-2.2.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gnome-desktop/2.2/gnome-desktop-2.2.2.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'libgnomeui'
+  Dep:u'scrollkeeper'
+  Num:1
+  Cmd:u'# Installation of GNOME Desktop\n./configure --prefix=$GNOME_PREFIX --sysconfdir=/etc/gnome &&\nmake &&\nmake install'
+ Name:gnome-games
+  Ver:GNOME Games-2.2.1
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gnome-games/2.2/gnome-games-2.2.1.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'libgnomeui'
+  Num:1
+  Cmd:u'# Installation of GNOME Games\n./configure --prefix=$GNOME_PREFIX --localstatedir=/var/lib \\\n--sysconfdir=/etc/gnome &&\nmake &&\nmake install'
+ Name:gnome-icon-themes
+  Ver:GNOME Icon Theme-1.0.6
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gnome-icon-theme/1.0/gnome-icon-theme-1.0.6.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of GNOME Icon Theme\n./configure --prefix=$GNOME_PREFIX &&\nmake &&\nmake install'
+ Name:gnome-libs
+  Ver:GNOME Libraries-1.4.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gnome-libs/1.4/gnome-libs-1.4.2.tar.bz2'
+  Num:0
+  Num:6
+  Dep:u'ORBit'
+  Dep:u'GTK'
+  Dep:u'imlib'
+  Dep:u'db-3.3'
+  Dep:u'db'
+  Dep:'or'
+  Num:1
+  Cmd:u'# Installation of GNOME Libraries\n./configure --prefix=/opt/gnome --disable-gtk-doc &&\nmake &&\nmake install'
+ Name:gnome-media
+  Ver:GNOME Media-2.2.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gnome-media/2.2/gnome-media-2.2.2.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'libgnomeui'
+  Dep:u'gstreamer'
+  Num:1
+  Cmd:u'# Installation of GNOME Media\n./configure --prefix=$GNOME_PREFIX --sysconfdir=/etc/gnome \\\n--localstatedir=/var/lib --libexecdir=$GNOME_PREFIX/sbin &&\nmake &&\nmake install'
+ Name:gnome-mime-data
+  Ver:GNOME MIME Data-2.2.1
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gnome-mime-data/2.2/gnome-mime-data-2.2.1.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of GNOME MIME Data\n./configure --prefix=$GNOME_PREFIX --sysconfdir=/etc/gnome &&\nmake &&\nmake install'
+ Name:gnome-panel
+  Ver:GNOME Panel-2.2.2.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gnome-panel/2.2/gnome-panel-2.2.2.2.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'libgnomeui'
+  Dep:u'scrollkeeper'
+  Num:1
+  Cmd:u'# Installation of GNOME Panel\n./configure --prefix=$GNOME_PREFIX --libexecdir=$GNOME_PREFIX/sbin \\\n--localstatedir=/var/lib --sysconfdir=/etc/gnome --disable-gtk-doc &&\nmake &&\nmake install'
+ Name:gnome-print
+  Ver:GNOME Print-0.37
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gnome-print/0.37/gnome-print-0.37.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'gdk'
+  Num:2
+  Cmd:u'# Installation of GNOME Print\ncat > /opt/gnome/lib/xmlConf.sh << EOF\nXML_LIBDIR="-L/usr/lib"\nXML_LIBS="-lxml"\nXML_INCLUDEDIR="-I/usr/include/gnome-xml"\nMODULE_VERSION=xml-1.8.17\nEOF'
+  Cmd:u'# Installation of GNOME Print\n./configure --prefix=/opt/gnome --with-zlib=/usr &&\nmake &&\nmake install'
+ Name:gnome-session
+  Ver:GNOME Session-2.2.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gnome-session/2.2/gnome-session-2.2.2.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'libgnomeui'
+  Num:1
+  Cmd:u'# Installation of GNOME Session\nexport PATH=$PATH:$GNOME_PREFIX/sbin:/sbin &&\n./configure --prefix=$GNOME_PREFIX --localstatedir=/var/lib \\\n--sysconfdir=/etc/gnome  &&\nmake &&\nmake install'
+ Name:gnome-system-monitor
+  Ver:GNOME System Monitor-2.0.5
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gnome-system-monitor/2.0/gnome-system-monitor-2.0.5.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'libgnomeui'
+  Dep:u'startup-notification'
+  Num:1
+  Cmd:u'# Installation of GNOME System Monitor\n./configure --prefix=$GNOME_PREFIX --localstatedir=/var/lib \\\n--sysconfdir=/etc/gnome &&\nmake &&\nmake install'
+ Name:gnome-terminal
+  Ver:GNOME Terminal-2.2.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gnome-terminal/2.2/gnome-terminal-2.2.2.tar.bz2'
+  Num:0
+  Num:3
+  Dep:u'libgnomeui'
+  Dep:u'startup-notification'
+  Dep:u'vte'
+  Num:1
+  Cmd:u'# Installation of GNOME Terminal\n./configure --prefix=$GNOME_PREFIX --localstatedir=/var/lib \\\n--sysconfdir=/etc/gnome &&\nmake &&\nmake install'
+ Name:gnome-themes
+  Ver:GNOME Themes-2.2.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gnome-themes/2.2/gnome-themes-2.2.2.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'gtk-thinice-engine'
+  Num:1
+  Cmd:u'# Installation of GNOME Themes\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:gnome-utils
+  Ver:GNOME Utilities-2.2.3
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gnome-utils/2.2/gnome-utils-2.2.3.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'libgnomeui'
+  Num:1
+  Cmd:u'# Installation of GNOME Utilities\n./configure --prefix=$GNOME_PREFIX --libexecdir=$GNOME_PREFIX/sbin \\\n--localstatedir=/var/lib --sysconfdir=/etc/gnome &&\nmake &&\nmake install'
+ Name:gnome-vfs
+  Ver:GNOME Virtual File System-2.2.5
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gnome-vfs/2.2/gnome-vfs-2.2.5.tar.bz2'
+  Num:0
+  Num:4
+  Dep:u'ORBit2'
+  Dep:u'GConf'
+  Dep:u'bonobo-activation'
+  Dep:u'gnome-mime-data'
+  Num:1
+  Cmd:u'# Installation of GNOME Virtual\nFile System\n./configure --prefix=$GNOME_PREFIX --sysconfdir=/etc/gnome --disable-gtk-doc &&\nmake &&\nmake install'
+ Name:gnome-vfs1
+  Ver:GNOME Virtual File System-1.0.5
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gnome-vfs/1.0/gnome-vfs-1.0.5.tar.bz2'
+  Num:0
+  Num:3
+  Dep:u'gnome-mime-data'
+  Dep:u'GConf1'
+  Dep:u'gnome-libs'
+  Num:1
+  Cmd:u'# Installation of GNOME Virtual\nFile System\n./configure --prefix=/opt/gnome --disable-gtk-doc &&\nmake &&\nmake install'
+ Name:gnome2-user-docs
+  Ver:GNOME2 User Docs-2.0.6
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gnome2-user-docs/2.0/gnome2-user-docs-2.0.6.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'scrollkeeper'
+  Num:1
+  Cmd:u'# Installation of GNOME2 User Docs\n./configure --prefix=$GNOME_PREFIX --localstatedir=/var/lib &&\nmake &&\nmake install'
+ Name:gnucash
+  Ver:GnuCash-1.8.7
+  Num:1
+ Arch:u'http://www.gnucash.org/pub/gnucash/sources/stable/gnucash-1.8.7.tar.gz'
+  Num:0
+  Num:11
+  Dep:u'gnome-print'
+  Dep:u'libglade14'
+  Dep:u'db-3.3'
+  Dep:u'gal'
+  Dep:u'gtkhtml'
+  Dep:u'libghttp'
+  Dep:u'bonobo14'
+  Dep:u'guppi'
+  Dep:u'guile'
+  Dep:u'slib'
+  Dep:u'gwrap'
+  Num:1
+  Cmd:u'# Installation of GnuCash\n./configure --prefix=/opt/gnome &&\n    make &&\n    make install'
+ Name:gnumeric
+  Ver:Gnumeric-1.2.0
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gnumeric/1.2/gnumeric-1.2.0.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'libgnomeprintui'
+  Dep:u'libgsf'
+  Num:1
+  Cmd:u'# Installation of Gnumeric\n./configure --prefix=$GNOME_PREFIX --localstatedir=/var/lib \\\n--sysconfdir=/etc/gnome --libexecdir=$GNOME_PREFIX/sbin &&\nmake &&\nmake install'
+ Name:gnupg
+  Ver:GnuPG-1.2.3
+  Num:1
+ Arch:u'ftp://ftp.gnupg.org/gcrypt/gnupg/gnupg-1.2.3.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of GnuPG\n./configure --prefix=/usr --libexecdir=/usr/lib &&\nmake &&\nmake install &&\nchmod 4755 /usr/bin/gpg'
+ Name:gocr
+  Ver:GOCR-0.37
+  Num:1
+ Arch:u'ftp://ftp.sourceforge.net/pub/sourceforge/jocr/gocr-0.37.tar.gz'
+  Num:0
+  Num:0
+  Num:5
+  Cmd:u'# Installation of GOCR\n./configure --prefix=/usr &&\nmake &&\nmake install'
+  Cmd:u'# Installation of GOCR\ncd frontend/gnome &&\n./configure --prefix=/usr &&\nmake &&\nmake install'
+  Cmd:u'# Installation of GOCR\nmake help'
+  Cmd:u'# Installation of GOCR\nmake doc'
+  Cmd:u'# Installation of GOCR\nmake examples'
+ Name:gpm
+  Ver:GPM-1.20.1
+  Num:1
+ Arch:u'ftp://arcana.linux.it/pub/gpm/gpm-1.20.1.tar.bz2'
+  Num:2
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/gpm-1.20.1-segfault.patch'
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/gpm-1.20.1-silent.patch'
+  Num:0
+  Num:5
+  Cmd:u'# Installation of GPM\npatch -Np1 -i ../gpm-1.20.1-segfault.patch &&\npatch -Np1 -i ../gpm-1.20.1-silent.patch &&\nLDFLAGS="-lm" ./configure --prefix=/usr &&\nmake &&\nmake install &&\nldconfig -n -l /usr/lib/libgpm.so.1.19.0'
+  Cmd:u'# gpm init.d script\ncat > /etc/rc.d/init.d/gpm << "EOF"\n#!/bin/sh\n# Begin $rc_base/init.d/gpm\n\n# Based on sysklogd script from LFS-3.1 and earlier.\n# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org\n# GPM specific parts by Mark Hymers - markh@linuxfromscratch.org\n\nsource /etc/sysconfig/rc\nsource $rc_functions\n\nif [ -f /etc/sysconfig/mouse ]\n\tthen\n        source /etc/sysconfig/mouse\nfi\n\nif [ -z "$MDEVICE" ] || [ -z "$PROTOCOL" ]\n\tthen\n\techo "Please create an /etc/sysconfig/mouse file containing"\n\techo "MDEVICE and PROTOCOL values"\n\texit 1;\nfi\n\ncase "$1" in\n        start)\n                echo "Starting gpm..."\n                loadproc gpm -m $MDEVICE -t $PROTOCOL\n                ;;\n\n        stop)\n                echo "Stopping gpm..."\n                killproc gpm\n                ;;\n\n        restart)\n                $0 stop\n                sleep 1\n                $0 start\n                ;;\n\n        status)\n                statusproc gpm\n                ;;\n\n        *)\n                echo "Usage: $0 {start|stop|restart|status}"\n                exit 1\n                ;;\nesac\n\n# End $rc_base/init.d/gpm\nEOF\nchmod 755 /etc/rc.d/init.d/gpm'
+  Cmd:u'# gpm init.d script\ncd /etc/rc.d/init.d &&\nln -sf ../init.d/gpm ../rc0.d/K10gpm &&\nln -sf ../init.d/gpm ../rc1.d/K10gpm &&\nln -sf ../init.d/gpm ../rc2.d/K10gpm &&\nln -sf ../init.d/gpm ../rc3.d/S70gpm &&\nln -sf ../init.d/gpm ../rc4.d/S70gpm &&\nln -sf ../init.d/gpm ../rc5.d/S70gpm &&\nln -sf ../init.d/gpm ../rc6.d/K10gpm'
+  Cmd:u'# Config files\ncat > /etc/sysconfig/mouse << "EOF" \n# start /etc/sysconfig/mouse\nMDEVICE=[yourdevice]\nPROTOCOL=[yourprotocol]\n# end /etc/sysconfig/mouse\nEOF'
+  Cmd:u'# Configuration Information\nMDEVICE=/dev/psaux\nPROTOCOL=imps2'
+ Name:gs
+  Ver:AFPL Ghostscript-8.11
+  Num:1
+ Arch:u'ftp://mirror.cs.wisc.edu/pub/mirrors/ghost/AFPL/gs811/ghostscript-8.11.tar.bz2'
+  Num:2
+Patch:u'ftp://mirror.cs.wisc.edu/pub/mirrors/ghost/fonts/ghostscript-fonts-std-8.11.tar.gz'
+Patch:u'http://ftp.gnu.org/pub/gnu/ghostscript/gnu-gs-fonts-other-6.0.tar.gz'
+  Num:0
+  Num:2
+  Cmd:u'# Installation of Ghostscript\n./configure --prefix=/usr --libexecdir=/usr/lib/gs \\\n    --sysconfdir=/etc/gs --enable-shared --enable-static &&\nmake &&\nmake install'
+  Cmd:u'# Installation of Ghostscript\nmake so &&\nmake soinstall'
+ Name:gst-plugins
+  Ver:gst-plugins-0.6.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gst-plugins/0.6/gst-plugins-0.6.2.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'gstreamer'
+  Num:1
+  Cmd:u'# Installation of gst-plugins\n./configure --prefix=$GNOME_PREFIX &&\nmake &&\nmake install &&\ngst-register'
+ Name:gstreamer
+  Ver:GStreamer-0.6.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gstreamer/0.6/gstreamer-0.6.2.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'libgnomeui'
+  Num:1
+  Cmd:u'# Installation of GStreamer\n./configure --prefix=$GNOME_PREFIX --localstatedir=/var/lib  &&\nmake &&\nmake install &&\ngst-register '
+ Name:gsview
+  Ver:GSview-4.4
+  Num:1
+ Arch:u'ftp://mirror.cs.wisc.edu/pub/mirrors/ghost/ghostgum/gsview-4.4.tar.gz'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/gsview-4.4-gvx.patch'
+  Num:4
+  Dep:u'GTK'
+  Dep:u'gs'
+  Dep:u'espgs'
+  Dep:'or'
+  Num:2
+  Cmd:u'# Installation of GSview\nmv srcunx/gvxreg.c srcunx/gvxreg.old &&\ncat srcunx/gvxreg.old | sed s/netscape/[browser]/ > srcunx/gvxreg.c'
+  Cmd:u"# Installation of GSview\npatch -Np1 -i ../gsview-4.4-gvx.patch &&\nsed 's|GSVIEW_ROOT=/usr/local|GSVIEW_ROOT=/usr|' \\\n  srcunx/unx.mak >  Makefile &&\nmake &&\nmake install"
+ Name:gtk-doc
+  Ver:GTK-Doc-1.0
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gtk-doc/1.0/gtk-doc-1.0.tar.bz2'
+  Num:0
+  Num:6
+  Dep:u'openjade'
+  Dep:u'libxslt'
+  Dep:u'DocBook'
+  Dep:u'sgml-dtd-3'
+  Dep:u'sgml-dtd'
+  Dep:u'docbook-dsssl'
+  Num:1
+  Cmd:u'# Installation of GTK-Doc\n./configure --prefix=/usr &&\nmake install'
+ Name:gtk-engines
+  Ver:GTK Engines-2.2.0
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gtk-engines/2.2/gtk-engines-2.2.0.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'GTK2'
+  Num:1
+  Cmd:u'# Installation of GTK Engines\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:gtk-thinice-engine
+  Ver:GTK ThinIce Engine-2.0.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gtk-thinice-engine/2.0/gtk-thinice-engine-2.0.2.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'GTK2'
+  Num:1
+  Cmd:u'# Installation of GTK ThinIce\nEngine\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:gtkhtml
+  Ver:GtkHTML-1.1.7
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/gtkhtml/1.1/gtkhtml-1.1.7.tar.bz2'
+  Num:0
+  Num:4
+  Dep:u'GConf1'
+  Dep:u'gal'
+  Dep:u'libglade14'
+  Dep:u'libcapplet'
+  Num:1
+  Cmd:u'# Installation of GtkHTML\n./configure --prefix=/opt/gnome --disable-gtk-doc &&\nmake &&\nmake install'
+ Name:gtkhtml2
+  Ver:GtkHTML-3.0.8
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/gnome/sources/gtkhtml/3.0/gtkhtml-3.0.8.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'libgnomeprintui'
+  Dep:u'gal2'
+  Num:1
+  Cmd:u'# Installation of GtkHTML\n./configure --prefix=$GNOME_PREFIX &&\nmake &&\nmake install'
+ Name:guile
+  Ver:Guile-1.6.4
+  Num:1
+ Arch:u'ftp://ftp.gnu.org/pub/gnu/guile/guile-1.6.4.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of Guile\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:guppi
+  Ver:Guppi-0.40.3
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/Guppi/0.40/Guppi-0.40.3.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'bonobo14'
+  Dep:u'gal'
+  Num:1
+  Cmd:u'# Installation of Guppi\n./configure --prefix=/opt/gnome &&\nmake &&\nmake install'
+ Name:gwrap
+  Ver:gwrap-1.3.4
+  Num:1
+ Arch:u'http://www.gnucash.org/pub/g-wrap/source/g-wrap-1.3.4.tar.gz'
+  Num:0
+  Num:2
+  Dep:u'guile'
+  Dep:u'slib'
+  Num:1
+  Cmd:u'# Installation of G-Wrap\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:hdparm
+  Ver:hdparm-5.4
+  Num:1
+ Arch:u'ftp://ftp.ibiblio.org/pub/Linux/system/hardware/hdparm-5.4.tar.gz'
+  Num:0
+  Num:0
+  Num:2
+  Cmd:u'# Installation of hdparm\nmake &&\nmake install'
+  Cmd:u'# Installation of hdparm\nmake &&\nmake binprefix=/usr install'
+ Name:id3lib
+  Ver:id3lib-3.8.3
+  Num:1
+ Arch:u'ftp://sunsite.ccu.edu.tw/pub13/sourceforge/i/id3lib/id3lib-3.8.3.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of id3lib\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:imlib
+  Ver:Imlib-1.9.14
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/imlib/1.9/imlib-1.9.14.tar.bz2'
+  Num:0
+  Num:6
+  Dep:u'xfree86'
+  Dep:u'libjpeg'
+  Dep:u'libtiff'
+  Dep:u'libungif'
+  Dep:u'libpng'
+  Dep:u'GTK'
+  Num:1
+  Cmd:u'# Installation of Imlib\n./configure --prefix=/usr --sysconfdir=/etc/imlib &&\nmake &&\nmake install'
+ Name:imlib2
+  Ver:Imlib2-1.1.0
+  Num:1
+ Arch:u'ftp://ftp.tux.org/X-Windows/enlightenment/ftp/enlightenment/imlib2-1.1.0.tar.gz'
+  Num:0
+  Num:3
+  Dep:u'libjpeg'
+  Dep:u'libpng'
+  Dep:u'freetype2'
+  Num:1
+  Cmd:u'# Installation of Imlib2\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:inetutils
+  Ver:Inetutils-1.4.2
+  Num:1
+ Arch:u'ftp://ftp.gnu.org/gnu/inetutils/inetutils-1.4.2.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of Inetutils\n./configure --prefix=/usr --disable-syslogd \\\n\t--libexecdir=/usr/sbin --infodir=/usr/share/info \\\n    --sysconfdir=/etc --localstatedir=/var \\\n\t--mandir=/usr/share/man --with-wrap &&\nmake &&\nmake install &&\nmv /usr/bin/ping /bin'
+ Name:intltool
+  Ver:intltool-0.26
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/intltool/0.26/intltool-0.26.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of intltool\n./configure --prefix=/usr --mandir=/usr/share/man &&\nmake &&\nmake install'
+ Name:ispell
+  Ver:ispell-3.2.06.epa6
+  Num:1
+ Arch:u'http://membled.com/work/patches/ispell/ispell-3.2.06.epa6.tar.bz2'
+  Num:0
+  Num:0
+  Num:2
+  Cmd:u'# Installation of ispell\nsed -e "s:/usr/local:/usr:g" local.h.linux > local.h'
+  Cmd:u'# Installation of ispell\nmake &&\nmake install'
+ Name:j2sdk
+  Ver:J2SDK-1.4.1
+  Num:1
+ Arch:u'http://freshmeat.net/projects/sunjdk'
+  Num:7
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/j2sdk-1.4.1-fix-intl-files.patch'
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/j2sdk-1.4.1-gcc33-1.patch'
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/j2sdk-1.4.1-link-missing-libs.patch'
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/j2sdk-1.4.1-motif-mkmsgcat.patch'
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/j2sdk-1.4.1-remove-fixed-paths.patch'
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/j2sdk-1.4.1-syntax-fixes.patch'
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/j2sdk-1.4.1-use-included-motif.patch'
+  Num:5
+  Dep:u'xfree86'
+  Dep:u'zip'
+  Dep:u'unzip'
+  Dep:u'cpio'
+  Dep:u'tcsh'
+  Num:9
+  Cmd:u'# Installation of J2SDK\nVERSION=1.4.2_01 &&\nMV=`echo $VERSION | cut -d "_" -f 1,1` &&\nV=`echo ${VERSION} | sed -e "s/\\./_/g"` &&\nchmod +x j2sdk-${V}-linux-i?86.bin &&\n./j2sdk-${V}-linux-i?86.bin &&\ncd j2sdk${VERSION} &&\ninstall -d /opt/j2sdk/j2sdk-precompiled-${MV} &&\nmv * /opt/j2sdk/j2sdk-precompiled-${MV}'
+  Cmd:u'# Installation of J2SDK\nexport JAVA_HOME=/opt/j2sdk/j2sdk-precompiled-${MV} &&\nexport PATH=$PATH:${JAVA_HOME}/bin'
+  Cmd:u'# Installation of J2SDK\nVERSION=1.4.1 &&\nV=`echo $VERSION | sed -e "s/\\./_/g"` &&\nunzip j2sdk-${V}-src-scsl.zip &&\nunzip j2sdk-${V}-mozilla_headers-unix.zip &&\npatch -Np1 -i j2sdk-${VERSION}-gcc33-1.patch &&\npatch -Np1 -i j2sdk-${VERSION}-fix-intl-files.patch &&\npatch -Np1 -i j2sdk-${VERSION}-link-missing-libs.patch &&\npatch -Np1 -i j2sdk-${VERSION}-remove-fixed-paths.patch &&\npatch -Np1 -i j2sdk-${VERSION}-syntax-fixes.patch &&\npatch -Np1 -i j2sdk-${VERSION}-motif-mkmsgcat.patch &&\npatch -Np1 -i j2sdk-${VERSION}-use-included-motif.patch'
+  Cmd:u'# Installation of J2SDK\nexport ALT_BOOTDIR="$JAVA_HOME" &&\nunset JAVA_HOME &&\nunset CLASSPATH\nunset CFLAGS\nunset CXXFLAGS\nunset LDFLAGS\nexport ALT_DEVTOOLS_PATH="/usr/bin" &&\nexport BUILD_NUMBER="blfs-`date +%s`" &&\nexport DEV_ONLY=true &&\nexport ALT_MOZILLA_PATH=$PWD &&\nexport INSANE=true &&\nexport MAKE_VERBOSE=true &&\nexport ALT_CACERTS_FILE=${ALT_BOOTDIR}/jre/lib/security/cacerts'
+  Cmd:u'# Installation of J2SDK\nexport HOTSPOT_BUILD_JOBS=$MAKE_PARALLEL'
+  Cmd:u'# Installation of J2SDK\ncd motif/lib/Xm &&\nmake &&\ncd ../../..'
+  Cmd:u'# Installation of J2SDK\ncd control/make &&\nmake &&\ncd ../.. &&\ncd control/build/linux-i?86 &&\ncp -a j2sdk-image /opt/j2sdk/j2sdk-1.4.1'
+  Cmd:u'# Configuration Information\nln -nsf j2sdk-1.4.1 /opt/j2sdk/j2sdk'
+  Cmd:u'# Configuration Information\nexport JAVA_HOME=/opt/j2sdk/j2sdk\nexport PATH=$PATH:$JAVA_HOME/bin'
+ Name:kde-addons
+  Ver:kdeaddons-3.1.4
+  Num:1
+ Arch:u'ftp://ftp.kde.org/pub/kde/stable/3.1.4/src/kdeaddons-3.1.4.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'kde-multimedia'
+  Dep:u'kde-network'
+  Num:1
+  Cmd:u'# Installation of kdeaddons\n./configure --prefix=/opt/kde-3.1.4 --disable-debug \\\n    --disable-dependency-tracking &&\nmake &&\nmake install'
+ Name:kde-admin
+  Ver:kdeadmin-3.1.4
+  Num:1
+ Arch:u'ftp://ftp.kde.org/pub/kde/stable/3.1.4/src/kdeadmin-3.1.4.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'kde-base'
+  Num:1
+  Cmd:u'# Installation of kdeadmin\n./configure --prefix=/opt/kde-3.1.4 --disable-debug \\\n    --disable-dependency-tracking --with-shadow &&\nmake &&\nmake install'
+ Name:kde-artwork
+  Ver:kdeartwork-3.1.4
+  Num:1
+ Arch:u'ftp://ftp.kde.org/pub/kde/stable/3.1.4/src/kdeartwork-3.1.4.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'kde-base'
+  Num:1
+  Cmd:u'# Installation of kdeartwork\n./configure --prefix=/opt/kde-3.1.4 --disable-debug \\\n    --disable-dependency-tracking &&\nmake &&\nmake install'
+ Name:kde-base
+  Ver:kdebase-3.1.4
+  Num:1
+ Arch:u'ftp://ftp.kde.org/pub/kde/stable/3.1.4/src/kdebase-3.1.4.tar.bz2'
+  Num:0
+  Num:5
+  Dep:u'openssl'
+  Dep:u'lesstif'
+  Dep:u'CDParanoia'
+  Dep:u'libvorbis'
+  Dep:u'cups'
+  Num:2
+  Cmd:u'# Installation of kdebase\nln -sf /usr/lib/libmisc.la /lib/libmisc.la\n'
+  Cmd:u'# Installation of kdebase\n./configure --prefix=/opt/kde-3.1.4 --disable-debug \\\n     --disable-dependency-tracking --disable-lametest --with-shadow &&\nmake &&\nmake install'
+ Name:kde-core
+  Ver:KDE
+  Num:0
+  Num:0
+  Num:3
+  Dep:'kde-core-arts'
+  Dep:'kde-libs'
+  Dep:'kde-base'
+  Num:0
+ Name:kde-core-arts
+  Ver:aRts-1.1.4
+  Num:1
+ Arch:u'ftp://ftp.kde.org/pub/kde/stable/3.1.4/src/arts-1.1.4.tar.bz2'
+  Num:0
+  Num:4
+  Dep:u'qt'
+  Dep:u'alsa'
+  Dep:u'audiofile'
+  Dep:u'libvorbis'
+  Num:3
+  Cmd:u'# Installation of aRts\nexport QTDIR=/opt/qt'
+  Cmd:u'# Installation of aRts\n./configure --prefix=/opt/kde-3.1.4 --disable-debug \\\n     --disable-dependency-tracking &&\nmake &&\nmake install &&\nln -sfn /opt/kde-3.1.4 /opt/kde'
+  Cmd:u'# Configuration Information\ncat >> /etc/ld.so.conf << "EOF"\n# Begin kde addition to /etc/ld.so.conf\n\n/opt/kde/lib\n\n# End kde addition\nEOF\nldconfig'
+ Name:kde-edu
+  Ver:kdeedu-3.1.4
+  Num:1
+ Arch:u'ftp://ftp.kde.org/pub/kde/stable/3.1.4/src/kdeedu-3.1.4.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'kde-base'
+  Num:1
+  Cmd:u'# Installation of kdeedu\n./configure --prefix=/opt/kde-3.1.4 --disable-debug \\\n    --disable-dependency-tracking &&\nmake &&\nmake install'
+ Name:kde-games
+  Ver:kdegames-3.1.4
+  Num:1
+ Arch:u'ftp://ftp.kde.org/pub/kde/stable/3.1.4/src/kdegames-3.1.4.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'kde-base'
+  Num:1
+  Cmd:u'# Installation of kdegames\n./configure --prefix=/opt/kde-3.1.4 --disable-debug \\\n    --disable-dependency-tracking &&\nmake &&\nmake install'
+ Name:kde-graphics
+  Ver:kdegraphics-3.1.4
+  Num:1
+ Arch:u'ftp://ftp.kde.org/pub/kde/stable/3.1.4/src/kdegraphics-3.1.4.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'kde-base'
+  Dep:u'which'
+  Num:1
+  Cmd:u'# Installation of kdegraphics\n./configure --prefix=/opt/kde-3.1.4 --disable-debug \\\n    --disable-dependency-tracking &&\nmake &&\nmake install'
+ Name:kde-libs
+  Ver:kdelibs-3.1.4
+  Num:1
+ Arch:u'ftp://ftp.kde.org/pub/kde/stable/3.1.4/src/kdelibs-3.1.4.tar.bz2'
+  Num:0
+  Num:7
+  Dep:u'kde-core-arts'
+  Dep:u'openssl'
+  Dep:u'pcre'
+  Dep:u'libxml2'
+  Dep:u'libxslt'
+  Dep:u'libfam'
+  Dep:u'libart_lgpl'
+  Num:1
+  Cmd:u'# Installation of kdelibs\n./configure --prefix=/opt/kde-3.1.4 --disable-debug \\\n     --disable-dependency-tracking --with-alsa --enable-fast-malloc=full &&\nmake &&\nmake install'
+ Name:kde-multimedia
+  Ver:kdemultimedia-3.1.4
+  Num:1
+ Arch:u'ftp://ftp.kde.org/pub/kde/stable/3.1.4/src/kdemultimedia-3.1.4.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'kde-base'
+  Num:2
+  Cmd:u"# Installation of kdemultimedia\n./configure --prefix=/opt/kde-3.1.4 --disable-debug \\\n    --disable-dependency-tracking --with-arts-alsa &&\n  sed -i -e 's/strings -ansi/strings/' kaudiocreator/Makefile &&\n  sed -i -e 's/strings -ansi/strings/' kioslave/audiocd/Makefile &&\n  sed -i -e 's/-ansi//' kscd/libwm/Makefile &&\nmake &&\nmake install"
+  Cmd:u'# Configuring kdemultimedia\ncd /dev &&\nln -s "CD Drive" /dev/cdrom'
+ Name:kde-network
+  Ver:kdenetwork-3.1.4
+  Num:1
+ Arch:u'ftp://ftp.kde.org/pub/kde/stable/3.1.4/src/kdenetwork-3.1.4.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'kde-base'
+  Num:1
+  Cmd:u'# Installation of kdenetwork\n./configure --prefix=/opt/kde-3.1.4 --disable-debug \\\n    --disable-dependency-tracking &&\nmake &&\nmake install'
+ Name:kde-pim
+  Ver:kdepim-3.1.4
+  Num:1
+ Arch:u'ftp://ftp.kde.org/pub/kde/stable/3.1.4/src/kdepim-3.1.4.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'kde-base'
+  Num:1
+  Cmd:u'# Installation of kdepim\n./configure --prefix=/opt/kde-3.1.4 --disable-debug \\\n    --disable-dependency-tracking &&\nmake &&\nmake install'
+ Name:kde-toys
+  Ver:kdetoys-3.1.4
+  Num:1
+ Arch:u'ftp://ftp.kde.org/pub/kde/stable/3.1.4/src/kdetoys-3.1.4.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'kde-base'
+  Num:1
+  Cmd:u'# Installation of kdetoys\n./configure --prefix=/opt/kde-3.1.4 --disable-debug \\\n    --disable-dependency-tracking &&\nmake &&\nmake install'
+ Name:kde-utils
+  Ver:kdeutils-3.1.4
+  Num:1
+ Arch:u'ftp://ftp.kde.org/pub/kde/stable/3.1.4/src/kdeutils-3.1.4.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'kde-base'
+  Num:1
+  Cmd:u'# Installation of kdeutils\n./configure --prefix=/opt/kde-3.1.4 --disable-debug \\\n    --disable-dependency-tracking &&\nmake &&\nmake install'
+ Name:koffice
+  Ver:KOffice-1.2.93
+  Num:1
+ Arch:u'ftp://ftp.kde.org/pub/kde/unstable/koffice-1.2.93/src/koffice-1.2.93.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'kde-base'
+  Num:1
+  Cmd:u'# Installation of KOffice\nexport QTDIR=/opt/qt \n./configure --prefix=/opt/kde-3.1.4 --disable-debug &&\nmake &&\nmake install'
+ Name:lame
+  Ver:LAME-3.93.1
+  Num:1
+ Arch:u'ftp://ftp.yars.free.net/pub/software/unix/util/mpeg/lame-3.93.1.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of LAME\n./configure --prefix=/usr --mandir=/usr/share/man --with-gtk-prefix=/usr &&\nmake &&\nmake install'
+ Name:lcms
+  Ver:lcms-1.11
+  Num:1
+ Arch:u'ftp://sunsite.ccu.edu.tw/pub12/sourceforge/l/lcms/lcms-1.11.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of lcms\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:leafnode
+  Ver:Leafnode-1.9.43
+  Num:1
+ Arch:u'ftp://unc.dl.sourceforge.net/pub/sourceforge/leafnode/leafnode-1.9.43.rel.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'pcre'
+  Num:7
+  Cmd:u'# Installation of Leafnode\ngroupadd news &&\nuseradd -g news news'
+  Cmd:u'# Installation of Leafnode\n./configure --prefix=/usr --localstatedir=/var \\\n    --sysconfdir=/etc/news --with-lockfile=/var/lock/fetchnews.lck &&\nmake &&\nmake install &&\nldconfig &&\nmake update'
+  Cmd:u'# Config files\necho "nntp stream tcp nowait news /usr/sbin/tcpd /usr/sbin/leafnode" \\\n>> /etc/inetd.conf'
+  Cmd:u'# Config files\ncat >> /etc/xinetd.conf << "EOF" \n        service nntp\n        {\n           flags           = NAMEINARGS NOLIBWRAP\n           socket_type     = stream\n           protocol        = tcp\n           wait            = no\n           user            = news\n           server          = /usr/sbin/tcpd\n           server_args     = /usr/sbin/leafnode\n           instances       = 7\n           per_source      = 3\n        }\nEOF'
+  Cmd:u'# Config files\ncp /etc/news/config.example /etc/news/config\n'
+  Cmd:u'# Config files\nserver = '
+  Cmd:u'# Config files\nexport NNTPSERVER=127.0.0.1'
+ Name:lesstif
+  Ver:LessTif-0.93.46
+  Num:1
+ Arch:u'ftp://ftp.linux.hr/pub/lesstif/srcdist/lesstif-0.93.46.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'xfree86'
+  Num:2
+  Cmd:u'# Installation of LessTif\n./configure --prefix=/usr \\\n    --enable-build-20 \\\n    --enable-build-21 \\\n    --disable-debug \\\n    --enable-production \\\n    --disable-build-tests \\\n    --with-xdnd &&\nmake &&\nmake install'
+  Cmd:u'# Testing LessTif\ncd test &&\n./configure &&\nmake'
+ Name:libIDL
+  Ver:libIDL-0.8.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/libIDL/0.8/libIDL-0.8.2.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'GLib2'
+  Num:1
+  Cmd:u'# Installation of libIDL\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:liba52
+  Ver:liba52-0.7.4
+  Num:1
+ Arch:u'http://liba52.sourceforge.net/files/a52dec-0.7.4.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of liba52\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:libao
+  Ver:libao-0.8.3
+  Num:1
+ Arch:u'ftp://ftp.yars.free.net/pub/software/unix/util/sound/ogg/libao-0.8.3.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of libao\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:libart_lgpl
+  Ver:libart_lgpl-2.3.11
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/libart_lgpl/2.3/libart_lgpl-2.3.11.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of libart_lgpl\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:libbonobo
+  Ver:libbonobo-2.2.3
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/libbonobo/2.2/libbonobo-2.2.3.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'ORBit2'
+  Dep:u'bonobo-activation'
+  Num:1
+  Cmd:u'# Installation of libbonobo\n./configure --prefix=$GNOME_PREFIX --disable-gtk-doc  &&\nmake &&\nmake install '
+ Name:libbonoboui
+  Ver:libbonoboui-2.2.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/libbonoboui/2.2/libbonoboui-2.2.2.tar.bz2'
+  Num:0
+  Num:3
+  Dep:u'libgnome'
+  Dep:u'libbonobo'
+  Dep:u'libgnomecanvas'
+  Num:1
+  Cmd:u'# Installation of libbonoboui\n./configure --prefix=$GNOME_PREFIX --disable-gtk-doc &&\nmake &&\nmake install'
+ Name:libcapplet
+  Ver:libcapplet-1.5.11
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/libcapplet/1.5/libcapplet-1.5.11.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'gnome-libs'
+  Num:1
+  Cmd:u'# Installation of libcapplet\n./configure --prefix=/opt/gnome &&\nmake &&\nmake install'
+ Name:libdv
+  Ver:libdv-0.99
+  Num:1
+ Arch:u'http://flow.dl.sourceforge.net/sourceforge/libdv/libdv-0.99.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of libdv\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:libdvdcss
+  Ver:libdvdcss-1.2.8
+  Num:1
+ Arch:u'ftp://ftp.us.sinuspl.net/pub/src/libdvdcss-1.2.8.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of libdvdcss\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:libdvdread
+  Ver:libdvdread-0.9.4
+  Num:1
+ Arch:u'http://www.dtek.chalmers.se/groups/dvd/dist/libdvdread-0.9.4.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of libdvdread\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:libesmtp
+  Ver:libesmtp-1.0
+  Num:1
+ Arch:u'http://www.stafford.uklinux.net/libesmtp/libesmtp-1.0.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of libesmtp\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:libfam
+  Ver:FAM-2.6.10
+  Num:1
+ Arch:u'ftp://oss.sgi.com/projects/fam/download/fam-2.6.10.tar.gz'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/fam-2.6.10-dnotify.patch'
+  Num:1
+  Dep:u'portmap'
+  Num:3
+  Cmd:u'# Installation of FAM\npatch -Np1 -i ../fam-2.6.10-dnotify.patch &&\nlibtoolize --force &&\naclocal &&\nautomake --add-missing &&\nautoconf &&\n./configure --prefix=/usr --sysconfdir=/etc &&\nmake &&\nmake install'
+  Cmd:u'# Configuration Information\necho "sgi_fam/1-2 stream  rpc/tcp wait root /usr/bin/fam fam" >> /etc/inetd.conf'
+  Cmd:u'# Configuration Information\ncat >> /etc/xinetd.conf << "EOF"\n    # description: FAM - file alteration monitor\n    service sgi_fam\n    {\n        type            = RPC UNLISTED\n        socket_type     = stream\n        user            = root\n        group           = nogroup\n        server          = /usr/bin/fam\n        wait            = yes\n        protocol        = tcp\n        rpc_version     = 2\n        rpc_number      = 391002\n    }\nEOF'
+ Name:libfame
+  Ver:libFAME-0.9.0
+  Num:1
+ Arch:u'ftp://sunsite.ccu.edu.tw/pub14/sourceforge/f/fame/libfame-0.9.0.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of libFAME\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:libgail-gnome
+  Ver:libgail-gnome-1.0.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/libgail-gnome/1.0/libgail-gnome-1.0.2.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'libgnomeui'
+  Dep:u'at-spi'
+  Num:1
+  Cmd:u'# Installation of libgail-gnome\n./configure --prefix=$GNOME_PREFIX &&\nmake &&\nmake install'
+ Name:libghttp
+  Ver:libghttp-1.0.9
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/libghttp/1.0/libghttp-1.0.9.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of libghttp\n./configure --prefix=/opt/gnome &&\nmake &&\nmake install'
+ Name:libglade
+  Ver:libglade-2.0.1
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/libglade/2.0/libglade-2.0.1.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'libxml2'
+  Dep:u'GTK2'
+  Num:1
+  Cmd:u'# Installation of libglade\n./configure --prefix=$GNOME_PREFIX &&\nmake &&\nmake install'
+ Name:libglade14
+  Ver:libglade-0.17
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/libglade/0.17/libglade-0.17.tar.gz'
+  Num:0
+  Num:2
+  Dep:u'libxml'
+  Dep:u'GTK'
+  Num:1
+  Cmd:u'# Installation of libglade\n./configure  --prefix=/opt/gnome --enable-bonobo \\\n --disable-gtk-doc &&\nmake &&\nmake install'
+ Name:libgnome
+  Ver:libgnome-2.2.3
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/libgnome/2.2/libgnome-2.2.3.tar.bz2'
+  Num:0
+  Num:7
+  Dep:u'esound'
+  Dep:u'audiofile'
+  Dep:u'ORBit2'
+  Dep:u'GConf'
+  Dep:u'bonobo-activation'
+  Dep:u'gnome-vfs'
+  Dep:'libbonobo'
+  Num:1
+  Cmd:u'# Installation of libgnome\n./configure --prefix=$GNOME_PREFIX --libexecdir=$GNOME_PREFIX/sbin \\\n--sysconfdir=/etc/gnome --disable-gtk-doc &&\nmake &&\nmake install'
+ Name:libgnomecanvas
+  Ver:libgnomecanvas-2.2.1
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/libgnomecanvas/2.2/libgnomecanvas-2.2.1.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'libglade'
+  Num:1
+  Cmd:u'# Installation of libgnomecanvas\n./configure --prefix=$GNOME_PREFIX --disable-gtk-doc &&\nmake &&\nmake install'
+ Name:libgnomeprint
+  Ver:libgnomeprint-2.2.1.3
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/libgnomeprint/2.2/libgnomeprint-2.2.1.3.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'libbonobo'
+  Dep:u'libart_lgpl'
+  Num:1
+  Cmd:u'# Installation of libgnomeprint\n./configure --prefix=$GNOME_PREFIX --sysconfdir=/etc/gnome &&\nmake &&\nmake install'
+ Name:libgnomeprintui
+  Ver:libgnomeprintui-2.2.1.3
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/libgnomeprintui/2.2/libgnomeprintui-2.2.1.3.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'libgnomeprint'
+  Dep:u'libgnomeui'
+  Num:1
+  Cmd:u'# Installation of libgnomeprintui\n./configure --prefix=$GNOME_PREFIX &&\nmake &&\nmake install'
+ Name:libgnomeui
+  Ver:libgnomeui-2.2.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/libgnomeui/2.2/libgnomeui-2.2.2.tar.bz2'
+  Num:0
+  Num:3
+  Dep:u'libgnome'
+  Dep:u'libgnomecanvas'
+  Dep:u'libbonoboui'
+  Num:1
+  Cmd:u'# Installation of libgnomeui\n./configure --prefix=$GNOME_PREFIX --libexecdir=$GNOME_PREFIX/sbin \\\n--disable-gtk-doc &&\nmake &&\nmake install'
+ Name:libgsf
+  Ver:libgsf-1.8.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/gnome/sources/libgsf/1.8/libgsf-1.8.2.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'libbonobo'
+  Dep:u'gnome-vfs'
+  Num:1
+  Cmd:u'# Installation of libgsf\n./configure --prefix=$GNOME_PREFIX --disable-gtk-doc &&\nmake &&\nmake install '
+ Name:libgtkhtml
+  Ver:libgtkhtml-2.2.4
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/libgtkhtml/2.2/libgtkhtml-2.2.4.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'gail'
+  Dep:u'gnome-vfs'
+  Num:1
+  Cmd:u'# Installation of libgtkhtml\n./configure --prefix=$GNOME_PREFIX &&\nmake &&\nmake install'
+ Name:libgtop
+  Ver:libgtop-2.0.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/libgtop/2.0/libgtop-2.0.2.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'GLib2'
+  Num:1
+  Cmd:u'# Installation of libgtop\n./configure --prefix=$GNOME_PREFIX &&\nmake &&\nmake install'
+ Name:libjpeg
+  Ver:libjpeg-6b
+  Num:1
+ Arch:u'ftp://ftp.uu.net/graphics/jpeg/jpegsrc.v6b.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of libjpeg\n./configure --enable-static --enable-shared --prefix=/usr &&\nmake &&\nmake install'
+ Name:libmad
+  Ver:libmad-0.15.0b
+  Num:1
+ Arch:u'ftp://ftp.mars.org/pub/mpeg/libmad-0.15.0b.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of libmad\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:libmng
+  Ver:libmng-1.0.5
+  Num:1
+ Arch:u'ftp://unc.dl.sf.net/pub/sourceforge/libmng/libmng-1.0.5.tar.gz'
+  Num:0
+  Num:2
+  Dep:u'libjpeg'
+  Dep:u'lcms'
+  Num:1
+  Cmd:u'# Installation of libmng\n./configure --prefix=/usr --with-zlib \\\n   --with-jpeg --with-lcms &&\nmake &&\nmake install &&\ncp doc/man/*.3 /usr/share/man/man3 &&\ncp doc/man/*.5 /usr/share/man/man5'
+ Name:libmpeg3
+  Ver:libmpeg3-1.5.2
+  Num:1
+ Arch:u'http://aleron.dl.sourceforge.net/sourceforge/heroines/libmpeg3-1.5.2-src.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'NASM'
+  Num:1
+  Cmd:u'# Installation of libmpeg3\nmake &&\nmake install &&\ncp i686/libmpeg3.a /usr/lib &&\ncp libmpeg3.h mpeg3private.h /usr/include'
+ Name:libogg
+  Ver:libogg-1.0
+  Num:1
+ Arch:u'ftp://ftp.yars.free.net/pub/software/unix/util/sound/ogg/libogg-1.0.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of libogg\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:libpng
+  Ver:libpng-1.2.5
+  Num:1
+ Arch:u'ftp://ftp.iasi.roedu.net/pub/mirrors/ftp.gimp.org/gimp/libs/libpng-1.2.5.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of libpng\nmake prefix=/usr \\\n   ZLIBINC=/usr/include ZLIBLIB=/usr/lib -f scripts/makefile.linux &&\nmake prefix=/usr install -f scripts/makefile.linux'
+ Name:librep
+  Ver:librep-0.16.2
+  Num:1
+ Arch:u'http://telia.dl.sourceforge.net/sourceforge/librep/librep-0.16.2.tar.gz'
+  Num:0
+  Num:2
+  Dep:u'gmp'
+  Dep:u'gdbm'
+  Num:1
+  Cmd:u'# Installation of librep\n./configure --prefix=/usr --libexec=/usr/lib --mandir=/usr/share/man \\\n--infodir=/usr/share/info &&\nmake &&\nmake install'
+ Name:librsvg
+  Ver:librsvg-2.2.5
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/librsvg/2.2/librsvg-2.2.5.tar.bz2'
+  Num:0
+  Num:3
+  Dep:u'GTK2'
+  Dep:u'libxml2'
+  Dep:u'libart_lgpl'
+  Num:1
+  Cmd:u'# Installation of librsvg\n./configure --prefix=$GNOME_PREFIX --sysconfdir=/etc/gnome --disable-gtk-doc &&\nmake &&\nmake install'
+ Name:libsoup
+  Ver:libsoup-1.99.23
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/gnome/sources/libsoup/1.99/libsoup-1.99.23.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of libsoup\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:libtiff
+  Ver:libtiff-3.6.0
+  Num:1
+ Arch:u'ftp://ftp.remotesensing.org/pub/libtiff/tiff-v3.6.0.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of libtiff\n./configure --prefix=/usr --noninteractive \\\n   --with-DIR_MAN=/usr/share/man &&\nmake &&\nmake install'
+ Name:libungif
+  Ver:libungif-4.1.0b1
+  Num:1
+ Arch:u'ftp://sunfreeware.secsup.org/pub/solaris/freeware/SOURCES/libungif-4.1.0b1.tar.gz'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/libungif-4.1.0b1-va_start.patch'
+  Num:0
+  Num:1
+  Cmd:u'# Installation of libungif\npatch -Np1 -i ../libungif-4.1.0b1-va_start.patch &&\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:libvorbis
+  Ver:libvorbis-1.0
+  Num:1
+ Arch:u'ftp://ftp.yars.free.net/pub/software/unix/util/sound/ogg/libvorbis-1.0.tar.gz'
+  Num:0
+  Num:1
+  Dep:u'libogg'
+  Num:2
+  Cmd:u'# Installation of libvorbis\n./configure --prefix=/usr &&\nmake &&\nmake install'
+  Cmd:u'# Installation of libvorbis\n./configure --prefix=/usr &&\ncd lib &&\ncp Makefile Makefile.bak &&\nsed s/-mno-ieee-fp// Makefile.bak > Makefile &&\ncd .. &&\nmake &&\nmake install'
+ Name:libwnck
+  Ver:libwnck-2.2.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/libwnck/2.2/libwnck-2.2.2.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'GTK2'
+  Dep:u'startup-notification'
+  Num:1
+  Cmd:u'# Installation of libwnck\n./configure --prefix=$GNOME_PREFIX &&\nmake &&\nmake install'
+ Name:libxml
+  Ver:libxml-1.8.17
+  Num:1
+ Arch:u'ftp://ftp.xmlsoft.org/old/libxml-1.8.17.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of libxml\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:libxml2
+  Ver:libxml2-2.5.11
+  Num:1
+ Arch:u'ftp://ftp.xmlsoft.org/libxml2-2.5.11.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of libxml2\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:libxslt
+  Ver:libxslt-1.0.33
+  Num:1
+ Arch:u'ftp://ftp.xmlsoft.org/libxslt-1.0.33.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'libxml2'
+  Num:1
+  Cmd:u'# Installation of libxslt\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:linc
+  Ver:linc-1.0.3
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/linc/1.0/linc-1.0.3.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'GLib2'
+  Dep:u'openssl'
+  Num:1
+  Cmd:u'# Installation of linc\n./configure --prefix=$GNOME_PREFIX --with-openssl --disable-gtk-doc &&\nmake &&\nmake install'
+ Name:lynx
+  Ver:Lynx-2.8.4
+  Num:1
+ Arch:u'ftp://ftp.netbuddy.org/linux/lynx2.8.4.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'openssl'
+  Num:1
+  Cmd:u'# Installation of Lynx\n./configure --prefix=/usr --libdir=/etc --with-ssl --with-zlib &&\nmake &&\nmake install &&\nmake DOCDIR=/usr/share/doc/lynx-2.8.4/lynx_doc \\\n   HELPDIR=/usr/share/doc/lynx-2.8.4/lynx_help install-doc &&\nmake DOCDIR=/usr/share/doc/lynx-2.8.4/lynx_doc \\\n   HELPDIR=/usr/share/doc/lynx-2.8.4/lynx_help install-help &&\nsed s/"t\\/etc"/"t\\/usr\\/share\\/doc\\/lynx\\-2\\.8\\.4"/ \\\n   /etc/lynx.cfg > /etc/lynx.bak &&\nmv /etc/lynx.bak /etc/lynx.cfg'
+ Name:mc
+  Ver:MC-4.6.0
+  Num:1
+ Arch:u'ftp://ftp.uni-koeln.de/util/shell/mc-4.6.0.tar.gz'
+  Num:0
+  Num:3
+  Dep:u'GLib'
+  Dep:u'GLib2'
+  Dep:'or'
+  Num:1
+  Cmd:u'# Installation of\nMC\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:metacity
+  Ver:Metacity-2.4.55
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/metacity/2.4/metacity-2.4.55.tar.bz2'
+  Num:0
+  Num:3
+  Dep:u'xfree86'
+  Dep:u'intltool'
+  Dep:u'GTK2'
+  Num:2
+  Cmd:u'# Installation of Metacity\n./configure --prefix=/usr --libexec=/usr/sbin --sysconfdir=/etc &&\nmake &&\nmake install'
+  Cmd:u'# Configuration Information\ncat >> ~/.xinitrc << "EOF"\nxterm &\nexec metacity\nEOF'
+ Name:mozilla
+  Ver:Mozilla-1.5
+  Num:1
+ Arch:u'ftp://ftp.mozilla.org/pub/mozilla.org/mozilla/releases/mozilla1.5/src/mozilla-source-1.5.tar.bz2'
+  Num:4
+Patch:u'http://enigmail.mozdev.org/'
+Patch:u'http://downloads.mozdev.org/enigmail/src/enigmail-0.76.7.tar.gz'
+Patch:u'http://enigmail.mozdev.org/'
+Patch:u'http://downloads.mozdev.org/enigmail/src/ipc-1.0.4.tar.gz'
+  Num:16
+  Dep:u'freetype2'
+  Dep:u'xfree86'
+  Dep:u'zip'
+  Dep:u'expat'
+  Dep:u'ATK'
+  Dep:u'Pango'
+  Dep:u'pkgconfig'
+  Dep:u'GLib2'
+  Dep:u'GTK2'
+  Dep:u'libIDL'
+  Dep:u'lcms'
+  Dep:u'libjpeg'
+  Dep:u'libmng'
+  Dep:u'libpng'
+  Dep:u'which'
+  Dep:u'gnupg'
+  Num:8
+  Cmd:u'# Installation of Mozilla\nexport MOZILLA_OFFICIAL="1" &&\nexport BUILD_OFFICIAL="1" &&\n./configure --prefix=/usr \\\n            --enable-default-mozilla-five-home \\\n            --enable-toolkit-gtk2 --enable-default-toolkit=gtk2 \\\n            --with-x --with-system-zlib \\\n            --with-system-jpeg --with-system-png --with-system-mng \\\n            --enable-xft --enable-crypto \\\n            --enable-java-supplement \\\n            --disable-accessibility \\\n            --disable-tests --disable-debug \\\n            --disable-logging --enable-reorder \\\n            --enable-strip --disable-pedantic \\\n            --enable-cpp-rtti --enable-extensions=all &&\nmake'
+  Cmd:u'# Installation of Mozilla\ncd extensions/ipc &&\n./makemake -r &&\nmake &&\ncd ../enigmail &&\n./makemake -r &&\nmake &&\ncd ../..'
+  Cmd:u'# Installation of Mozilla\nmake install &&\ninstall -d /usr/include/mozilla-1.5/nss &&\ncp -Lf dist/private/nss/*.h dist/public/nss/*.h \\\n   /usr/include/mozilla-1.5/nss &&\nln -nsf mozilla-1.5 /usr/include/mozilla &&\nln -nsf mozilla-1.5 /usr/lib/mozilla'
+  Cmd:u'# Installation of Mozilla\nfor i in components/enigmime.xpt \\\ncomponents/ipc.xpt components/libenigmime.so components/enigmail.js \\\ncomponents/enigmail.xpt chrome/enigmail.jar\ndo\n\tinstall dist/bin/$i /usr/lib/mozilla-1.5/$i\ndone'
+  Cmd:u'# Installation of Mozilla\ncd /usr/lib/mozilla-1.5 &&\nexport LD_LIBRARY_PATH="/usr/lib/mozilla-1.5" &&\nexport MOZILLA_FIVE_HOME="/usr/lib/mozilla-1.5" &&\n./regxpcom &&\n./regchrome &&\ntouch `find /usr/lib/mozilla-1.5 -name *.rdf`'
+  Cmd:u'# Additional build notes for Mozilla Firebird 0.7\nexport MOZ_PHOENIX="1"'
+  Cmd:u'# Additional build notes for Mozilla Thunderbird 0.3\nexport MOZ_THUNDERBIRD="1"'
+  Cmd:u'# Configuring Mozilla\nln -sf mozilla /usr/bin/netscape'
+ Name:mpg123
+  Ver:mpg123-0.59r
+  Num:1
+ Arch:u'ftp://alge.anart.no/pub/audio/mpg123-0.59r.tar.gz'
+  Num:0
+  Num:2
+  Dep:u'alsa-oss'
+  Dep:'or'
+  Num:1
+  Cmd:u'# Installation of mpg123\nmake PREFIX=/usr linux &&\nmake PREFIX=/usr install'
+ Name:mplayer
+  Ver:MPlayer-1.0pre1
+  Num:1
+ Arch:u'ftp://ftp1.mplayerhq.hu/MPlayer/releases/MPlayer-1.0pre1.tar.bz2'
+  Num:3
+Patch:u'http://www1.mplayerhq.hu/MPlayer/releases/codecs/extralite.tar.bz2'
+Patch:u'http://www1.mplayerhq.hu/MPlayer/Skin/default-1.7.tar.bz2'
+Patch:u'http://www1.mplayerhq.hu/MPlayer/releases/fonts/font-arial-iso-8859-1.tar.bz2'
+  Num:1
+  Dep:u'GTK'
+  Num:10
+  Cmd:u'# Installation of MPlayer\ninstall -d /usr/lib/mplayer/extralite &&\ntar xjvf ../extralite.tar.bz2 -C /usr/lib/mplayer &&\n./configure --prefix=/usr --confdir=/etc/mplayer --enable-largefiles \\\n--enable-gui --enable-menu --enable-shared-pp \\\n--with-codecsdir=/usr/lib/mplayer/extralite &&\nmake &&\nmake install &&\nmake -C libavcodec/libpostproc install &&\ncp etc/codecs.conf /etc/mplayer &&\ntar xjvf ../default-1.7.tar.bz2 -C /usr/share/mplayer/Skin\n'
+  Cmd:u'# Installation of MPlayer\ntar xjvf ../font-arial-iso-8859-1.tar.bz2 -C /usr/share/mplayer/font'
+  Cmd:u'# Installation of MPlayer\nchown -R root:root /usr/{lib/mplayer/extralite,share/mplayer}'
+  Cmd:u'# Installation for DVD playback\nln -s /dev/[dvd drive] /dev/dvd'
+  Cmd:u'# Installation for DVD playback\ndmesg | grep DVD'
+  Cmd:u'# Installation for DVD playback\nhdc: Pioneer DVD-ROM ATAPIModel DVD-114 0110,\nATAPI CD/DVD-ROM drive'
+  Cmd:u'# Configuration Information\nln -sf /usr/X11R6/lib/X11/fonts/TTF/luxisri.ttf ~/.mplayer/subfont.ttf\n'
+  Cmd:u'# Configuration Information\nln -sf /usr/share/mplayer/font/font-arial-iso-8859-1/font-arial-[font size]-iso-8859-1/* /usr/share/mplayer/font'
+  Cmd:u'# Configuration Information\ncat > /etc/mplayer/mplayer.conf << "EOF"\ngui = yes\nskin = default\nEOF'
+  Cmd:u'# mencoder\nrm frameno.avi\nmencoder -dvd 1 -aid 128 -ovc frameno -oac mp3lame \\\n-lameopts vbr=3 -o frameno.avi\n\n# mencoder should output bitrates for average encodings\n# now, choose one you like best! In the following lines,\n# replace <bitrate> and <name.avi> with statements of your\n# personal liking.\n\nmencoder -dvd 1 -aid 128 -oac copy -ovc lavc \\\n-lavcopts vcodec=mpeg4:vpass=1:vhq:vbitrate=<bitrate> -o <name.avi>\nmencoder -dvd 1 -aid 128 -oac copy -ovc lavc \\\n-lavcopts vcodec=mpeg4:vpass=2:vhq:vbitrate=<bitrate> -o <name.avi>\nmencoder -forceidx <name.avi>'
+ Name:mutt
+  Ver:Mutt-1.4.1i
+  Num:1
+ Arch:u'ftp://ftp.mutt.org/mutt/mutt-1.4.1i.tar.gz'
+  Num:0
+  Num:0
+  Num:4
+  Cmd:u'# Installation of Mutt\ngroupadd mail'
+  Cmd:u'# Installation of Mutt\nchgrp mail /var/mail'
+  Cmd:u'# Installation of Mutt\n./configure --prefix=/usr --sysconfdir=/etc &&\nmake &&\nmake install'
+  Cmd:u'# Configuration Information\ncat /usr/share/doc/mutt/samples/gpg.rc >>\n~/.muttrc'
+ Name:mysql
+  Ver:MySQL-4.0.15a
+  Num:1
+ Arch:u'ftp://mirror.mcs.anl.gov/pub/mysql/Downloads/MySQL-4.0/mysql-4.0.15a.tar.gz'
+  Num:0
+  Num:0
+  Num:12
+  Cmd:u'# Installation of MySQL\ngroupadd mysql &&\nuseradd -c mysql -d /dev/null -g mysql -s /bin/false mysql'
+  Cmd:u'# Installation of MySQL\ncp configure configure.old &&\nsed -e "s%mysql-test/Makefile%%" -e "s% mysql-test%%" configure.old > configure &&\n./configure --prefix=/usr \\\n            --sysconfdir=/etc \\\n            --libexecdir=/usr/sbin \\\n            --localstatedir=/var/lib/mysql \\\n            --enable-thread-safe-client \\\n            --enable-local-infile \\\n            --without-debug \\\n            --without-bench &&\nmake &&\nmake install'
+  Cmd:u'# Configuration Information\ncp /usr/share/mysql/my-medium.cnf /etc/my.cnf\n'
+  Cmd:u'# Configuration Information\nmysql_install_db\nchown -R mysql:mysql /var/lib/mysql'
+  Cmd:u'# Configuration Information\nmysqld_safe --user=mysql 2>&1 >/dev/null &\n'
+  Cmd:u'# Configuration Information\nmysql -uroot mysql'
+  Cmd:u"# Configuration Information\nUPDATE user SET password=password('new-password') WHERE user='root';"
+  Cmd:u'# Configuration Information\nFLUSH PRIVILEGES;'
+  Cmd:u'# Configuration Information\nEXIT;'
+  Cmd:u'# Configuration Information\nkill `pidof -x mysqld_safe mysqld`'
+  Cmd:u'# MySQL init.d script\ncat > /etc/rc.d/init.d/mysql << "EOF"\n#!/bin/bash\n# Begin $rc_base/init.d/\n\n# Based on sysklogd script from LFS-3.1 and earlier.\n# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org\n\nsource /etc/sysconfig/rc\nsource $rc_functions\n\ncase "$1" in\n        start)\n                echo "Starting MySQL daemon..."\n                /usr/bin/mysqld_safe --user=mysql 2>&1 >/dev/null &\n                evaluate_retval\n                ;;\n\n        stop)\n                echo "Stopping MySQL daemon..."\n                killproc mysqld\n                ;;\n\n        restart)\n                $0 stop\n                sleep 1\n                $0 start\n                ;;\n\n        status)\n                statusproc /usr/sbin/mysqld\n                ;;\n\n        *)\n                echo "Usage: $0 {start|stop|restart|status}"\n                exit 1\n                ;;\nesac\n\n# End $rc_base/init.d/\nEOF\nchmod 755 /etc/rc.d/init.d/mysql'
+  Cmd:u'# MySQL init.d script\ncd /etc/rc.d/init.d &&\nln -sf ../init.d/mysql ../rc0.d/K26mysql &&\nln -sf ../init.d/mysql ../rc1.d/K26mysql &&\nln -sf ../init.d/mysql ../rc2.d/K26mysql &&\nln -sf ../init.d/mysql ../rc3.d/S34mysql &&\nln -sf ../init.d/mysql ../rc4.d/S34mysql &&\nln -sf ../init.d/mysql ../rc5.d/S34mysql &&\nln -sf ../init.d/mysql ../rc6.d/K26mysql'
+ Name:nail
+  Ver:Nail-10.5
+  Num:1
+ Arch:u'http://ftp.uni-koeln.de/mail/nail-10.5.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of Nail\n./configure --prefix=/usr &&\nmake &&\nmake install &&\nln -sf nail /usr/bin/mail'
+ Name:nas
+  Ver:NAS-1.6
+  Num:1
+ Arch:u'ftp://ftp.us.xemacs.org/pub/xemacs/aux/nas-1.6.src.tar.gz'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/nas-1.6-bison-fix.patch'
+  Num:1
+  Dep:u'xfree86'
+  Num:1
+  Cmd:u'# Installation of NAS\npatch -Np1 -i ../nas-1.6-bison-fix.patch &&\nxmkmf &&\nmake Makefiles &&\nmake includes &&\nmake depend &&\nmake &&\nmake install install.man'
+ Name:nautilus
+  Ver:Nautilus-2.2.4
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/nautilus/2.2/nautilus-2.2.4.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'libgnomeui'
+  Num:1
+  Cmd:u'# Installation of Nautilus\n./configure --prefix=$GNOME_PREFIX --sysconfdir=/etc/gnome \\\n--libexecdir=$GNOME_PREFIX/sbin && \nmake &&\nmake install'
+ Name:nautilus-media
+  Ver:Nautilus Media-0.2.2
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/nautilus-media/0.2/nautilus-media-0.2.2.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'libgnomeui'
+  Dep:u'gstreamer'
+  Num:1
+  Cmd:u'# Installation of Nautilus Media\n./configure --prefix=$GNOME_PREFIX --sysconfdir=/etc/gnome \\\n--localstatedir=/var/lib --libexecdir=$GNOME_PREFIX/sbin &&\nmake &&\nmake install'
+ Name:ncftp
+  Ver:NcFTP-3.1.6
+  Num:1
+ Arch:u'ftp://ftp.ncftp.com/ncftp/ncftp-3.1.6-src.tar.bz2'
+  Num:0
+  Num:0
+  Num:3
+  Cmd:u'# Installation of NcFTP\n./configure --prefix=/usr &&\ncd libncftp &&\nmake shared &&\nmake soinstall &&\ncd .. &&\nmake &&\nmake install'
+  Cmd:u'# Installation of NcFTP\n./configure --prefix=/usr &&\nmake &&\nmake install'
+  Cmd:u'# Configuration Information\nyes-i-know-about-NcFTPd=yes'
+ Name:ncpfs
+  Ver:NCPFS-2.2.3
+  Num:1
+ Arch:u'ftp://platan.vc.cvut.cz/pub/linux/ncpfs/ncpfs-2.2.3.tar.gz'
+  Num:0
+  Num:0
+  Num:3
+  Cmd:u'# Installation of NCPFS\n./configure --prefix=/usr --includedir=/usr/include \\\n    --mandir=/usr/share/man --datadir=/usr/share &&\nmake &&\nmake install &&\nmake install-dev'
+  Cmd:u'# Configuration Information\n# Begin example ~/.nwclient config file\n\nServer1/User1 Password\nServer2/User1 \nServer2/Guest1 -\n\n# End example .nwclient config file'
+  Cmd:u'# Configuration Information\ncat > /etc/sysconfig/network-devices/ifup-ipx0 << "EOF"\n#!/bin/sh\n# Begin /etc/sysconfig/network-devices/ifup-ipx0\n\nsource /etc/sysconfig/rc || exit\nsource $rc_functions || exit\n\necho "Setting up the IPX protocol on eth0..."\n/bin/ipx_interface add eth0 802.2 &&\n/bin/ipx_configure --auto_interface=on --auto_primary=on\nevaluate_retval\n\n# End /etc/sysconfig/network-devices/ifup-ipx0\nEOF\ncat > /etc/sysconfig/network-devices/ifdown-ipx0 << "EOF"\n#!/bin/sh\n# Begin /etc/sysconfig/network-devices/ifdown-ipx0\n\nsource /etc/sysconfig/rc || exit\nsource $rc_functions || exit\n\necho "Stopping IPX on the eth0 interface..."\n/bin/ipx_configure --auto_interface=off --auto_primary=off &&\n/bin/ipx_interface del eth0 802.2\nevaluate_retval\n\n# End /etc/sysconfig/network-devices/ifdown-ipx0\nEOF\necho "ONBOOT=yes" > /etc/sysconfig/network-devices/ifconfig.ipx0\nchmod 755 /etc/sysconfig/network-devices/ifup-ipx0\nchmod 755 /etc/sysconfig/network-devices/ifdown-ipx0'
+ Name:nmap
+  Ver:Nmap-3.30
+  Num:1
+ Arch:u'http://download.insecure.org/nmap/dist/nmap-3.30.tgz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of Nmap\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:ntp
+  Ver:ntp-4.1.2
+  Num:1
+ Arch:u'ftp://ftp.udel.edu/pub/ntp/ntp4/ntp-4.1.2.tar.gz'
+  Num:0
+  Num:0
+  Num:4
+  Cmd:u'# Installation of NTP\n./configure --prefix=/usr &&\nmake &&\nmake install'
+  Cmd:u'# Configuration Information\nserver time-a.nist.gov prefer\nserver time-b.nist.gov\nserver tick.usno.navy.mil\ndriftfile /var/cache/ntp.drift'
+  Cmd:u'# Synchronizing the time\n#!/bin/bash\n# Begin $rc_base/init.d/ntp\nsource /etc/sysconfig/rc\nsource $rc_functions\ncase "$1" in\n        start)\n                echo "Starting ntpd..."\n                loadproc ntpd\n                ;;\n        stop)\n                echo "Stopping ntpd..."\n                killproc ntpd\n                ;;\n        restart)\n                $0 stop\n                sleep 1\n                $0 start\n                ;;\n        status)\n                statusproc ntpd\n                ;;\n        *)\n                echo "Usage: $0 {start|stop|restart|status}"\n                exit 1\n                ;;\nesac\n# End $rc_base/init.d/ntp'
+  Cmd:u'# Synchronizing the time\nntpd -q'
+ Name:oaf
+  Ver:OAF-0.6.10
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/oaf/0.6/oaf-0.6.10.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'ORBit'
+  Dep:u'libxml'
+  Num:1
+  Cmd:u'# Installation of OAF\nldconfig &&\n./configure --prefix=/opt/gnome --disable-gtk-doc &&\nmake &&\nmake install'
+ Name:openjade
+  Ver:OpenJade-1.3.2
+  Num:1
+ Arch:u'ftp://ftp.freestandards.org/pub/lsb/app-battery/packages/openjade-1.3.2.tar.gz'
+  Num:0
+  Num:1
+  Dep:u'opensp'
+  Num:2
+  Cmd:u'# Installation of OpenJade\n./configure --prefix=/usr --enable-http --disable-static \\\n--enable-default-catalog=/etc/sgml/catalog \\\n--enable-default-search-path=/usr/share/sgml \\\n--datadir=/usr/share/sgml/openjade-1.3.2 &&\nmake &&\nmake install &&\nln -sf openjade /usr/bin/jade &&\nln -sf libogrove.so /usr/lib/libgrove.so &&\nln -sf libospgrove.so /usr/lib/libspgrove.so &&\nln -sf libostyle.so /usr/lib/libstyle.so &&\ninstall -m644 dsssl/catalog /usr/share/sgml/openjade-1.3.2/ &&\ninstall -m644 dsssl/*.dtd dsssl/*.dsl dsssl/*.sgm \\\n/usr/share/sgml/openjade-1.3.2 &&\ninstall-catalog --add /etc/sgml/openjade-1.3.2.cat \\\n/usr/share/sgml/openjade-1.3.2/catalog &&\ninstall-catalog --add /etc/sgml/sgml-docbook.cat /etc/sgml/openjade-1.3.2.cat'
+  Cmd:u'# Configuration Information\necho "SYSTEM \\"/usr/share/docbook/docbookx.dtd\\" \\\n\\"/usr/share/xml/docbook/xml-dtd-4.2/docbookx.dtd\\"" >> \\\n/usr/share/sgml/openjade-1.3.2/catalog'
+ Name:openldap
+  Ver:OpenLDAP-2.1.22
+  Num:1
+ Arch:u'ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/openldap-2.1.22.tgz'
+  Num:0
+  Num:1
+  Dep:u'db'
+  Num:3
+  Cmd:u'# Installation of OpenLDAP\n./configure --prefix=/usr --libexecdir=/usr/sbin \\\n    --sysconfdir=/etc --localstatedir=/var/lib \\\n    --disable-debug --enable-ldbm &&\nmake depend &&\nmake &&\nmake test &&\nmake install'
+  Cmd:u"# Configuration Information\nldapsearch -x -b '' -s base '(objectclass=*)' namingContexts"
+  Cmd:u'# Configuration Information\nkill -INT `cat /var/lib/slapd.pid`'
+ Name:openoffice
+  Ver:OpenOffice-1.1.0
+  Num:1
+ Arch:u'http://www.openoffice.org/dev_docs/source/1.1.0/source.html'
+  Num:6
+Patch:u'ftp://ftp.cs.man.ac.uk/pub/toby/gpc/gpc231.tar.Z'
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/openoffice-1.1.0-no-mozab.patch'
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/openoffice-1.1.0-test-bin-loc.patch'
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/openoffice-1.1.0-no-pam.patch'
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/openoffice-1.1.0-jdk-1.4.2-fix.patch'
+Patch:u'http://ftp.services.openoffice.org/pub/OpenOffice.org/contrib/helpcontent/'
+  Num:6
+  Dep:u'xfree86'
+  Dep:u'j2sdk'
+  Dep:u'zip'
+  Dep:u'unzip'
+  Dep:u'tcsh'
+  Dep:u'which'
+  Num:6
+  Cmd:u'# Installation of OpenOffice\nmv ../gpc231/* external/gpc &&\nrm -rf ../gpc231 &&\nfor p in ../openoffice-1.1.0-*.patch\ndo patch -Np1 -i $p\ndone'
+  Cmd:u'# Installation of OpenOffice\ncd solenv/inc &&\ncp unxlngi4.mk unxlngi4.mk.orig &&\nsed -e "s:\\-mcpu=pentiumpro::" \\\nunxlngi4.mk.orig > unxlngi4.mk &&\ncd ../..'
+  Cmd:u'# Installation of OpenOffice\ncd config_office/ &&\n./configure --with-lang=ALL &&\ncd ..'
+  Cmd:u'# Installation of OpenOffice\n./bootstrap &&\nbash -c "source LinuxIntelEnv.Set.sh; dmake"'
+  Cmd:u'# Installation of OpenOffice\ncd solver/645/unxlngi4.pro/pck &&\nfor i in $(ls ../../../../../helpcontent_*_unix.tgz)\ndo\ntar -xvzf $i\ndone &&\ncd ../../../../instsetoo &&\nrm -rf unxlngi4.pro &&\ncd .. &&\nbash -c "source LinuxIntelEnv.Set.sh ; dmake"'
+  Cmd:u'# Installation of OpenOffice\ncd instsetoo/unxlngi4.pro/01/normal &&\ncp install install.orig &&\nsed -e "s:^oo_home=.*:oo_home=openoffice:" install.orig > install &&\n./install --prefix=/opt &&\nfor appl in swriter scalc sdraw simpress smath soffice spadmin\ndo ln -sf /opt/openoffice/program/$appl /usr/bin/$appl\ndone'
+ Name:openquicktime
+  Ver:OpenQuicktime-1.0
+  Num:1
+ Arch:u'http://flow.dl.sourceforge.net/sourceforge/openquicktime/openquicktime-1.0-src.tgz'
+  Num:1
+Patch:u'http://www.openquicktime.org/codecs.php'
+  Num:0
+  Num:1
+  Cmd:u'# Installation of OpenQuicktime\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:opensp
+  Ver:OpenSP-1.5
+  Num:1
+ Arch:u'ftp://ftp.freestandards.org/pub/lsb/app-battery/packages/OpenSP-1.5.tar.gz'
+  Num:2
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/OpenSP-1.5-LITLEN.patch'
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/OpenSP-1.5-gcc33-1.patch'
+  Num:1
+  Dep:u'sgml-common'
+  Num:2
+  Cmd:u'# Installation of OpenSP\npatch -Np1 -i ../OpenSP-1.5-LITLEN.patch\npatch -Np1 -i ../OpenSP-1.5-gcc33-1.patch'
+  Cmd:u'# Installation of OpenSP\n./configure --prefix=/usr --disable-static --enable-http \\\n--enable-default-catalog=/etc/sgml/catalog \\\n--enable-default-search-path=/usr/share/sgml &&\nmake pkgdatadir=/usr/share/sgml/OpenSP-1.5 &&\nmake pkgdatadir=/usr/share/sgml/OpenSP-1.5 install &&\nln -sf onsgmls /usr/bin/nsgmls &&\nln -sf osgmlnorm /usr/bin/sgmlnorm &&\nln -sf ospam /usr/bin/spam &&\nln -sf ospcat /usr/bin/spcat &&\nln -sf ospent /usr/bin/spent &&\nln -sf osx /usr/bin/sx &&\nln -sf osx /usr/bin/sgml2xml &&\nln -sf libosp.so /usr/lib/libsp.so &&\ninstall-catalog --add /etc/sgml/OpenSP-1.5.cat \\\n/usr/share/sgml/OpenSP-1.5/catalog &&\ninstall-catalog --add /etc/sgml/sgml-docbook.cat \\\n/etc/sgml/OpenSP-1.5.cat'
+ Name:openssh
+  Ver:OpenSSH-3.7.1p2
+  Num:1
+ Arch:u'ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-3.7.1p2.tar.gz'
+  Num:0
+  Num:1
+  Dep:u'openssl'
+  Num:4
+  Cmd:u"# Installation of OpenSSH\nmkdir /var/empty &&\nchown root:sys /var/empty &&\ngroupadd sshd &&\nuseradd -c 'sshd privsep' -d /var/empty -g sshd -s /bin/false sshd"
+  Cmd:u'# Installation of OpenSSH\n./configure --prefix=/usr --sysconfdir=/etc/ssh \\\n   --libexecdir=/usr/sbin --with-md5-passwords &&\nmake &&\nmake install '
+  Cmd:u'# sshd init.d script\ncat > /etc/rc.d/init.d/sshd << "EOF"\n#!/bin/sh\n# Begin $rc_base/init.d/sshd\n\n# Based on sysklogd script from LFS-3.1 and earlier.\n# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org\n\nsource /etc/sysconfig/rc\nsource $rc_functions\n\ncase "$1" in\n        start)\n\t        echo "Starting SSH Server..."\n\t        loadproc /usr/sbin/sshd\n\t        ;;\n\n\tstop)\n\t        echo "Stopping SSH Server..."\n\t        killproc /usr/sbin/sshd\n\t        ;;\n\n\treload)\n\t        echo "Reloading SSH Server..."\n\t        reloadproc /usr/sbin/sshd\n\t        ;;\n\t     \n\trestart)\n\t        $0 stop\n\t        sleep 1\n\t        $0 start\n\t        ;;\n\n\tstatus)\n\t        statusproc /usr/sbin/sshd\n\t        ;;\n\n\t*)\n\t        echo "Usage: $0 {start|stop|reload|restart|status}"\n\t        exit 1\n\t        ;;\nesac\n\n# End $rc_base/init.d/sshd\nEOF\nchmod 755 /etc/rc.d/init.d/sshd'
+  Cmd:u'# sshd init.d script\ncd /etc/rc.d/init.d &&\nln -sf ../init.d/sshd ../rc0.d/K30sshd &&\nln -sf ../init.d/sshd ../rc1.d/K30sshd &&\nln -sf ../init.d/sshd ../rc2.d/K30sshd &&\nln -sf ../init.d/sshd ../rc3.d/S30sshd &&\nln -sf ../init.d/sshd ../rc4.d/S30sshd &&\nln -sf ../init.d/sshd ../rc5.d/S30sshd &&\nln -sf ../init.d/sshd ../rc6.d/K30sshd'
+ Name:openssl
+  Ver:OpenSSL-0.9.7c
+  Num:1
+ Arch:u'ftp://ftp.openssl.org/source/openssl-0.9.7c.tar.gz'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/openssl-0.9.7c-manpages.patch'
+  Num:0
+  Num:1
+  Cmd:u"# Installation of OpenSSL\npatch -Np1 -i ../openssl-0.9.7c-manpages.patch\nsed 's/^passwd/openssl-passwd/' doc/apps/passwd.pod \\\n> doc/apps/openssl-passwd.pod &&\nrm doc/apps/passwd.pod &&\n./config --openssldir=/etc/ssl --prefix=/usr shared &&\nmake MANDIR=/usr/share/man &&\nmake MANDIR=/usr/share/man install &&\ncp -r certs /etc/ssl &&\nrmdir /etc/ssl/lib &&\nchmod 755 /usr/lib/pkgconfig"
+ Name:pan
+  Ver:Pan-0.14.2
+  Num:1
+ Arch:u'http://pan.rebelbase.com/download/releases/0.14.2/SOURCE/pan-0.14.2.tar.bz2'
+  Num:0
+  Num:4
+  Dep:u'GTK2'
+  Dep:u'gnet'
+  Dep:u'intltool'
+  Dep:u'libxml2'
+  Num:1
+  Cmd:u'# Installation of Pan\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:pciutils
+  Ver:PCI Utilities-2.1.11
+  Num:1
+ Arch:u'ftp://ftp.kernel.org/pub/software/utils/pciutils/pciutils-2.1.11.tar.bz2'
+  Num:0
+  Num:3
+  Dep:u'wget'
+  Dep:u'lynx'
+  Dep:'or'
+  Num:1
+  Cmd:u'# Installation of PCI Utilities\nmake PREFIX=/usr &&\nmake PREFIX=/usr install'
+ Name:pcre
+  Ver:pcre-4.3
+  Num:1
+ Arch:u'ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-4.3.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of PCRE\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:php
+  Ver:PHP-4.3.3
+  Num:1
+ Arch:u'ftp://ftp.isu.edu.tw/pub/Unix/Web/PHP/distributions/php-4.3.3.tar.bz2'
+  Num:0
+  Num:9
+  Dep:u'openssl'
+  Dep:u'bc'
+  Dep:u'curl'
+  Dep:u'db'
+  Dep:u'libjpeg'
+  Dep:u'libpng'
+  Dep:u'freetype2'
+  Dep:u'mysql'
+  Dep:u'apache'
+  Num:2
+  Cmd:u'# Installation of PHP\n./configure --prefix=/usr --with-apxs2=/usr/sbin/apxs \\\n    --with-config-file-path=/etc --with-openssl=/usr \\\n    --with-zlib=/usr --enable-bcmath --with-bz2=/usr \\\n    --with-curl --enable-ftp --with-gd --with-jpeg-dir=/usr \\\n    --enable-gd-native-ttf --with-db4 --with-png-dir=/usr \\\n    --with-freetype-dir=/usr --with-gettext --with-mysql=/usr \\\n    --with-ncurses --sysconfdir=/etc &&\nmake &&\nmake install &&\ncp php.ini-dist /etc/php.ini'
+  Cmd:u'# Configuration Information\nAddType application/x-httpd-php .php'
+ Name:pine
+  Ver:Pine-4.58
+  Num:1
+ Arch:u'ftp://ftp.cac.washington.edu/pine/pine4.58.tar.bz2'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/pine-4.58-fhs.patch'
+  Num:1
+  Dep:u'openssl'
+  Num:1
+  Cmd:u'# Installation of Pine\npatch -Np1 -i ../pine-4.58-fhs.patch &&\n./build DEBUG=-O MAILSPOOL=/var/mail \\\nSSLDIR=/usr SSLCERTS=/etc/ssl/certs slx &&\ncp doc/{pine,pico,rpdump,rpload}.1 /usr/share/man/man1 &&    \ncd bin &&\ninstall pine imapd ipop2d ipop3d mailutil mtest pico pilot rpdump \\\nrpload /usr/bin'
+ Name:pkgconfig
+  Ver:pkgconfig-0.15.0
+  Num:1
+ Arch:u'ftp://ftp.netbuddy.org/linux/pkgconfig-0.15.0.tar.gz'
+  Num:0
+  Num:0
+  Num:2
+  Cmd:u'# Installation of pkgconfig\n./configure --prefix=/usr &&\nmake &&\nmake install'
+  Cmd:u'# Configuring pkgconfig\nexport PKG_CONFIG_PATH=/usr/X11R6/lib/pkgconfig'
+ Name:popt
+  Ver:popt-1.7
+  Num:1
+ Arch:u'ftp://ftp.rpm.org/pub/rpm/dist/rpm-4.1.x/popt-1.7.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of popt\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:portmap
+  Ver:portmap-5beta
+  Num:1
+ Arch:u'ftp://ftp.porcupine.org/pub/security/portmap_5beta.tar.gz'
+  Num:2
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/portmap-5beta-compilation-fixes-2.patch'
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/portmap-5beta-glibc-errno-fix.patch'
+  Num:1
+  Dep:u'tcpwrappers'
+  Num:2
+  Cmd:u'# Installation of portmap\npatch -Np1 -i ../portmap-5beta-compilation-fixes-2.patch &&\npatch -Np1 -i ../portmap-5beta-glibc-errno-fix.patch &&\nmake &&\nmake install'
+  Cmd:u'# Create the portmap boot script\ncat > /etc/rc.d/init.d/portmap << "EOF"\n#!/bin/sh\n# Begin /etc/rc.d/init.d/portmap\n\nsource /etc/rc.d/init.d/functions\n\ncase "$1" in\n        start)\n                echo "Starting RPC Portmap"\n                loadproc /sbin/portmap\n                ;;\n\n        stop)\n                echo "Stopping Portmap"\n                killproc /sbin/portmap\n                ;;\n\n        restart)\n                $0 stop\n                /bin/sleep 1\n                $0 start\n                ;;\n\n        *)\n                echo "Usage: $0 {start|stop|restart}"\n                exit 1\n        ;;\n\nesac\n\n# End /etc/rc.d/init.d/portmap\nEOF\nchmod 754 /etc/rc.d/init.d/portmap &&\ncd /etc/rc.d/init.d &&\nln -sf ../init.d/portmap ../rc0.d/K49portmap &&\nln -sf ../init.d/portmap ../rc1.d/K49portmap &&\nln -sf ../init.d/portmap ../rc2.d/K49portmap &&\nln -sf ../init.d/portmap ../rc3.d/S22portmap &&\nln -sf ../init.d/portmap ../rc4.d/S22portmap &&\nln -sf ../init.d/portmap ../rc5.d/S22portmap &&\nln -sf ../init.d/portmap ../rc6.d/K49portmap'
+ Name:postfix
+  Ver:Postfix-2.0.16
+  Num:1
+ Arch:u'ftp://ftp.porcupine.org/mirrors/postfix-release/official/postfix-2.0.16.tar.gz'
+  Num:0
+  Num:1
+  Dep:u'db'
+  Num:7
+  Cmd:u'# Installation of Postfix\ngroupadd postfix &&\ngroupadd postdrop &&\ngroupadd -g 65534 nogroup &&\nuseradd -c postfix -d /dev/null -g postfix -s /bin/false postfix &&\nuseradd -c nobody -d /home -g nogroup -s /bin/bash -u 65534 nobody &&\nchown postfix:postfix /var/mail'
+  Cmd:u'# Installation of Postfix\nmake &&\nsh postfix-install daemon_directory=/usr/sbin \\\n                   manpage_directory=/usr/share/man \\\n                   sample_directory=/usr/share/doc/postfix \\\n                   -non-interactive'
+  Cmd:u'# Installation of Postfix\ncp -rf html/* /usr/share/doc/postfix'
+  Cmd:u'# Configuration Information\ncat > /etc/aliases << "EOF"\n# Begin /etc/aliases\n\nMAILER-DAEMON:    postmaster\npostmaster:       root\n\nroot:             LOGIN\n# End /etc/aliases\nEOF'
+  Cmd:u'# Configuration Information\ncp /etc/aliases /etc/aliases.bak\ncp /etc/postfix/main.cf /etc/postfix/main.cf.bak\ncp /etc/postfix/master.cf /etc/postfix/master.cf.bak\nsed "s/LOGIN/[user]/" /etc/aliases.bak > /etc/aliases\nsed "s/#myhostname = host.domain.tld/myhostname = \\ \n\t[localhost.localdomain]/" \\\n\t/etc/postfix/main.cf.bak > /etc/postfix/main.cf\n/usr/bin/newaliases\n/usr/sbin/postfix start'
+  Cmd:u'# Postfix init.d script\ncat > /etc/rc.d/init.d/postfix << "EOF"\n#!/bin/sh\n# Begin $rc_base/init.d/postfix\n\n# Based on sysklogd script from LFS-3.1 and earlier.\n# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org\n\nsource /etc/sysconfig/rc\nsource $rc_functions\n\ncase "$1" in\n\n        start)\n        echo "Starting Postfix..."\n        loadproc postfix start\n        ;;\n\n        stop)\n        echo "Stopping Postfix..."\n        loadproc postfix stop\n        ;;\n\t\t\n        reload)\n        echo "Reloading Postfix..."\n        loadproc postfix reload\n        ;;\n\n        restart)\n        $0 stop\n        sleep 1\n        $0 start\n        ;;\n\n        *)\n        echo "Usage: $0 {start|stop|reload|restart}"\n        exit 1\n        ;;\nesac\n\n# End $rc_base/init.d/postfix\nEOF\nchmod 755 /etc/rc.d/init.d/postfix'
+  Cmd:u'# Postfix init.d script\ncd /etc/rc.d/init.d &&\nln -sf ../init.d/postfix ../rc0.d/K25postfix &&\nln -sf ../init.d/postfix ../rc1.d/K25postfix &&\nln -sf ../init.d/postfix ../rc2.d/K25postfix &&\nln -sf ../init.d/postfix ../rc3.d/S35postfix &&\nln -sf ../init.d/postfix ../rc4.d/S35postfix &&\nln -sf ../init.d/postfix ../rc5.d/S35postfix &&\nln -sf ../init.d/postfix ../rc6.d/K25postfix'
+ Name:postgresql
+  Ver:PostgreSQL-7.3.4
+  Num:1
+ Arch:u'ftp://ftp8.us.postgresql.org/pub/pgsql/source/v7.3.4/postgresql-7.3.4.tar.gz'
+  Num:0
+  Num:0
+  Num:6
+  Cmd:u'# Installation of PostgreSQL\n./configure --prefix=/usr &&\nmake &&\nmake install'
+  Cmd:u"# Installation of PostgreSQL\nmkdir -p /var/pgsql/data &&\nuseradd -d /var/pgsql/data postgres &&\nchown postgres /var/pgsql/data &&\nsu - postgres -c '/usr/bin/initdb -D /var/pgsql/data'"
+  Cmd:u"# Installation of PostgreSQL\nsu - postgres -c '/usr/bin/postmaster -D /var/pgsql/data > \\\n        /var/pgsql/data/logfile 2>&1 &'"
+  Cmd:u'# Installation of PostgreSQL\nsu - postgres -c \'/usr/bin/createdb test\'\necho "create table t1 ( name varchar(20), state_province varchar(20) );" \\\n                | (su - postgres -c \'/usr/bin/psql test \')\n\t\t\necho "insert into t1 values (\'Billy\', \'NewYork\');" \\\n                | (su - postgres -c \'/usr/bin/psql test \')\necho "insert into t1 values (\'Evanidus\', \'Quebec\');" \\\n\t        | (su - postgres -c \'/usr/bin/psql test \')\necho "insert into t1 values (\'Jesse\', \'Ontario\');" \\\n                | (su - postgres -c \'/usr/bin/psql test \')\n\t\t\necho "select * from t1;" | (su - postgres -c \'/usr/bin/psql test\')'
+  Cmd:u'# Config files\ncat > /etc/rc.d/init.d/postgresql << "EOF"\n#!/bin/bash\n# Begin $rc_base/init.d/postgresql\n\n# Based on sysklogd script from LFS-3.1 and earlier.\n# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org\n\nsource /etc/sysconfig/rc\nsource $rc_functions\n\ncase "$1" in\n        start)\n                echo "Starting PostgreSQL daemon..."\n\t\tsu - postgres -c \'/usr/bin/pg_ctl start -W -D /var/pgsql/data \\\n                               -l /var/pgsql/data/logfile -o "-i" \'\n                evaluate_retval\n                ;;\n\n        stop)\n                echo "Stopping PostgreSQL daemon..."\n                /usr/bin/pg_ctl stop -m smart -D /var/pgsql/data\n\t\tevaluate_retval\n                ;;\n\n        restart)\n                $0 stop\n                sleep 1\n                $0 start\n                ;;\n\n        status)\n                /usr/bin/pg_ctl status -D /var/pgsql/data\n                ;;\n\n        *)\n                echo "Usage: $0 {start|stop|restart|status}"\n                exit 1\n                ;;\nesac\n\n# End $rc_base/init.d/\nEOF\nchmod 755 /etc/rc.d/init.d/postgresql'
+  Cmd:u'# Config files\ncd /etc/rc.d/init.d &&\nln -sf ../init.d/postgresql ../rc0.d/K26postgresql &&\nln -sf ../init.d/postgresql ../rc1.d/K26postgresql &&\nln -sf ../init.d/postgresql ../rc2.d/K26postgresql &&\nln -sf ../init.d/postgresql ../rc3.d/S34postgresql &&\nln -sf ../init.d/postgresql ../rc4.d/S34postgresql &&\nln -sf ../init.d/postgresql ../rc5.d/S34postgresql &&\nln -sf ../init.d/postgresql ../rc6.d/K26postgresql'
+ Name:postlfs-editors-emacs
+  Ver:Emacs-21.3
+  Num:1
+ Arch:u'ftp://ftp.gnu.org/pub/gnu/emacs/emacs-21.3.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of Emacs\n./configure --prefix=/usr \\\n   --libexecdir=/usr/sbin &&\nmake bootstrap &&\nmake install'
+ Name:postlfs-editors-joe
+  Ver:JOE-2.9.8
+  Num:1
+ Arch:u'ftp://ftp.uni-koeln.de/editor/joe-2.9.8.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of JOE\n./configure --sysconfdir=/etc --prefix=/usr &&\nmake &&\nmake install'
+ Name:postlfs-editors-nano
+  Ver:nano-1.2.2
+  Num:1
+ Arch:u'ftp://ftp.uni-koeln.de/editor/nano-1.2.2.tar.gz'
+  Num:0
+  Num:0
+  Num:2
+  Cmd:u'# Installation of nano\n./configure --prefix=/usr --sysconfdir=/etc \\\n--enable-color --enable-multibuffer --enable-nanorc &&\nmake &&\nmake install &&\nmkdir -p /usr/share/doc/nano/examples &&\ncp nanorc.sample /usr/share/doc/nano/examples'
+  Cmd:u'# Config files\nset autoindent\nset const\nset fill 72\nset historylog\nset multibuffer\nset nohelp\nset regexp\nset smooth\nset suspend'
+ Name:postlfs-editors-vim
+  Ver:Vim-6.2
+  Num:1
+ Arch:u'ftp://ftp.vim.org/pub/vim/unix/vim-6.2.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'xfree86'
+  Num:1
+  Cmd:u'# Installation of Vim\necho \'#define SYS_VIMRC_FILE "/etc/vimrc"\' >> src/feature.h &&\necho \'#define SYS_GVIMRC_FILE "/etc/gvimrc"\' >> src/feature.h &&\n./configure --prefix=/usr \\\n   --with-features=huge &&\nmake &&\nmake install'
+ Name:postlfs-security-iptables
+  Ver:iptables-1.2.8
+  Num:1
+ Arch:u'ftp://ftp.netfilter.org/pub/iptables/iptables-1.2.8.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of iptables\nmake PREFIX=/usr &&\nmake PREFIX=/usr install'
+ Name:ppp
+  Ver:PPP-2.4.1
+  Num:1
+ Arch:u'ftp://cs.anu.edu.au/pub/software/ppp/ppp-2.4.1.tar.gz'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/ppp-2.4.1-pppoe-5.patch'
+  Num:0
+  Num:2
+  Cmd:u'# Installation of PPP\npatch -Np1 -i ../ppp-2.4.1-pppoe-5.patch'
+  Cmd:u'# Installation of PPP\n./configure &&\nmake &&\nmake install'
+ Name:pppoe
+  Ver:RP-PPPoE-3.5
+  Num:1
+ Arch:u'ftp://ftp.rutgers.edu/pub/slackware/slackware_source/n/rp-pppoe/rp-pppoe-3.5.tar.gz'
+  Num:0
+  Num:1
+  Dep:u'ppp'
+  Num:3
+  Cmd:u'# Installation of RP-PPPoE\ncd src &&\n./configure &&\nmake &&\nmake install'
+  Cmd:u'# Configuration Information\ncat > /etc/rc.d/init.d/adsl << "EOF"\n#!/bin/bash\n# Begin $rc_base/init.d/adsl\n\n# Based on sysklogd script from LFS-3.1 and earlier.\n# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org\n# adsl script written by DJ Lucas  - dj@lucasit.com\n\nsource /etc/sysconfig/rc\nsource $rc_functions\n\ncase "$1" in\n        start)\n                echo "Bringing up the ADSL interface..."\n                /usr/sbin/adsl-start\n                evaluate_retval\n                ;;\n\n        stop)\n                echo "Bringing down the ADSL interface..."\n                /usr/sbin/adsl-stop\n                evaluate_retval\n                ;;\n\n        restart)\n                $0 stop\n                sleep 1\n                $0 start\n                ;;\n\n        status)\n                /usr/sbin/adsl-status\n                ;;\n\n        *)\n                echo "Usage: $0 {start|stop|restart|status}"\n                exit 1\n                ;;\nesac\n\n# End $rc_base/init.d/adsl\nEOF\nchmod 755 /etc/rc.d/init.d/adsl'
+  Cmd:u'# Configuration Information\nln -sf ../init.d/adsl /etc/rc.d/rc0.d/K49adsl &&\nln -sf ../init.d/adsl /etc/rc.d/rc1.d/K49adsl &&\nln -sf ../init.d/adsl /etc/rc.d/rc2.d/K49adsl &&\nln -sf ../init.d/adsl /etc/rc.d/rc3.d/S24adsl &&\nln -sf ../init.d/adsl /etc/rc.d/rc4.d/S24adsl &&\nln -sf ../init.d/adsl /etc/rc.d/rc5.d/S24adsl &&\nln -sf ../init.d/adsl /etc/rc.d/rc6.d/K49adsl'
+ Name:procmail
+  Ver:Procmail-3.22
+  Num:1
+ Arch:u'ftp://ftp.procmail.net/pub/procmail/procmail-3.22.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of Procmail\nmake BASENAME=/usr install &&\nmake install-suid'
+ Name:proftpd
+  Ver:ProFTPD-1.2.8p
+  Num:1
+ Arch:u'ftp://ftp.proftpd.org/distrib/source/proftpd-1.2.8p.tar.bz2'
+  Num:0
+  Num:0
+  Num:5
+  Cmd:u'# Installation of ProFTPD\ngroupadd proftpd &&\nuseradd -c proftpd -d /home/ftp -g proftpd -s /bin/false proftpd\n'
+  Cmd:u'# Installation of ProFTPD\ninstall_user=proftpd install_group=proftpd \\\n   ./configure --prefix=/usr --sysconfdir=/etc \\\n   --localstatedir=/var &&\nmake &&\nmake install '
+  Cmd:u'# Config files\ncat > /etc/proftpd.conf << "EOF"\n# This is a basic ProFTPD configuration file\n# It establishes a single server and a single anonymous login.\n\nServerName\t\t\t"ProFTPD Default Installation"\nServerType\t\t\tstandalone\nDefaultServer\t\t\ton\n\n# Port 21 is the standard FTP port.\nPort\t\t\t\t21\n# Umask 022 is a good standard umask to prevent new dirs and files\n# from being group and world writable.\nUmask\t\t\t\t022\n\n# To prevent DoS attacks, set the maximum number of child processes\n# to 30.  If you need to allow more than 30 concurrent connections\n# at once, simply increase this value.  Note that this ONLY works\n# in standalone mode, in inetd mode you should use an inetd server\n# that allows you to limit maximum number of processes per service\n# (such as xinetd)\nMaxInstances\t\t\t30\n\n# Set the user and group that the server normally runs at.\nUser\t\t\t\tproftpd\nGroup\t\t\t\tproftpd\n\n# Normally, we want files to be overwritable.\n<Directory /*>\n  AllowOverwrite\t\ton\n</Directory>\n\n# A basic anonymous configuration, no upload directories.\n<Anonymous ~proftpd>\n  User\t\t\t\tproftpd\n  Group\t\t\t\tproftpd\n  # We want clients to be able to login with "anonymous" as well as "proftpd"\n  UserAlias\t\t\tanonymous proftpd\n\n  # Limit the maximum number of anonymous logins\n  MaxClients\t\t\t10\n\n  # We want \'welcome.msg\' displayed at login, and \'.message\' displayed\n  # in each newly chdired directory.\n  DisplayLogin\t\t\twelcome.msg\n  DisplayFirstChdir\t\t.message\n\n  # Limit WRITE everywhere in the anonymous chroot\n  <Limit WRITE>\n    DenyAll\n  </Limit>\n</Anonymous>\nEOF'
+  Cmd:u'# proftpd init.d script\ncat > /etc/rc.d/init.d/proftpd << "EOF"\n#!/bin/sh\n# Begin $rc_base/init.d/proftpd\n\n# Based on sysklogd script from LFS-3.1 and earlier.\n# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org\n\nsource /etc/sysconfig/rc\nsource $rc_functions\n\ncase "$1" in\n        start)\n\t        echo "Starting FTP Server..."\n\t        loadproc /usr/sbin/proftpd\n\t        ;;\n\n\tstop)\n\t        echo "Stopping FTP Server..."\n\t        killproc /usr/sbin/proftpd\n\t        ;;\n\n\treload)\n\t        echo "Reloading FTP Server..."\n\t        reloadproc /usr/sbin/proftpd\n\t        ;;\n\t     \n\trestart)\n\t        $0 stop\n\t        sleep 1\n\t        $0 start\n\t        ;;\n\n\tstatus)\n\t        statusproc /usr/sbin/proftpd\n\t        ;;\n\n\t*)\n\t        echo "Usage: $0 {start|stop|reload|restart|status}"\n\t        exit 1\n\t        ;;\nesac\n\n# End $rc_base/init.d/proftpd\nEOF\nchmod 755 /etc/rc.d/init.d/proftpd'
+  Cmd:u'# proftpd init.d script\ncd /etc/rc.d/init.d &&\nln -sf ../init.d/proftpd ../rc0.d/K50proftpd &&\nln -sf ../init.d/proftpd ../rc1.d/K50proftpd &&\nln -sf ../init.d/proftpd ../rc2.d/K50proftpd &&\nln -sf ../init.d/proftpd ../rc3.d/S50proftpd &&\nln -sf ../init.d/proftpd ../rc4.d/S50proftpd &&\nln -sf ../init.d/proftpd ../rc5.d/S50proftpd &&\nln -sf ../init.d/proftpd ../rc6.d/K50proftpd'
+ Name:pst-typesetting-tex
+  Ver:TeX-2.0.2
+  Num:1
+ Arch:u'ftp://sunsite.informatik.rwth-aachen.de/pub/comp/tex/teTeX/2.0/distrib/tetex-texmfsrc-2.0.2.tar.gz'
+  Num:0
+  Num:0
+  Num:3
+  Cmd:u'# Installation of TeX\nmkdir -p /usr/share/texmf &&\ntar zxvf tetex-src-2.0.2.tar.gz &&\ncd tetex-src-2.0.2 &&\ngzip -dc ../tetex-texmf-2.0.2.tar.gz \\\n      | (umask 0; cd /usr/share/texmf; tar xvf -)'
+  Cmd:u'# Installation of TeX\ngzip -dc ../tetex-texmfsrc-2.0.2.tar.gz \\\n      | (umask 0; cd /usr/share/texmf; tar xvf -)'
+  Cmd:u'# Installation of TeX\n./configure --with-x=no --prefix=/usr \\\n    --without-texinfo   --with-system-ncurses --with-system-zlib \\\n    --exec-prefix=/usr --bindir=/usr/bin &&\nmake world &&\ntexconfig dvips paper letter &&\ntexconfig font rw'
+ Name:psutils
+  Ver:PSUtils-p17
+  Num:1
+ Arch:u'ftp://ftp.knackered.org/pub/psutils/psutils-p17.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u"# Installation of PSUtils\ncat Makefile.unix | sed -e 's/\\/usr\\/local/\\/usr/g' > Makefile &&\nmake &&\nmake install"
+ Name:qmail
+  Ver:qmail-1.03
+  Num:1
+ Arch:u'ftp://ftp.comimpex.cz/LINUX/System/qmail-1.03.tar.gz'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/qmail-1.03-errno.patch'
+  Num:0
+  Num:7
+  Cmd:u'# Installation of qmail\nmkdir /var/qmail &&\ngroupadd nofiles &&\nuseradd -g nofiles -d /var/qmail/alias alias &&\nuseradd -g nofiles -d /var/qmail qmaild &&\nuseradd -g nofiles -d /var/qmail qmaill &&\nuseradd -g nofiles -d /var/qmail qmailp &&\ngroupadd qmail &&\nuseradd -g qmail -d /var/qmail qmailq &&\nuseradd -g qmail -d /var/qmail qmailr &&\nuseradd -g qmail -d /var/qmail qmails'
+  Cmd:u'# Installation of qmail\npatch -Np1 -i ../qmail-1.03-errno.patch &&\nmake setup check &&\n./config-fast `hostname` &&\ncd /var/qmail &&\ntouch .qmail-postmaster .qmail-mailer-daemon .qmail-root &&\nchmod 644 .qmail-* &&\nln -s /var/qmail/bin/sendmail /usr/sbin/sendmail &&\nmv /var/qmail/boot/home /var/qmail/rc &&\nfor mandir in 1 5 7 8; do mv /var/qmail/man/man$mandir/* \\\n    /usr/man/man$mandir; done &&\nrm -rf /var/qmail/man'
+  Cmd:u'# Configuration Information\necho "smtp stream tcp nowait qmaild /var/qmail/bin/tcp-env \\\ntcp-env /var/qmail/bin/qmail-smtpd" >> /etc/inetd.conf'
+  Cmd:u'# Configuration Information\ncat >> /etc/xinetd.conf << "EOF"\nservice smtp\n{\n    disable = no\n    id                      = smtp-local\n    socket_type             = stream\n    protocol                = tcp\n    wait                    = no\n    user                    = qmaild\n    server                  = /var/qmail/bin/tcp-env\n    server_args             = /var/qmail/bin/qmail-smtpd\n    env                     = RELAYCLIENT=\n    only_from               = 127.0.0.1\n    log_on_failure         += USERID\n}\nEOF'
+  Cmd:u'# Configuration Information\ncat > /etc/rc.d/init.d/qmail << "EOF"\n#!/bin/sh\n# Begin $rc_base/init.d/qmail\n\n# Based on sysklogd script from LFS-3.1 and earlier.\n# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org\n\nsource /etc/sysconfig/rc\nsource $rc_functions\n\ncase "$1" in\n\n        start)\n        echo "Starting Qmail..."\n\t/var/qmail/rc &\n        ;;\n\n        stop)\n        echo "Stopping Qmail..."\n        killall qmail-send\n        ;;\n\t\t\n        restart)\n        $0 stop\n        sleep 1\n        $0 start\n        ;;\n\n        *)\n        echo "Usage: $0 {start|stop|restart}"\n        exit 1\n        ;;\nesac\n\n# End $rc_base/init.d/qmail\nEOF\nchmod 755 /etc/rc.d/init.d/qmail'
+  Cmd:u'# Configuration Information\ncd /etc/rc.d/init.d &&\nln -sf ../init.d/qmail ../rc0.d/K25qmail &&\nln -sf ../init.d/qmail ../rc1.d/K25qmail &&\nln -sf ../init.d/qmail ../rc2.d/K25qmail &&\nln -sf ../init.d/qmail ../rc3.d/S35qmail &&\nln -sf ../init.d/qmail ../rc4.d/S35qmail &&\nln -sf ../init.d/qmail ../rc5.d/S35qmail &&\nln -sf ../init.d/qmail ../rc6.d/K25qmail'
+  Cmd:u'# Configuring mailers to work with qmail\nMAIL=$HOME/Mailbox; export MAIL\n'
+ Name:qpopper
+  Ver:Qpopper-4.0.5
+  Num:1
+ Arch:u'ftp://ftp.qualcomm.com/eudora/servers/unix/popper/qpopper4.0.5.tar.gz'
+  Num:0
+  Num:4
+  Dep:u'sendmail'
+  Dep:u'postfix'
+  Dep:u'qmail'
+  Dep:'or'
+  Num:3
+  Cmd:u'# Installation of Qpopper\n./configure --prefix=/usr &&\nmake &&\nmake install'
+  Cmd:u'# Configuration Information\necho "pop stream tcp nowait root /usr/sbin/popper popper" >> \\\n/etc/inetd.conf &&\necho "pop 110/tcp" >> /etc/services &&\nkillall inetd || inetd &&\necho "local0.notice;local0.debug        /var/log/POP.log" >> \\\n/etc/syslog.conf &&\nkillall -HUP  syslogd'
+  Cmd:u'# Configuration Information\ncat >> /etc/xinetd.conf << "EOF"\n     service pop\n     {\n          port        = 110\n          socket_type = stream\n          protocol    = tcp\n          wait        = no\n          user        = root\n          passenv     = PATH\n          server      = /usr/sbin/popper\n         server_args = popper\n     }\nEOF'
+ Name:qt
+  Ver:Qt-3.2.1
+  Num:1
+ Arch:u'ftp://ftp.trolltech.com/qt/source/qt-x11-free-3.2.1.tar.bz2'
+  Num:0
+  Num:3
+  Dep:u'xfree86'
+  Dep:u'libjpeg'
+  Dep:u'libmng'
+  Num:3
+  Cmd:u'# Installation of Qt\nbash\nexport QTDIR=$PWD &&\nexport LD_LIBRARY_PATH=$QTDIR/lib &&\nexport PATH=$QTDIR/bin:$PATH &&\n\n./configure -prefix /opt/qt-3.2.1 -qt-gif -system-libpng \\\n   -system-libmng -system-zlib -system-libjpeg -no-g++-exceptions \\\n   -thread &&\n\nmake &&\nmake install &&\n\nln -sfn /opt/qt-3.2.1 /opt/qt &&\nln -s /opt/qt/lib/libqt-mt.so /opt/qt/lib/libqt.so &&\ncp -r doc/man /opt/qt/doc &&\ncp -r examples /opt/qt/doc\n\nexit\n'
+  Cmd:u'# Configuration Information\ncat >> /etc/ld.so.conf << "EOF"\n# Begin qt addition to /etc/ld.so.conf\n\n/opt/qt/lib\n\n# End qt addition\nEOF\nldconfig'
+  Cmd:u'# Configuration Information\ncat >> /etc/man.conf << "EOF"\n# Begin qt addition to man.conf\n\nMANPATH /opt/qt/doc/man\n\n# End qt addition to man.conf\nEOF'
+ Name:readline
+  Ver:readline-4.3
+  Num:1
+ Arch:u'ftp://ftp.gnu.org/gnu/readline/readline-4.3.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of readline\n./configure --prefix=/usr &&\nmake SHLIB_LIBS=-lcurses &&\nmake install'
+ Name:reiserfs
+  Ver:ReiserFS-3.6.11
+  Num:1
+ Arch:u'ftp://ftp.namesys.com/pub/reiserfsprogs/reiserfsprogs-3.6.11.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of ReiserFS\n./configure --prefix=/usr --sbindir=/sbin &&\nmake &&\nmake install &&\nln -sf reiserfsck /sbin/fsck.reiserfs &&\nln -sf mkreiserfs /sbin/mkfs.reiserfs'
+ Name:rep-gtk
+  Ver:rep-gtk-0.18
+  Num:1
+ Arch:u'http://telia.dl.sourceforge.net/sourceforge/rep-gtk/rep-gtk-0.18.tar.gz'
+  Num:0
+  Num:3
+  Dep:u'GTK2'
+  Dep:u'libglade'
+  Dep:u'librep'
+  Num:1
+  Cmd:u'# Installation of rep-gtk\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:rsync
+  Ver:rsync-2.5.6
+  Num:1
+ Arch:u'ftp://ftp2.nchu.edu.tw/UNIX/FTP/rsync/rsync-2.5.6.tar.gz'
+  Num:0
+  Num:0
+  Num:5
+  Cmd:u'# Installation of rsync\ngroupadd rsyncd &&\nuseradd -c rsyncd -d /home/rsync -g rsyncd -s /bin/false rsyncd\n'
+  Cmd:u'# Installation of rsync\n./configure --prefix=/usr &&\nmake &&\nmake install '
+  Cmd:u'# Config files\ncat > /etc/rsyncd.conf << "EOF"\n# This is a basic rsync configuration file\n# It exports a single module without user authentication.\n\nmotd file = /home/rsync/welcome.msg\nuse chroot = yes\n\n[localhost]\n\tpath = /home/rsync\n\tcomment = Default rsync module\n\tread only = yes\n\tlist = yes\n\tuid = rsyncd\n\tgid = rsyncd\n\nEOF'
+  Cmd:u'# rsyncd init.d script\ncat > /etc/rc.d/init.d/rsyncd << "EOF"\n#!/bin/sh\n# Begin $rc_base/init.d/rsyncd\n\n# Based on sysklogd script from LFS-3.1 and earlier.\n# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org\n\nsource /etc/sysconfig/rc\nsource $rc_functions\n\ncase "$1" in\n\tstart)\n\t\techo "Starting RSYNC Server..."\n\t\tloadproc /usr/bin/rsync --daemon --compress\n\t\t;;\n\n\tstop)\n\t\techo "Stopping RSYNC Server..."\n\t\tkillproc /usr/bin/rsync\n\t\t;;\n\n\treload)\n\t\techo "Reloading RSYNC Server..."\n\t\treloadproc /usr/bin/rsync\n\t\t;;\n            \n\trestart)\n\t\t$0 stop\n\t\tsleep 1\n\t\t$0 start\n\t\t;;\n\n\tstatus)\n\t\tstatusproc /usr/bin/rsync\n\t\t;;\n\n\t*)\n\t\techo "Usage: $0 {start|stop|reload|restart|status}"\n\t\texit 1\n\t\t;;\nesac\n\n# End $rc_base/init.d/rsyncd\nEOF\nchmod 755 /etc/rc.d/init.d/rsyncd'
+  Cmd:u'# rsyncd init.d script\ncd /etc/rc.d/init.d &&\nln -sf ../init.d/rsyncd ../rc0.d/K30rsyncd &&\nln -sf ../init.d/rsyncd ../rc1.d/K30rsyncd &&\nln -sf ../init.d/rsyncd ../rc2.d/K30rsyncd &&\nln -sf ../init.d/rsyncd ../rc3.d/S30rsyncd &&\nln -sf ../init.d/rsyncd ../rc4.d/S30rsyncd &&\nln -sf ../init.d/rsyncd ../rc5.d/S30rsyncd &&\nln -sf ../init.d/rsyncd ../rc6.d/K30rsyncd'
+ Name:ruby
+  Ver:Ruby-1.8.0
+  Num:1
+ Arch:u'ftp://ftp.ruby-lang.org/pub/ruby/1.8/ruby-1.8.0.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of Ruby\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:samba
+  Ver:Samba-2.2.8a
+  Num:1
+ Arch:u'http://us1.samba.org/samba/ftp/old-versions/samba-2.2.8a.tar.bz2'
+  Num:0
+  Num:0
+  Num:16
+  Cmd:u'# Installation of Samba\ncd source &&\nmkdir -p /etc/samba/private &&\nmkdir -p /var/cache/samba &&\n./configure \\\n   --prefix=/usr \\\n   --sysconfdir=/etc \\\n   --localstatedir=/var \\\n   --with-piddir=/var/run \\\n   --with-fhs \\\n   --with-smbmount &&\nmake &&\nmake install &&\n\nrm -rf /usr/private &&\necho "swat 901/tcp" >> /etc/services &&\necho "swat stream tcp nowait.400 root /usr/sbin/swat swat" >> \\\n   /etc/inetd.conf'
+  Cmd:u'# Configuring Samba\nfile:///usr/share/samba/swat/using_samba/ch03_01.html#ch03-55770.'
+  Cmd:u'# Config files\nmkdir /var/lib/samba &&\nmkdir /var/lib/samba/netlogon &&\nmkdir /var/lib/samba/ntprofile &&\nmkdir /var/lib/samba/profiles &&\nchmod -R 1777 /var/lib/samba'
+  Cmd:u'# Config files\ncat > /etc/samba/smb.conf << "EOF"\n[global]\n    netbios name = SAMBABOX\n    workgroup = DOMAIN01\n    os level = 64\n    preferred master = yes\n    domain master = yes\n    local master = yes\n    security = user\n    encrypt passwords = yes\n    domain logons = yes\n    log file = /var/log/log.%m\n    log level = 1\n    logon path = \\\\%N\\home\\%u\\windows\n    logon drive = H:\n    logon home = \\\\homeserver\\%u\\windows\n    logon script = logon.cmd\n[netlogon]\n      path = /var/lib/samba/netlogon\n      read only = yes\n      write list = ntadmin\n[profiles]\n      path = /var/lib/samba/ntprofile\n      read only = no\n      create mask = 0600\n      directory mask = 0700\n; World writable share for testing\n[tmp]\ncomment = Temporary file space\n        path = /tmp\n        read only = no\n        public = yes\n[home]\ncomment = Users\' home directories\n        path = /home\n        read only = no\n        public = no\nEOF'
+  Cmd:u'# Config files\n/usr/sbin/useradd -g 100 -d /dev/null -c \\\n    "machine nickname" -s /bin/false win2kbox$ &&\npasswd -l win2kbox$ &&\nsmbpasswd -a -m win2kbox'
+  Cmd:u'# Config files\ncat > /etc/rc.d/init.d/samba << "EOF"\n#!/bin/bash\n# Begin $rc_base/init.d/samba\n# Based on sysklogd script from LFS-3.1 and earlier.\n# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org\nsource /etc/sysconfig/rc\nsource $rc_functions\ncase "$1" in\n\tstart)\n\t\techo "Starting nmbd..."\n\t\tloadproc /usr/sbin/nmbd -D\n\t\techo "Starting smbd..."\n\t\tloadproc /usr/sbin/smbd -D\n\t\t;;\n\tstop)\n\t\techo "Stopping smbd..."\n\t\tkillproc /usr/sbin/smbd\n\t\techo "Stopping nmbd..."\n\t\tkillproc /usr/sbin/nmbd\n\t\t;;\n\treload)\n\t\techo "Reloading smbd..."\n\t\treloadproc /usr/sbin/smbd\n\t\techo "Reloading nmbd..."\n\t\treloadproc /usr/sbin/nmbd\n\t\t;;\n\trestart)\n\t\t$0 stop\n\t\tsleep 1\n\t\t$0 start\n\t\t;;\n\tstatus)\n\t\tstatusproc /usr/sbin/nmbd\n\t\tstatusproc /usr/sbin/smbd\n\t\t;;\n\t*)\n\t\techo "Usage: $0 {start|stop|reload|restart|status}"\n\t\texit 1\n\t\t;;\nesac\n# End $rc_base/init.d/samba\nEOF'
+  Cmd:u'# Config files\nchmod 754 /etc/rc.d/init.d/samba &&\nln -s  /etc/rc.d/init.d/samba /etc/rc.d/rc0.d/K48samba &&\nln -s  /etc/rc.d/init.d/samba /etc/rc.d/rc1.d/K48samba &&\nln -s  /etc/rc.d/init.d/samba /etc/rc.d/rc2.d/K48samba &&\nln -s  /etc/rc.d/init.d/samba /etc/rc.d/rc3.d/S24samba &&\nln -s  /etc/rc.d/init.d/samba /etc/rc.d/rc4.d/S24samba &&\nln -s  /etc/rc.d/init.d/samba /etc/rc.d/rc5.d/S24samba &&\nln -s  /etc/rc.d/init.d/samba /etc/rc.d/rc6.d/K48samba'
+  Cmd:u'# Config files\n/etc/rc.d/init.d/samba start'
+  Cmd:u'# Config files\nsmbpasswd -a root'
+  Cmd:u"# Config files\n1.  Right click on My Computer.\n2.  Click on Properties.\n3.  Click on the Network Identification notebook tab.\n4.  Click on the Properties button.\n5.  In the Computer Name: edit field enter WIN2KBOX.\n6.  Click on the Domain: radio button and enter DOMAIN01 in the edit\n    field and click OK.\n7.  When presented with the Domain Username And Password dialog box,\n    enter root and root's password on SAMBABOX and click OK.\n8.  After the machine trust is negotiated, click the OK button in the\n    dialog box welcoming you to the DOMAIN01 domain.\n9.  Click OK in the reboot reminder dialog box.\n10. Click OK to close the System Properties window.\n11. Click Yes to reboot WIN2KBOX."
+  Cmd:u'# Add a new user to the DOMAIN01 domain.\nuseradd -m win2kuser01 &&\npasswd win2kuser01 &&\nsmbpasswd -a win2kuser01'
+  Cmd:u'# Logging on to DOMAIN01.\n1. Press Ctrl-Alt-Del to bring up the Log On to Windows dialog box.\n2. Enter the win2kuser01 name and password.\n3. Select DOMAIN01 from the Log on to: combination box and click OK.'
+  Cmd:u'# Logging on to DOMAIN01.\necho "swat            901/tcp" >> /etc/services'
+  Cmd:u'# Logging on to DOMAIN01.\necho "swat stream tcp nowait.400 root /usr/sbin/swat swat" \\\n    >> /etc/inetd.conf'
+  Cmd:u'# Logging on to DOMAIN01.\ncat >> /etc/xinetd.conf << "EOF"\nservice swat\n{\n    port            = 901\n    socket_type     = stream\n    wait            = no\n    only_from       = 127.0.0.1\n    user            = root\n    server          = /usr/sbin/swat\n    log_on_failure  += USERID\n}\nEOF'
+  Cmd:u'# Logging on to DOMAIN01.\nlynx http://localhost:901'
+ Name:sane
+  Ver:SANE-1.0.12
+  Num:2
+ Arch:u'ftp://ftp.mostang.com/pub/sane/sane-frontends-1.0.11/sane-frontends-1.0.11.tar.gz'
+ Arch:'ftp://ftp.mostang.com/pub/sane/sane-backends-1.0.12/sane-backends-1.0.12.tar.gz'
+  Num:0
+  Num:0
+  Num:2
+  Cmd:u'# Installation of SANE backends\n./configure --prefix=/usr --sysconfdir=/etc &&\nmake &&\nmake install'
+  Cmd:u'# Installation of SANE front ends\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:sawfish
+  Ver:sawfish-1.3
+  Num:1
+ Arch:u'ftp://sunsite.ccu.edu.tw/pub10/sourceforge/s/sawmill/sawfish-1.3.tar.gz'
+  Num:0
+  Num:5
+  Dep:u'xfree86'
+  Dep:u'librep'
+  Dep:u'rep-gtk'
+  Dep:u'esound'
+  Dep:u'GTK2'
+  Num:2
+  Cmd:u'# Installation of sawfish\n./configure --prefix=/usr --libexec=/usr/sbin --infodir=/usr/share/info \\\n  --with-gnome-prefix=/opt/gnome-2.2 &&\nmake &&\nmake install'
+  Cmd:u'# Configuration Information\ncat >> ~/.xinitrc << "EOF"\nexec sawfish\nEOF'
+ Name:scrollkeeper
+  Ver:ScrollKeeper-0.3.12
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/scrollkeeper/0.3/scrollkeeper-0.3.12.tar.bz2'
+  Num:0
+  Num:4
+  Dep:u'libxml2'
+  Dep:u'libxslt'
+  Dep:u'intltool'
+  Dep:u'DocBook'
+  Num:1
+  Cmd:u'# Installation of ScrollKeeper\n./configure --prefix=/usr --sysconfdir=/etc \\\n--localstatedir=/var --disable-static \\\n--with-omfdirs=/usr/share/omf:/opt/gnome/share/omf:\\\n/opt/kde/share/omf:/opt/gnome-2.2/share/omf &&\nmake &&\nmake install'
+ Name:sendmail
+  Ver:Sendmail-8.12.10
+  Num:1
+ Arch:u'ftp://ftp.sendmail.org/pub/sendmail/sendmail.8.12.10.tar.gz'
+  Num:0
+  Num:2
+  Dep:u'db'
+  Dep:u'procmail'
+  Num:5
+  Cmd:u'# Installation of Sendmail\ngroupadd smmsp &&\ngroupadd mail &&\nuseradd -g smmsp -G mail smmsp &&\nchmod 1777 /tmp &&\nchmod 1777 /var/mail &&\nmkdir /var/spool/mqueue'
+  Cmd:u'# Installation of Sendmail\ncat > devtools/Site/site.config.m4 << "EOF"\ndefine(`confMANGRP\',`root\')\ndefine(`confMANOWN\',`root\')\ndefine(`confSBINGRP\',`root\')\ndefine(`confUBINGRP\',`root\')\ndefine(`confUBINOWN\',`root\')\nEOF\ncd sendmail &&\nsh Build &&\ncd ../cf/cf &&\ncp generic-linux.mc sendmail.mc &&\nmkdir /etc/mail &&\nsh Build sendmail.mc &&\nsh Build install-cf &&\ncd ../../ &&\nsh Build install'
+  Cmd:u'# Configuration Information\necho `hostname` > /etc/mail/local-host-names\ncat > /etc/mail/aliases << "EOF"\npostmaster: root\nMAILER-DAEMON: root\nEOF\ncd /etc/mail &&\ncp -R  /usr/src/sendmail-8.12.10/cf/* . &&\ncp -R  /usr/src/sendmail-8.12.10/cf/cf/submit.mc . &&\ncp -R  /usr/src/sendmail-8.12.10/cf/cf/sendmail.mc . &&\nnewaliases -v'
+  Cmd:u'# Configuration Information\ncat > /etc/rc.d/init.d/sendmail << "EOF"\n#!/bin/sh\n# Begin $rc_base/init.d/sendmail\n\n# Based on sysklogd script from LFS-3.1 and earlier.\n# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org\n\nsource /etc/sysconfig/rc\nsource $rc_functions\n\ncase "$1" in\n\n        start)\n        echo "Starting sendmail..."\n        loadproc /usr/sbin/sendmail -bs -bd -q5m start\n        ;;\n\n        stop)\n        echo "Stopping Sendmail..."\n        killproc sendmail\n        ;;\n\t\t\n\tstatus)\n\tstatusproc sendmail\n\t;;\n\t\n        restart)\n        $0 stop\n        sleep 1\n        $0 start\n        ;;\n\n        *)\n        echo "Usage: $0 {start|stop|status|restart}"\n        exit 1\n        ;;\nesac\n\n# End $rc_base/init.d/sendmail\nEOF\nchmod 755 /etc/rc.d/init.d/sendmail'
+  Cmd:u'# Configuration Information\ncd /etc/rc.d/init.d &&\nln -sf ../init.d/sendmail ../rc0.d/K25sendmail &&\nln -sf ../init.d/sendmail ../rc1.d/K25sendmail &&\nln -sf ../init.d/sendmail ../rc2.d/K25sendmail &&\nln -sf ../init.d/sendmail ../rc3.d/S35sendmail &&\nln -sf ../init.d/sendmail ../rc4.d/S35sendmail &&\nln -sf ../init.d/sendmail ../rc5.d/S35sendmail &&\nln -sf ../init.d/sendmail ../rc6.d/K25sendmail'
+ Name:sgml-common
+  Ver:SGML Common-0.6.3
+  Num:1
+ Arch:u'ftp://sources.redhat.com/pub/docbook-tools/new-trials/SOURCES/sgml-common-0.6.3.tgz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of SGML Common\n./configure --prefix=/usr --sysconfdir=/etc --mandir=/usr/share/man &&\nmake &&\nmake install &&\ninstall-catalog --add /etc/sgml/sgml-ent.cat \\\n/usr/share/sgml/sgml-iso-entities-8879.1986/catalog &&\ninstall-catalog --add /etc/sgml/sgml-docbook.cat \\\n/etc/sgml/sgml-ent.cat'
+ Name:sgml-dtd
+  Ver:DocBook SGML DTD-4.2
+  Num:1
+ Arch:u'ftp://ftp.ibiblio.org/pub/Linux/distributions/rootlinux/ports/x/docbook/docbook-4.2.zip'
+  Num:0
+  Num:2
+  Dep:u'unzip'
+  Dep:u'sgml-common'
+  Num:2
+  Cmd:u"# Installation of DocBook SGML DTD\ncp docbook.cat docbook.cat.orig &&\nsed -e '/ISO 8879/d' docbook.cat.orig > docbook.cat &&\ncp docbook.cat docbook.cat.orig &&\nsed -e '/gml/d' docbook.cat.orig > docbook.cat &&\ninstall -d /usr/share/sgml/docbook/sgml-dtd-4.2 &&\nchown -R root:root . &&\nchmod -R 755 . &&\ninstall docbook.cat /usr/share/sgml/docbook/sgml-dtd-4.2/catalog &&\ncp -af *.dtd *.mod *.dcl /usr/share/sgml/docbook/sgml-dtd-4.2 &&\ninstall-catalog --add /etc/sgml/sgml-docbook-dtd-4.2.cat \\\n/usr/share/sgml/docbook/sgml-dtd-4.2/catalog &&\ninstall-catalog --add /etc/sgml/sgml-docbook-dtd-4.2.cat \\\n/etc/sgml/sgml-docbook.cat"
+  Cmd:u'# Configuration Information\ncat >> /usr/share/sgml/docbook/sgml-dtd-4.2/catalog << "EOF"\n  -- Begin Single Major Version catalog changes --\n\nPUBLIC "-//OASIS//DTD DocBook V4.1//EN" "docbook.dtd"\nPUBLIC "-//OASIS//DTD DocBook V4.0//EN" "docbook.dtd"\n\n  -- End Single Major Version catalog changes --\nEOF'
+ Name:sgml-dtd-3
+  Ver:DocBook SGML DTD-3.1
+  Num:1
+ Arch:u'ftp://ftp.rutgers.edu/pub/kde/devel/docbook/SOURCES/docbk31.zip'
+  Num:0
+  Num:2
+  Dep:u'unzip'
+  Dep:u'sgml-common'
+  Num:2
+  Cmd:u'# Installation of DocBook SGML DTD\ncp docbook.cat docbook.cat.orig &&\nsed -e \'/ISO 8879/d\' docbook.cat.orig > docbook.cat &&\ncp docbook.cat docbook.cat.orig &&\nsed -e \'/gml/d\' docbook.cat.orig > docbook.cat &&\ncp docbook.cat docbook.cat.orig &&\nsed -e \'s|DTDDECL "-//OASIS//DTD DocBook V3.1//EN"|SGMLDECL|g\' \\\ndocbook.cat.orig > docbook.cat &&\ninstall -d /usr/share/sgml/docbook/sgml-dtd-3.1 &&\nchown -R root:root . &&\nchmod -R 755 . &&\ninstall docbook.cat /usr/share/sgml/docbook/sgml-dtd-3.1/catalog &&\ncp -af *.dtd *.mod *.dcl /usr/share/sgml/docbook/sgml-dtd-3.1 &&\ninstall-catalog --add /etc/sgml/sgml-docbook-dtd-3.1.cat \\\n/usr/share/sgml/docbook/sgml-dtd-3.1/catalog &&\ninstall-catalog --add /etc/sgml/sgml-docbook-dtd-3.1.cat \\\n/etc/sgml/sgml-docbook.cat'
+  Cmd:u'# Configuration Information\ncat >> /usr/share/sgml/docbook/sgml-dtd-3.1/catalog << "EOF"\n  -- Begin Single Major Version catalog changes --\n\nPUBLIC "-//Davenport//DTD DocBook V3.0//EN" "docbook.dtd"\n\n  -- End Single Major Version catalog changes --\nEOF'
+ Name:shadow
+  Ver:Shadow-4.0.3
+  Num:0
+  Num:1
+Patch:'http://www.linuxfromscratch.org/patches/blfs/5.0/shadow-4.0.3-pam-2.patch'
+  Num:1
+  Dep:'Linux_PAM'
+  Num:1
+  Cmd:'patch -Np1 -i ../shadow-4.0.3-parm-2.patch &&\n./configure --prefix-/usr --libdir=/usr/lib --enable-shared --with-libpam &&\nmake &&\nmake install &&\nln -sf vipw /usr/sbin/vigr &&\nrm /bin/vipw &&\nmv /bin/sg /usr/bin &&\nmv /usr/lib/lib{misc,shadow}.so.0* /lib &&\nln -sf ../../lib/libshadow.so.0 /usr/lib/libshadow.so &&\nln -sf ../../lib/libmisc.so.0 /usr/lib/libmisc.so &&\ncp debian/securetty /etc/securetty'
+ Name:slang
+  Ver:slang-1.4.9
+  Num:1
+ Arch:u'ftp://space.mit.edu/pub/davis/slang/v1.4/slang-1.4.9.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of slang\n./configure --prefix=/usr &&\nmake &&\nmake install &&\nmake elf &&\nmake install-elf &&\nmake install-links &&\nchmod 755 /usr/lib/libslang.so.1.4.9'
+ Name:slib
+  Ver:slib-2d6
+  Num:1
+ Arch:u'http://www.swiss.ai.mit.edu/ftpdir/scm/slib2d6.tar.gz'
+  Num:0
+  Num:1
+  Dep:u'guile'
+  Num:1
+  Cmd:u'# Installation of slib\ncp -R slib /usr/share/guile'
+ Name:slrn
+  Ver:slrn-0.9.7.4
+  Num:1
+ Arch:u'ftp://ftp.uni-koeln.de/news/slrn-0.9.7.4.tar.gz'
+  Num:0
+  Num:2
+  Dep:u'slang'
+  Dep:u'server-mail'
+  Num:2
+  Cmd:u'# Installation of slrn\n./configure --prefix=/usr --with-slrnpull &&\nmake LDFLAGS="-ldl" &&\nmake install'
+  Cmd:u'# Configuration Information\nNNTPSERVER=news.linuxfromscratch.org \\\n    slrn -f $HOME/.jnewsrc --create'
+ Name:soup
+  Ver:Soup-0.7.11
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/soup/0.7/soup-0.7.11.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of Soup\n./configure --prefix=/opt/gnome &&\nmake &&\nmake install'
+ Name:speex
+  Ver:Speex-1.0.1
+  Num:1
+ Arch:u'http://www.speex.org/download/speex-1.0.1.tar.gz'
+  Num:0
+  Num:1
+  Dep:u'libogg'
+  Num:1
+  Cmd:u'# Installation of Speex\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:startup-notification
+  Ver:startup-notification-0.5
+  Num:1
+ Arch:u'ftp://ftp.linux.org.uk/pub/linux/GNOME/sources/startup-notification/0.5/startup-notification-0.5.tar.gz'
+  Num:0
+  Num:1
+  Dep:u'xfree86'
+  Num:1
+  Cmd:u'# Installation of startup-notification\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:tcl
+  Ver:Tcl-8.4.4
+  Num:1
+ Arch:u'http://aleron.dl.sourceforge.net/sourceforge/tcl/tcl8.4.4-src.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of Tcl\nVERSION=8.4.4 &&\nV=`echo $VERSION | cut -d "." -f 1,2` &&\nDIR=$PWD &&\ncd unix &&\n./configure --prefix=/usr &&\nmake &&\nsed -i "s:${DIR}/unix:/usr/lib:" tclConfig.sh &&\nsed -i "s:${DIR}:/usr/include/tcl${V}:" tclConfig.sh &&\nsed -i "s,^TCL_LIB_FILE=\'libtcl${V}..TCL_DBGX..so\',TCL_LIB_FILE=\\"libtcl${V}\\$\\{TCL_DBGX\\}.so\\"," tclConfig.sh &&\nmake install &&\ninstall -d /usr/include/tcl${V}/unix &&\ninstall -m644 *.h /usr/include/tcl${V}/unix/ &&\ninstall -d /usr/include/tcl${V}/generic &&\ninstall -c -m644 ../generic/*.h /usr/include/tcl${V}/generic/ &&\nrm -f /usr/include/tcl${V}/generic/{tcl,tclDecls,tclPlatDecls}.h &&\nln -nsf /usr/include/tcl${V} /usr/lib/tcl${V}/include &&\nln -sf libtcl${V}.so /usr/lib/libtcl.so &&\nln -sf tclsh${V} /usr/bin/tclsh'
+ Name:tcpwrappers
+  Ver:tcpwrappers-7.6
+  Num:1
+ Arch:u'ftp://ftp.porcupine.org/pub/security/tcp_wrappers_7.6.tar.gz'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/tcp_wrappers-7.6-shared-lib-plus-plus.patch'
+  Num:0
+  Num:3
+  Cmd:u'# Installation of tcpwrappers\npatch -Np1 -i ../tcp_wrappers-7.6-shared-lib-plus-plus.patch &&\nmake REAL_DAEMON_DIR=/usr/sbin STYLE=-DPROCESS_OPTIONS linux &&\nmake install'
+  Cmd:u'# Config files\nfinger stream tcp nowait nobody /usr/sbin/in.fingerd in.fingerd'
+  Cmd:u'# Config files\nfinger stream tcp nowait nobody /usr/sbin/tcpd in.fingerd'
+ Name:tcsh
+  Ver:Tcsh-6.12.00
+  Num:1
+ Arch:u'ftp://ftp.funet.fi/pub/unix/shells/tcsh/tcsh-6.12.00.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of Tcsh\n./configure --prefix=/usr &&\nmake &&\nmake install &&\ncp tcsh.man /usr/share/man/man1/tcsh.1 &&\nln -s /usr/bin/tcsh /bin/csh'
+ Name:tk
+  Ver:Tk-8.4.4
+  Num:1
+ Arch:u'http://aleron.dl.sourceforge.net/sourceforge/tcl/tk8.4.4-src.tar.gz'
+  Num:0
+  Num:2
+  Dep:u'xfree86'
+  Dep:u'tcl'
+  Num:1
+  Cmd:u'# Installation of Tk\nVERSION=8.4.4 &&\nV=`echo $VERSION | cut -d "." -f 1,2` &&\nDIR=$PWD &&\ncd unix &&\n./configure --prefix=/usr &&\nmake &&\nsed -i "s:${DIR}/unix:/usr/lib:" tkConfig.sh &&\nsed -i "s:${DIR}:/usr/include/tk${V}:" tkConfig.sh &&\nmake install &&\ninstall -d /usr/include/tk${V}/unix &&\ninstall -m644 *.h /usr/include/tk${V}/unix/ &&\ninstall -d /usr/include/tk${V}/generic &&\ninstall -m644 ../generic/*.h /usr/include/tk${V}/generic/ &&\nrm -f /usr/include/tk${V}/generic/{tk,tkDecls,tkPlatDecls}.h &&\nln -nsf /usr/include/tk${V} /usr/lib/tk${V}/include &&\nln -sf libtk${V}.so /usr/lib/libtk.so &&\nln -sf wish${V} /usr/bin/wish'
+ Name:traceroute
+  Ver:Traceroute-1.4a12
+  Num:1
+ Arch:u'ftp://ftp.ee.lbl.gov/traceroute-1.4a12.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u"# Installation of Traceroute\nmv Makefile.in Makefile.in.bak &&\nsed 's/-o bin/-o root/' Makefile.in.bak > Makefile.in &&\n./configure --prefix=/usr &&\nmake &&\nmake install &&\nmake install-man"
+ Name:transcode
+  Ver:transcode-0.6.10
+  Num:1
+ Arch:u'http://zebra.fh-weingarten.de/~transcode/pre/transcode-0.6.10.tar.gz'
+  Num:0
+  Num:2
+  Dep:u'NASM'
+  Dep:u'lame'
+  Num:1
+  Cmd:u'# Installation of transcode\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:tripwire
+  Ver:Tripwire-2.3.1-2
+  Num:1
+ Arch:u'ftp://ftp.fu-berlin.de/unix/security/tripwire/tripwire-2.3.1-2.tar.gz'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/tripwire-2.3.1-2-gcc3-build-fixes.patch'
+  Num:0
+  Num:6
+  Cmd:u'# Installation of Tripwire\npatch -Np1 -i ../tripwire-2.3.1-2-gcc3-build-fixes.patch &&\ncd src &&\nmake release &&\ncd .. &&\ncp install/install.{sh,cfg} .'
+  Cmd:u'# Installation of Tripwire\n./install.sh &&\ncp /etc/tripwire/tw.cfg /usr/sbin &&\ncp policy/*.txt /usr/share/doc/tripwire'
+  Cmd:u'# Configuration Information\ntwadmin -m P /etc/tripwire/twpol.txt &&\ntripwire -m i'
+  Cmd:u'# Usage Information\ntripwire -m c > /etc/tripwire/report.txt\n'
+  Cmd:u'# Usage Information\ntripwire -m u -r /var/lib/tripwire/report/linux-???????-??????.twr '
+  Cmd:u'# Changing the Policy File\ntwadmin -m P /etc/tripwire/twpol.txt &&\ntripwire -m i'
+ Name:ucspi-tcp
+  Ver:ucspi-tcp
+  Num:1
+ Arch:u'http://cr.yp.to/ucspi-tcp/ucspi-tcp-0.88.tar.gz'
+  Num:1
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/ucspi-tcp-0.88-errno.patch'
+  Num:0
+  Num:1
+  Cmd:u"# Installation of ucspi-tcp\npatch -Np1 -i ../ucspi-tcp-0.88-errno.patch &&\nsed 's|/usr/local|/usr|' conf-home > conf-home~ &&\nmv conf-home~ conf-home &&\nsed 's/bin/sbin/' hier.c > hier.c~ &&\nmv hier.c~ hier.c &&\nmake &&\nmake setup check"
+ Name:udftools
+  Ver:UDFtools-1.0.0b2
+  Num:1
+ Arch:u'http://aleron.dl.sourceforge.net/sourceforge/linux-udf/udftools-1.0.0b2.tar.gz'
+  Num:2
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/linux-2.4.22-packet.patch'
+Patch:u'http://w1.894.telia.com/~u89404340/patches/packet/'
+  Num:0
+  Num:5
+  Cmd:u'# Installation of the kernel patch\npatch -Np1 -i ../linux-2.4.20-packet.patch'
+  Cmd:u'# Installation of the kernel patch\nmake CC=/opt/gcc-2.95.3/bin/gcc dep &&\nmake CC=/opt/gcc-2.95.3/bin/gcc bzImage &&\nmake CC=/opt/gcc-2.95.3/bin/gcc modules &&\nmake CC=/opt/gcc-2.95.3/bin/gcc modules_install'
+  Cmd:u'# Installation of the kernel patch\nalias block-major-97 pktcdvd'
+  Cmd:u'# Installation of the kernel patch\nmknod /dev/pktcdvd0 b 97 0\nmknod /dev/pktcdvd1 b 97 1'
+  Cmd:u'# Installation of UDFtools\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:unzip
+  Ver:UnZip-5.50
+  Num:1
+ Arch:u'ftp://ftp.info-zip.org/pub/infozip/src/unzip550.tar.gz'
+  Num:4
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/unzip-5.50-fix-Makefile.patch'
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/unzip-5.50-fix-libz.patch'
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/unzip-5.50-dotdot.patch'
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/unzip-5.50-dont-make-noise.patch'
+  Num:0
+  Num:1
+  Cmd:u'# Installation of UnZip\npatch -Np1 -i ../unzip-5.50-fix-Makefile.patch &&\npatch -Np1 -i ../unzip-5.50-fix-libz.patch &&\npatch -Np1 -i ../unzip-5.50-dont-make-noise.patch &&\npatch -Np1 -i ../unzip-5.50-dotdot.patch &&\ncp unix/Makefile . &&\nmake prefix=/usr linux &&\nmake prefix=/usr linux_shlibz &&\nmake prefix=/usr install &&\ncp -a libunzip.so* /usr/lib'
+ Name:vorbistools
+  Ver:Vorbis Tools-1.0
+  Num:1
+ Arch:u'ftp://ftp.yars.free.net/pub/software/unix/util/sound/ogg/vorbis-tools-1.0.tar.gz'
+  Num:0
+  Num:4
+  Dep:u'curl'
+  Dep:u'libao'
+  Dep:u'libogg'
+  Dep:u'libvorbis'
+  Num:1
+  Cmd:u'# Installation of Vorbis Tools\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:vte
+  Ver:VTE-0.10.29
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/vte/0.10/vte-0.10.29.tar.bz2'
+  Num:0
+  Num:2
+  Dep:u'Python'
+  Dep:u'GTK2'
+  Num:1
+  Cmd:u'# Installation of VTE\n./configure --prefix=/usr --libexecdir=/usr/sbin --disable-gtk-doc &&\nmake &&\nmake install'
+ Name:w3m
+  Ver:w3m
+  Num:1
+ Arch:u'ftp://sunsite.ccu.edu.tw/pub15/sourceforge/w/w3m/w3m-0.4.1.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of w3m\n./configure -yes -lang=en -model=monster -prefix=/usr &&\nmake &&\nmake install'
+ Name:wget
+  Ver:Wget-1.8.2
+  Num:1
+ Arch:u'ftp://ftp.gnu.org/gnu/wget/wget-1.8.2.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of Wget\n./configure --prefix=/usr --sysconfdir=/etc &&\nmake &&\nmake install'
+ Name:which
+  Ver:which-2.14
+  Num:1
+ Arch:u'ftp://ftp.gnu.org/gnu/which/which-2.14.tar.gz'
+  Num:0
+  Num:0
+  Num:2
+  Cmd:u'# Installation of which\n./configure --prefix=/usr &&\nmake &&\nmake install'
+  Cmd:u'# The \'which\' script\ncat > /usr/bin/which << "EOF"\n#!/bin/bash\ntype -pa "$@"|head -1\nEOF\nchmod 755 /usr/bin/which\nchown root:root /usr/bin/which'
+ Name:whois
+  Ver:Whois-4.6.7
+  Num:1
+ Arch:u'ftp://ftp.debian.org/debian/pool/main/w/whois/whois_4.6.7.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of Whois\nmake &&\nmake prefix=/usr install'
+ Name:wvdial
+  Ver:WvDial-1.53
+  Num:1
+ Arch:u'ftp://ftp.ing-steen.se/pub/unix/unsort/wvdial-1.53.tar.gz'
+  Num:0
+  Num:2
+  Dep:u'wvstreams'
+  Dep:u'ppp'
+  Num:3
+  Cmd:u'# Installation of WvDial\nmake PREFIX=/usr &&\nmake PREFIX=/usr install'
+  Cmd:u'# Configuration Information\ntouch /etc/wvdial.conf &&\nwvdialconf /etc/wvdial.conf'
+  Cmd:u'# Configuration Information\nwvdial'
+ Name:wvstreams
+  Ver:WvStreams-3.70
+  Num:1
+ Arch:u'ftp://ftp.ing-steen.se/pub/unix/unsort/wvstreams-3.70.tar.gz'
+  Num:2
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/wvstreams-3.70-wvcrypto.patch'
+Patch:u'http://www.linuxfromscratch.org/patches/blfs/5.0/wvstreams-3.70-wvresolver.patch'
+  Num:1
+  Dep:u'openssl'
+  Num:1
+  Cmd:u'# Installation of WvStreams\npatch -Np1 -i ../wvstreams-3.70-wvcrypto.patch &&\npatch -Np1 -i ../wvstreams-3.70-wvresolver.patch &&\nmake PREFIX=/usr LDFLAGS="-lcrypt" &&\nmake PREFIX=/usr install'
+ Name:xfce
+  Ver:XFce-4.0.0
+  Num:1
+ Arch:u'http://telia.dl.sourceforge.net/xfce/xfce-4.0.0-src.tar.bz2'
+  Num:0
+  Num:4
+  Dep:u'xfree86'
+  Dep:u'GTK2'
+  Dep:u'pkgconfig'
+  Dep:u'libxml2'
+  Num:2
+  Cmd:u'# Installation of XFce\ncd src &&\ntar -xzvf libxfce4util-4.0.0.tar.gz &&\ncd libxfce4util-4.0.0 &&\n./configure --prefix=/usr &&\nmake &&\nmake install &&\ncd .. &&\ntar -xzvf libxfcegui4-4.0.0.tar.gz &&\ncd libxfcegui4-4.0.0 &&\n./configure --prefix=/usr &&\nmake &&\nmake install &&\ncd .. &&\ntar -xzvf libxfce4mcs-4.0.0.tar.gz &&\ncd libxfce4mcs-4.0.0 &&\n./configure --prefix=/usr --sysconfdir=/etc &&\nmake &&\nmake install &&\ncd .. &&\ntar -xzvf xfce-mcs-manager-4.0.0.tar.gz &&\ncd xfce-mcs-manager-4.0.0 &&\n./configure --prefix=/usr &&\nmake &&\nmake install &&\ncd .. &&\ntar -xzvf xfwm4-4.0.0.tar.gz &&\ncd xfwm4r-4.0.0 &&\n./configure --prefix=/usr &&\nmake &&\nmake install &&\ncd .. &&\ntar -xzvf xfdesktop-4.0.0.tar.gz &&\ncd xfdesktop-4.0.0 &&\n./configure --prefix=/usr --sysconfdir=/etc &&\nmake &&\nmake install &&\ncd .. &&\ntar -xzvf xfce4-panel-4.0.0.tar.gz &&\ncd xfce4-panel-4.0.0 &&\n./configure --prefix=/usr --sysconfdir=/etc &&\nmake &&\nmake install &&\ncd .. &&\ntar -xzvf xfce-utils-4.0.0.tar.gz &&\ncd xfce-utils-4.0.0 &&\n./configure --prefix=/usr --sysconfdir=/etc &&\nmake &&\nmake install'
+  Cmd:u'# Configuration Information\ncat >> ~/.xinitrc << "EOF"\nxfce-mcs-manager\nxfwm4 --daemon\nxftaskbar4 &\nxfdesktop &\nexec xfce4-panel\nEOF'
+ Name:xfree86
+  Ver:XFree86-4.3.0.1
+  Num:7
+ Arch:u'ftp://ftp.xfree86.org/pub/XFree86/4.3.0/source/X430src-1.tgz'
+ Arch:u'ftp://ftp.xfree86.org/pub/XFree86/4.3.0/source/X430src-2.tgz'
+ Arch:u'ftp://ftp.xfree86.org/pub/XFree86/4.3.0/source/X430src-3.tgz'
+ Arch:u'ftp://ftp.xfree86.org/pub/XFree86/4.3.0/source/X430src-4.tgz'
+ Arch:u'ftp://ftp.xfree86.org/pub/XFree86/4.3.0/source/X430src-5.tgz'
+ Arch:u'ftp://ftp.xfree86.org/pub/XFree86/4.3.0/source/X430src-6.tgz'
+ Arch:u'ftp://ftp.xfree86.org/pub/XFree86/4.3.0/source/X430src-7.tgz'
+  Num:1
+Patch:'ftp://ftp.xfree86.org/pub/XFree86/4.3.0/fixes/4.3.0-4.3.0.1.diff.gz'
+  Num:4
+  Dep:u'libpng'
+  Dep:u'expat'
+  Dep:u'freetype2'
+  Dep:u'fontconfig'
+  Num:16
+  Cmd:u'# Download Instructions\nmd5sum -c SUMS.md5sum'
+  Cmd:u'# Download Instructions\nmd5sum 4.3.0-4.3.0.1.diff.gz'
+  Cmd:u'# Download Instructions\npatch -Np1 -i ./4.3.0-4.3.0.1.diff'
+  Cmd:u'# Kernel Compilation Settings\ncat /proc/pci'
+  Cmd:u'# Kernel Compilation Settings\nmake dep &&\nmake bzImage &&\nmake modules &&\nmake modules_install'
+  Cmd:u'# Creating host.def\ncat > config/cf/host.def << "EOF"\n/* Begin XFree86 host.def file */\n\n/* System Related Information.  If you read and configure only one\n * section then it should be this one.  The Intel architecture defaults are \n * set for a i686 and higher.  Axp is for the Alpha architecture and Ppc is  \n * for the Power PC.  Note that there have been reports that the Ppc \n * optimization line causes segmentation faults during build.  If that \n * happens, try building without the DefaultGcc2PpcOpt line.  **************/\n\n/* #define DefaultGcc2i386Opt  -O2 -fomit-frame-pointer -march=i686 */\n/* #define DefaultGcc2AxpOpt   -O2 -mcpu=ev6 */\n/* #define DefaultGcc2PpcOpt   -O2 -mcpu=750 */\n\n/* The following definitions are normally set properly by XFree86\'s scripts.\n * You can uncomment them if you want to make sure. ************************/\n \n/* #define HasMTRRSupport      YES  */ /* Enabled in kernel see kernel docs*/\n/* #define HasMMXSupport        NO  */ /* Any i586 or above */\n/* #define HasKatmaiSupport     NO  */ /* PIII SSE instructions */\n/* #define Has3DNowSupport      NO  */ /* AMD instructions */\n\n\n/* This setting reduces compile time a little by omitting rarely used input \n * devices.  You can find the complete list in config/cf/xfree86.cf ********/\n \n#define XInputDrivers                 mouse void\n\n/* VIDEO DRIVERS ***********************************************************/\n\n/* If you are sure you only want the drivers for one or a few video cards,\n * you can delete the drivers you do not want. *****************************/ \n\n\n#define XF86CardDrivers  mga glint nv tga s3 s3virge sis rendition \\\n                         neomagic i740 tdfx savage \\\n                         cirrus vmware tseng trident chips apm \\\n                         GlideDriver fbdev i128 nsc \\\n                         ati i810 AgpGartDrivers DevelDrivers ark \\\n                         cyrix siliconmotion \\\n                         vesa vga \\\n                         dummy XF86OSCardDrivers XF86ExtraCardDrivers\n\n\n/* FONT SERVER AND LIBRARY SETTINGS ****************************************/\n\n/* These settings are the defaults   ***************************************/\n\n/* #define BuildFontServer          YES  */ /* For Ghostscript Print Server*/\n/* #define SharedLibFont            YES  */\n/* #define CompressAllFonts         YES  */\n/* #define GzipFontCompression      YES  */\n\n/* These settings ensure we use our libraries ******************************/\n#define HasFreetype2             YES\n#define HasFontconfig            YES\n#define HasExpat                 YES\n#define HasLibpng                YES\n#define HasZlib                  YES\n\n/* The font path can be redefined in the XF86Config file *******************/\n\n/*\n#define DefaultFontPath                $(FONTDIR)/misc/,$(FONTDIR)/75dpi/,\\\n$(FONTDIR)/100dpi/,$(FONTDIR)/Type1,$(FONTDIR)/local,\\\n$(FONTDIR)/TrueType,$(FONTDIR)/CID,$(FONTDIR)/Speedo\n*/\n\n\n/* INTERNATIONAL FONTS.  Change to YES if you need any of them.  These  are\n * the defaults. ***********************************************************/\n\n/* #define BuildCyrillicFonts            NO  */\n/* #define BuildArabicFonts              NO  */\n/* #define BuildISO8859_6Fonts           NO  */\n/* #define BuildGreekFonts               NO  */\n/* #define BuildISO8859_7Fonts           NO  */\n/* #define BuildHebrewFonts              NO  */\n/* #define BuildISO8859_8Fonts           NO  */\n/* #define BuildKOI8_RFonts              NO  */\n/* #define BuildJapaneseFonts            NO  */\n/* #define BuildJISX0201Fonts            NO  */\n/* #define BuildKoreanFonts              NO  */\n/* #define BuildChineseFonts             NO  */\n\n/* DOCUMENTATION SETTINGS **************************************************/\n\n/* These setting are the defaults. *****************************************/\n\n/* #define BuildLinuxDocHtml             NO  */  /* X Docs in Html format */\n/* #define BuildLinuxDocPS               NO  */  /* PostScript format */\n/* #define BuildAllSpecsDocs             NO  */  /* Various docs */\n/* #define BuildHtmlManPages             NO  */\n\n/* GENERAL SETTINGS: You generally want to leave these alone when\n * building X on an LFS system *********************************************/\n\n#define GccWarningOptions         -pipe /* Speed up compiles */\n#define TermcapLibrary            -lncurses\n#define XprtServer                YES /* Needed by realplayer */\n#define XnestServer               YES\n#define XAppLoadDir               EtcX11Directory/app-defaults\n#define VarLibDir                 /var/lib\n#define XFree86Devel               NO\n#define FSUseSyslog               YES\n#define ThreadedX                 YES\n#define HasPam                     NO        \n#define SystemManDirectory        /usr/share/man  /* Instead of /usr/man */\n#define HasLibCrypt               YES\n#define InstallXinitConfig        YES\n#define InstallXdmConfig          YES\n#define ForceNormalLib            YES\n#define BuildSpecsDocs             NO\n\n/* End XFree86 host.def file */\nEOF'
+  Cmd:u'# Build Commands\nWORLDOPTS="" make World 2>&1 | tee xfree-compile.log &&\nmake install &&\nmake install.man &&\nln -sf /usr/X11R6/bin /usr/bin/X11 &&\nln -sf /usr/X11R6/lib/X11 /usr/lib/X11 &&\nln -sf /usr/X11R6/include/X11 /usr/include/X11'
+  Cmd:u'# Updating Direct Rendering Infrastructure (DRI)\ncd programs/Xserver/hw/xfree86/os-support/linux/drm/kernel && \nmake  CC=/opt/gcc-2.95.3/bin/gcc -f Makefile.linux  && \nmkdir -p /lib/modules/`uname -r`/kernel/drivers/char/drm/  && \ncp gamma.o radeon.o sis.o r128.o i810.o i830.o mga.o tdfx.o \\\n    /lib/modules/`uname -r`/kernel/drivers/char/drm/  && \ndepmod -a'
+  Cmd:u'# Configuring XFree86\nldconfig'
+  Cmd:u'# Configuring XFree86\nsource ~/.bash_profile'
+  Cmd:u'# Configuring XFree86\ncd /dev\nln -s psaux mouse'
+  Cmd:u'# Configuring XFree86\ncd ~\nXFree86 -configure'
+  Cmd:u'# Configuring XFree86\nXFree86 -xf86config ~/XF86Config.new'
+  Cmd:u'# Configuring XFree86\nmv ~/XF86Config.new /etc/X11/XF86Config'
+  Cmd:u'# Configuring XFree86\ncat > ~/.xinitrc << "EOF"\n# Begin .xinitrc file\nxterm  -g 80x40+0+0   &\nxclock -g 100x100-0+0 &\ntwm\nEOF'
+  Cmd:u'# Configuring XFree86\nstartx'
+ Name:xfs
+  Ver:XFS-2.5.6
+  Num:1
+ Arch:u'ftp://oss.sgi.com/projects/xfs/download/Release-1.3.1/cmd_tars/xfsprogs-2.5.6.src.tar.gz'
+  Num:0
+  Num:0
+  Num:2
+  Cmd:u'# Patching Linux-2.4.22 for XFS\ncd /usr/src/linux &&\nmake mrproper &&\nbzcat ../xfs-2.4.22-all-i386.bz2 | patch -Np1 &&\nmake menuconfig &&\nmake CC=/opt/gcc-2.95.3/bin/gcc dep &&\nmake CC=/opt/gcc-2.95.3/bin/gcc bzImage &&\nmake CC=/opt/gcc-2.95.3/bin/gcc modules &&\nmake CC=/opt/gcc-2.95.3/bin/gcc modules_install &&\ncp arch/i386/boot/bzImage /boot/vmlinuz-xfs &&\ncp System.map /boot/System.map-xfs'
+  Cmd:u'# Installation of XFS\n./configure &&\nmake &&\nmake install'
+ Name:xine-lib
+  Ver:xine Libraries-1-rc0a
+  Num:1
+ Arch:u'ftp://ftp.yars.free.net/pub/software/unix/X11/xine-lib-1-rc0a.tar.gz'
+  Num:0
+  Num:5
+  Dep:u'xfree86'
+  Dep:u'esound'
+  Dep:u'alsa'
+  Dep:'kde-core-arts'
+  Dep:'or'
+  Num:1
+  Cmd:u'# Installation of xine Libraries\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:xine-ui
+  Ver:xine User Interface-0.9.22
+  Num:1
+ Arch:u'ftp://ftp.yars.free.net/pub/software/unix/X11/xine-ui-0.9.22.tar.gz'
+  Num:0
+  Num:1
+  Dep:u'xine-lib'
+  Num:1
+  Cmd:u'# Installation of xine User Interface\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:xinetd
+  Ver:xinetd-2.3.12
+  Num:1
+ Arch:u'http://www.xinetd.org/xinetd-2.3.12.tar.gz'
+  Num:0
+  Num:0
+  Num:7
+  Cmd:u'# Installation of xinetd\n./configure --prefix=/usr &&\nmake &&\nmake install'
+  Cmd:u'# Configuration Information\ncp /etc/xinetd.conf /etc/xinetd.conf.bak'
+  Cmd:u"# Configuration Information\nsed -e 's/etc/sbin/g' xinetd/sample.conf > /etc/xinetd.conf\n"
+  Cmd:u'# Configuration Information\ncat > /etc/rc.d/init.d/xinetd << "EOF"\n#!/bin/bash\n# Begin $rc_base/init.d/xinetd\n# Based on sysklogd script from LFS-3.1 and earlier.\n# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org\nsource /etc/sysconfig/rc\nsource $rc_functions\ncase "$1" in\n\tstart)\n\t\techo "Starting xinetd..."\n\t\tloadproc /usr/sbin/xinetd\n\t\t;;\n\tstop)\n\t\techo "Stopping xinetd..."\n\t\tkillproc /usr/sbin/xinetd\n\t\t;;\n\treload)\n\t\techo "Reloading xinetd..."\n\t\tkillall -HUP xinetd\n\t\t;;\n\trestart)\n\t\t$0 stop\n\t\tsleep 1\n\t\t$0 start\n\t\t;;\n\tstatus)\n\t\tstatusproc /usr/sbin/xinetd\n\t\t;;\n\t*)\n\t\techo "Usage: $0 {start|stop|reload|restart|status}"\n\t\texit 1\n\t\t;;\nesac\n# End $rc_base/init.d/xinetd\nEOF\nchmod 754 /etc/rc.d/init.d/xinetd'
+  Cmd:u'# Configuration Information\nln -s  /etc/rc.d/init.d/xinetd /etc/rc.d/rc0.d/K49xinetd &&\nln -s  /etc/rc.d/init.d/xinetd /etc/rc.d/rc1.d/K49xinetd &&\nln -s  /etc/rc.d/init.d/xinetd /etc/rc.d/rc2.d/K49xinetd &&\nln -s  /etc/rc.d/init.d/xinetd /etc/rc.d/rc3.d/S23xinetd &&\nln -s  /etc/rc.d/init.d/xinetd /etc/rc.d/rc4.d/S23xinetd &&\nln -s  /etc/rc.d/init.d/xinetd /etc/rc.d/rc5.d/S23xinetd &&\nln -s  /etc/rc.d/init.d/xinetd /etc/rc.d/rc6.d/K49xinetd'
+  Cmd:u'# Configuration Information\n/etc/rc.d/init.d/xinetd start'
+  Cmd:u'# Configuration Information\nAug 22 21:40:21 dps10 xinetd[2696]: Server /usr/sbin/in.rlogind is not\nexecutable [line=29]\nAug 22 21:40:21 dps10 xinetd[2696]: Error parsing attribute server -\nDISABLING SERVICE [line=29]\nAug 22 21:40:21 dps10 xinetd[2696]: Server /usr/sbin/in.rshd is not\nexecutable [line=42]'
+ Name:xmms
+  Ver:XMMS-1.2.7
+  Num:1
+ Arch:u'ftp://ftp.xmms.org/pub/xmms/1.2.x/xmms-1.2.7.tar.bz2'
+  Num:0
+  Num:3
+  Dep:u'xfree86'
+  Dep:u'GTK'
+  Dep:u'GLib'
+  Num:1
+  Cmd:u'# Installation of XMMS\n./configure --prefix=/usr --enable-one-plugin-dir &&\nmake &&\nmake install'
+ Name:xpdf
+  Ver:Xpdf-2.02pl1
+  Num:1
+ Arch:u'ftp://sunsite.lanet.lv/pub/unix/Slackware-9.0/source/xap/xpdf/xpdf-2.02pl1.tar.gz'
+  Num:0
+  Num:2
+  Dep:u'xfree86'
+  Dep:u'lesstif'
+  Num:2
+  Cmd:u'# Installation of Xpdf\n./configure --prefix=/usr --sysconfdir=/etc --mandir=/usr/share/man  \\\n    --with-freetype2-includes=/usr/include/freetype2 \\\n    --with-freetype2-library=/usr/lib \\\n    --with-appdef-dir=/usr/X11R6/lib/X11/app-defaults/ &&\nmake &&\nmake install'
+  Cmd:u'# Example .xpdfrc\n# Example .xpdfrc\ndisplayFontT1 Times-Roman\t     /usr/share/ghostscript/fonts/n021003l.pfb\ndisplayFontT1 Times-Italic\t     /usr/share/ghostscript/fonts/n021023l.pfb\ndisplayFontT1 Times-Bold\t     /usr/share/ghostscript/fonts/n021004l.pfb\ndisplayFontT1 Times-BoldItalic\t     /usr/share/ghostscript/fonts/n021024l.pfb\ndisplayFontT1 Helvetica\t\t     /usr/share/ghostscript/fonts/n019003l.pfb\ndisplayFontT1 Helvetica-Oblique\t     /usr/share/ghostscript/fonts/n019023l.pfb\ndisplayFontT1 Helvetica-Bold\t     /usr/share/ghostscript/fonts/n019004l.pfb\ndisplayFontT1 Helvetica-BoldOblique  /usr/share/ghostscript/fonts/n019024l.pfb\ndisplayFontT1 Courier\t\t     /usr/share/ghostscript/fonts/n022003l.pfb\ndisplayFontT1 Courier-Oblique\t     /usr/share/ghostscript/fonts/n022023l.pfb\ndisplayFontT1 Courier-Bold\t     /usr/share/ghostscript/fonts/n022004l.pfb\ndisplayFontT1 Courier-BoldOblique    /usr/share/ghostscript/fonts/n022024l.pfb\ndisplayFontT1 Symbol\t\t     /usr/share/ghostscript/fonts/s050000l.pfb\ndisplayFontT1 ZapfDingbats\t     /usr/share/ghostscript/fonts/d050000l.pfb\n\nfontDir\t\t/usr/X11R6/lib/X11/fonts/truetype\n\npsFile\t\t\t"|lpr"\npsPaperSize\t\tletter\ntextEOL\t\tunix\n\nt1libControl\t\tlow\nfreetypeControl\t\tlow\n\nurlCommand\t"links -g %s"'
+ Name:xsane
+  Ver:XSane-0.91
+  Num:1
+ Arch:u'ftp://ftp.mostang.com/pub/sane/xsane/xsane-0.91.tar.gz'
+  Num:0
+  Num:5
+  Dep:u'sane'
+  Dep:u'xfree86'
+  Dep:u'libpng'
+  Dep:u'GTK'
+  Dep:u'gimp'
+  Num:1
+  Cmd:u'# Installation of XSane\n./configure --prefix=/usr &&\nmake &&\nmake install'
+ Name:xvid
+  Ver:XviD-0.9.2
+  Num:1
+ Arch:u'ftp://ftp.yars.free.net/pub/software/unix/lib/xvidcore-0.9.2.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of XviD\ncd build/generic &&\n./configure --prefix=/usr &&\nmake  &&\nmake install &&\ncp ../../src/divx4.h /usr/include'
+ Name:yelp
+  Ver:Yelp-2.2.3
+  Num:1
+ Arch:u'ftp://ftp.gnome.org/pub/GNOME/sources/yelp/2.2/yelp-2.2.3.tar.bz2'
+  Num:0
+  Num:1
+  Dep:u'libgnomeui'
+  Num:1
+  Cmd:u'# Installation of Yelp\n./configure --prefix=$GNOME_PREFIX --libexecdir=$GNOME_PREFIX/sbin &&\nmake &&\nmake install'
+ Name:zip
+  Ver:Zip-2.3
+  Num:1
+ Arch:u'ftp://ftp.info-zip.org/pub/infozip/src/zip23.tar.gz'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of Zip\ncp unix/Makefile . &&\nmake prefix=/usr generic_gcc &&\nmake prefix=/usr install'
+ Name:zsh
+  Ver:ZSH-4.1.1
+  Num:1
+ Arch:u'ftp://ftp.zsh.org/zsh/zsh-4.1.1.tar.bz2'
+  Num:0
+  Num:0
+  Num:1
+  Cmd:u'# Installation of ZSH\n./configure --prefix=/usr &&\nmake &&\nmake install'

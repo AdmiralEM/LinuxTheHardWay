@@ -1,0 +1,24 @@
+TTILE:		reiserfs file system
+LFS VERSION:	any
+AUTHOR:		Florin Boariu <florin@bnv-bamberg.de>
+
+SYNOPSIS:
+	"reiserfs is a revolutionary new approach to file system design which stores not just filenames but the files themselves in a B*-tree. It is a generation ahead of alternatives which use older plain B-tree technology, and cannot store the files themselves in the tree. Reiserfs doesn't suffer from log congestion either, you can effectively use it for quickly creating a 100,000 entry directory, and it is fairly unique in that." This hint tells you how to install it.
+
+HINT:
+I'm currently using reiserfs, and it works great. All you have to do is
+download the reiserfs patch, a fitting kernel version for it (I have
+2.2.14), patch the kernel and build it. Boot your "normal" system with the
+new kernel (which of course now has both reiserfs and ext2 support) and
+mkreiserfs on /dev/whatever-your-lfs-partition. Make a second boot disk
+for the lfs partition and... there you are!
+
+> Does anybody know if the /boot/ needs to be ext2 to boot from lilo, or will
+> any file system that is compiled into the kernel work?
+
+I don't know for sure, I have a ext2 partition as my /dev/hda1 which is
+about 50 megs large. I'm planing to use that one as my /boot.
+
+I'd guess that it should work, since lilo computes (AFAIK) the exact
+location of the raw data (doesn't it?), so it doesn't matter whether it's
+reiserfs or ext2. But I might be wrong.

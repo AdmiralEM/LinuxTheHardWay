@@ -1,0 +1,388 @@
+AUTHOR:		Kris van Rens <krisvanrens AT gmail DOT com>
+
+DATE:		2005-05-09
+
+LICENSE:	GPL
+
+SYNOPSIS:	Guideline for migrating from the 2.4.x to the 2.6.x kernel
+
+DESCRIPTION:
+
+After a series of 11 test versions, the stable release of the linux-2.6 kernel
+came out (linux-2.6.0), on December the 18th 2003. I was working with the 
+2.6.0test kernel a few months already for school (for the curious among you; I
+learned how to design kernel driver modules). I noticed a few people on the
+mailing-list having trouble installing the kernel, that's what made me write
+this hint.
+
+As I write this, it's the 25th of February 2005, I guess just about every
+distro around brings kernel-2.6.x as it's default kernel and it seems to be
+accepted more or less. But, there are still people not convinced of the
+stability and performance of the 2.6 kernel, or for maximum stability they
+waited until the kernel was 'mature'.
+
+So, if you're one of the people wanting to install the 2.6.x kernel, you
+should probably take a look at this hint for a few tips to bring it to a
+successful end. Of course this new kernel does not have to be better for you,
+but hey, you can always fall back to the 2.4 kernel and wait a while before 
+you'll try it again. After all, maintainance is still carried out on the 
+kernel-2.4 branch (at the time being).
+
+Note that there is a (way more readable) .html version of this hint
+available, check the links at the bottom.
+
+
+PREREQUISITES:
+
+Before working through this hint, be sure to have the following:
+
+*** module-init-tools sources tarball
+Get this from ftp://ftp.kernel.org/pub/linux/utils/kernel/module-init-tools.
+
+*** linux-2.6.x kernel sources tarball
+Get this from http://www.kernel.org or a mirror.
+
+At the time of writing the latest stable version of the module-init-tools
+is 3.1 and for the kernel it is 2.6.11.5 (they added the build number), I'll
+use these version names for this hint, if you have a newer version, replace
+the version in this hint with it.
+
+Of course, you should also have Make, GCC and an Assembler, but this hint is
+meant for the LFS-community so I'll assume you fulfill these requirements.
+
+You might also want to fulfill the recommendations of the kernel development
+team and use GCC-2.95.3 for kernel compilation, you can download it here:
+
+ftp://ftp.gnu.org/gnu/gcc/gcc-2.95.3.tar.gz or from a mirror.
+
+NOTE:	Since LFS-6.0 you'll need GCC-3.x (for NPTL and others), and GCC-2.95
+		isn't even on the package list. Only for strict reasons I left
+		it in this hint. I suggest you to use GCC-3.x.
+
+Read the /usr/src/linux-2.6.7/Documentation/Changes document for other programs
+you'll eventually need to update. For LFS-5.0 you should for example also
+update procps.
+
+
+HINT:
+
+So, you want to migrate from linux-2.4.x to linux-2.6.x? Well no problem!
+Quite a lot changed since 2.4, both the SMP (Symmetric Multi Processing,
+multiple processor cores) and the uniprocessor performance increased,
+compatibility with hardware is better and new security-modules increase
+the security (...).
+
+Being the owner of a LFS system, I'll assume you're familiar with the usual way
+of installing a source package, and a kernel of course.
+
+I cut this hint section in two; installing the new module-init-tools and
+installing the kernel.
+
+NOTE:	If you have a winmodem or you want to be sure that you don't have to
+		undertake special steps, take a look at the EXCEPTIONS area.
+		It's always a good idea to take a look there.
+
+***STEP 1: Installing the module-init-tools
+
+To migrate from kernel 2.4 to 2.6 you'll need a new module loading system, the
+system has been worked over completely. 
+
+As you like, move the tarball into the directory from where you'll install it,
+for me that's /usr/src, and cd' into it.
+
+Unpack the sources and cd' into the source's directory. 
+
+tar xzf module-init-tools-3.1.tar.bz2
+cd module-init-tools-3.1
+
+Then configure the package by:
+
+./configure --prefix=/
+
+We use prefix=/ here because in the LFS-Book (prior to LFS-6.0) modutils
+is installed with the same prefix and the last thing we want is having two
+different versions of one program in multiple places.
+
+If this is the first time you install the module-init-tools, invoke the next
+command, otherwise, if you're upgrading to a new version of
+module-init-tools, skip it (LFS versions up to LFS-5.0 come with modutils
+and do not have module-init-tools, so you'll have to invoke the command).
+
+make moveold
+
+This renames the modutils such as insmod,rmmod or modprobe to insmod.old,
+rmmod.old and modprobe.old. The new to be installed module-init-tools do a
+runtime check of which kernel is running and invoke the right version of
+the tools, for example if 2.4.x is running the insmod command will use
+insmod.old instead.
+
+Then make the package and install it with:
+
+make
+make install
+
+The last thing you'll have to do is to generate a new configuration file for
+the modules:
+
+./generate-modprobe.conf /etc/modprobe.conf
+
+If you're using the device-file system also copy the modprobe.devfs file into
+/etc.
+
+If everything went fine, you have the new module-init-tools and you're ready to
+install the new kernel!
+
+***STEP 2: Installing the 2.6.x kernel
+
+Copy the linux-2.6.11.5 tarball to /usr/src and cd' into this directory.
+
+As usual, unpack the sources and cd' into the sources directory:
+
+tar xjf linux-2.6.11.5.tar.bz2
+cd linux-2.6.11.5
+
+If you want to install the kernel version tarball without patching, you can
+skip the tabulated field down here, read it if you want to patch the kernel.
+	
+	If you want to install the kernel with patches, say you have
+	linux-2.6.0test9 and you want to install linux-2.6.0, you'll need the 
+	patches linux-2.6.0test10.patch, linux-2.6.0test11.patch and
+	linux-2.6.0.patch.
+	
+	Now go to the root of the kernel source tree and patch the kernel in the
+	correct order (cumulative patching). Adapt the patch name for your
+	situation:
+	
+	patch -p1 < ../linux-2.6.0test10.patch
+	patch -p1 < ../linux-2.6.0test11.patch
+	patch -p1 < ../linux-2.6.0.patch
+	
+	Read the 'README' file in the root of the kernel source tree for more info
+	on how to patch a kernel.
+
+Before we will configure and install the new kernel; we'll clean up the source
+tree to make sure it's sane. Even if you downloaded the tarball just a minute
+ago and didn't even touch it all, it's recommended to clean it up before a 
+build. There are two ways to do it; you can use 'make clean' and
+'make mrproper'. With the first command all the files produced during
+compilation time will be removed, and with the latter even the configuration of
+the kernel will be lost. You can use 'make mrproper' the first time you use a
+kernel tree and then later on 'make clean'. I personally always use
+'make mrproper' as I back up my kernel configuration elsewhere.
+
+As this will probably be your first compilation of this kernel; invoke the
+following command:
+
+make mrproper
+	
+Now configure the kernel, this is just like with the 2.4 kernel, you can choose
+from menuconfig, xconfig and gconfig. Menuconfig is based on Ncurses, xconfig
+is based on QT and gconfig is based on GTK+, for the last two, you'll need  an
+X-server running. Do so by:
+
+make menuconfig
+
+Or
+
+make xconfig
+
+Or
+
+make gconfig
+
+Personally I (and the majority of linux users) like menuconfig the most.
+
+Now comes the most time-consuming and difficult part, the configuration itself.
+As far as I know, you cannot use the kernel-2.4 configuration file. So you'll
+have to do it all from the start, which is better anyway, because a lot changed
+in the structure of the menu and there are loads of new options in it.
+
+Be sure to take the right system architecture in >>processor-type and features<<
+and the right file system. If you don't know whether you should involve a
+certain option or not, press ? or help; there's info about almost every option.
+If you still don't know; first search, then ask the community.
+
+I strongly recommend to save the kernel-configuration in a place other than the
+kernel source tree. If you do a 'make mrproper', the .config file (the
+automatically saved kernel configuration in the source tree) will be deleted and
+all your settings are gone. Especially in the beginning you'll probably need to
+recompile the kernel multiple times, so backing up is a good habit. I always
+save my kernel configuration to /etc/kernel-2.x.config (replace the 'x' with the
+current minor version of the kernel). Note that you keep the 2.4 and 2.6 kernel
+configurations separated.
+
+If you're done, you are set to compile the kernel.
+
+The kernel development team recommends you to build the kernel with GCC-2.95.3
+it is not a must, but stability is not guaranteed if you deviate from this
+version. As already stated I kept GCC-2.95 in this hint for strict reasons. I
+tried both GCC-3.x and GCC-2.95.3, they both worked fine for me, allthough I
+suggest you using GCC-3.x. You can choose which compiler to use if you change
+the CC flag for make.
+
+To make the kernel with your global GCC version, which is GCC-3.3.1 for
+LFS-5.0, do:
+
+make all
+
+To make the kernel with GCC-2.95.3 (situated in /opt/gcc-2.95.3 according to
+the LFS-book) do:
+
+make CC=/opt/gcc-2.95.3/bin/gcc all
+
+This can take quite a while, on my Pentium 4 2.0GHz with 256MB RAM, it took
+about 11 minutes, which is not strange because the kernel code can be around 5
+million lines of code! You can time your build with >>time make all<<
+respectively >>time make CC=/bin/gcc-2.95.3/bin/gcc all<< instead.
+
+We are now going to install the modules, you don't have to use the CC flag
+anymore, since the modules were compiled at the end of 'make all', you must
+install them with:
+
+make modules_install
+
+This copies the modules (.ko files) with some configuration files into the
+/lib/modules/<kernel-version> directory where the module loaders can find
+them.
+
+Now copy the kernel to /boot:
+
+cp arch/i386/boot/bzImage /boot/vmlinuz-2.6.11.5
+
+Or to another filename as you want.
+
+Versioning is supported on 'System.map', you'll have to copy this file to
+your /boot directory. Before you do so, consider keeping the 2.4-System.map;
+you can rename it to 'System.map-2.4' (for kernel-2.4.x of course) and the
+new 2.6 one to 'System.map-2.6' so that each kernel version gets it's own.
+
+Now modify your lilo.conf (for lilo) or menu.lst (for grub) to be able to load
+the new kernel, if you have lilo, don't forget to invoke /sbin/lilo and re-
+write the boot-record.
+
+You should look at the EXCEPTIONS field, you might have to do some additional
+work to get your kernel function properly.
+
+If everything is done, you can reboot and start with the new kernel.
+
+If there were problems during booting, check the TROUBLESHOOTING section, 
+otherwise, congratulations with your shiny new 2.6 kernel!
+
+
+TROUBLESHOOTING:
+
+If any errors occur during booting, read the error-output carefully and
+eventually reconfigure the kernel. Here are listed a few common problems and
+some possible answers. You should also check the EXCEPTIONS section.
+
+---Your screen is black during booting
+This has probably something to do with the framebuffer device, try vga=normal
+in your bootloader configuration, and check if 'CONFIG_VT' is set to 'y' in
+your .config (kernel configuration) file.
+
+---The module loading system complains about wrong module versions
+You probably forgot to run >>make modules_install<< make sure that the
+modules on which you run >>make modules_install<< are compiled with the same
+version of GCC as the kernel itself.
+
+If the problem is really stubborn and you can't get it away, google for it,
+read the mailing-list archives or ask a new question there.
+
+
+EXCEPTIONS:
+
+***WinModem drivers for the 2.6 kernel:
+
+Lucent Technologies provides a driver for WinModems, you can get it here:
+
+http://linmodems.technion.ac.il/packages/ltmodem/kernel-2.6
+
+
+OTHER DOCUMENTS ABOUT THIS SUBJECT:
+
+---The HTML version of this hint! (much more readable):
+http://www.stack.nl/~kris
+
+---The post-halloween document from Dave Jones:
+http://www.codemonkey.org.uk/docs/post-halloween-2.6.txt
+
+Or if this doesn't work:
+
+http://www.linux.org.uk/~davej/docs/post-halloween-2.6.txt
+
+---The German translation of post-halloween:
+http://www.kubieziel.de/computer/halloween-german.html
+
+---Another migration hint:
+http://thomer.com/linux/migrate-to-2.6.html
+
+
+ACKNOWLEDGMENTS:
+
+Professor Dr. Juergen Quade from the Niederrhein University for printing me
+	out the preliminary version of the 'Meister-Installateur' article for
+	the Linux Magazin.
+
+The BLFS-Support mailing-list and its members, for pointing me at weak spots
+	in the hint. Thanks!
+
+
+CHANGELOG:
+
+	[2003-12-19]
+		First version 1.0
+	[2003-12-20]
+		Version 1.1
+		*Changed DATE format to intl.
+		*Structural fixes + some typos; thanks Matthew!
+		*Added the EXCEPTIONS field; thanks Alexander!
+	[2003-12-20]
+		Version 1.2
+		*Added gcc-2.95 into kernel build
+		*Added new url
+		*Made the hint idiot proof ;-) thanks to Declan!
+	[2003-12-21]
+		Version 1.3
+		*Added new url
+		*Added kernel patching
+		*Added System.map stuff
+		*Added the TROUBLESHOOTING section
+		*Added/changed several comments in all sections.
+	[2003-12-21]
+		Version 1.4
+		*Fixed a few typos
+	[2003-12-22]
+		Version 1.5
+		*Changed a few sentences and corrected some typos
+		*Added a reference to the HTML version on my website
+	[2003-12-28]
+		Version 1.6
+		*Fixed a few typos
+	[2004-06-04]
+		Version 1.7
+		*Since NVidia now supports Kernel-2.6; I deleted the exceptions
+			Thanks to Alexander C. Gaber for the tip.
+		*Few more minor changes
+	[2004-07-16]
+		Version 1.8
+		*Upgraded to Linux-2.6.7 and module-init-tools-3.0
+		*Changed some text
+		*Added 'make mrproper' and 'make clean' to kernel installing commands
+		*Added backing up of kernel configuration
+		*Added note about requirement GCC-3.0 for incoming LFS-6.0
+	[2004-07-22]
+		Version 1.9
+		*Fixed a typo - Thanks David!
+	[2005-03-25]
+		Version 2.0
+		*Changed the hint to be a 'final' version
+			+Fixed some typos
+			+Upgraded versions used
+			+Changed a few URL's
+	[2005-04-13]
+		Version 2.1
+		*Fixed a few typos - Thanks Jorik!
+	[2005-05-08]
+		Version 2.2
+		*Changed my website address
+		*Stopped maintaining the hint

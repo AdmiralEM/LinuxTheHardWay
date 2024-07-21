@@ -1,0 +1,629 @@
+TITLE:		Compiling and Installing Gnome 1.4
+LFS VERSION:	2.4.4
+AUTHOR:		Mike Labriola <labriomd@clarkson.edu>
+
+SYNOPSIS:
+	Compiling and installing Gnome 1.4, including nautilus w/ mozilla.
+
+HINT:
+v0.9 - 04/20/2001
+===============================================================================
+I.   Intro
+
+This hint should help you figure out what packages you need to download, and
+what order to compile them in in order to install Gnome 1.4 with Nautilus
+and Mozilla support.  Your box might not already have some things installed
+that mine does, such as python and guile.  Actually they're might be a bunch
+of things like that.  If you get to a point where one of the configure
+scripts yells at you, go get the required packag(s) and compile them.
+
+
+===============================================================================
+II.  Get the stuff
+
+Ok, there's quite a list of stuff for you to download...
+First of all, I'll try and list some of the packages that you may or may not
+have already installed.  This is just coming off the top of my head, so I
+doubt it's complete...
+
+	libungif
+	libjpeg
+	libpng
+	libtiff
+	db
+	bc
+	python
+	perl
+	guile
+	gmp
+	gdbm
+	librep
+	xscreensaver
+	
+Now, for the stuff I'll help you install... Most of these should be
+available from ftp.gnome.org (or a mirror) in
+/pub/GNOME/stable/releases/gnome-1.4/ or /pub/GNOME/unstable/sources/
+The version I installed is in parenthesis
+
+	GConf		(1.0.0)
+	ORBit		(0.5.7)
+	ammonite	(1.0.0)
+	audiofile	(0.2.1)
+	bonobo		(1.0.2)
+	bug-buddy	(2.0)
+	control-center	(1.4.0.1)
+	esound		(0.2.22)
+	freetype	(2.0.2)
+	gal		(0.5)
+	gdk-pixbuf	(0.10.1)
+	gdm		(2.2.0)
+	ggv		(1.0)
+	ghex		(1.2)
+	glade		(0.6.2)
+	glib		(1.2.9)
+	gnome-applets	(1.4.0.1)
+	gnome-audio	(1.4.0)
+	gnome-core	(1.4.0.1)
+	gnome-db	(0.2.3)
+	gnome-games	(1.4.0.1)
+	gnome-guile	(0.20)
+	gnome-libs	(1.2.13)
+	gnome-media	(1.2.0)
+	gnome-pim	(1.4.0)
+	gnome-print	(0.28)
+	gnome-python	(1.4.0)
+	gnome-user-docs	(1.4.1)
+	gnome-utils	(1.4.0)
+	gnome-vfs	(1.0)
+	gnomemm		(1.1.15)
+	gtk+		(1.2.9)
+	gtk-engines	(0.12)
+	gtkhtml		(0.8.3)
+	gtkmm		(1.2.5)
+	gtop		(1.0.13)
+	imlib		(1.9.10)
+	libgda		(0.2.3)
+	libghttp	(1.0.9)
+	libglade	(0.16)
+	libgtop		(1.0.13)
+	libsigc++	(1.0.3)
+	libunicode	(0.4.gnome)
+	libxml		(1.8.11)
+	mozilla-source	(0.8.1 get this from mozilla.org, needed by nautilus)
+	nautilus	(1.0.2)
+	oaf		(0.6.5)
+	panelmm		(0.1)
+	popt		(1.6)
+	rep-gtk		(0.15)
+	sawfish		(0.38)
+	scrollkeeper	(0.2)
+	xalf		(0.7)
+	
+	
+===============================================================================
+III. Compile time
+
+You might want to specify some compiler optimizations in CFLAGS before we
+start.  At the very least you should do this:
+
+export CFLAGS=-O2
+export CXXFLAGS=$CFLAGS
+
+This pretty much sets CFLAGS and CXXFLAGS to what they would have been...
+minus debugging.  You probably don't really want debugging on all of Gnome
+(it would make it HUGE!!!)
+
+Ok, now let's get busy!  Follow this list of installation instructions to
+the bottom (i know, it's long) and you'll have a fully functional install of
+Gnome 1.4 on you LFS system.  :-)
+
+
+---------------------------------
+-	audiofile		-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	esound			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+now you might want to edit etc.conf (in esd's sysconfdir, /usr/etc in this
+case).  the soundcard i have in my box makes a loud *POP* every time i play
+a sound, so i like to tell esd not to terminate after a few seconds...
+
+
+---------------------------------
+-	glib			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	gtk+			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	popt			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	ImageMagick		-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	imlib			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	gtk-engines		-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	ORBit			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	libxml			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	gnome-libs		-
+---------------------------------
+./configure --prefix=/usr --enable-shared --enable-prefer-db1
+make
+make install
+
+
+---------------------------------
+-	scrollkeeper		-
+---------------------------------
+./configure --prefix=/usr --localstatedir=/var --enable-shared
+make
+make install
+
+
+---------------------------------
+-	libgtop			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	libghttp		-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	gdk-pixbuf		-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	libglade		-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	oaf			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	gnome-print		-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	bonobo			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	GConf			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	libgda			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	gnome-db		-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	gnome-vfs		-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	libunicode		-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	gal			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	control-center		-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	gtkhtml			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	gnome-core		-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	gnome-applets		-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	bug-buddy		-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	libsigc++		-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	gtkmm			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	gnomemm			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	panelmm			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+--------------------------------
+-	glade		       -
+--------------------------------
+./configure --prefix=/usr --enable-shared --with-bonobo
+make
+make install
+
+
+---------------------------------
+-	rep-gtk			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	gnome-python		-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	gnome-guile		-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	gnome-user-docs		-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	gnome-utils		-
+---------------------------------
+ran into some problems on this one...
+although it's not listed in the dependencies, the compilation process tries
+to use db2html.  if you don't have that in your path, it bails.
+unfortunately, i couldn't figure out where to get it, but, i found a
+workaround.  untar the nautilus sources.  go into
+foo/nautilus-1.0.1.1/components/help/converters/gnome-db2html2/ and read the
+README.  execute the gcc line displayed in there.  it should make
+gnome-db2html2 in that directory.  copy that to /usr/local/bin and then link
+it to /usr/local/bin/db2html.
+now it should compile just fine.  i'm not sure how "correct" this is... but
+it did seem to work.  however, since that's really not "db2html", keep track
+of that binary... if you install db2html later on, go remove that symlink
+(and the copied binary).
+
+if anyone knows where i was supposed to get the "real" db2html, please let
+me know.  ;-)
+
+./configure --prefix=/usr --enable-shared --with-messages=/var/log/sys.log
+make
+make install
+
+
+---------------------------------
+-	gnome-pim		-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	gnome-media		-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	gnome-audio		-
+---------------------------------
+this one doesn't have a configure script... take a look at the Makefile if
+you don't trust it.  it should be fine though, as it get all it's info from
+gnome-config
+
+make
+make install
+
+
+---------------------------------
+-	gnome-games		-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	gtop			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	ggv			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	ghex			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	gdm			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	sawfish			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	xalf			-
+---------------------------------
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	mozilla			-
+---------------------------------
+For source code and extra help, go to www.mozilla.org
+Ok, here's the deal.  In order to make Nautilus and Mozilla play nice, we
+have to compile them a certain way.  If you do something wrong, Nautilus
+will not be able to use Mozilla at all.  Compiling this takes a bit of time,
+so I recommend starting the compilation right before bed and just letting it
+compile all night.  Here we go...
+
+put this in foo/mozilla/.mozconfig
+
+# ...mozilla/.mozconfig
+# 
+# See www.mozilla.org/build/unix.html for build instructions
+
+ac_add_options --disable-tests
+ac_add_options --disable-debug
+ac_add_options --enable-strip-libs
+ac_add_options --enable-cpp-rtti
+ac_add_options --enable-optimize
+
+# done with .mozconfig
+
+Now, build it like this:
+
+make -f client.mk build BUILD_MODULES=psm
+make -f client.mk build
+
+
+---------------------------------
+-	ammonite		-
+---------------------------------
+this package is only required if you --enable-eazel-services on Nautilus.
+it requires openSSL >= 0.9.5a
+
+./configure --prefix=/usr --enable-shared
+make
+make install
+
+
+---------------------------------
+-	freetype		-
+---------------------------------
+make setup CFG="--prefix=/usr"
+make
+make install
+
+
+---------------------------------
+-	nautilus		-
+---------------------------------
+you have to fill in <mozilla_lib> and <mozilla_inc> with the full path to
+wherever you installed mozilla.  my sources are in /scrap/mozilla so 
+<mozilla_lib> on my box is /scrap/mozilla/dist/bin and <mozilla_inc> is
+/scrap/mozilla/dist/include
+
+./configure --prefix=/usr --enable-eazel-services \
+--with-mozilla-lib-place=<mozilla_lib> \
+--with-mozilla-include-place=<mozilla_inc>
+make
+make install
+
+
+===============================================================================
+IV.  Epilougue
+
+Now that everything is installed, you just have to edit your .xinitrc to
+start gnome instead of whatever it's starting right now.  
+
+If ~/.xinitrc doesn't exist, there should be a default one where you 
+installed XFree86.  On my box, the file is in /etc/X11/xinit/xinitrc.  Copy 
+that default file to ~/.xinitrc.  Comment out all the lines under the
+"start some nice programs" comment, and add "exec gnome-session".
+Now just startx.
+
+Ah, Gnome 1.4 goodness.  :-)
+Now you have a clean install of Gnome 1.4 on your system.  Next on your list
+of chores will be to install some of the Gnome Fifth Toe 1.4 apps.  These
+apps include things like gnumeric, gnucash, abiword, balsa, dia, galeon, gtm,
+gimp, and glimmer among others.  I would include instructions for building
+all of Gnome Fifth Toe 1.4 in here as well, but I don't think it's needed.
+If you can install Gnome, Mozilla, and Nautilus from scratch, compiling the
+fifth toe apps should be a walk in the park!
+Good luck and enjoy Gnome!

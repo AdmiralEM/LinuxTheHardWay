@@ -1,0 +1,471 @@
+TITLE:          Postfix + procmail + fetchmail
+LFS VERSION:    3.1 + lfsbootscript-1.0
+AUTHOR:         Michenaud Laurent <lmichenaud@free.fr>
+
+SYNOPSIS:
+        How to set up postfix - procmail - fetchmail
+
+HINT:
+This hint explains how to set up a mail server on your lfs
+using postfix, procmail and fetchmail.
+
+Requirements :
+- a dns server => see the bind hint or the djbdns hint.
+- Berkerley DB
+
+Optional :
+- a working fcron => see the fcrontab hint
+
+
+I - PROCMAIL
+============
+
+download here : http://www.procmail.org/procmail-3.22.tar.gz
+
+$ tar zxvf procmail-3.21.tar.gz
+$ cd procmail-3.21
+$ make BASENAME=/usr install
+
+
+
+II - POSTFIX
+============
+
+1) Installation
+---------------
+
+download here : ftp://ftp.porcupine.org/mirrors/postfix-release/official/postfix-1.1.0.tar.gz
+
+        a) Compilation
+        
+If db.h is not in /usr/include 
+or in /usr/include/db, make will failed.
+To correct, edit makedefs, search for "db.h" and change the paths.
+or use following commands :
+
+sed 's|/usr/include/db.h|/path/to/db.h|' \
+makedefs > makedefs~ &&
+mv makedefs~ makedefs
+
+Then,
+
+$ make
+
+        b) create a postfix user and the postfix group
+
+In /etc/passwd, add :
+postfix:x:101:101::/dev/null:/bin/false
+
+In /etc/group, add :
+postfix:x:101:
+postdrop:x:102:
+
+
+        d) Modify /var/mail
+
+/var/mail is owned by root on a standard lfs so 
+postfix can't create files inside it. 
+Change like this :
+        
+$ chown postfix.postfix /var/mail
+
+
+	e) Finish Install
+
+# if new fresh install
+$ make install
+# or, if upgrade
+$ make upgrade 
+
+if u choose make install, it will ask u about
+the different directory u want to use.
+
+Recommended :
+install_root : /
+temp_dir : /tmp
+config_directory : /etc/postfix
+daemon_directory : /usr/libexec/postfix
+command_directory: /usr/sbin
+queue_directory: /var/spool/postfix
+sendmail_path: /usr/sbin/sendmail
+newaliases_path: /usr/bin/newaliases
+mailq_path: /usr/bin/mailq
+mail_owner: postfix
+setgid_group: postdrop
+manpage_directory: /usr/share/man
+readme_directory: [no]
+
+Then, you have to run :
+/etc/postfix/post-install create-missing
+
+If it cannot find postconf, that's because this script redefines $PATH.
+Edit it to make it working.
+
+
+$ /etc/postfix/post-install
+
+At last, you can copy the html documentation
+        
+$ cp -rf html /usr/doc/postfix
+
+
+With this new postfix version, i had to edit the 
+/etc/postfix/master.cf to make postfix working.
+I've changed the following :
+set pickup to unpriv
+set flush and cleanup to private
+I have the feeling it is not the good solution
+but it works. Need help for this point.
+
+
+
+2) The main configuration file : /etc/postfix/main.cf
+-----------------------------------------------------
+
+# Begin of file
+
+# Directories information 
+queue_directory = /var/spool/postfix
+mail_spool_directory = /var/mail
+command_directory = /usr/sbin
+daemon_directory = /usr/libexec/postfix
+
+# Owner of processus
+mail_owner = postfix
+
+default_privs = nobody
+
+# Hostname
+myhostname = zarba.zerezo.org
+
+# Domain
+mydomain = zerezo.org
+
+# Which address to use to send mail
+myorigin = $mydomain
+
+# domain list from which the machine considers itself
+# as the destination of the messages
+mydestination = $myhostname, localhost.$mydomain, $mydomain, mail.$mydomain
+
+#inet_interfaces = all
+inet_interfaces = $myhostname, localhost
+
+# which machines should postfix trust
+#   possible values are class subnet host
+mynetworks_style = subnet
+
+# At the place of mynetworks_style, you can use :
+# mynetworks = 192.168.0.0, 127.0.0.1
+
+# Which ISP to use to deliver the non local mail
+relayhost = [smtp.laposte.net]
+
+# Which protocol to use for local mail
+default_transport = smtp
+
+# Allow to postfix to know which address are local
+# and which are external
+transport_maps = hash:/etc/postfix/transport
+
+# Alias file to change local address into valid external mail
+sender_canonical_maps = hash:/etc/postfix/sender_canonical
+
+recipient_canonical_maps = hash:/etc/postfix/recipient_canonical
+
+# Aliases
+alias_maps = hash:/etc/postfix/aliases
+alias_database = hash:/etc/postfix/aliases
+
+# Reject unknown users
+local_recipient_maps = $alias_maps unix:passwd.byname
+
+# Which program to use to deliver mail
+mailbox_command = /usr/bin/procmail
+
+# Concurrency processes
+local_destination_concurrency_limit = 2
+default_destination_concurrency_limit = 5
+
+# Debug
+debug_peer_level = 1
+
+debugger_command =
+         PATH=/usr/bin:/usr/X11R6/bin
+         xxgdb $daemon_directory/$process_name $process_id & sleep 5
+
+# Minimum free space on disk to accept the mail
+queue_minfree = 5000000
+
+# maximum size of a mail
+message_size_limit = 10000000
+
+# Send a copy of error message to the postmaster
+notify_classes = resource,software,bounce,delay,policy
+
+# Pause in seconds to do when the message arrival 
+# rate exceeds the message delivery rate
+in_flow_delay = 1
+
+sendmail_path = /usr/sbin/sendmail
+newaliases_path = /usr/bin/newaliases
+mailq_path = /usr/bin/mailq
+setgid_group = postdrop
+manpage_directory = /usr/share/man
+sample_directory = /etc/postfix/sample
+readme_directory = no
+
+
+# End of file
+
+
+3) alias configuration : /etc/postfix/aliases 
+---------------------------------------------
+
+It allows you to redirect the mails of a user
+to another user or severals users.
+Edit /etc/postfix/aliases
+
+Example :
+root:   zarba:
+webmaster: zarba:
+familly: zarba, dad, mum, karine
+
+Then, run to update the database file :
+
+$ newaliases
+
+
+4) /etc/postfix/recipient_canonical
+-----------------------------------
+
+This allow to transform external addresses into
+internal addresses.
+
+edit /etc/postfix/recipient_canonical
+
+# begin of file
+laurent.michenaud@laposte.net	zarba
+karine.michenaud@laposte.net	karine
+laurent.michenaud@wanadoo.fr	zarba
+# end of file
+
+Then, update the database file :
+$ postmap /etc/postfix/recipient_canonical
+
+
+5) /etc/postfix/sender_canonical
+--------------------------------
+
+This allows to transform your local address
+into valid external addresses.
+For example, my domain zarba.zerezo.org is not
+registered on internet. So, when i send external mails,
+my address should be change into a valid one.
+
+edit /etc/postfix/sender_canonical
+
+# begin of file
+root  laurent.michenaud@yourfai.com
+karine karine.michenaud@yourfai.com
+# end of file
+
+Then, update the database file :
+$ postmap /etc/postfix/sender_canonical
+
+
+
+6) /etc/postfix/transport
+-------------------------
+
+Postfix has to know which mails are local and
+which are externals.
+
+Example :
+zarba.zerezo.org        local:
+localhost         local:
+
+Update the database file :
+postmap /etc/postfix/transport
+
+
+
+7) Postfix administration
+-------------------------
+
+        postfix start         : to start the mail server
+        postfix stop         : to stop the mail server
+        postfix reload         : to reload the mail server
+        postfix check         : check the configuration and the permissions
+        postfix flush         : to send the undelivered mail
+        mailq                 : to see mails which have not been delivered
+                        ( you must be root )
+        
+
+
+8) the boot script /etc/rc.d/init.d/postfix
+-------------------------------------------
+
+# be carefull, it uses the new bootscripts-1.0 system
+
+#!/bin/sh
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+case "$1" in
+        start)
+                echo -n "Starting the mail server..."
+                /usr/sbin/postfix start
+                evaluate_retval
+                ;;
+
+        stop)
+                echo -n "Stopping the mail server..."
+                /usr/sbin/postfix stop
+                evaluate_retval
+                ;;
+
+        reload)
+                echo -n "Reloading the mail server..."
+                /usr/sbin/postfix reload
+                evaluate_retval
+                ;;
+
+        restart)
+                $0 stop
+                /usr/bin/sleep 1
+                $0 start
+                ;;
+
+        *)
+                echo "Usage: $0 {start|stop|reload|restart}"
+                exit 1
+        ;;
+
+esac
+# End of file
+
+
+$ cd /etc/rc.d/init.d/rc0.d
+$ ln -s ../init.d/postfix K05postfix
+$ cd ../rc6.d
+$ ln -s ../init.d/postfix K05postfix
+$ cd ../rc3.d
+$ ln -s ../init.d/postfix S45postfix
+$ cd ../rc5.d
+$ ln -s ../init.d/postfix S45postfix
+
+
+
+III - FETCHMAIL
+===============
+
+download here : http://www.tuxedo.org/~esr/fetchmail/fetchmail-5.9.6.tar.gz
+
+        a) installation
+
+# You can add --with-ssl option to ./configure if u want( OpenSSL needed ).
+
+$ ./configure --prefix=/usr --enable-fallback=procmail --sysconfdir=/etc
+$ make
+$ make install
+
+
+        b) configuration
+  
+Edit ~/.fetchmailrc and add your mail accounts.
+
+# Begin of file
+set logfile /var/log/fetchmail.log
+set no bouncemail
+set postmaster root
+
+poll pop.free.fr :
+        user "isplogin" pass "isppassword" is zarba here ;
+# End of file
+
+
+        c) crontab
+        
+I've done a script which is run every ten minutes and
+which gets my mail on my different mail account.
+
+My script /root/bin/checkmail :
+
+#!/bin/bash
+if [ -e /var/run/ppp0.pid ]
+then
+        /opt/network/bin/fetchmail
+fi
+
+The command in fcrontab :
+$ fcrontab -u root -e
+
+@ 10 touch /root/bin/checkmail -F
+
+
+        d) Alternative
+
+I used this fetchmail configuration when i had a non permanent connexion.
+Since i have hot an adsl connexion, i didnot use anymore fcrontab for fetchmail.
+I let run fetchmail as a daemon.
+This can be done by adding this line in the file .fetchmailrc :
+
+set daemon 600
+
+600 is the number of seconds between each mail check.
+
+
+IV - QPOPPER
+============
+
+	qpopper is a pop server. If u have a little network at home and
+u want to be able to check your mail gathered by fetchmail from another 
+box, u have to install it.
+
+download here :
+ftp://ftp.qualcomm.com/eudora/servers/unix/popper/qpopper4.0.3.tar.gz
+
+Installation
+
+./configure --prefix=/usr --sysconfdir=/etc
+
+optional, u can add --with-openssl=/path/to/openssl
+
+make &&
+
+make install &&
+
+Add a service qpopper in xinetd :
+
+service pop3
+{
+	socket_type	= stream
+	protocol	= tcp
+	wait		= no
+	user		= root
+	server		= /usr/sbin/popper
+	server_args	= qpopper -s
+	port		= 110
+	only_from	= 192.168.0.0
+	bind		= 192.168.0.51
+	disable		= no
+}
+
+restart xinetd.
+
+I have restricted qpopper so it is avaible only on
+my network and not on internet.
+
+
+IV - Final
+==========
+
+        This hint needs to be completed.
+        Good luck.
+
+TODO :
+Amavis integration( virus scanner )
+LDAP integration
+

@@ -1,0 +1,177 @@
+TITLE:		How to install and configure at and the cron-daemon
+LFS VERSION:	Any
+AUTHOR:		Wolfgang Arendt <wolare@gmx.de>
+
+SYNOPSIS:
+	How to install and configure at and the cron-daemon
+
+HINT:
+Contents
+
+     * Introduction
+     * Prerequisites
+     * Installing fcron
+     * Where to get fcron
+     * Building fcron
+     * Bootscript for cron
+     * Installing at
+     * Where to get at
+     * Building at
+     * Configuration
+     * Possible problems:
+     * Other implementations of cron
+       
+Introduction
+
+   cron and at are two different programs that allow to execute jobs at
+   different times. cron was originally written by Paul Vixie and it's
+   primary use is, to run jobs, that need to be executed regularly. at
+   was written by Thomas Koenig and it can be used for executing programs
+   once at a given time. For example, you use cron in order to clean up
+   the /tmp/-directory every thursday night, while you would typically
+   use at in order to start a backup-process tonight at midnight.
+   
+   This hint tells you, how to install fcron, a replacement for the
+   original Vixie-cron, written by Thibault Godouet, along with the
+   original at-program. Installing fcron is easy and straightforward,
+   installing at is not that hard either, but it needs a little work to
+   be done.
+   
+Prerequisites
+
+   The cron-daemon will run as user cron and group cron, while at will
+   run as user daemon, with group daemon. If you do not have those groups
+   and users, please create them before you proceed.
+   
+   You can run the daemons as different users but in that case you might
+   have to change some defaults when configuring the code later on.
+   
+Installing fcron
+
+   We will not install the original cron but a replacement, called fcron.
+   cron is a very old program and it has not been maintainded for a very
+   long time. If you still feel like installing it, you can find a
+   download-location for the original program at the bottom of this
+   document along with download locations for several other
+   cron-programs.
+   
+  Where to get fcron
+  
+   You can get fcron from one of the many sunsite-mirrors or from
+   http://fcron.free.fr.
+   
+  Building fcron
+  
+   After unpacking the distribution and entering it's top level
+   directory, compiling and installing goes with:
+    ./configure --prefix=/usr \
+    --with-username=cron \
+    --with-groupname=cron \
+    --with-answer-all=no &&
+    make &&
+    make install &&
+    cd /usr/sbin &&
+    ln -s fcron cron &&
+    cd /usr/bin &&
+    ln -s fcrontab crontab
+
+   This installs fcron into /usr/sbin and creates a link to
+   /usr/sbin/cron as well as it installs fcrontab into /usr/bin and makes
+   a symbolic link to /usr/bin/crontab.
+   
+   cron is the daemon while crontab is being used in order to alter the
+   tables, that tell cron when to run a job.
+   
+   You can safely ignore the install-script's warnings about being unable
+   to create the boot-scripts, as we will create them now.
+   
+  Bootscript for cron
+  
+   Create a bootscript from the template /etc/init.d/template and link it
+   into the runlevel directories 2, 3, 4 and 5 for starting and into the
+   directories 0, 1 and 6 for killing.
+   
+   Do that by running something like this:
+    for rl in 0 1 6; do
+      cd /etc/rc$rl.d &&
+      ln -s ../init.d/cron K20cron
+    done
+    for rl in 2 3 4 5; do
+      cd /etc/rc$rl.d &&
+      ln -s ../init.d/cron S20cron
+    done
+
+   You should now be able to start cron by running
+    /etc/init.d/cron start
+
+Installing at
+
+  Where to get at
+  
+   You can get the at-daemon from one of the many sunsite-mirrors around
+   the globe. I picked mine from here
+   ftp://ftp.LeidenUniv.nl/pub/linux/sunsite/system/daemons/
+   
+  Building at
+  
+   Enter the top-level-directory of the uncompressed package.
+   
+   First run ./Configure and pick your preferences. The defaults are
+   quite ok, only change the location for internal binaries from /usr/lib
+   to /usr/sbin and the location for the manual from /usr/man to
+   /usr/share/man.
+   
+   Then, all occurences of panic.h have to be removed from the files
+   at.c, panic.c and parsetime.c.
+   
+   You can either do this manually, or execute:
+    for i in at.c panic.c parsetime.c; do
+    mv $i $i.backup &&
+    cat $i.backup | sed -e '/panic\.h/d' > $i
+    done
+
+   After that run
+    make &&
+    make install
+
+  Configuration
+  
+   Create a cronjob for root, that calls atrun once in a minute. You
+   customize the cron-tables with the command
+     crontab -e
+
+   The entry, that has to be created should looks like this:
+     * * * * * /usr/sbin/atrun
+
+   That's it!
+   
+Possible problems:
+
+   The group daemon or the user daemon does not exist (or both are
+   missing).
+   
+   Did you forget to create the cron-job, that calls atrun? (Do so by
+   running crontab -e)
+   
+   Check ownership of the spool-directories. They must be accessible for
+   the daemons.
+   
+Other implementations of cron
+
+   Here are some sites, where you can get several implementations of
+   cron-daemons:
+   
+   after
+          http://www.ajk.tele.fi/~too/sw/after.readme
+          
+   anacron
+          http://anacron.sourceforge.net/
+          
+   dcron
+         http://www.ibiblio.org/pub/Linux/system/daemons/cron/dcron-2.3.3.tar.gz
+          
+   The original cron-daemon by Paul Vixie can be found here, along with
+   several of the formerly mentioned programs:
+   
+   cron
+          http://www.ibiblio.org/pub/Linux/system/daemons/cron/cron3.0pl1.tar.gz

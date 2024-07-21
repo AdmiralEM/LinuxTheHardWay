@@ -1,0 +1,59 @@
+TITLE:		D-Link-DFE-530TX+
+LFS VERSION:	any
+AUTHOR:		RodZilla <rodzilla2@home.com>
+
+SYNOPSIS:
+	How to get a D-Link DFE-530TX+ working.
+
+HINT:
+Thought I would share how I got my D-Link DFE-530TX+ working...
+
+The DFE-530TX+ has a different chipset than the DFE-530TX. It's using a
+Realtek RTL8139 chipset.
+
+The kernel I am currently using (2.2.14) doesn't have support for this
+network card, so I did some web surfing and I foundÿa driver for the
+card...
+
+Information about the driver is located
+www.scyld.com/network/rtl8139.html
+
+To install the driver for this network card, do the following:
+
+Download the following files from ftp://ftp.scyld.com/pub/network
+1. rtl8139.c
+2. pci-scan.c
+3. pci-scan.h
+4. kern-compat.h
+
+Compile pci-scan.c:
+gcc -DMODULE -D__KERNEL__ -O6 -c pci-scan.c
+
+Compile rtl8139.c:
+gcc -DMODULE -D__KERNEL__ -O6 -c rtl8139.c
+
+Testing the module:
+insmod rtl8139.o
+
+If you get any unresolved symbol errors, try doing 'insmod pci-scan.o'
+first...
+
+Installing the modules:
+install -m 644 pci-scan.o /lib/modules/<your kernel version>/net/
+install -m 644 rtl8139.o /lib/modules/<your kernel version>/net/
+
+-Remember to replace <your kernel version> with the version number of
+your kernel, e.g. 2.2.14
+
+Add the line below to your modules.conf (or, in some cases,
+conf.modules):
+alias eth0 rtl8139
+
+Do a 'depmod' command to update the modules database
+
+Now you should be able to successfully finish step 9 (setting up basic
+networking) of the lfs book...
+
+Hope this helps anyone having problems with this network card. I was
+getting ready to return it to the store, until i found what driver the
+card needed...

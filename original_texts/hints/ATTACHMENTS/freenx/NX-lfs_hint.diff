@@ -1,0 +1,115 @@
+Submitted By: Jaap Struyk <japie at deserver dot nl>
+Date: 2006-01-04
+Initial Package Version: 1.5
+Upstream Status: Not submitted - LFS Specific
+Origin: http://patches.linuxfromscratch.org
+Description: This patch is for the LFS freenx hint,
+	     and will patch various NX programs.
+
+--- nxviewer/nxviewer/Imakefile.old	2004-05-31 15:33:45.000000000 +0000
++++ nxviewer/nxviewer/Imakefile	2004-05-31 15:35:06.000000000 +0000
+@@ -44,6 +44,8 @@
+ 
+ USRLIBDIR = ../../nx-X11/exports/lib
+ 
++XPLIB =
++
+ #ifdef SunArchitecture
+ USRLIBDIR = /usr/NX/lib
+ SUN_LIB = -lX11 -lXext -L/usr/openwin/lib
+--- nx-X11/programs/Imakefile.old	2004-09-11 03:30:15.738465241 +0200
++++ nx-X11/programs/Imakefile	2004-09-11 03:30:39.661194763 +0200
+@@ -125,7 +125,7 @@
+ #if defined(NXEmbeddedXServer)
+ SUBDIRS = $(XSSRCDIR) 
+ #else
+-SUBDIRS = $(XSSRCDIR) nxauth
++SUBDIRS = $(XSSRCDIR)
+ #endif
+ #else
+ SUBDIRS = \
+--- nxcomp/RenderExtension.h.orig       2005-02-19 18:23:32.000000000 +0000
++++ nxcomp/RenderExtension.h    2005-08-27 23:16:05.000000000 +0100
+@@ -68,6 +68,8 @@
+ // The message class.
+ //
+
++class RenderMinorExtensionStore;
++
+ class RenderExtensionMessage : public Message
+ {
+   friend class RenderExtensionStore;
+
+--- nx-X11/lib/X11/XKBBind.c.orig	2005-04-25 16:51:03.000000000 +0000
++++ nx-X11/lib/X11/XKBBind.c	2005-04-25 16:59:53.000000000 +0000
+@@ -428,7 +428,7 @@
+ 
+ 	if (xkbi->flags&XkbMapPending)
+ 	     changes= xkbi->changes;
+-	else bzero(&changes,sizeof(XkbChangesRec));
++	else bzero(&changes,sizeof(changes));
+ 	XkbNoteMapChanges(&changes,event,XKB_XLIB_MAP_MASK);
+ 	LockDisplay(dpy);
+ 	if ((rtrn=XkbGetMapChanges(dpy,xkbi->desc,&changes))!=Success) {
+
+--- nx-X11/lib/FS/FSOpenFont.c
++++ nx-X11/lib/FS/FSOpenFont.c
+@@ -62,7 +62,7 @@ FSOpenBitmapFont(svr, hint, fmask, name,
+     char       *name;
+     Font       *otherid;
+ {
+-    unsigned char nbytes;
++    long nbytes;
+     fsOpenBitmapFontReq *req;
+     fsOpenBitmapFontReply reply;
+     Font        fid;
+--- nx-X11/lib/X11/imThaiFlt.c
++++ nx-X11/lib/X11/imThaiFlt.c
+@@ -588,7 +588,7 @@ Private Bool ThaiComposeConvert();
+   ( \
+    ((c)<=0x7F) ? \
+      (wchar_t)(c) : \
+-     ((0x0A1<=(c)&&(c)<=0x0FF) ? ((wchar_t)(c)-0xA0+0x0E00) : 0))
++     ((0x0A1<=(c)) ? ((wchar_t)(c)-0xA0+0x0E00) : 0))
+ 
+ /*
+  * Macros to save and recall last input character in XIC
+--- nx-X11/programs/Xserver/xkb/xkbUtils.c
++++ nx-X11/programs/Xserver/xkb/xkbUtils.c
+@@ -855,7 +855,7 @@ XkbComputeDerivedState(xkbi)
+ {
+ XkbStatePtr	state= &xkbi->state;
+ XkbControlsPtr	ctrls= xkbi->desc->ctrls;
+-char		grp;
++unsigned char		grp;
+ 
+     state->mods= (state->base_mods|state->latched_mods);
+     state->mods|= state->locked_mods;
+--- nx-X11/programs/Xserver/xkb/xkbUtils.c
++++ nx-X11/programs/Xserver/xkb/xkbUtils.c
+@@ -866,11 +866,11 @@ char		grp;
+ 
+ 
+     grp= state->locked_group;
+-    if ((grp>=ctrls->num_groups) || (grp<0))
++    if (grp>=ctrls->num_groups)
+ 	state->locked_group= XkbAdjustGroup(grp,ctrls);
+ 
+     grp= state->locked_group+state->base_group+state->latched_group;
+-    if ((grp>=ctrls->num_groups) || (grp<0))
++    if (grp>=ctrls->num_groups)
+ 	 state->group= XkbAdjustGroup(grp,ctrls);
+     else state->group= grp;
+     XkbComputeCompatState(xkbi);
+--- nx-X11/programs/Xserver/xkb/xkb.c.orig	2005-08-15 03:59:22.000000000 +0000
++++ nx-X11/programs/Xserver/xkb/xkb.c	2005-08-15 04:07:30.000000000 +0000
+@@ -2621,8 +2621,7 @@
+ 	    stuff->maxKeyCode= xkb->max_key_code;
+ 	}
+ 	else {
+-	    if ((stuff->minKeyCode<XkbMinLegalKeyCode)||
+-				(stuff->maxKeyCode>XkbMaxLegalKeyCode)) {
++	    if (!XkbIsLegalKeycode(stuff->minKeyCode)) {
+ 		client->errorValue= _XkbErrCode3(2,stuff->minKeyCode,
+ 							stuff->maxKeyCode);
+ 		return BadValue;

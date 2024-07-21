@@ -1,0 +1,403 @@
+TITLE:          initrd for LFS
+LFS VERSION:    any
+AUTHOR:         Jim Gifford <giffordj@linkline.com>
+
+SYNOPSIS:
+        How to setup initrd for LFS.
+
+HINT:
+$Revision: 1.1 $
+
+Introduction to Initial RAMDisk
+
+This hint will help you configure an LFS system for Initial RAMDisk.
+Which will allow you to add modules at start-up instead of compiling them
+into the kernel.
+
+The script that is enclosed works with SCSI and USB modules only. IDE
+devices are recommened to be built-in the kernel. The script will
+auto-detect all SCSI and USB modules and add them to the initial ramdisk.
+It will also detect the root from the fstab file
+
+---
+Assumptions Made in this document
+
+	I have made the following assumptions in this document.
+	Files have been downloaded.
+
+---
+Kernel Configuration
+
+	You will need to make sure the following items are configured
+	in your kernel. With out these, the initrd will not work.
+
+	Block Devices
+	
+	Select Loopback Device Support this can be a module
+	or built-in.
+
+	Select RAM Disk Support this needs to be compiled as 
+	built-in or the initrd will not show up.
+
+	Set Default RAM Disk size is 4096 which is the default
+
+	Select Initial RAM Disk (initrd) support needs be selected.
+
+---
+Needed File System Changes
+
+	You will need to create a directory for initrd to use.
+
+	The default one that is looked for is /initrd.
+
+	To Create this directory use mkdir /initrd
+
+	Another change that needs to be made is due to a bug
+	in busybox itself.
+
+	You will need to create a symlink to init and call it
+	linuxrc
+
+	cd /sbin
+	ln -sf init linuxrc
+
+---
+Needed Static Modules
+
+	In order for the initrd to work properly during boot up
+	you will need to create to static programs.
+
+	The first one being bash.
+
+	busybox
+	----
+
+	Busybox has a Config.h file that needs the following options
+	enabled to enable them remove the //
+
+	#define BB_INSMOD
+	#define BB_FEATURE_SH_STANDALONE_SHELL
+
+	You can configure the rest as you need, but remember have at
+	least the following enabled to make initrd to work properly.
+	
+	#define BB_ASH
+	#define BB_CHROOT
+	#define BB_ECHO
+	#define BB_INSMOD
+	#define BB_MKDIR
+	#define BB_MODPROBE
+	#define BB_MOUNT
+	#define BB_PIVOT_ROOT
+	#define BB_UMOUNT
+
+	To create a static version of bash needed for initrd use
+	the following commands.
+	
+	cd /usr/src
+	tar zxvf /usr/src/busybox-*.tar.gz
+	cd busy*
+	make LDFLAGS=-static
+	cp busybox /bin/busybox
+
+	Busybox must be in the /bin directory or the links created 
+	during the initrid will fail.
+
+---
+mkinitrd
+
+	For those who do not want to type out the script. It is
+	available on my CVS server at 
+	http://www.jg555.com/cvs/cvsweb.cgi/scripts/mkinitrd-lfs
+	
+	This script will create the initial RAM Disk image file.
+	By default this script creates /boot/initrd.img
+
+	The default location for this file is /sbin
+
+#!/bin/bash
+
+# mkinitrd for LFS by Jim Gifford <giffordj@linkline.com>
+# $Revision: 1.1 $
+
+# Variables
+TEMP="$1"
+
+KERNEL_VERSION=""
+CONFIG_FILE="/etc/modules.conf"
+
+FSTAB="/etc/fstab"
+ROOT_DEVICE=$(awk '/^[ \t]*[^#]/ { if ($2 == "/") { print $1; }}' $FSTAB)
+
+SCSI_MODULES="`grep scsi_hostadapter $CONFIG_FILE | grep -v '^[    ]*#' | awk '{ print $3 }'`"
+NEEDED_SCSI="scsi_mod sd_mod"
+
+USB_MODULES="`grep usb-controller $CONFIG_FILE | grep -v '^[    ]*#' | awk '{ print $3 }'`"
+NEEDED_USB="usbcore"
+
+MODULES="$NEEDED_SCSI $SCSI_MODULES $NEEDED_USB $USB_MODULES"
+
+IMAGE_SIZE=3000
+MOUNT_IMAGE="/tmp/initrd.$$"
+IMAGE="/tmp/initrd.img-$$"
+MOUNT_POINT="/tmp/initrd.mnt-$$"
+LINUXRC="$MOUNT_IMAGE/linuxrc"
+
+# Check for initrd Directory
+
+if ! [ -e /initrd ]
+	then
+		mkdir /initrd
+fi
+		
+# Check for RAM Disk Device
+
+if [ -e /dev/.devfsd ]
+	then
+		RAM_DEVICE="rd"
+	else
+		RAM_DEVICE="ram0"
+fi
+
+# Check for input
+
+if [ "$TEMP" == "" ]
+	then
+		KERNEL_VERSION="`uname -r`"
+	else 
+		KERNEL_VERSION="$TEMP"
+fi
+
+INITRD="/boot/initrd-$KERNEL_VERSION.img"
+
+if [ "$TEMP" == "-h" ] || [ "$TEMP" == "--h" ] || [ "$TEMP" == "-help" ] || [ "$TEMP" == "--help" ]
+	then
+		echo "usage: mkinitrd kernel_version"
+		echo "     : mkinitrd will automatically determin kernel version"
+		exit 1
+fi
+
+# Creating LoopBack Device
+
+dd if=/dev/zero of=$IMAGE bs=1k count=$IMAGE_SIZE 2> /dev/null
+
+for device_number in 0 1 2 3 4 5 6 7 8
+	do
+		if losetup /dev/loop$device_number $IMAGE 2>/dev/null
+			then
+				break
+		fi
+done
+
+if [ "$device_number" = "8" ]
+	then
+		rm -rf $MOUNT_POINT $IMAGE
+		echo "All of your loopback devices are in use!" >&2
+		exit 1
+fi
+
+LOOP_DEVICE=/dev/loop$device_number
+
+echo y | mke2fs $LOOP_DEVICE $IMAGE_SIZE > /dev/null 2> /dev/null
+
+echo "Using loopback device $LOOP_DEVICE"
+
+mkdir -p $MOUNT_POINT
+mount -t ext2 $LOOP_DEVICE $MOUNT_POINT || {
+					     echo "Can't get a loopback device"
+					     exit 1
+					   }
+# Creating Directories
+
+mkdir -p $MOUNT_IMAGE
+mkdir -p $MOUNT_IMAGE/lib
+mkdir -p $MOUNT_IMAGE/bin
+mkdir -p $MOUNT_IMAGE/etc
+mkdir -p $MOUNT_IMAGE/dev
+mkdir -p $MOUNT_IMAGE/proc
+ln -s /bin $MOUNT_IMAGE/sbin
+
+rm -rf $MOUNT_POINT/lost+found
+
+# Copying Static Programs
+
+cp -a /bin/busybox $MOUNT_IMAGE/bin/busybox
+ln -s /bin/busybox $MOUNT_IMAGE/bin/echo
+ln -s /bin/busybox $MOUNT_IMAGE/bin/mount
+ln -s /bin/busybox $MOUNT_IMAGE/bin/modprobe
+ln -s /bin/busybox $MOUNT_IMAGE/bin/mkdir
+ln -s /bin/busybox $MOUNT_IMAGE/bin/sh
+ln -s /bin/busybox $MOUNT_IMAGE/bin/umount
+ln -s /bin/busybox $MOUNT_IMAGE/bin/insmod
+ln -s /bin/busybox $MOUNT_IMAGE/bin/pivot_root
+cp -a /etc/fstab $MOUNT_IMAGE/etc/fstab
+cp -a /etc/modules.conf $MOUNT_IMAGE/etc/modules.conf
+
+# Copying Modules
+
+for MODULE in $MODULES
+	do
+		echo "$MODULE" | {
+		IFS=':' read module options
+		module=$module
+		options=$options
+		DIR_SEARCH1="`ls -1 /lib/modules/$KERNEL_VERSION/kernel/drivers`"
+		for DIR_1SEARCH in $DIR_SEARCH1
+		do
+			cp /lib/modules/$KERNEL_VERSION/kernel/drivers/$DIR_1SEARCH/$module.o $MOUNT_IMAGE/lib > /dev/null 2>&1
+			DIR_SEARCH2="`ls -1 /lib/modules/$KERNEL_VERSION/kernel/drivers/$DIR_1SEARCH`"
+			for DIR_2SEARCH in $DIR_SEARCH2
+				do
+					cp /lib/modules/$KERNEL_VERSION/kernel/drivers/$DIR_1SEARCH/$DIR_2SEARCH/$module.o $MOUNT_IMAGE/lib > /dev/null 2>&1
+				done
+		done
+			           }
+	done
+
+for i in console null $RAM_DEVICE tty[1234]
+	do
+		cp -a /dev/$i $MOUNT_IMAGE/dev
+done
+
+# Creating linuxrc File
+
+echo "#!/bin/sh" > $LINUXRC
+echo "" >> $LINUXRC
+
+echo "echo \"Initial RAMDISK Loading Starting...\"" >> $LINUXRC
+
+for MODULE in $MODULES
+	do
+		echo "$MODULE" | {
+		IFS=':' read module
+		module=$module
+
+		echo "Loading module $module"
+		echo "insmod /lib/$module.o" >> $LINUXRC
+		}
+done
+
+echo "echo \"Initial RAMDISK Loading Completed...\"" >> $LINUXRC
+echo "mkdir /new_root" >> $LINUXRC
+echo "echo \"Mounting proc...\"" >> $LINUXRC
+echo "mount -n -t proc none /proc" >> $LINUXRC
+echo "echo 0x0100 > /proc/sys/kernel/real-root-dev" >> $LINUXRC
+echo "echo \"Mounting real root dev...\"" >> $LINUXRC
+echo "mount -n -o ro $ROOT_DEVICE /new_root" >> $LINUXRC
+echo "umount /proc" >> $LINUXRC
+echo "cd /new_root" >> $LINUXRC
+echo "echo \"Running pivot_root...\"" >> $LINUXRC
+echo "pivot_root . initrd" >> $LINUXRC
+echo "if [ -c initrd/dev/.devfsd ]" >> $LINUXRC
+echo "	then" >> $LINUXRC
+echo "		echo \"Mounting devfs...\"" >> $LINUXRC
+echo "		mount -n -t devfs none dev" >> $LINUXRC
+echo "fi" >> $LINUXRC
+echo "if [ \$\$ = 1 ]" >> $LINUXRC
+echo "	then" >> $LINUXRC
+echo "		echo \"Running init...\"" >> $LINUXRC
+echo "		exec chroot . sbin/init dev/console 2>&1" >> $LINUXRC
+echo "	else" >> $LINUXRC
+echo "		echo \"Using bug circumvention for busybox...\"" >> $LINUXRC
+echo "		exec chroot . linuxrc dev/console 2>&1" >> $LINUXRC
+echo "fi" >> $LINUXRC
+
+chmod +x $LINUXRC
+
+(cd $MOUNT_IMAGE; tar cf - .) | (cd $MOUNT_POINT; tar xf -)
+
+umount $MOUNT_POINT
+losetup -d $LOOP_DEVICE
+
+gzip -9 < $IMAGE > $INITRD
+rm -rf $MOUNT_IMAGE $MOUNT_POINT $IMAGE
+
+lilo -v
+
+---
+initrd script
+
+	The following script needs to placed in /etc/rc.d/init.d.
+
+	You will then need to link it to rcsysinit.d.
+
+	It is recommended that this script be run right after
+	mountfs.
+
+	To link the script change to the /etc/rc.d/rcsysinit.d
+	directory and issue the following command.
+
+	ln -sf ../init.d/initrd S41initrd
+
+#!/bin/bash
+# Begin $rc_base/init.d/initrd
+
+# Based on sysklogd script from LFS-3.1 and earlier.
+# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+echo "Clearing Initial RAM Disk..."
+	if [ -e /initrd/dev/.devfsd ]
+		then
+      		umount /initrd/dev
+   	fi
+   	umount /initrd
+   	/sbin/blockdev --flushbufs /dev/ram0
+
+# End $rc_base/init.d/initrd
+		
+---
+For Lilo
+
+	In order to use the initrd.img file is to add the
+	following entry to you lilo.conf file.
+
+	initrd=/boot/initrd.img
+
+	So your lilo.conf should look something like this.
+
+	image=/boot/vmlinuz-2.4.18
+	label=test
+	initrd=/boot/initrd-2.4.18.img
+	read-only
+	append="root=/dev/ram0 init=/linuxrc rw"
+
+	If you are just testing. You should make a separate
+	entry in lilo.conf. This will still allow you to boot.	
+
+---
+For Grub
+
+	In order to use the initrd.img file is to add the
+	following entry to you menu.lst file.
+
+	initrd /boot/initrd-2.4.18.img
+
+	So your menu.lst should look something like this.
+
+	title test
+	root (hd0,1)
+	kernel /boot/vmlinuz-2.4.18
+	initrd /boot/initrd-2.4.18.img
+
+---
+For Syslinux
+
+	In order to use the initrd.img file is to add the
+	following to syslinux.cfg file.
+
+	append root=/dev/ram0 initrd=initrd-2.4.18.img
+
+	So your syslinux.cfg should look something like this.
+
+	label test
+	kernel vmlinuz
+	append root=/dev/ram0 initrd=initrd.img
+
+---
+Mail suggestions to giffordj@linkline.com
+
+New Version of this document can be viewed from
+http://www.jg555.com/cvs

@@ -1,0 +1,56 @@
+Hint Conversion progress:
+[Temporary file, will be removed once all hints are converted]
+[http://archives.linuxfromscratch.org/mail-archives/hints/2003-September/001953.html]
+   * acpid: Conversion in progress.
+   * apache-dynamic-ip: Conversion in progress.
+   * apache2+php4+htdig: No response from author.
+   * blackbox: No response from author.
+   * boot-cd_easy: No response from author. Should be merged with bootcd.
+   * bootcd: Orphaned. Should be merged with boot-cd_easy.
+   * bootlfscd: Conversion in progress.
+   * bootlogo: No response from author.
+   * chrony_time: Conversion in progress.
+   * ckermit+lrzsz: No response from author.
+   * djbdns: Could not contact author.
+   * easyrc: Could not contact author.
+   * encap: Could not contact author.
+   * fortune: Could not contact author.
+   * gcc_multiple_versions: No response from author.
+   * grub_boot_rescue: Could not contact author.
+   * hpdeskjet: No response from author.
+   * icewm: Could not contact author.
+   * inittab: Could not contact author.
+   * install-log: No response from author.
+   * installwatch: Conversion in progress.
+   * isdn-setup: Could not contact author. Hint should be merged with isdn.
+   * isdn: No response from author. Hint should be merged with isdn-setup.
+   * keyboard_us2es: No response from author.
+   * large_disks: Could not contact author.
+   * ldap_auth: Could not contact author.
+   * lfs_appliance: No response from author.
+   * lfs_bare_build: No response from author.
+   * lilo: Could not contact author.
+   * lin2win: Conversion in progress.
+   * linuxlogo: No response from author.
+   * lyx: No response from author.
+   * metalog: Could not contact author.
+   * newbie: No response from author.
+   * openssh_remote_floppy: No response from author.
+   * pcmcia: Conversion in progress.
+   * portscan: Could not contact author.
+   * pth: No response from author.
+   * qmail_cyrus_imap: No response from author.
+   * redhat_style_logon: Could not contact author.
+   * remotex: No response from author.
+   * root-privileges: Could not contact author.
+   * security: Orphaned.
+   * supermount: No response from author.
+   * sylpheed: Could not contact author.
+   * tgz: No response from author.
+   * tuxracer: No response from author.
+   * uml: No response from author.
+   * xasroot: Could not contact author.
+   * xawtv: Could not contact author.
+   * xconsole_setup: Conversion in progress.
+   * xfig: No response from author.
+   * xmail: Orphaned.

@@ -1,0 +1,226 @@
+TITLE:        Samba File and Print Server Hint
+LFS VERSION:    3.0-RC1
+AUTHOR:        Patrick Kirk < patrick@kirks.net >
+
+
+Overview
+
+
+Samba allows your Linux box to perform a number of functions that are
+typically the preserve of Windows 2000 Server Edition, for example
+acting as a Primary Domain Controller for a Win2k Domain, acting as a
+Backup Domain controller or simply as a file server to share disk space
+with Windows PCs in a safe and secure manner.  In all these capacities,
+Samba can be expected to save a lot of license fees and be far more
+secure than any alternative.
+
+This hint is for setting up samba as a file and print server on machine
+where security is important.  The emphasis is on security for the server
+and ease of use for the users.  For example, I use these settings on the
+machine that shares my ADSL connection.  
+
+
+
+1. Installation
+
+Samba can be downloaded from www.samba.org.  Its default installation
+created a directory called samba in /usr/local and tidily puts all its
+bits in there.  If like me you like to ne able to backup your system
+configuration just by backing up /etc this needs to be changes.  Also,
+to save messing around with editing your path, it is worth specifying
+the executables go in /usr/local/bin and sbin as appropriate.
+
+As root execute these commands:
+
+cd /usr/src &&
+tar xzvf samba*.tar.gz &&
+mkdir -p /etc/samba  &&
+mkdir -p /var/lock/samba  &&
+cd samba-2.2.1a/source &&
+/configure --prefix=/usr/local --bindir=/usr/local/bin \
+--sbindir=/usr/local/sbin --libdir=/etc/samba --sysconfdir=/etc/samba \
+--with-smbmount && make && make install 
+
+2. Setting up sharing
+
+In /etc/samba create a file called smb.conf and paste the following in:
+
+[global]
+    workgroup = KIRKS.NET    # Put your own in here.
+    netbios name = ENTERPRISE    # The hostname for your machine
+    server string = %h server (Samba %v)
+    encrypt passwords = Yes
+    smb passwd file = /etc/samba/sambapasswd    #Easier backups
+    syslog = 0    #Level of logging to syslog.  Keep this low
+    max log size = 1000
+    log file = /var/log/samba/samba.log.%m # where to keep records
+    log level = 2    #Log interesting stuff only
+    # Performance tuning - this works.  RTFM before tweaking
+    socket options = IPTOS_LOWDELAY \ 
+    TCP_NODELAY SO_SNDBUF=4096 SO_RCVBUF=4096
+    dns proxy = No    #One tool for one job.  Use bind for DNS.
+    #Security
+    #These  entries are essential.
+    invalid users = root    
+    #Otherwise someone could attack the shares just by browsing 
+     # from your workstation
+    
+    # Specify the IP range of your LAN and the ethernet card used to
+    # access the LAN
+    # Leave the 127.0.0.1 entry there for diagnostics
+    interfaces = eth0 192.168.0.0/255.255.255.0 127.0.0.1/24 
+    # Even if a remote attacker decodes a password, he is still
+    # locked out 
+    bind interfaces only = yes
+
+
+[homes]
+    # Allows users to store their data on the server
+    comment = Home Directories
+    read only = No
+    create mask = 0700
+    directory mask = 0700
+    browseable = Yes
+[data]
+    # Create a folder for publicly shared resources like 
+    # databases, telephone lists, etc.
+        comment = Data Files and Backups
+    # You need to set his path.  Mine is...
+        path = /home/data
+        read only = No
+        create mask = 0775
+        directory mask = 0775
+        browseable = Yes
+
+[system]
+    # Copy the i386 folder from the Win2k CD here. 
+    # Saves lots of time installing new drivers! 
+    # Any other other CDs you use a lot.
+    # 
+        comment = System and Installation Files
+    # You need to set his path.  Mine is...
+        path = /home/system
+        read only = No
+        create mask = 0775
+        directory mask = 0775
+        browseable = Yes
+
+[printers]
+        comment = All Printers
+        path = /tmp
+        create mask = 0700
+        printable = Yes
+        browseable = No
+
+# End of file
+
+
+
+3. Setting up users
+smbpasswd -a john adds john and prompts you for john's password.  Unless
+you have lots of users, repeat this for each.  If you have too many for
+this to be practical, configure SWAT which allows you to manage users
+and groups from a remote web-browser.  SWAT is very easy to use but if
+you need to use it there is detailed documentation including an O'Reilly
+book in html format on http://sunsite.dk/samba/docs
+
+4. Setting up client machines
+Windows 2000 machines will now just work if the username on the machine
+is the same as the account name you set up on the samba server.  If not
+the same, then map network drives and take the option use the drive
+under the name and password you set up on the server.
+
+You might consider creating a batch file called login.bat in the startup
+group of client boxes that goes as follows:
+
+net use h: \\192.168.0.1\homes /persistent:no
+
+net use i: \\192.168.0.1\data /persistent:no
+
+net use j: \\192.168.0.1\system /persistent:no
+
+5. Starting samba
+Create a file in /etc/init.d called samba and paste the following in:
+
+#!/bin/sh
+# Begin /etc/init.d/samba
+
+#
+# Include the functions declared in the /etc/init.d/functions file
+#
+
+source /etc/init.d/functions
+
+case "$1" in
+        start)
+                echo -n "Starting Samba daemon..."
+                loadproc /usr/local/sbin/nmbd
+
+                echo -n "...Samba daemon started!"
+                loadproc /usr/local/sbin/smbd
+                ;;
+
+        stop)
+                echo -n "Stopping Samba daemon!"
+                killproc smbd
+
+                echo -n "...Samba daemon stopped."
+                killproc nmbd
+                ;;
+
+        reload)
+        echo -n "Reloading Samba daemon configuration file..."
+                reloadproc smbd
+        ireloadproc nmbd
+                ;;
+
+        restart)
+                $0 stop
+                /usr/bin/sleep 1
+                $0 start
+                ;;
+
+        status)
+                statusproc /usr/local/sbin/nmbd
+                statusproc /usr/local/sbin/smbd
+                ;;
+
+        *)
+                echo "Usage: $0 {start|stop|reload|restart|status}"
+                exit 1
+        ;;
+
+esac
+
+# End /etc/init.d/samba
+
+To start samba, simply enter /etc/init.d/samba start
+
+To have samba start every time your machine starts, run the following
+command:
+
+chmod 754 /etc/init.d/samba &&
+
+ln -s  ../init.d/samba /etc/rc0.d/K400samba &&
+
+ln -s  ../init.d/samba /etc/rc1.d/K400samba &&
+
+ln -s  ../init.d/samba /etc/rc2.d/K400samba &&
+
+ln -s  ../init.d/samba /etc/rc3.d/S600samba &&
+
+ln -s  ../init.d/samba /etc/rc4.d/S600samba &&
+
+ln -s  ../init.d/samba /etc/rc5.d/S600samba &&
+
+ln -s  ../init.d/samba /etc/rc6.d/K400samba
+
+
+6. The end
+Congratulations.  You now have a fileserver set up that is safe, stable
+and secure.
+
+
+
+
+

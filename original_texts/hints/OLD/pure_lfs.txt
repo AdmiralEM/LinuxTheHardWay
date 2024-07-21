@@ -1,0 +1,1382 @@
+TITLE:		How to build a "pure" LFS
+LFS VERSION:	CVS
+AUTHORS:	Ryan Oliver <Ryan.Oliver@pha.com.au>,
+		Greg Schafer <gschafer@zip.com.au>
+
+SYNOPSIS:
+	The current LFS build method is a lot better than it used to be but is
+still somewhat flawed in that not enough emphasis is placed on building a
+correct toolchain. This was recently highlighted by criticism levelled at LFS
+from senior Linux kernel hacker Alan Cox on the kernel mailing list. Here we
+present a new strategy aimed at building a correct toolchain and thus a "pure"
+LFS system. It is our belief that building a correct toolchain is the single
+most important lesson that people reading the LFS book need to know. Everything
+else is secondary.
+
+HINT:
+
+CHANGELOG
+=========
+
+The latest version of this document should always be available at:-
+
+    http://linuxfromscratch.org/~greg/
+
+Failing that, a backup copy should also be available at:-
+
+    http://www.zipworld.com.au/~gschafer/
+
+  * 1.0   2003-03-21   Initial revision
+
+DISCLAIMER
+==========
+
+You use this hint at your own risk. Neither the authors, nor the Linux From
+Scratch project accept any reponsibility for anything that happens when using
+this document or associated files. This thing is very well tested but if in the
+unlikely event that it happens to break your system, you get to keep both
+pieces.
+
+INTRODUCTION
+============
+
+Broadly speaking, the toolchain comprises binutils, gcc and glibc. As of this
+writing, the current LFS version is 4.0. The problems with the build method as
+used in this version can be summarised as follows:-
+
+  * too reliant on the host (build) system
+    e.g. the autoconf tests for the static tools are performed whilst looking at
+    the host system which may be vastly different from the final system. The
+    most widely documented and glaring manifestation of this problem is gcc
+    which ends up miscompiling a portion of glibc due to this flaw (the
+    HAVE_GAS_HIDDEN hack works around this particular problem).
+
+  * too much code is brought in from the host system
+    e.g. all the static tools are statically linked against the host's glibc.
+    The host's glibc is an unknown quantity and may contain bugs or anything.
+
+  * too susceptible to incompatible glibc changes
+    e.g. statically linked binaries compiled on a glibc-2.2.x based system that
+    contain calls to getpwuid() crash when run on a glibc-2.3.x based system.
+
+  * glibc is compiled whilst no existing glibc is present
+    e.g. the glibc autoconf tests produce different results depending on whether
+    an existing glibc is found or not. This leads to inconsistencies and
+    encourages hacks and workarounds.
+
+(NOTE - some of the abovementioned issues have been partially addressed in the
+CVS version of the book but still do not go far enough and leave too much room
+for error.)
+
+To overcome all the issues, a new approach is required. The essence of what is
+presented below can be summarised as follows:-
+
+  * build a fully "self contained" and "self hosting" toolchain that has no
+    dependencies on the host system.
+
+The key differences between this approach and current LFS are:-
+
+  * a glibc is built in Chapter 5
+
+  * this glibc is built using the Chapter 5 gcc and binutils (NOT the versions
+    from the host)
+
+  * the rest of Chapter 5 is built against the new glibc using the new binutils
+    and gcc
+
+  * Chapter 5 packages are installed into a prefix of "/stage1" rather than
+    "$LFS/static" 
+
+Some of the advantages to doing it this way are:-
+
+  * we can build everything shared. It isn't necessary that we build all our
+    binaries static in Chapter 5 (though you still can if you want to) as we
+    will still have access to the shared libs we create when we chroot.
+
+  * everything we use to build our shared binaries and libraries in Chapter 6
+    will ALREADY be built and linked against the glibc we are migrating to. This
+    avoids glibc migration issues now and in the future.
+
+  * the range of hosts suitable for building LFS from should increase due to
+    less reliance on the host i.e. theoretically, the only requirement is that
+    the host's compiler can bootstrap gcc.
+
+  * a large portion of current LFS support related questions will disappear e.g.
+    "failure to build Chapter 5 packages statically", "cannot build texinfo",
+    "binutils detection related problems".
+
+Some key technical points of how the new approach works are:-
+
+  * similar in principle to cross compiling whereby tools installed into the
+    same prefix work in cooperation and thus utilise a little GNU "magic"
+
+  * careful manipulation of ld's linker scripts (in particular, the SEARCH_DIR
+    variables)
+
+  * editing of gcc's "specs" file to tell gcc which dynamic linker to produce
+    executables for
+
+At this point, it is worth mentioning there are other, less sophisticated ways
+of attaining a "pure" LFS. A "brute force" method is to build Chapter 6 twice.
+i.e. remove the /static directory (both physically and from the `PATH') then use
+Chapter 6 to rebuild itself. This is the basic idea behind the method employed
+by the Linux Standards Base folk with their LSB Sample Implementation[1]. Taking
+this approach is not practical for the LFS book. It is far too laborious and
+nowhere near as educational with regard to some of the toolchain internals we
+describe below.
+
+PROCEDURE
+=========
+
+Toolchain cleanliness
+---------------------
+It is important to realise there are varying degrees of "anal retentiveness" we
+can employ when building a new toolchain. The more anal we are, the "cleaner"
+the toolchain will be. For this reason it might seem we are building packages
+more times than we really need to, but you have to keep in mind, the goal here
+is to have a fully self hosted and very clean toolchain in which to perform the
+final clean build of our target system in Chapter 6. Steps that are not strictly
+necessary (i.e. less anal) will be pointed out as we move through the build. In
+other words, a few shortcuts can be taken at the expense of anal retentiveness.
+
+
+How we tested
+-------------
+We started from a glibc-2.2.5/gcc-2.95.3 based host to ensure any glitches were
+caught early. The versions of the toolchain packages used in testing were
+binutils-2.13.2, gcc-3.2.1 and glibc-2.3.1. The main test platform was
+"i686-pc-linux-gnu".
+
+
+Where to get the patches and scripts
+------------------------------------
+The patches used in this document can be obtained from:-
+
+  http://linuxfromscratch.org/~greg/patches/pure_lfs/
+
+Additionally, we have made some scripts available:-
+
+  http://linuxfromscratch.org/~greg/scripts/pure_lfs/
+
+Please note, at this point in time the scripts are a bit further advanced than
+this document and do not match it exactly.
+
+
+Build considerations
+--------------------
+Throughout this document we make a few assumptions that you may need to allow
+for depending on your circumstances. For example, in a few places you'll see
+hardcoded references to "i686-pc-linux-gnu" within the actual build commands. If
+your platform is anything other than i686-pc-linux-gnu (e.g. "i586-pc-linux-gnu"
+or "powerpc-unknown-linux-gnu") then you'll need to adjust accordingly.
+
+We also make use of the "*" wildcard operator so be mindful of this as it may
+cause you grief if for instance you have multiple versions of source packages
+lying around.
+
+It is also worth mentioning that the core toolchain packages all build in their
+own build directories (glibc is an exception in that it creates some files in
+the "manual" subdir but we take action to allow for this). It is therefore
+possible to reuse the same sources from previous build phases. If you do this,
+please be careful to undo any patches that may not be appropriate for the next
+phase.  We'll warn you where necessary.
+
+Towards the end of this document you'll find a separate section that covers the
+perennial debate over which binutils release to use (FSF or HJL). For now, just
+be aware that a choice is available.
+
+Lastly, NLS is enabled throughout the build. The only 2 places where we use
+"--disable-nls" are the static "pass 1" builds of binutils and gcc. This is due
+to the fact that in certain circumstances, "--enable-nls" combined with a static
+link can cause build errors due to symbol conflicts. Please note that you are
+free to use "--disable-nls" throughout the remainder of the entire build if NLS
+is not desired and/or you wish to save space.
+
+
+Running the test suites - A quick overview
+------------------------------------------
+Most packages provide a test suite. Running the test suite is a good idea as it
+provides a nice "sanity check" and proves that a newly built package is
+functioning mostly as the developer intended. It does NOT guarantee that the
+package is bug free as this nigh on impossible.
+
+The test suites for gcc and binutils rely on the presence of 3 external packages
+i.e. tcl, expect and dejagnu. If you want to run the test suites from the very
+outset, you'll need to ensure those 3 packages are installed on the host system.
+This document assumes those 3 packages are not installed on the host and
+therefore does not run the test suites for the static "pass 1" builds of
+binutils and gcc. The "pass 1" builds are soon overwritten by the "pass 2"
+builds so skipping the "pass 1" test suites is not a major problem in our view.
+
+Be warned, the test suites for gcc and glibc can take a very long time to
+complete. If build time is a major problem for you then shortcuts are possible
+by skipping the Chapter 5 test suites but we do not recommend this. If you
+decide to take the shortcuts, then at the very least DO NOT skip the Chapter 6
+test suites of glibc, binutils and gcc. But keep in mind, if you get to Chapter
+6 then discover a problem that would have been picked up earlier by running the
+test suites in Chapter 5, you'll surely rue your earlier decision to take the
+shortcuts.
+
+
+Chapter 5 - Creating the /stage1 directory
+------------------------------------------
+
+We assume you have already reached Chapter 5 of the LFS book. i.e. partition
+created, filesystem made, partition mounted, $LFS/static created, lfs user
+added, environment set up.
+
+As mentioned in the introduction, we will use "/stage1" instead of "/static" due
+to the fact we will be building a dynamic (shared) Chapter 5. This naming is
+only a cosmetic thing. Leaving it as /static is likely to cause confusion.
+Please revisit the "Creating the $LFS/static directory" chapter of the book but
+instead run the following:-
+
+    mkdir $LFS/stage1
+
+Also, don't forget to perform the chown operation:-
+
+    chown lfs $LFS/stage1
+
+The next step is to create a "/stage1" symlink on the host system. It will point
+to the directory we just created on the LFS partition:-
+
+    ln -s $LFS/stage1 /
+
+This ensures our toolchain will look in the same place (i.e. /stage1) in both
+Chapters 5 and 6 (when we are inside the chroot). This is an important concept
+to grasp. Don't worry if it's not clear right now. All will make sense once we
+get into Chapter 6.
+
+
+Chapter 5 - Setting up the environment
+--------------------------------------
+
+Some adjustments to the environment set up are needed. Firstly, we do not use
+the:-    export CC="gcc -s"    thing. We are trying to do things correctly here
+and strictly speaking, the "-s" is a linker flag. Therefore we will put "-s" in
+the LDFLAGS where it belongs like so:-
+
+    export LDFLAGS="-s"
+
+Secondly, we need to add "/stage1/bin" to the lfs user's `PATH' like so:-
+
+    export PATH=/stage1/bin:$PATH
+
+As we progressively install Chapter 5 packages into "/stage1", the tools we just
+built will get picked up in the `PATH' and thus get integrated into the build
+process as we move along.
+
+Thirdly, if using the bash shell, it's not a bad idea to switch off the "hash"
+function of bash like so:-
+
+    set +h
+
+Bash has a useful feature whereby it uses a hash table to remember the full
+pathnames of executable files to avoid multiple `PATH' searches. However, we'd
+like the new tools to become available as soon as they are installed. By
+switching off the hash function, our "interactive" commands (make, patch, sed,
+cp and so forth) will always use the newest available during the build process.
+Shells spawned by configure scripts are not influenced by the state of the hash
+facility in the current interactive shell so this step is considered optional.
+The performance impact of disabling the hash is negligible. To confirm the
+feature is switched off, simply type:-    hash    at the shell prompt and it
+should report something like "su: hash: hashing disabled". If you are using a
+shell other than bash, you might want to consult its documentation to see if a
+hash like feature exists.
+
+Please note, the intention here is to add the above commands to your
+"/home/lfs/.bash_profile" so that they are always available when "su'ing" to the
+lfs user. Therefore the "Setting up the environment" commands will be:-
+
+    cat > ~/.bash_profile << "EOF"
+    set +h
+    umask 022
+    LFS=/mnt/lfs
+    LC_ALL=POSIX
+    LDFLAGS="-s"
+    PATH=/stage1/bin:$PATH
+    export LFS LC_ALL LDFLAGS PATH
+    EOF
+    source ~/.bash_profile
+
+One thing you'll notice throughout the build is some careful adjustment of the
+CFLAGS environment variable. This is NOT TO FIDDLE WITH OPTIMISATION! The sole
+purpose is to strip out the "-g" flag and thus save space during the builds. We
+also throw in "-pipe" for marginally quicker builds. We do not export the CFLAGS
+into the lfs user's environment globally because not all packages are
+cooperative with their treatment of CFLAGS.
+
+Another thing you'll notice is that in a few places we still specify
+LDFLAGS="-s" on the make command line even though we have already exported it
+into the environment. This is because those packages do not place the LDFLAGS
+from the environment into the top level Makefile and thus do not pass it down to
+the sub-make processes.
+
+
+Chapter 5 - Installing binutils - Pass 1 (static)
+-------------------------------------------------
+
+This is basically the same as the current Chapter 5 binutils installation, but
+with an extra twist.
+
+    mkdir ../binutils-build &&
+    cd ../binutils-build &&
+    CFLAGS="-O2 -pipe" ../binutils-2*/configure --prefix=/stage1 \
+       --disable-nls &&
+    make LDFLAGS="-all-static -s" &&
+    make install
+
+NOTE - if you happen to be using a HJL binutils release of 2.13.90.0.18 or
+greater and experience a build failure "C compiler cannot create executables"
+you will need to insert a "make configure-host" in between the configure and
+make lines. This is due to recent changes in the top level build system that do
+not cope with having "-all-static" in the LDFLAGS.
+
+IMPORTANT! - Do NOT remove the binutils-build dir as we are going to reuse it a
+bit further down the track. This will be explained further on, but for now, just
+run the following:-
+
+    cd ld &&
+    make clean &&
+    make LIB_PATH=/stage1/lib
+
+DO NOT RUN "make install" AT THIS POINT! We are saving this for later. All will
+become clear in due course.
+
+One of the main differences is we use a prefix of /stage1 instead of the usual
+$LFS/static. Note the lack of $LFS. It is worth mentioning here that having the
+new binutils available from the outset is important because both glibc and gcc
+perform various feature tests on the linker and assembler to determine which
+software features to enable.
+
+
+Chapter 5 - Installing gcc - Pass 1 (static)
+--------------------------------------------
+
+This is basically the same as the current Chapter 5 gcc installation, but with a
+few variations. Firstly, we need to apply the "no_fixincludes" patch to prevent
+the fixincludes script from running. We apply a patch instead of using the
+"install-no-fixedincludes" target because it is cleaner and results in a
+slightly quicker build and doesn't fail if you happen to use the
+"--enable-version-specific-runtime-libs" configure switch. We also apply the
+"mmap_test" patch which fixes a subtle gcc bug[2] that can (and will) undermine
+the integrity of the gcc build in certain circumstances.
+
+    patch -Np1 -i ../gcc-3*.no_fixincludes.patch &&
+    patch -Np1 -i ../gcc-3*.mmap_test.patch &&
+    mkdir ../gcc-build &&
+    cd ../gcc-build &&
+    CFLAGS="-O2 -pipe" ../gcc-3*/configure --prefix=/stage1 \
+       --with-local-prefix=/stage1 --enable-languages=c \
+       --disable-nls --enable-shared &&
+    make BOOT_LDFLAGS="-static -s" BOOT_CFLAGS="-O2 -pipe" \
+       STAGE1_CFLAGS="-pipe" bootstrap &&
+    make install &&
+    ln -s gcc /stage1/bin/cc
+
+Here we start to experience some of the magic of the GNU toolchain. It is
+important to realise that gcc does not search the `PATH' during its configure
+run to search for which binutils to use. It actually searches
+$prefix/TARGET-TRIPLE/bin where TARGET-TRIPLE is for e.g. i686-pc-linux-gnu.
+This means everything "just works" and we don't have to specify --with-ld= and
+--with-as= to configure.
+
+Note the use of "make bootstrap". In subsequent gcc passes we can skip the
+bootstrap part and thus save lots of build time. But for this initial pass of
+gcc it is absolutely CRITICAL to use the bootstrap target. This ensures a 3
+stage bootstrap of the compiler and is vital to ensuring the integrity of the
+overall build method.
+
+The extra BOOT_CFLAGS and STAGE1_CFLAGS on the make line are just extra steps to
+remove "-g" from the gcc build. A few occurrences still remain but the only
+clean way to remove them without resorting to use of "make -e" is to patch the
+source. You will find 2 patches at the URL mentioned above that do the job. The
+patches are of course optional and are named "gcc-3.2.2.libgcc_no_debug.patch"
+and "gcc-3.2.2.libstdc++_no_debug.patch".
+
+Another difference between normal LFS and here is that we use "--enable-shared"
+instead of "--disable-shared". This may seem counter-intuitive at first. But
+using this switch allows the building of "libgcc_s.so.1" and "libgcc_eh.a".
+Having "libgcc_eh.a" available ensures that the configure script for glibc (the
+next package) produces correct results for proper building of glibc itself.
+Please note, the gcc binaries will still be linked statically as this is
+controlled by the "-static" in the BOOT_LDFLAGS on the make command line.
+
+The other interesting configure switch is --with-local-prefix=/stage1. The
+purpose of this switch is to remove /usr/local/include from gcc's include search
+path. It is not absolutely essential but we want to try and minimise the
+influence from the host system so this is a logical thing to do. The gcc install
+page[3] says:-
+
+"The same value can be used for both --with-local-prefix and --prefix provided
+it is not /usr. This can be used to avoid the default search of
+/usr/local/include."
+
+which is exactly what we want. You can see the gcc search include order by
+compiling a test program with "-v" e.g. gcc -v foo.c. The following snippets of
+output demonstrate the issue. This is with the "--with-local-prefix" switch:-
+
+#include "..." search starts here:
+#include <...> search starts here:
+ /stage1/include
+ /stage1/lib/gcc-lib/i686-pc-linux-gnu/3.2.1/include
+ /usr/include
+End of search list
+
+And this is without:-
+
+#include "..." search starts here:
+#include <...> search starts here:
+ /usr/local/include
+ /stage1/include
+ /stage1/lib/gcc-lib/i686-pc-linux-gnu/3.2.1/include
+ /usr/include
+End of search list
+
+
+Chapter 5 - Installing kernel headers
+-------------------------------------
+
+In normal LFS we install the kernel headers in Chapter 6. But seeing as we are
+now installing a glibc in Chapter 5, we need to install the kernel headers in
+Chapter 5 also.
+
+The procedure is essentially the same as current LFS with the exception that the
+destination is /stage1 not /usr. In other words, follow the procedure from
+current LFS (minus the /bin/pwd hacks) and substitute "cp blah /usr/include"
+with "cp blah /stage1/include" and "touch /usr/blah" with "touch /stage1/blah":-
+
+make mrproper &&
+make include/linux/version.h &&
+make symlinks &&
+cp -HR include/asm /stage1/include &&
+cp -R include/asm-generic /stage1/include &&
+cp -R include/linux /stage1/include &&
+touch /stage1/include/linux/autoconf.h
+
+(NOTE - SHORTCUT ALERT! - seeing as we will be installing glibc again in Chapter
+6, a potential shortcut here is to ALSO copy the kernel headers to the final
+destination of $LFS/usr/include. By doing this, the kernel headers will already
+be in place for the glibc compile in Chapter 6. But don't forget, we still need
+the headers in /stage1/include as per the above commands.)
+
+
+Chapter 5 - Installing glibc
+----------------------------
+
+By this stage we have a new binutils and a new gcc (both statically linked
+against the glibc on the host). We'll use both of these to build the Chapter 5
+glibc. As per usual, don't forget to unpack the glibc-linuxthreads package. We
+are also going to run the glibc test suite by issuing "make check".
+
+    mkdir -p /stage1/etc &&
+    touch /stage1/etc/ld.so.conf &&
+    mkdir ../glibc-build &&
+    cd ../glibc-build &&
+    CFLAGS="-O2 -pipe" ../glibc-2*/configure --prefix=/stage1 \
+       --enable-add-ons --disable-profile \
+       --with-binutils=/stage1/bin --with-headers=/stage1/include \
+       --without-gd &&
+    make &&
+    make check &&
+    make install &&
+    make localedata/install-locales
+
+"make check" is considered very important for glibc. It's the most important lib
+on the system and should not be installed unless it passes "make check". Any
+failures need to be investigated and resolved before continuing. Some possible
+causes of failure include:-
+
+  * faulty or misconfigured gcc
+  * faulty or misconfigured binutils
+  * overoptimisation
+  * environment not sane
+  * bugs in glibc itself
+
+The math tests are known to be very CPU specific so any failures there are not
+surprising. If you happen to get some math failures, and after having looked at
+the specifics you are happy to continue on, you can issue "make -k check" to
+continue through the remainder of the test suite. Though if you do this, be sure
+to log the output so any further failures can be detected by perusing the log
+file. If you get a failure in "libio/tst-atime", the partition you're working on
+is probably mounted with the "noatime" option. Remount it with "atime" enabled
+then continue on.
+
+"make localedata/install-locales" is of course optional as per current LFS.
+However, not having some certain locales installed will cause failures in the
+gcc test suite (libstdc++ in particular). If you happen to skip "make
+localedata/install-locales", you can install the minimum locales necessary by
+issuing the following commands:-
+
+    mkdir -p /stage1/lib/locale &&
+    localedef -i de_DE -f ISO-8859-1 de_DE &&
+    localedef -i de_DE@euro -f ISO-8859-15 de_DE@euro &&
+    localedef -i en_HK -f ISO-8859-1 en_HK &&
+    localedef -i en_PH -f ISO-8859-1 en_PH &&
+    localedef -i en_US -f ISO-8859-1 en_US &&
+    localedef -i es_MX -f ISO-8859-1 es_MX &&
+    localedef -i fr_FR -f ISO-8859-1 fr_FR &&
+    localedef -i fr_FR@euro -f ISO-8859-15 fr_FR@euro &&
+    localedef -i it_IT -f ISO-8859-1 it_IT &&
+    localedef -i ja_JP -f EUC-JP ja_JP
+
+The above commands can be issued even after you've deleted the glibc-build dir.
+
+Please note, the use of --with-binutils= and --with-headers= configure switches
+is not strictly required. But they do ensure nothing can go wrong with regard
+to the kernel headers and binutils that get used during the glibc build. If you
+perform a "diff" comparison between the two configured glibc-build dirs, both
+with, and without those switches, you'll surely believe it is a lot cleaner to
+use them.
+
+The --without-gd switch ensures that we don't build the "memusagestat" program
+which insists on linking against the host's libs (for libgd, libpng, libz and so
+forth). During a normal LFS install, memusagestat does not get built.
+
+As mentioned above, the CFLAGS saves space during the build. If you rely solely
+on the LDFLAGS from the environment then the *.a archives will still be chock
+full of debug symbols. It is important to understand the glibc build system is
+very sensible about how it treats the CFLAGS supplied by the user. In other
+words, the CFLAGS above do not change any vital aspect of the glibc build. They
+simply remove "-g" and add "-pipe".
+
+The other important thing to realise is that glibc is pretty well self contained
+in terms of its build mechanics. No fancy linker switches are required. It
+doesn't rely on compiler or linker defaults as all the required build switches
+are supplied "by hand". e.g. you will see stuff like:-
+
+  -Wl,-dynamic-linker=/stage1/lib/ld-linux.so.2
+
+during the glibc build. What is shown there is simply an example of how glibc's
+build system overrides gcc's default behaviour of passing:-
+
+  -dynamic-linker=/lib/ld-linux.so.2
+
+to the linker (ld) as it goes about its business of constructing the binaries
+and libraries.
+
+
+Linker scripts and library search order - A quick overview
+----------------------------------------------------------
+At this juncture, it is worth discussing how ld (the linker) performs its magic.
+On a normal LFS system you will find the linker scripts located in the
+/usr/lib/ldscripts dir. They have names like elf_i386.x, elf_i386.xc and so on.
+There are 13 of these scripts altogether but only the 8 that start with elf*
+concern us. The others are involved when creating a.out format binaries which
+basically means never. The a.out format was superceded years ago by the more
+modern ELF format.
+
+The linker scripts for our new toolchain in /stage1 are located in
+/stage1/TARGET-TRIPLE/lib/ldscripts. If you view the scripts, you'll notice the
+default linker search path (as indicated by the SEARCH_DIR variables) is:-
+
+  $prefix/TARGET-TRIPLE/lib, $prefix/lib, /usr/local/lib, /lib, /usr/lib 
+
+where $prefix is the value of the --prefix configure option and TARGET-TRIPLE is
+the cpu-arch-os triple for the host (e.g. i686-pc-linux-gnu). Anything linked by
+ld using these linker scripts will link against our new glibc installed into
+/stage1/lib because /stage1/lib comes before /usr/lib in the search path. So far
+so good. This is exactly what we want. However, what we really need is to remove
+/usr/local/lib, /lib, and /usr/lib from the search path altogther. In this way
+we can be 100% certain that nothing links against the libraries on the host
+system. There are a few ways we can achieve this:-
+
+  1. edit all the linker scripts by hand
+  2. perform some sort of sed substitution on each of the scripts
+  3. utilise the LIB_PATH variable in ld's Makefile to our advantage
+
+No 3 is the easiest solution. A small mention of LIB_PATH was made back in the
+"binutils - pass 1" section above. A bit further down, you'll see how its usage
+helps us out.
+
+
+Gcc's specs file - A quick overview
+-----------------------------------
+>From the gcc info page:-
+
+"`gcc' is a driver program.  It performs its job by invoking a sequence of other
+programs to do the work of compiling, assembling and linking.  GCC interprets
+its command-line parameters and uses these to deduce which programs it should
+invoke, and which command-line options it ought to place on their command lines.
+This behavior is controlled by "spec strings".  In most cases there is one spec
+string for each program that GCC can invoke, but a few programs have multiple
+spec strings to control their behavior.  The spec strings built into GCC can be
+overridden by using the `-specs=' command-line switch to specify a spec file.
+"Spec files" are plaintext files that are used to construct spec strings."
+
+To find out where the specs file is located simply type in "gcc -v" like so:-
+
+  gws@tigers-lfs:~$ gcc -v 2>&1 | head -n 1
+  Reading specs from /static/lib/gcc-lib/i686-pc-linux-gnu/3.2.1/specs
+
+If you examine a normal dynamic executable using the readelf utility, you can
+determine which dynamic linker (i.e. program interpreter) the executable was
+compiled for. Take a look at this example:-
+
+  gws@tigers-lfs:~/src$ readelf -a foo | grep interpreter
+        [Requesting program interpreter: /lib/ld-linux.so.2]
+
+If we want to change the program interpreter that gets embedded into our
+binaries we need to utilise the linker switch -dynamic-linker e.g.
+-Wl,-dynamic-linker=/stage1/lib/ld-linux.so.2. But forcing this onto every
+package we compile can be quite troublesome. It is much easier to simply force
+the issue by adjusting the specs string in the specs file to point where we
+want.
+
+There are a few ways we can achieve this:-
+
+  1. edit, sed or patch the specs file
+  2. patch the gcc source before we compile it
+
+Both methods are used below, depending on which stage of the build process we
+are at.
+
+
+Chapter 5 - "Locking in" our new glibc
+--------------------------------------
+
+Now that we have the lectures out of the way, it is back to business. By now we
+have our Chapter 5 glibc installed and operational. This is the point in the
+proceedings where we need to ensure that we do not link against the libraries on
+the host system. i.e. we will "lock in" the new glibc.
+
+The first thing to do is adjust the linker scripts. Remember back in the
+"binutils - pass 1" section above we added a couple of extra commands at the
+end? Well here is where we utilise those commands. Simply cd back into your
+binutils-build dir and run the following:-
+
+    cd ld &&
+    make install-data-local
+
+This installs the adjusted linker scripts. The linker scripts now contain no
+mention of /lib, /usr/lib or /usr/local/lib. From this point onwards, everything
+will link ONLY against the libs in /stage1/lib. It is now safe to remove the
+binutils-build dir.
+
+The next thing to do is amend our gcc specs file so that it points to the new
+dynamic linker. A sed can be used to accomplish this:-
+
+    SPECFILE=/stage1/lib/gcc-lib/i686-pc-linux-gnu/*/specs &&
+    cp ${SPECFILE} ./XX &&
+    sed 's@/lib/ld-linux.so.2@/stage1/lib/ld-linux.so.2@g' ./XX > ${SPECFILE} &&
+    unset SPECFILE &&
+    rm -f ./XX
+
+We recommend you cut'n'paste the above rather than type it all in. You can
+always edit the specs file by hand if you really want to. Just replace
+"/lib/ld-linux.so.2" with "/stage1/lib/ld-linux.so.2".
+
+At this point, it is a good idea to check the linker scripts and the specs file
+to ensure the intended changes were actually made.
+
+
+Chapter 5 - Installing tcl, expect and dejagnu
+----------------------------------------------
+
+We now need to install the 3 external packages so that the gcc and binutils test
+suites can be run. If these 3 packages are already installed on the host system
+you can delay this step until the end of Chapter 5 if you wish. The versions we
+used in testing were tcl8.4.1, expect-5.38.0 and dejagnu-1.4.3.
+
+tcl:
+    cd unix &&
+    ./configure --prefix=/stage1 &&
+    make &&
+    make install &&
+    ln -s tclsh8.4 /stage1/bin/tclsh
+
+NOTE - you must leave the tcl source dir in place until the expect package is
+installed as the expect package needs the tcl internal headers to build.
+
+expect:
+    patch -Np1 -i ../expect-5*.patch &&
+    ./configure --prefix=/stage1 &&
+    make &&
+    make install
+
+The patch fixes a bug in expect that can result in bogus failures during the gcc
+test suite run[4].
+
+dejagnu:
+    ./configure --prefix=/stage1 &&
+    make &&
+    make install
+
+NOTE - you can run the test suites for these 3 packages if you wish but you'll
+more than likely see failures. Luckily, there is enough functionality to run the
+gcc and binutils test suites and that is only what we care about at this point.
+
+ADDITIONAL NOTE - you must have /dev/pts mounted (or be using devfs) for the
+dejagnu test suite to function properly.
+
+
+Chapter 5 - Installing gcc - Pass 2 (shared)
+--------------------------------------------
+
+(NOTE - SHORTCUT ALERT! - this step could be considered optional as we already
+have a new gcc to begin compiling Chapter 6 with. However, this gcc is
+statically linked against the host's glibc. We recompile now so that we can add
+c++ to the mix and so that we end up with a shared gcc linked against the new
+glibc. c++ is not absolutely essential to bootstrap the Chapter 6 final build.
+However, the advantages to adding c++ are 1) if running "make check" for
+binutils (the next package) all tests will pass and 2) no need to disable
+building of the ncurses c++ binding when we get to the Chapter 5 ncurses. If you
+don't wish to build c++, just ensure that "--enable-languages" is equal to "c"
+only and drop the c++ specific switches i.e. --enable-threads=posix
+--enable-__cxa_atexit --enable-clocale=gnu.)
+
+Before we start this recompile of gcc, we need to change the default location of
+the traditional spec string for the dynamic linker. We therefore patch gcc (the
+file is gcc/config/i386/linux.h). It is just a simple substitution of
+"/lib/ld-linux.so.2" with "/stage1/lib/ld-linux.so.2". The reason why we patch
+now rather than adjust the specs file after installation is that it ensures our
+new dynamic linker gets used during the actual gcc build. i.e. all the final
+(and temporary) binaries created during the build will link against the new
+glibc. If you haven't already done so, don't forget to remove the previous
+gcc-build dir left over from pass 1 above. If using the same source from pass 1
+there is no need to reapply the no_fixincludes or mmap_test patches (or the
+no_debug patches if you applied those as well). We are also going to run the gcc
+test suite by issuing "make -k check".
+
+    patch -Np1 -i ../gcc-3*.no_fixincludes.patch &&
+    patch -Np1 -i ../gcc-3*.mmap_test.patch &&
+    patch -Np1 -i ../gcc-3*.specs.patch &&
+    mkdir ../gcc-build &&
+    cd ../gcc-build &&
+    CFLAGS="-O2 -pipe" CXXFLAGS="-O2 -pipe" ../gcc-3*/configure \
+       --prefix=/stage1 --with-local-prefix=/stage1 --enable-languages=c,c++ \
+       --enable-shared --enable-threads=posix --enable-__cxa_atexit \
+       --enable-clocale=gnu &&
+    make LDFLAGS="-s" &&
+    make -k check
+    make install
+
+The main differences between here and pass 1 is the dropping of the "bootstrap"
+target, the addition of the c++ specific bits and no mention of "-static" in any
+of the FLAGS. Of course there is also the addition of "make -k check" to run the
+test suite.
+
+As mentioned earlier, the gcc "bootstrap" target is not needed at this stage. It
+is worth looking at the need for bootstrapping gcc from a historical viewpoint.
+It was first implemented to aid in building a GNU compiler on systems where
+there was only a non-GNU or proprietary compiler installed. Seeing as we already
+bootstrapped gcc in pass 1 and built it from the exact same source version as we
+are using now, there is no need to bootstrap again from this point onwards. We
+have thoroughly tested this aspect and can confirm that the installed files from
+a "bootstrapped" gcc build are "byte-for-byte" identical with the installed
+files from a "non-bootstrapped" build, AS LONG AS THE INITIAL PASS 1 WAS
+BOOTSTRAPPED! All bets are off if the initial pass 1 gcc was not bootstrapped.
+You can still "make bootstrap" pass 2 if you want to. Just substitute the "make"
+command from above with the one below.
+
+    make BOOT_LDFLAGS="-s" BOOT_CFLAGS="-O2 -pipe" \
+       STAGE1_CFLAGS="-pipe" bootstrap
+
+The reason for the "-k" (and the lack of "&&") is we need the test suite to run
+through to completion and not stop at the first failure. The gcc test suite is
+very comprehensive and is almost always guaranteed to have a few failures. The
+gcc testing page[5] contains more information. The simplest way to get a summary
+of the test suite run is to use the "test_summary" script from within the
+gcc-build dir:-
+
+    ../gcc-3*/contrib/test_summary | less
+
+Then you can compare your results to those that have been posted to the
+gcc-testresults mailing list for similar configurations to your own. Here is an
+example of how current gcc-3.2.x should look on i686-pc-linux-gnu:-
+
+    http://gcc.gnu.org/ml/gcc-testresults/2003-02/msg00204.html
+
+Note that the results contain:-
+
+  * 1 XPASS (unexpected pass) for g++
+  * 26 XPASS's for libstdc++
+  * 1 FAIL for libstdc++
+
+The unexpected pass for g++ is due to the use of "--enable-__cxa_atexit".
+Apparently not all platforms supported by gcc have support for "__cxa_atexit" in
+their C libraries hence this test is not always expected to pass. The 26
+unexpected passes for libstdc++ are due to the use of "--enable-clocale=gnu"
+which is the correct choice on glibc based systems of 2.2.5 and above. The
+underlying locale support in the GNU C library is superior to that of the
+otherwise selected "generic" model (which may be applicable if for instance you
+were using newlibc, sun-libc or whatever-libc). The libstdc++ test suite is
+apparently expecting the "generic" model hence those tests are not always
+expected to pass. The failure for libstdc++ is
+"26_numerics/c99_classification_macros_c.cc" and is a long standing known
+failure (since at least January 2002) that the developers are apparently unable
+to easily fix.
+
+
+Chapter 5 - Installing binutils - Pass 2 (shared)
+-------------------------------------------------
+
+(NOTE - SHORTCUT ALERT! - this step could be considered optional as we already
+have a new binutils to begin compiling Chapter 6 with. However, this binutils is
+statically linked against the host's glibc and was compiled by the host's gcc. A
+recompile now and we'll have our binutils compiled by the new gcc and we'll end
+up with a completely shared toolchain linked against the new glibc.)
+
+Before recompiling binutils, we apply a patch (backported from the binutils CVS
+HEAD and currently appearing in the HJ Lu binutils releases) that allows us to
+specify --with-lib-path to configure. Specifying "--with-lib-path=/stage1/lib"
+allows us to keep /usr/local/lib, /lib and /usr/lib out of the linker scripts
+search paths. The reason why we couldn't use the --with-lib-path patch earlier
+in pass 1 is we needed the ability to link against the host's glibc for the
+static compile of binutils and gcc. If you haven't already done so, don't forget
+to remove the previous binutils-build dir left over from pass 1 above. We are
+also going to run the binutils test suite by issuing "make check".
+
+    patch -Np1 -i ../binutils-2*.lib-path.patch &&
+    mkdir ../binutils-build &&
+    cd ../binutils-build &&
+    CFLAGS="-O2 -pipe" ../binutils-2*/configure --prefix=/stage1 \
+       --with-lib-path=/stage1/lib --enable-shared &&
+    make LDFLAGS="-s" &&
+    make check &&
+    make install
+
+NOTE - if you happen to be using a HJL binutils release of 2.13.90.0.10 or
+greater you will not need to apply the abovementioned patch.
+
+IMPORTANT! - Similar to our "binutils - pass 1" above, do NOT remove the
+binutils-build dir as we are going to reuse it in Chapter 6. For now, just run
+the following:-
+
+    cd ld &&
+    make clean &&
+    make LIB_PATH=/usr/lib:/lib
+    
+Again, DO NOT RUN "make install" just yet. We will wait for the appropriate time
+in Chapter 6 when we need to adjust the linker scripts. Note that the binutils
+test suite should always pass.
+
+
+Chapter 5 - Toolchain Summary
+-----------------------------
+
+At this stage, we have compiled gcc twice, binutils twice and glibc once. A bit
+excessive you might think? Absolutely not. The toolchain is now very clean and
+that feeling of cleanliness is very powerful and worth every bit of effort in
+our opinion.
+
+
+Chapter 5 - Installing remaining packages - (shared)
+----------------------------------------------------
+
+The remaining Chapter 5 packages are built pretty much according to current LFS
+instructions with the obvious exceptions being:-
+
+  * everything gets built with "--prefix=/stage1"
+
+  * no mention of "LDFLAGS=-static" (we are building everything shared)
+
+  * no mention of "CPPFLAGS=-Dre_max_failures=re_max_failures2" (this only
+    applies to static builds)
+
+Here is a suggested list of packages and a suggested build order. Compared to
+current LFS there are 3 additional packages: ncurses, gettext and perl. The perl
+we install is a special trimmed down "miniperl". We don't need a full perl with
+all its associated bloat. Building a minimal perl as opposed to the full version
+also has the advantage of saving space and build time. Having perl available
+early in Chapter 6 is not absolutely essential. But it does ensure a more
+complete run of glibc's "make check" and also removes the need to patch glibc as
+per current LFS. It also takes away any doubts for various packages that may
+make assumptions about the presence of perl.
+
+Unlike current Chapter 5 LFS, order DOES matter (due to dependencies).
+
+NOTE - If you happen to be using the HJL binutils, you'll also need to add m4,
+bison and flex to the list below. This is due to packaging quirks in the HJL
+release.
+
+Feel free to add any other packages that you think may be useful once inside the
+chroot. For example the "less" package is a good candidate.
+
+gawk
+fileutils
+bzip2
+gzip
+diffutils
+findutils
+make
+grep* (see below for suggested build commands)
+sed
+gettext* (see below for suggested build commands)
+textutils
+sh-utils
+ncurses* (see below for suggested build commands)
+patch
+tar
+texinfo
+bash
+util-linux
+perl* (see below for suggested build commands)
+
+
+grep:
+    CFLAGS="-O2 -pipe" ./configure --prefix=/stage1 \
+       --disable-perl-regexp --with-included-regex &&
+    make &&
+    make install
+
+The "--with-included-regex" is needed so that all tests pass. Without this
+switch the regex code from glibc is used and as of glibc-2.3.1 that code is
+known to be a bit buggy.
+(NOTE - we are using the newer grep version of 2.5.1 which passes all tests.)
+
+
+gettext:
+    CFLAGS="-O2 -pipe" ./configure --prefix=/stage1 &&
+    make &&
+    make install &&
+    rm -f /stage1/lib/gettext/gnu.gettext.*
+
+The "rm -f /stage1/lib/gettext/gnu.gettext.*" is optional. If gettext finds a
+java compiler on your system it builds some binaries that link against the
+host. Leaving the binaries there is harmless but we might as well remove them.
+
+
+ncurses:
+    patch -Np1 -i ../ncurses-5*.etip.patch &&
+    ./configure --prefix=/stage1 --with-shared \
+       --without-debug &&
+    make &&
+    make install
+
+NOTE - you may need to add "--without-cxx-binding" if you opted not to enable
+c++ in the gcc pass 2 build.
+
+The patch is needed to fix a subtle bug[6] in ncurses that results in an
+incorrect header file.
+
+
+perl:
+    patch -Np1 -i ../perl-5*.libc.patch &&
+    ./configure.gnu --prefix=/stage1 -Doptimize='-O2 -pipe' &&
+    make utilities &&
+    cp miniperl /stage1/bin/perl &&
+    cp pod/pod2man /stage1/bin &&
+    mkdir -p /stage1/lib/perl5/5.8.0 &&
+    cp -R lib/* /stage1/lib/perl5/5.8.0
+
+NOTE - Be sure to issue "make utilities" instead of the usual "make" due to our
+desire to not build a full perl. But it should still be possible to build a full
+perl if you really want to. Just issue the usual "make" and "make install". The
+patch sets up perl to correctly build against our glibc in /stage1. The
+"-Doptimize='-O2 -pipe'" is there simply to use O2 instead of perl's default of
+03. We install pod2man because it is used during the binutils build.
+
+If you previously skipped the installation of the tcl, expect and dejagnu
+packages because they were already installed on the host system, now is the time
+to install them into prefix /stage1 so that they are available for running the
+binutils and gcc test suites in Chapter 6.
+
+
+Chapter 6 - Initial steps
+-------------------------
+
+The start of Chapter 6 is pretty much according to current LFS instructions with
+the obvious exception being:-
+ 
+  * replace all occurrences of /static with /stage1
+
+Enter the chroot, change ownership, create directories, mount the proc
+filesystem, create the mtab file, create the bash and sh symlinks, create the
+passwd and group files, create devices, install kernel headers.
+
+NOTE - we propose renaming the section of the LFS book entitled "Create the bash
+and sh symlinks" to "Create the essential symlinks". In this section we need to
+create a bunch of symlinks like so:-
+
+    ln -s /stage1/bin/bash /bin/bash &&
+    ln -s bash /bin/sh &&
+    ln -s /stage1/bin/cat /bin/cat &&
+    ln -s /stage1/bin/perl /usr/bin/perl &&
+    ln -s /stage1/bin/pwd /bin/pwd &&
+    ln -s /stage1/bin/stty /bin/stty
+
+/bin/bash and /bin/sh are self explanatory. /bin/cat is needed by the glibc test
+suite. /usr/bin/perl is needed to ensure glibc's mtrace script is installed
+correctly. /bin/pwd is needed by the kernel headers install and glibc's
+configure script (as of glibc-2.3.2). /bin/stty is needed by the dejagnu test
+suite runs of binutils and gcc.
+
+The symlinks will stay in place until each one is overwritten by the
+corresponding real file during Chapter 6 package installation (except of course
+for /bin/sh).
+
+IMPORTANT! - make sure everything above is done prior to proceeding, especially
+the kernel headers installed into /usr/include! Be sure to NOT do the /bin/pwd
+symlink creation and deletion as per current LFS kernel headers install as we
+already created the symlink above and need to keep it around for later.
+
+As per current LFS, the chroot command will set the `PATH' for the environment
+inside the chroot. It's important to realise that /stage1/bin must be at the end
+of the `PATH' so as to ensure the newest tools always get used during the
+remainder of the build.
+
+It's worth mentioning here that user name and group name resolution will start
+working immediately after the passwd and group files are created because we have
+a glibc already installed. You can therefore execute:-
+
+    exec /stage1/bin/bash --login
+
+to get rid of the "I have no name!" message in the command prompt.
+
+If preferred, it is worth doing the 'export LDFLAGS="-s"' and 'set +h' things
+like we did at the start of Chapter 5.
+
+
+Chapter 6 - Installing glibc
+----------------------------
+
+As mentioned earlier, the glibc build system is very well self contained and
+will install perfectly, even though our gcc specs file and ldscripts are still
+pointing at /stage1. We cannot adjust the specs and ldscripts before the glibc
+install because the glibc autoconf tests will give bogus results and thus defeat
+our goal of achieving a clean build. We are again going to run the glibc test
+suite by issuing "make check". As per usual, don't forget to unpack the
+glibc-linuxthreads package.
+
+NOTE - if reusing the same source from Chapter 5 then you'll need to issue:-
+
+    rm -f manual/{texis,summary.texi,stamp-summary,chapters.texi,top-menu.texi}
+
+before configuring and whilst still inside the source dir to ensure the info 
+pages are rebuilt using the new makeinfo.
+
+    touch /etc/ld.so.conf &&
+    mkdir ../glibc-build &&
+    cd ../glibc-build &&
+    CFLAGS="-O2 -pipe" ../glibc-2*/configure --prefix=/usr \
+       --enable-add-ons --disable-profile --libexecdir=/usr/bin \
+       --with-headers=/usr/include &&
+    make &&
+    make check &&
+    make install &&
+    make localedata/install-locales
+
+"make localedata/install-locales" is of course optional as per current LFS.
+However, you'll need to install the minimum locales necessary for proper running
+of the gcc test suite as per the Chapter 5 glibc instructions above.
+
+We pass "--with-headers=/usr/include" to configure to ensure the kernel headers
+in /usr/include are used for this build. If we don't pass this switch then the
+headers from /stage1/include are used which of course is not ideal (although
+they should be identical). An advantage to using the switch is that the user
+will be informed immediately should they have forgotten to install the kernel
+headers into /usr/include.
+
+Once glibc is installed, don't forget to create the glibc configuration files
+(/etc/nsswitch.conf, /etc/localtime symlink and /etc/ld.so.conf).
+
+
+Chapter 6 - Adjusting our toolchain
+-----------------------------------
+
+Now that we have our Chapter 6 glibc successfully installed into /usr, it is
+time to adjust our toolchain to use the new glibc. From this point onwards we
+need to ensure that we do not link against the glibc in /stage1. This is
+basically "undoing" what we did in the Chapter 5 "lock in" stage.
+
+The first thing to do is adjust the linker scripts. We retained the
+binutils-build dir from "Chapter 5 binutils - pass 2" for this reason. Simply cd
+back into your binutils-build dir and run the following:-
+
+    cd ld &&
+    make INSTALL=/stage1/bin/install install-data-local
+
+This installs the adjusted linker scripts. The linker scripts now contain no
+mention of /stage1/lib. From now on everything will link ONLY against the libs
+in /usr/lib and /lib. The extra "INSTALL=/stage1/bin/install" is needed because
+the Makefile was created in Chapter 5 and still contains the reference to
+/usr/bin/install which we obviously haven't yet installed in Chapter 6. It is
+now safe to remove the binutils-build dir.
+
+The next thing to do is amend our gcc specs file so that it points to the new
+dynamic linker. Just like in Chapter 5, we use a sed to accomplish this:-
+
+    SPECFILE=/stage1/lib/gcc-lib/i686-pc-linux-gnu/*/specs &&
+    cp ${SPECFILE} ./XX && 
+    sed 's@/stage1/lib/ld-linux.so.2@/lib/ld-linux.so.2@g' ./XX > ${SPECFILE} &&
+    unset SPECFILE &&
+    rm -f ./XX
+
+Again, cut'n'pasting the above is recommended. And just like before, it is a
+good idea to check the linker scripts and the specs file to ensure the intended
+changes were actually made.
+
+NOTE - the linker scripts will still contain a reference to
+"/stage1/i686-pc-linux-gnu/lib". This is unavoidable but luckily does not
+present a problem. There are no libs in that location as all the stage1 libs are
+located in "/stage1/lib".
+
+
+Chapter 6 - Installing binutils
+-------------------------------
+
+Basically the same as current LFS:-
+
+    mkdir ../binutils-build &&
+    cd ../binutils-build &&
+    CFLAGS="-O2 -pipe" ../binutils-2*/configure --prefix=/usr --enable-shared &&
+    make tooldir=/usr LDFLAGS="-s" &&
+    make check &&
+    make tooldir=/usr install &&
+    rm /usr/lib/libiberty.a
+
+We remove libiberty.a because it is generally not meant to be installed on its
+own. For this reason we also elect not to install libiberty.h. Note also that
+with recent binutils there is no need for an additional "make tooldir=/usr
+install-info" as the info pages are now installed by the normal "make
+tooldir=/usr install".
+
+
+Chapter 6 - Installing gcc
+--------------------------
+
+Basically the same as current LFS. If using the same source from Chapter 5 there
+is no need to reapply the no_fixincludes or test_mmap patches (or the no_debug
+patches if you applied those as well).
+
+    patch -Np1 -i ../gcc-3*.no_fixincludes.patch &&
+    patch -Np1 -i ../gcc-3*.mmap_test.patch &&
+    mkdir ../gcc-build &&
+    cd ../gcc-build &&
+    CFLAGS="-O2 -pipe" CXXFLAGS="-O2 -pipe" ../gcc-3*/configure --prefix=/usr \
+       --enable-shared --enable-languages=c,c++ --enable-threads=posix \
+       --enable-__cxa_atexit --enable-clocale=gnu &&
+    make LDFLAGS="-s" &&
+    make -k check
+    make install &&
+    ln -s ../usr/bin/cpp /lib &&
+    ln -s gcc /usr/bin/cc &&
+    rm /usr/lib/libiberty.a
+
+WARNING! - if reusing the same source from Chapter 5 pass 2 be sure to reverse
+the "specs" patch we applied in that step.
+
+Again, no need for "make bootstrap" here. You can still "make bootstrap" if you
+want to. Just substitute the "make" command from above with the one below.
+
+    make BOOT_LDFLAGS="-s" BOOT_CFLAGS="-O2 -pipe" \
+       STAGE1_CFLAGS="-pipe" bootstrap
+
+The notable difference between here and current LFS is the omission of
+"--with-slibdir=/lib" due to the fact that standard C executables no longer link
+against the shared libgcc_s.so.1 as used to happen when gcc-3.x was first
+released. We also do not symlink /usr/lib/cpp as we have never yet seen a
+package that needs this. And again we remove /usr/lib/libiberty.a for the reason
+mentioned earlier.
+
+
+Chapter 6 - Installing remaining packages
+-----------------------------------------
+
+The remaining packages in Chapter 6 are installed as per current LFS and in the
+same order. Except of course for binutils, gcc and glibc which are already
+installed. There should be no need to reinstall glibc at the end of Chapter 6.
+
+Something to think about here, theoretically, one should be able to take a newly
+built LFS and use it to rebuild itself (essentially perform Chapter 6 again
+without the assistance of the /stage1 stuff) and have it reproduce identical
+bytes. We have performed an "Iterative Analysis" of this and hope to present an
+automated way of verifying it in the future. But for now, from our findings we
+are able to make the following recommendations so as to ensure code
+repeatability:-
+
+  * ncurses - be sure to use the "etip" patch that was used in Chapter 5
+
+  * shadow - be sure to issue "touch /usr/bin/passwd" before configuring
+           - be sure to perform the "Creating the /var/run/utmp, /var/log/wtmp
+             and /var/log/btmp files" commands (from the end of Chapter 6)
+             before the shadow package installation
+
+  * groff - be sure to to configure like so:-
+
+    PAGE=XX ./configure --prefix=/usr
+
+    where "XX" is either "A4" or "letter" depending on your requiremnt.
+
+  * perl - be sure to perform the "Creating the /etc/hosts file" commands before
+    the perl installation
+
+
+Chapter 8 - Kernel compilation
+------------------------------
+
+The following paragraph from the CHANGES file in linux-2.4.20 explains things
+nicely:-
+
+"The recommended compiler for the kernel is gcc 2.95.x (x >= 3), and it
+should be used when you need absolute stability. You may use gcc 3.0.x
+instead if you wish, although it may cause problems. Later versions of gcc
+have not received much testing for Linux kernel compilation, and there are
+almost certainly bugs (mainly, but not exclusively, in the kernel) that
+will need to be fixed in order to use these compilers. In any case, using
+pgcc instead of egcs or plain gcc is just asking for trouble."
+
+The current wisdom on the Linux Kernel Mailing List still seems to suggest that
+gcc-2.95.3 is the optimal compiler for compiling the kernel. Please note we are
+talking about current linux-2.4.x. As gcc-3.x continues to mature and linux-2.6
+nears release, the kernel developers may end up preferring gcc-3.x, but for now,
+the best bet is to use gcc-2.95.3 for your kernel compiles.
+
+The simplest way to achieve this is to install gcc-2.95.3 into a non-standard
+prefix, i.e. somewhere NOT in the standard system `PATH':-
+
+    patch -Np1 -i ../gcc-2.95.3-2.patch &&
+    echo timestamp > gcc/cstamp-h.in &&
+    mkdir ../gcc-2-build &&
+    cd ../gcc-2-build &&
+    ../gcc-2.95*/configure --prefix=/opt/gcc-2.95.3 --enable-shared \
+       --enable-languages=c &&
+    make bootstrap &&
+    make install
+
+*** WARNING *** BE EXTRA CAREFUL NOT TO INSTALL INTO /USR OR YOU WILL DESTROY
+YOUR CURRENT GCC!
+
+The patch used is the one from LFS 3.3. The line starting with "echo" is just a
+safeguard to prevent a "Makefile induced" rerun of autoconf in certain unknown
+circumstances.
+
+Then when it comes time to compile the kernel:-
+
+    make mrproper &&
+    make menuconfig &&
+    make CC=/opt/gcc-2.95.3/bin/gcc dep &&
+    make CC=/opt/gcc-2.95.3/bin/gcc bzImage &&
+    make CC=/opt/gcc-2.95.3/bin/gcc modules &&
+    make CC=/opt/gcc-2.95.3/bin/gcc modules_install &&
+    cp arch/i386/boot/bzImage /boot/lfskernel &&
+    cp System.map /boot
+
+The important thing is obviously the "CC=/opt/gcc-2.95.3/bin/gcc" on the make
+command lines.
+
+It is worth mentioning here that the BLFS project uses gcc-2.95.3 to create the
+c++ libs required by various closed source and precompiled binaries. With this
+in mind, you may want to combine the above gcc-2.95.3 instructions with the BLFS
+instructions to save yourself some time. Just be careful NOT to use
+--prefix=/usr.
+
+
+The perennial debate over which binutils release to use
+-------------------------------------------------------
+
+The binutils release that you typically find on ftp.gnu.org is commonly known as
+the "FSF" binutils. Noted hacker H.J. Lu also makes releases out of the main CVS
+repository and these are commonly known as the "HJL" binutils and can usually be
+found on ftp.kernel.org. Debate often arises over which version to use due to
+the fact that most mainstream distros tend to use the HJL releases even though
+they are typically marked as "beta".
+
+Here is our interpretation of the differences between the two:-
+
+HJL:
+  - for Linux OS only
+  - marked as "beta"
+  - closely follows the CVS HEAD
+  - usually contains the latest subtle bug fixes
+  - usually has latest bug fixes for non-x86 arch's
+  - usually a new release every time a significant bug that affects Linux gets
+    fixed
+  - theoretically less stable due to newness of code
+
+FSF:
+  - supports more OS's (not only Linux)
+  - latest code from the stable branch of CVS
+  - sometimes not up-to-date WRT to the latest bleeding edge kernel, gcc and
+    glibc subtleties
+  - often includes features backported from the CVS HEAD after a period of
+    testing
+  - theoretically more stable
+
+You'll notice in the above points words like "usually" and "sometimes". This
+demonstrates how the situation can be different depending on which particular
+point in time you happen to be referring to. For example, from time to time
+there will be a new bleeding edge feature in gcc or glibc that requires support
+from binutils. During these times you will often hear the developers say "you
+must be using the latest HJL binutils version x.y.z.a.b".
+
+The only way to correctly choose the most appropriate release to use is to:-
+
+  * stay abreast of the issues on the project mailing lists of the core
+    toolchain packages
+
+  * have a large dose of technical prowess and/or programming talent to
+    understand all the issues
+
+  * test like crazy by running the test suites
+
+  * test like crazy by building full systems
+
+The facts of the matter are that the core toolchain packages are all very
+tightly bound and must be tested to ensure they work together. You basically
+have to build a full working distro and test every aspect of it to be fully
+satisfied.
+
+If you follow the project mailing lists of the core toolchain packages for long
+enough, you'll soon realise that the developers do not care much whether a
+particular release of "Package A" works with a particular release of "Package
+B". In other words, release coordination between the projects is not a priority.
+In reality, this means that Alan Cox is right when he says that you cannot just
+go to ftp.gnu.org and grab the latest of everything and always expect it to just
+work.
+
+
+Conclusion
+----------
+
+We hope you have as much fun with this as we had making it. It was a lot of hard
+work but well worth it. Enjoy.
+
+Comments, feedback, flames, corrections, whatever, are all welcome.
+
+P.S. - Do not believe anyone who says that what is presented in this document is
+       overkill. Those folk do not have enough knowledge to understand all the
+       subtle issues.
+
+
+
+
+TODO
+====
+
+  - look at integrating test suites for the remaining packages
+  - look at ways to remove /usr/include from gcc's include search path
+  - look at ways to remove unwanted dirs from "gcc -print-search-dirs"
+  - look at using gcc's -enable-version-specific-runtime-libs for installing
+    multiple versions of gcc into the one prefix
+
+
+
+
+CREDITS
+=======
+
+Ryan - Devised the whole scheme. Bucket loads of testing and research. Helped
+       with documentation.
+
+Greg - Wrote the bulk of the documentation. Helped refine the process, Helped
+       with testing and research. Initially ranted on lfs-dev about potential
+       build flaws and thus spurred Ryan into action :-)
+
+All the good folk on lfs-dev have been very helpful with ideas, feedback,
+corrections and testing. Thanks guys.
+
+
+FOOTNOTES
+=========
+
+1. http://www.linuxbase.org/impl/
+2. http://archive.linuxfromscratch.org/mail-archives/lfs-dev/2003/03/0193.html
+3. http://gcc.gnu.org/install/configure.html
+4. http://gcc.gnu.org/ml/gcc/2002-08/msg01071.html
+5. http://gcc.gnu.org/install/test.html
+6. http://mail.gnu.org/archive/html/bug-ncurses/2003-03/msg00019.html
+
+Copyright (c) 2003
+Ryan Oliver <Ryan.Oliver@pha.com.au> and Greg Schafer <gschafer@zip.com.au>

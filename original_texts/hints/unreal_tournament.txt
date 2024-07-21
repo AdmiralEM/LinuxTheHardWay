@@ -1,0 +1,87 @@
+AUTHOR: Cedric de Wijs cedric.de.wijs<at>softhome<dot>net
+
+DATE: 2004-04-04
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: How to get Unreal Tournament Game of the year edition running on LFS-5.0
+
+DESCRIPTION:
+This hint describes how to get Unreal Tournament Game of the year edition running in LFS-5.0
+
+ATTACHMENTS:
+The 2-CD set of Unreal Tournament Game of the year edition
+
+The linux installer:
+
+http://osgaming.net/Downloads/Linux/Installers/ut-install-436-GOTY.run
+todo: get a list of mirror sites
+
+PREREQUISITES:
+This hint expect you to have a working X setup with 3d acceleration support
+
+HINT:
+=================
+TABLE OF CONTENTS
+=================
+
+1 Introduction
+2 Required Files
+3 Installation
+4 Post Install
+5 Run the game
+
+===============
+1 Introduction
+===============
+
+I had some problems getting Unreal Tournament Game of the year edition running in LFS-5.0 Now i have solved them, and here's how i did it:
+
+=================
+2. REQUIRED FILES
+=================
+The 2-CD set of Unreal Tournament Game of the year edition
+
+The linux installer:
+
+http://osgaming.net/Downloads/Linux/Installers/ut-install-436-GOTY.run
+
+
+===============
+3. Installation
+===============
+-Run the installer:
+bash-2.05b# ./ut-install-436-GOTY.run
+
+==============
+4 Post Install
+==============
+In the Maps directory are a lot of .unr.uz files. In order to get the game to run they have to be decompressed. This script will do the work for us:
+
+cd /usr/local/games/ut/System &&
+for FILE in ../Maps/*.uz; do ./ucc-bin decompress ../Maps/$FILE -nohomedir \
+  && rm -f $FILE;
+done
+mv *.unr ../Maps
+
+==============
+5 Run the game
+==============
+type ut to run the game
+
+
+
+ACKNOWLEDGEMENTS:
+None yet
+
+
+CHANGELOG:
+[2004-04-04]
+  * Updated script, works also outsite the PATH
+
+[2004-02-03]
+  * Fixed typos
+  * Updated script, less disk usage
+
+[2004-01-29]
+  * Initial hint.

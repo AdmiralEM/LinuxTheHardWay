@@ -1,0 +1,694 @@
+AUTHOR: Benjamin Boksa <benjamin@boksa.de>
+
+DATE: 2004-03-24
+
+LICENSE: GNU GENERAL PUBLIC LICENSE
+
+SYNOPSIS: Installing CAPI2.0 and Hylafax with multiple MSN
+
+DESCRIPTION:
+This hint covers the installation of a CAPI2.0 enabled kernel and a very simple fax2mail
+system based on Hylafax, where faxes are distributed by mail based on the MSN they were sent to.
+
+ATTACHMENTS:
+* ftp://ftp.in-berlin.de/pub/capi4linux/capi4k-utils-2004-01-19.tar.gz
+* ftp://ftp.avm.de/cardware/fritzcrd.pci/linux/suse.82/fcpci-suse8.2-03.11.02.tar.gz
+* http://ftp.at.linuxfromscratch.org/infosys/mail/maildrop/metamail-linux.tar.z
+* http://hightek.org/dialog/dialog-0.7.tar.gz
+* http://ftp.gnu.org/gnu/sharutils/sharutils-4.2.1.tar.gz
+* http://www.linuxfromscratch.org/patches/downloads/sharutils/sharutils-4.2.1-gettext-1.patch
+* ftp://ftp.hylafax.org/source/hylafax-4.1.8.tar.gz
+
+PREREQUISITES:
+ISDN card and a local MTA (like sendmail) installed.
+
+HINT:
+
+STEP 1: Introduction and general notes
+
+     This hint covers the installation of a CAPI2.0 enabled kernel and a very simple fax2mail
+     system based on HylaFax, where faxes are distributed by mail based on the MSN they were sent to.
+	
+     Another thing I would like to mention is the usage of /usr/local/src in this hint. On my system
+     I have decided to keep the source for all packages from LFS/BLFS in /usr/src and all other packages
+     in /usr/local/src, which is the reason why I use /usr/local/src below. If you prefer to use /usr/src
+     just use it whenever you come accross /usr/local/src.
+
+STEP 2: Preparing the kernel
+
+     The first thing to do is to compile a CAPI2.0 enabled kernel and the necessary kernel modules.
+     The following commands assumme you have installed the 2.4.22 kernel as described in the LFS 5.0 book.
+     If you have installed a different kernel or have the kernel sources in a different location make sure to
+     alter the commands accordingly.
+	
+     Change to you kernel source directory and configure the kernel by running the following commands:
+	
+          cd /usr/src/linux-2.4.22
+          
+          make menuconfig
+	
+     First of all make sure to enable ISDN support in your kernel:
+	
+          ISDN subsystem ---> 
+          <*> ISDN support
+	
+     Then enable CAPI2.0 as shown below:
+	
+          ISDN subsystem ---> Active ISDN cards  --->
+          <M> CAPI2.0 support
+          [ ]   Verbose reason code reporting (kernel size +=7K)
+          [*]   CAPI2.0 Middleware support (EXPERIMENTAL)
+          <M>   CAPI2.0 /dev/capi support
+          [*]     CAPI2.0 filesystem support
+	
+     The last thing to do to prepare the kernel is to compile and install it:
+	
+          make CC=/opt/gcc-2.95.3/bin/gcc dep &&
+          make CC=/opt/gcc-2.95.3/bin/gcc bzImage &&
+          make CC=/opt/gcc-2.95.3/bin/gcc modules &&
+          make CC=/opt/gcc-2.95.3/bin/gcc modules_install
+          
+          cp System.map /boot
+          cp arch/i386/boot/bzImage /boot/lfskernel
+	
+     After that reboot your system with the new kernel.
+
+STEP 3: Installing capi4k-utils-2004-01-19
+
+     capi4k-utils is a collection of some software we need in later steps.
+	
+     The first thing to do is to download and unpack capi4k-utils by running these commands
+     (assumes you have installed curl):
+	
+          cd /usr/local/src
+          
+          curl -O ftp://ftp.in-berlin.de/pub/capi4linux/capi4k-utils-2004-01-19.tar.gz
+          
+          tar xvfz capi4k-utils-2004-01-19.tar.gz
+          rm capi4k-utils-2004-01-19.tar.gz
+	
+     The first thing is to configure the software for installation:
+	
+          cd /usr/local/src/capi4k-utils
+          make CC=/opt/gcc-2.95.3/bin/gcc config
+	
+     When I configured the sotware I had to specify the kernel source directory and I decided not
+     to build the pppdcapiplugin as it is not needed for the Hylafax installation:
+	
+          "kernel source directory" -> /usr/src/linux-2.4.22
+          [ ] pppdcapiplugin
+	
+     The next thing is to compile and install the software by running the following commands:
+	
+          make CC=/opt/gcc-2.95.3/bin/gcc
+          make CC=/opt/gcc-2.95.3/bin/gcc install
+          
+          cp capiinit/capi.conf /etc
+	
+     After having installed the software you have to make it work with you ISDN card by
+     changing /etc/capi.conf. I did this in two steps.
+	
+     The first step is to remove all lines from /etc/capi.conf that are not needed.
+	
+          ----- begin patch (/etc/capi.conf) -----
+          --- capi.conf.orig      2004-02-21 21:31:42.000000000 +0100
+          +++ capi.conf   2004-02-21 21:32:00.000000000 +0100
+          @@ -1,13 +1,2 @@
+           # card         file    proto   io      irq     mem     cardnr  options
+          -#b1isa         b1.t4   DSS1    0x150   7       -       -       P2P
+          -b1pci          b1.t4   DSS1    -       -       -       -
+          -c4             c4.bin  DSS1    -       -       -       -
+          -c4             -       DSS1    -       -       -       -
+          -c4             -       DSS1    -       -       -       -       P2P
+          -c4             -       DSS1    -       -       -       -       P2P
+          -#c2            c2.bin  DSS1    -       -       -       -
+          -#c2            -       DSS1    -       -       -       -
+          -#t1isa         t1.t4   DSS1    0x340   9       -       0
+          -#t1pci         t1.t4   DSS1    -       -       -       -
+           #fcpci         -       -       -       -       -       -
+          -#fcclassic     -       -       0x150   10      -       -
+          ----- end patch -----
+	
+     The last thing to do is to uncomment the line for your card:
+	
+          ----- begin patch (/etc/capi.conf) -----
+          --- capi.conf.orig      2004-02-21 23:59:20.000000000 +0100
+          +++ capi.conf   2004-02-21 23:59:25.000000000 +0100
+          @@ -1,2 +1,2 @@
+           # card         file    proto   io      irq     mem     cardnr  options
+          -#fcpci         -       -       -       -       -       -
+          +fcpci          -       -       -       -       -       -
+          ----- end patch -----
+	
+     Please note that I use the FritzCard PCI, the last step might be different
+     depending on what ISDN card you use.
+
+STEP 4: Installing fcpci-suse8.2-03.11.02
+
+     To install the kernel module that handles the FritzCard PCI use the following
+     commands and make sure to use the same compiler you use to compile the kernel:
+	
+          cd /usr/local/src
+          
+          curl -O ftp://ftp.avm.de/cardware/fritzcrd.pci/linux/suse.82/fcpci-suse8.2-03.11.02.tar.gz
+          
+          tar xvfz fcpci-suse8.2-03.11.02.tar.gz
+          rm fcpci-suse8.2-03.11.02.tar.gz
+          
+          cd fritz
+          
+          make CC=/opt/gcc-2.95.3/bin/gcc
+          make CC=/opt/gcc-2.95.3/bin/gcc install
+
+STEP 5: Installing AFPL Ghostscript-8.11
+
+     Instructions to install AFPL Ghostscript-8.11 can be found in BLFS 5.0. The URL
+     for these instructions on my local system is the following:
+	
+     http://default.local/lfs/BLFS-BOOK-5.0-HTML/pst/gs.html
+
+STEP 6: Installing metamail
+
+          cd /usr/local/src
+          
+          mkdir metamail
+          cd metamail
+          curl -O http://ftp.at.linuxfromscratch.org/infosys/mail/maildrop/metamail-linux.tar.z
+          
+          tar xvfz metamail-linux.tar.z
+          rm metamail-linux.tar.z
+          
+          
+          
+          cd bin
+          
+          for a in *;do
+             install -c $a /usr/bin
+          done
+          
+          cd ../man
+          
+          for a in *;do
+             install -c -m 444 $a /usr/man/man1
+          done
+          
+          cd ..
+          
+          install -c -m 644 mailcap /etc
+
+STEP 7: Installing dialog-0.7
+
+     The installation of dialog-0.7 is easy, just use the following commands:
+	
+          cd /usr/local/src
+          
+          curl -O http://hightek.org/dialog/dialog-0.7.tar.gz
+          
+          tar xvfz dialog-0.7.tar.gz
+          rm dialog-0.7.tar.gz
+          
+          cd dialog-0.7
+          
+          make
+          make install
+
+STEP 8: Installing sharutils 4.1.2
+
+     Even though there is a patch available for sharutils-4.2.1, I have not found
+     instructions in LFS/BLFS, so I decided to include them.
+	
+     The first thing to do is to get the source and the patch and to unpack the source:
+	
+          cd /usr/local/src
+          
+          curl -O http://ftp.gnu.org/gnu/sharutils/sharutils-4.2.1.tar.gz
+          curl -O http://www.linuxfromscratch.org/patches/downloads/sharutils/sharutils-4.2.1-gettext-1.patch
+          
+          tar xvfz sharutils-4.2.1.tar.gz
+          rm sharutils-4.2.1.tar.gz
+	
+     Now apply the patch by running the following commands:
+	
+          cd /usr/local/src/sharutils-4.2.1
+          
+          patch -Np1 < ../sharutils-4.2.1-gettext-1.patch
+	
+     Now compile the software as shown:
+	
+          cd /usr/local/src/sharutils-4.2.1
+          ./configure --prefix=/usr
+          make
+          make check
+          make install
+          make install-man
+
+STEP 9: Installing hylafax-4.1.8
+
+     As Hylafax needs the uucp user and group to function we create these first:
+	
+          groupadd uucp
+          useradd -g uucp -d /dev/null -s /bin/false uucp
+	
+     Then we fetch the software and unpack it:
+	
+          cd /usr/local/src
+          
+          curl -O ftp://ftp.hylafax.org/source/hylafax-4.1.8.tar.gz
+          
+          tar xvfz hylafax-4.1.8.tar.gz
+          rm hylafax-4.1.8.tar.gz
+	
+     The next thing is configure the way Hylafax will be installed:
+	
+          cd /usr/local/src/hylafax-4.1.8
+          
+          ./configure
+	
+     After having called configure some defaults are shown.
+	
+          HylaFAX configuration parameters (part 1 of 2) are:
+          
+          [ 1] Directory for applications:        /usr/local/bin
+          [ 2] Directory for lib data files:      /usr/local/lib/fax
+          [ 3] Directory for lib executables:     /usr/local/sbin
+          [ 4] Directory for system apps:         /usr/local/sbin
+          [ 5] Directory for manual pages:        /usr/local/man
+          [ 6] Directory for HTML documentation:  /var/httpd/htdocs/hylafax
+          [ 7] Directory for spooling:            /var/spool/hylafax
+          [ 8] Directory for uucp lock files:     /var/lock
+          [ 9] Uucp lock file scheme:             ascii
+          [10] PostScript imager package:         gs
+          [11] PostScript imager program:         /usr/bin/gs
+          [12] Manual page installation scheme:   bsd-source-cat
+          [13] Default page size:                 North American Letter
+          [14] Default vertical res (lpi):        98
+	
+     As the defaults where not acceptable for me I decided to overwrite them. Note that
+     <input> means to type the word input and <-enter-> means to press the return key.
+	
+          Are these ok [yes]? <no><-enter->
+          Directory to install applications [/usr/local/bin]? </usr/bin><-enter->
+          Directory to install library data files [/usr/local/lib/fax]? </usr/lib/fax><-enter->
+          Directory to install library executables [/usr/local/sbin]? </usr/sbin><-enter->
+          Directory to install system apps [/usr/local/sbin]? </usr/sbin><-enter->
+          Directory to install manual pages [/usr/local/man]? </usr/man><-enter->
+          Directory to install HTML documentation [/var/httpd/htdocs/hylafax]? <-enter-> 
+          Directory to setup server spooling area [/var/spool/hylafax]? <-enter->
+          Directory for uucp lock files [/var/lock]? <-enter->
+          UUCP lock file scheme [ascii]? <-enter->
+          PostScript imager package [gs]? <-enter->
+          PostScript imager program [/usr/bin/gs]? <-enter->
+          Manual page installation scheme [bsd-source-cat]? <-enter->
+          Default page size [North American Letter]? <ISO A4><-enter->
+          Default vertical res (lpi) [98]? <-enter->
+	
+     The new values are shown:
+	
+          HylaFAX configuration parameters (part 1 of 2) are:
+          
+          [ 1] Directory for applications:        /usr/bin
+          [ 2] Directory for lib data files:      /usr/lib/fax
+          [ 3] Directory for lib executables:     /usr/sbin
+          [ 4] Directory for system apps:         /usr/sbin
+          [ 5] Directory for manual pages:        /usr/man
+          [ 6] Directory for HTML documentation:  /var/httpd/htdocs/hylafax
+          [ 7] Directory for spooling:            /var/spool/hylafax
+          [ 8] Directory for uucp lock files:     /var/lock
+          [ 9] Uucp lock file scheme:             ascii
+          [10] PostScript imager package:         gs
+          [11] PostScript imager program:         /usr/bin/gs
+          [12] Manual page installation scheme:   bsd-source-cat
+          [13] Default page size:                 ISO A4
+          [14] Default vertical res (lpi):        98
+	
+     After the changes these are OK for me now, so I accept them:
+	
+          Are these ok [yes]? <-enter->
+	
+     The second set of values is shown:
+	
+          HylaFAX configuration parameters (part 2 of 2) are:
+          
+          [15] Location of getty program:         /sbin/agetty
+          [16] Location of voice getty program:   /bin/vgetty
+          [17] Location of sendmail program:      /usr/sbin/sendmail
+          [18] Location of TIFF tools:            /usr/bin
+          [19] Location of SysV init scripts:     /etc/rc.d/init.d
+          [20] Location of SysV start scripts:    ../rc2.d ../rc3.d ../rc4.d ../rc5.d
+          [21] Location of SysV stop scripts:     ../rc0.d ../rc1.d ../rc6.d
+          [22] Name of SysV start script:         S97hylafax
+          [23] Name of SysV stop script:          K05hylafax
+          [24] Init script starts faxq:           yes
+          [25] Init script starts hfaxd           yes
+          [26] Start old protocol:                no
+          [27] Start paging protocol:             no
+	
+     As these are OK for me I simply accepted them:
+	
+          Are these ok [yes]? <-enter->
+	
+     The actual installtion of the software is done with the following commands:
+	
+          make
+          make install
+	
+     Now as Hylafax is installed we set it up using faxsetup:
+	
+          faxsetup
+	
+     faxsetup will ask a lot of questions which I listed below, together with my answers.
+     Just change them according to your needs:
+	
+          You do not appear to have a "fax" user in the password file.
+          HylaFAX needs this to work properly, add it [yes]? <-enter->
+          
+          
+          
+          Should an entry be added for the FaxMaster to /etc/mail/aliases [yes]? <-enter->
+          
+          
+          
+          Users to receive fax-related mail [root]? <-enter->
+          
+          
+          
+                  HylaFAX configuration parameters are:
+          
+                  [1] Init script starts faxq:            yes
+                  [2] Init script starts hfaxd            yes
+                  [3] Start old protocol:                 no
+                  [4] Start paging protocol:              no
+          Are these ok [yes]? <-enter->
+          
+          
+          
+          No scheduler config file exists, creating one from scratch.
+          Country code [1]? <49><-enter->
+          Area code []? <221><-enter->
+          Long distance dialing prefix [1]? <0><-enter->
+          International dialing prefix [011]? <00><-enter->
+          Dial string rules file (relative to /var/spool/hylafax) ["etc/dialrules"]? <-enter->
+          Tracing during normal server operation [1]? <527><-enter->
+          Default tracing during send and receive sessions [0xffffffff]? <527><-enter->
+          Continuation cover page (relative to /var/spool/hylafax) []? <etc/cover.tmpl><-enter->
+          Timeout when converting PostScript documents (secs) [180]? <-enter->
+          Maximum number of concurrent jobs to a destination [1]? <-enter->
+          Define a group of modems []? <-enter->
+          Time of day restrictions for outbound jobs ["Any"]? <-enter->
+          Pathname of destination controls file (relative to /var/spool/hylafax) []? <-enter->
+          Timeout before purging a stale UUCP lock file (secs) [30]? <-enter->
+          Max number of pages to permit in an outbound job [0xffffffff]? <-enter->
+          Syslog facility name for ServerTracing messages [daemon]? <-enter->
+          
+          The non-default scheduler parameters are:
+          
+          CountryCode:            49
+          AreaCode:               221
+          LongDistancePrefix:     0
+          InternationalPrefix:    00
+          ServerTracing:          527
+          ContCoverPage:          etc/cover.tmpl
+          SessionTracing:         527
+          
+          Are these ok [yes]? <-enter->
+          
+          
+          
+          Restarting HylaFAX server processes.
+          Should I restart the HylaFAX server processes [yes]? <-enter->
+	
+     This is the most important question. As we will not use a modem we do not need to run faxaddmodem:
+	
+          You do not appear to have any modems configured for use.  Modems are
+          configured for use with HylaFAX with the faxaddmodem(8C) command.
+          Do you want to run faxaddmodem to configure a modem [yes]? <no><-enter->
+
+STEP 10: Installing capi4hylafax-01.02.02
+
+     cap4hylafax actually makes it possible to use hylafax with the software and kernel we compiled earlier.
+	
+     First fetch the software and unpack it:
+	
+          cd /usr/local/src
+          
+          curl -O ftp://ftp.avm.de/tools/capi4hylafax.linux/capi4hylafax-01.02.02.tar.gz
+          
+          tar xvfz capi4hylafax-01.02.02.tar.gz
+          rm capi4hylafax-01.02.02.tar.gz
+          
+          cd /usr/local/src/capi4hylafax-01.02.02
+	
+     Now compile the software using the following commands:
+	
+          ./configure --prefix=/usr
+          make
+	
+     As we will be using three different MSN we add three devices for Hylafax:
+	
+          ln -s capi20 /dev/faxCAPI
+          ln -s capi20 /dev/faxCAPI2
+          ln -s capi20 /dev/faxCAPI3
+	
+     To install the software run the install script and answer some questions.
+     I have included my (slightly changed) answers, make sure to use the values right for you:
+	
+          ./install
+          
+          -> < Yes >
+          
+          Outgoing MSN    4929xxx
+          Incoming MSNs   -- is set --- [4929xxx]
+          DDI Params      -- no ddi ---
+          Fax Number      +49.221.4929xxx
+          Fax Identifier  Benjamin Boksa
+          Number Prefix   [   empty   ]
+          Save & Exit
+          
+          -> < OK >
+
+STEP 11: Installing a boot script for the capi
+
+     The following installs a simple script to start CAPI2.0 at boot time:
+	
+          cat > /etc/rc.d/init.d/capi <<"EOF"
+          #!/bin/bash
+          # Begin $rc_base/init.d/capi
+          
+          # Based on sysklogd script from LFS-3.1 and earlier.
+          # Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+          
+          source /etc/sysconfig/rc
+          source $rc_functions
+          
+          case "$1" in
+                  start)
+                          echo "Starting capi 2.0..."
+                          loadproc capiinit start
+                          ;;
+          
+                  stop)
+                          echo "Stopping capi 2.0..."
+                          capiinit stop
+                          evaluate_retval
+                          ;;
+          
+                  restart)
+                          $0 stop
+                          sleep 1
+                          $0 start
+                          ;;
+          
+                  status)
+                          capiinfo
+                          ;;
+          
+                  *)
+                          echo "Usage: $0 {start|stop|restart|status}"
+                          exit 1
+                          ;;
+          esac
+          
+          # End $rc_base/init.d/capi
+          EOF
+          
+          chmod 755 /etc/rc.d/init.d/capi
+          
+          cd /etc/rc.d/init.d &&
+          ln -sf ../init.d/capi ../rc0.d/K10capi &&
+          ln -sf ../init.d/capi ../rc1.d/K10capi &&
+          ln -sf ../init.d/capi ../rc2.d/S90capi &&
+          ln -sf ../init.d/capi ../rc3.d/S90capi &&
+          ln -sf ../init.d/capi ../rc4.d/S90capi &&
+          ln -sf ../init.d/capi ../rc5.d/S90capi &&
+          ln -sf ../init.d/capi ../rc6.d/K10capi
+
+STEP 12: Adjusting the Hylafax installation
+
+     This section will show some information about adjustments I made after having installed Hylafax:
+	
+     The following patch enables the paging protocol for hylafax which I did not
+     enable during the installation:
+	
+          ----- begin patch (/var/spool/hylafax/etc/setup.cache) -----
+          19c19
+          < HFAXD_SNPP_SERVER='no'
+          ---
+          > HFAXD_SNPP_SERVER='yes'
+          ----- end patch -----
+	
+     The following patch makes it possible to use uuencode (from sharutils) replacing
+     the old mimencode from metamail:
+	
+          ----- begin patch (/var/spool/hylafax/bin/faxrcvd) -----
+          --- /var/spool/hylafax/bin/faxrcvd.orig 2004-02-22 01:07:54.000000000 +0100
+          +++ /var/spool/hylafax/bin/faxrcvd      2004-02-23 02:53:58.000000000 +0100
+          @@ -51,9 +51,19 @@
+           }
+           . etc/setup.cache
+           
+          +function encode_base64 { 
+          +   if [ -x /usr/bin/uuencode ]; then 
+          +      /usr/bin/uuencode -m $1 $1 | /bin/sed '1d;$d' 
+          +   elif [ -x /usr/bin/mimencode ]; then 
+          +      /usr/bin/mimencode $1 
+          +   else 
+          +      echo "Error: No encoder for base64 found." 
+          +      echo "Please install sharutils or metamail." 
+          +   fi 
+          +} 
+          +
+           INFO=$SBIN/faxinfo
+           FAX2PS=$TIFFBIN/fax2ps
+          -MIMENCODE=mimencode
+           ENCODING=base64
+           TIFF2PS=tiff2ps
+           PS2PDF=ps2pdf
+          @@ -195,7 +205,7 @@
+                       echo "Content-Transfer-Encoding: $ENCODING"
+                       echo "Content-Disposition: attachment; filename=\"$FILENAME.tif\""
+                       echo ""
+          -            $MIMENCODE $FILE 2>/dev/null
+          +            encode_base64 $FILE 2>/dev/null
+                   elif [ "$FILETYPE" = "pdf" ]; then
+                       echo "Content-Type: application/pdf; name=\"c$COMMID.pdf\""
+                       echo "Content-Description: FAX document"
+          @@ -212,7 +222,7 @@
+                          $SED 's/.*Resolution: [0-9]*, \([0-9]*\).*/\1/g' | sort -n | $SED -n '$p'`
+                       $TIFF2PS -a -O $FILE.ps $FILE 2>/dev/null # fax2ps looks bad
+                       $PS2PDF -g$GW\x$GL -r$RW\x$RL $FILE.ps $FILE.pdf 2>/dev/null
+          -            $MIMENCODE $FILE.pdf 2>/dev/null
+          +            encode_base64 $FILE.pdf 2>/dev/null
+                       $RM -f $FILE.ps $FILE.pdf 2>/dev/null
+                   else #  default as Postscript
+                       echo "Content-Type: application/postscript; name=\"$FILENAME.ps\""
+          ----- end patch -----
+
+STEP 13: Using multiple MSN with Hylafax
+
+     The idea behind this is very simple: We create a device for every MSN we want to
+     use with hylafax. The device can the be used to distribute the incoming faxes as needed.
+	
+     Before changing the configuration we have to create to more symlinks to enable 
+     the devices we created above:
+	
+          ln -s config.faxCAPI /var/spool/hylafax/etc/config.faxCAPI2
+          ln -s config.faxCAPI /var/spool/hylafax/etc/config.faxCAPI3
+	
+     To use the devices you have to create a section for each of them. The following
+     patch shows my changes. It also shows that I did not have to change anything
+     for the first device, as it was already configured during installation. The
+     other two sections are simply copies of the first section with the necessary
+     values adjusted:
+	
+          ----- begin patch (/var/spool/hylafax/etc/config.faxCAPI) -----
+          --- /var/spool/hylafax/etc/config.faxCAPI.orig  2004-02-23 19:59:54.000000000 +0100
+          +++ /var/spool/hylafax/etc/config.faxCAPI       2004-02-23 11:57:09.000000000 +0100
+          @@ -146,6 +146,9 @@
+           # as many subsections as required, since virtual DeviceNames do not play
+           # any role in this mode of operation.
+           #
+          +
+          +
+          +# 1st device, MSN 4929xxx
+           {
+           
+               # "HylafaxDeviceName" ist der Name, unter dem sich C4H bei HylaFAX als
+          @@ -394,3 +397,60 @@
+               }
+           }
+           
+          +# 2nd device, MSN 2790xxx
+          +{
+          +    HylafaxDeviceName:          faxCAPI2
+          +    RecvFileMode:               0600
+          +    FAXNumber:                  +49.221.2790xxx
+          +    LocalIdentifier:            "Benjamin Boksa"
+          +    MaxConcurrentRecvs:         2
+          +
+          +    # ----------- outgoing params -----------
+          +    OutgoingController:         1
+          +    OutgoingMSN:                2790xxx
+          +    SuppressMSN:                0
+          +    NumberPrefix:               
+          +    UseISDNFaxService:          0
+          +    RingingDuration:            0
+          +
+          +    # ----------- incoming params -----------
+          +    {
+          +        Controller:             1
+          +        AcceptSpeech:           0
+          +        UseDDI:                 0
+          +        DDIOffset:              
+          +        DDILength:              0
+          +        IncomingDDIs:           
+          +        IncomingMSNs:           2790xxx
+          +        AcceptGlobalCall:   1
+          +    }
+          +}
+          +
+          +# 3rd device, MSN 2790xxx
+          +{
+          +    HylafaxDeviceName:          faxCAPI3
+          +    RecvFileMode:               0600
+          +    FAXNumber:                  +49.221.2790xxx
+          +    LocalIdentifier:            "Familie Boksa"
+          +    MaxConcurrentRecvs:         2
+          +
+          +    # ----------- outgoing params -----------
+          +    OutgoingController:         1
+          +    OutgoingMSN:                2790xxx
+          +    SuppressMSN:                0
+          +    NumberPrefix:               
+          +    UseISDNFaxService:          0
+          +    RingingDuration:            0
+          +
+          +    # ----------- incoming params -----------
+          +    {
+          +        Controller:             1
+          +        AcceptSpeech:           0
+          +        UseDDI:                 0
+          +        DDIOffset:              
+          +        DDILength:              0
+          +        IncomingDDIs:           
+          +        IncomingMSNs:           2790xxx
+          +        AcceptGlobalCall:   1
+          +    }
+          +}
+          ----- end patch -----
+	
+     We create a file FaxDispatch which control the delivery of the converted faxes based
+     on the device (read: the MSN) that received the fax:
+	
+          ----- begin file (/var/spool/hylafax/etc/FaxDispatch) -----
+          case "$DEVICE" in
+          faxCAPI)        SENDTO=b.boksa@sidebysite.de; FILETYPE=pdf;;
+          faxCAPI2)       SENDTO=benjamin@boksa.de; FILETYPE=pdf;;
+          faxCAPI3)       SENDTO=daniel@boksa.de,gudrun@boksa.de; FILETYPE=pdf;;
+          esac
+          ----- end file -----
+
+CHANGELOG:
+[2004-03-25]
+  * Added/Corrected some stuff as the result of the feedback from blfs-support
+[2004-03-24]
+  * Initial release, posted to blfs-support for comments

@@ -1,0 +1,267 @@
+TITLE:		How to QUICKLY install PPP 2.4.1 over a modem
+		(serial line) on LFS
+
+UPDATED:	28-8-02
+
+LFS VERSION:	3.3
+
+AUTHOR:		Sebastien Millet <sebastien.millet2@libertysurf.fr>
+
+SYNOPSIS:
+
+When you manage to install a simple PPP access over a
+modem (a SERIAL modem, connected to a regular RTC
+phone line), in order to get connected to your ISP,
+you need to know where is the latest PPP package
+available and how to install and configure it.
+
+This hint will indicate you how to do this WITHOUT
+downloading huge packages like wvdial, linuxconf
+or other high level configuration tools. You'll
+only need to download the PPP source
+(ppp-2.4.1.tar.gz at the time of this writing).
+
+Also, this hint includes an option to make connection
+be automatic (on demand).
+
+HINT:
+
+
+1. Where to get PPP ?
+
+PPP project Homepage
+	http://www.samba.org/ppp
+Alternative freshmeat URL
+	http://freshmeat.net/projects/pppd
+
+
+2. Get PPP installed
+
+Once you've downloaded ppp source, extract it from
+the gzipped tarball by running
+	tar -zxvf ppp-2.4.1.tar.gz
+
+Then CD to ppp-2.4.1 directory and run the usual triptic
+	./configure
+	make
+	make install
+
+As usually "make install" must be run as root.
+
+
+3. Configure PPP
+
+It is assumed here that you compiled your kernel with
+support for PPP. To make PPP available in your kernel,
+CD into /usr/src/linux, execute
+	make config
+and answer Y (or M when possible, if you manage
+to make PPP be available as a module) to the questions
+
+	Networking support
+...
+	TCP/IP networking
+...
+	PPP (point-to-point protocol) support
+...
+	PPP support for async serial ports
+	PPP support for sync tty ports
+	PPP Deflate compression
+	PPP SD_Compress compression
+
+Also you have to enable the "dummy network driver", so to
+have PPP manage an "empty" network device when the PPP
+link is down.
+
+Starting from this point, it is assumed that you're root.
+
+Execute the following to create the file ppp-on-dialer:
+
+cat > /etc/ppp/ppp-on-dialer << "EOF"
+#!/bin/sh
+
+/usr/sbin/chat -v \
+	TIMEOUT	3 \
+	ABORT	'\nBUSY\r' \
+	ABORT	'\nNO ANSWER\r' \
+	ABORT	'\nRINGING\r\n\r\nRINGING\r' \
+	''	\rATM0 \
+	'OK-+++\c-OK'	ATH0 \
+	TIMEOUT	30 \
+	OK	ATDT$TELEPHONE \
+	CONNECT	'' \
+	ogin:--ogin:	$ACCOUNT \
+	assword:	$PASSWORD
+EOF
+chmod a+x /etc/ppp/ppp-on-dialer
+
+Note that \rATM0 is used to turn modem speaker off.
+If you want your modem speaker on or if ATM0 command
+fails on your modem, simply write \rAT (original
+string, given by the PPP-HOWTO) instead of \rATM0.
+
+Now create ppp-on script:
+
+cat > /etc/ppp/ppp-on << "EOF"
+#!/bin/sh
+
+# Beginning of /etc/ppp/ppp-on
+
+TELEPHONE=my-phone-number
+ACCOUNT=-my-account-name
+PASSWORD=my-password
+LOCAL_IP=0.0.0.0
+REMOTE_IP=0.0.0.0
+
+export TELEPHONE ACCOUNT PASSWORD
+
+DIALER_SCRIPT=/etc/ppp/ppp-on-dialer
+
+exec /usr/sbin/pppd /dev/ttyS0 115200 $LOCAL_IP:$REMOTE_IP \
+	connect $DIALER_SCRIPT disconnect "chat -v -- \d+++\d\c OK ATH0 OK"
+
+# End of /etc/ppp/ppp-on
+EOF
+chmod a+x /etc/ppp/ppp-on
+
+You have to replace my-phone-number, my-account-name and
+my-password with your values. Also, in the "exec ..."
+line, replace /dev/ttyS0 with the correct serial port
+on which your modem is installed. Consider that
+	/dev/ttyS0 corresponds to COM1:
+	/dev/ttyS1 corresponds to COM2:
+	...
+
+Now ADD an option to the options file, by executing:
+
+cat >> /etc/ppp/options << "EOF"
+debug
+defaultroute
+EOF
+
+If you want you can also specify the option
+	idle	<n>
+in /etc/ppp/options, where <n> is the hang-up timeout in seconds
+(for example   idle 60   to get a one minute idle timeout).
+
+Now create the file ppp-off:
+
+cat > /etc/ppp/ppp-off << "EOF"
+#!/bin/sh
+
+# Beginning of /etc/ppp/ppp-off
+
+if [ "$1" = "" ]; then
+	DEVICE=ppp0
+else
+	DEVICE=$1
+fi
+
+if [ -r /var/run/$DEVICE.pid ]; then
+	kill -INT `cat /var/run/$DEVICE.pid`
+
+	if [ ! "$?" = "0" ]; then
+		rm -f /var/run/$DEVICE.pid
+		echo "ERROR: Removed staled pid file"
+		exit 1
+	fi
+
+	echo "PPP link to $DEVICE terminated."
+	exit 0
+fi
+
+echo "ERROR: PPP link is not active on $DEVICE"
+exit 1
+
+# End of /etc/ppp/ppp-off
+EOF
+chmod a+x /etc/ppp/ppp-off
+
+Now you can connect to your ISP by running
+	/etc/ppp/ppp-on
+and disconnect by running
+	/etc/ppp/ppp-off
+
+To analyze what's going on in case of failure,
+switch to a terminal that you'll dedicate
+to display system messages (or open a xterm if
+you're working under X), execute
+	tail -f /var/log/sys.log
+and you'll see chat and pppd logs on the fly.
+When you're OK you can remove the debug option
+from pppd options file (/etc/ppp/options). You can
+also consider removing -v option of chat invocation
+(in the /etc/ppp/ppp-on-dialer file), though this
+logging is useful and often left.
+
+
+4. Configure name resolution
+
+Configure name resolution by executing the following:
+
+cat > /etc/host.conf << "EOF"
+# /etc/host.conf
+
+order hosts,bind
+multi on
+EOF
+
+cat > /etc/resolv.conf << "EOF"
+# /etc/resolv.conf
+
+domain my-isp-domain-name
+nameserver first-dns-ip-address
+nameserver second-dns-ip-address
+EOF
+
+In the file /etc/resolv.conf, replace my-isp-domain-name,
+first-dns-ip-address and second-dns-ip-address
+with the correct values.
+
+
+5. Configure on-demand connection (optional)
+
+Execute the following:
+
+cat > /etc/sysconfig/network-devices/ifconfig.ppp0 << "EOF"
+ONBOOT=yes
+EOF
+
+cat > /etc/sysconfig/network-devices/ifup-ppp0 << "EOF"
+#!/bin/sh
+
+/etc/ppp/ppp-on
+
+exit 0
+EOF
+
+cat > /etc/sysconfig/network-scripts/ifdown-ppp0 << "EOF"
+#!/bin/sh
+
+/etc/ppp/ppp-off
+ifconfig ppp0 down
+
+exit 0
+EOF
+
+cat >> /etc/ppp/options << "EOF"
+ktune
+demand
+idle 60
+EOF
+
+Note that you may have already supplied the idle option.
+Tune the idle option to a value that fits your wishes.
+
+
+6. How to get detailed informations about PPP
+
+Online HOWTO
+	http://www.tldp.org/HOWTO/PPP-HOWTO/index.html
+The same HOWTO as above, but in a single HTML file
+	http://www.ibiblio.org/pub/Linux/docs/HOWTO/other-formats/html_single/PPP-HOWTO.html
+
+The Linux PPP FAQ
+	ftp://sunsite.unc.edu/pub/Linux/docs/faqs/PPP-FAQ/PPP-FAQ
+
+

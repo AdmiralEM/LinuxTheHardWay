@@ -1,0 +1,1527 @@
+GENERAL OUTLINE
+===============
+
+TITLE:		GNOME-1.4 2nd. ed.
+LFS VERSION:	Tested with 3.3 (gcc3.1 hasn't been tested)
+AUTHOR:		Scot Mc Pherson <scotATlinuxfromscratchDOTorg>
+ORIGINAL AUTHORS: roryo and mca <gnomeATlinuxfromscratchDOTorg>
+
+
+SYNOPSIS:
+	Gnome-1.4
+
+
+HINT:
+
+
+INTRODUCTION
+*****************
+This hint is an evolution of the original hint produced by roryo and mca. The
+principle goal of this updated hint is to update the packages. The secondary
+reason for updating this hint is to arrange the gnome packages in a way that
+I thought made a little more sense. Most of the packages that were installed
+--prefix=/usr/X11R6, i have moved to --prefix=/usr. If you ever wanted to
+upgrade you X11 installation, then its often best to wipe out that entire
+directory before installing the new version. I also didn't want to put them
+in the $GNOME_ROOT because if you wanted to wipe out that directory for any
+reason then you would be wiping out many base libraries, such as graphics
+libraries and such, that are now updated less frequently since they do a very
+good job. By installing these items in --prefix=/usr, which is the directory
+that is generally designated for the most common of user software and libraries,
+packages that needed to told where to find these dependencies will no longer
+need the extra direction.
+
+
+First things first
+*******************
+
+The way roryo and mca had the gnome hint set up depended on them keeping current
+with the development of GNOME. That is a dandy idea, but its hard to know what's
+current and whether the instructions presented with work with the current
+available packages. I have taken a different approach, and that is to specify
+in this hint which revision of a package you should be using. It helps to
+not have to hunt for the right package and compare the hint with what's
+available. You are more than free to try a new package if it crops uo and I
+haven't written it in here yet, but I will do my best to keep this fairly
+current. As of the time of this writing I have built and tested this hint for
+about 2 months time, so you can bet its 2 months behind current stable
+GNOME-1.4. After I have submitted this hint to lfs-hints and blfs, I will
+update it with the new packages, but my principle goal was to create a hint that
+was up2date and worked 100% of the time and built a very stable and reliable
+GNOME desktop. Having the very latest stable sources was an important yet
+secondary priority.
+
+Within the next 2 weeks or so I will compile a wget list so you can download the
+the appropriate packages for the hint in its current state.
+
+
+Changelog
+**********************
+09/09/2002-
+	fixed more typos ... specifcally all:
+	$MOZ_PREFIX/include/mozilla-1.0.0 to $MOZ_PREFIX/include
+09/08/2002-
+	fixed typo in mozilla
+09/06/2002-
+	sgml2xml -- changed to ln -s 
+	symlinks -- reverted back to sumlinking includes, instead of fixing
+		sources. fixing the sources worked but often things the 
+		user wanted to add would have to be hacked as well. ln -s 
+		is easier on the user.
+	GMC/Nautilus -- added GMC and/or Nautilus support.
+	eel & librsvg -- Nautilus depends eel and eel depends on librsvg
+	galeon -- added galeon support.
+
+06/26/2002-
+	Optimizations -- Globally added optimizing to the package builds
+	pre-build -- Changed the pre-build instructions.
+	GNOME_ROOT -- properly implemented $GNOME_ROOT. You set GNOME_ROOT in
+		~/.bash_profile
+	Package Releases -- Updated all instruction to include all current
+		stable released software. List to follow:
+
+
+06/19/2002-
+	gtkhtml -- added forgotten symlink
+
+06/18/2002-
+	ImageMagick -- Changed ImageMagick --prefix=/opt/GNOME, because the
+		themes were being installed in the wrong place, and had to be
+		symlinked.
+	gdk-pixbufs -- Removed extra && from gdk-pixbufs
+	docbook -- specified wrong docbook source package, fixed. Gave
+		more specific installation instructions.
+
+Pre-build instructions
+**********************
+
+    The build instructions (and a few of the patches) in this hint rely on the
+    following procedures.  This is not optional. Adjust the optimization
+    and architecture variables as you feel comfortable with and based on your
+    architecture (i.e. i486,i586...etc). The optimizations selected here are
+    known to universally be safe and work well.
+
+	Add the following to your ~/.bash_profile and logout and back in.
+	(I just prefer that to $ source ~/.bash_profile)
+
+      (this assumes you are using /bin/{bash,sh})
+
+	export GNOME_ROOT=/opt/GNOME
+	export PATH=$PATH:$GNOME_ROOT/bin
+	export PKG_CONFIG_PATH=/usr/lib/pkgconfig:/opt/lib/pkgconfig
+	export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:$GNOME_ROOT/lib/pkgconfig
+	export C_OPTS=' -Os -fomit-frame-pointer -s -mcpu=i686 -march=i686 '
+	alias gcfg='./configure --prefix=$GNOME_ROOT '
+
+    If you wish, you can add --disable-nls to the above alias.  This will
+    prevent the international messages (.po files) from being installed, and
+    save quite a bit of space.  Some package configure scripts will fail with an
+    error about not finding intl/libgettext.h.  If so, apply the intl.diff
+    included in the patch tarball.
+
+After you have relogged in, or sourced your .bash_profile, then:
+
+	echo $GNOME_ROOT/lib >> /etc/ld.so.conf
+
+
+*********
+wget.list still need to be built.
+*********
+
+    Assuming you used the wget list, you should have a GNOME-patches.tar.bz2.
+    If not, grab it from:
+        http://www.linuxfromscratch.org/~scot/GNOME-patches.tar.bz2
+
+    Unpack (tar yxvf) this file in /usr/src/ and it will create a patches
+    directory.  The patches are usually quite version specific. The *.wtf files
+    are brief explanations of what and why the patch was needed.
+
+    To apply:
+        unpack <package>-<version>.tar.gz
+        patch -Np1 -i ../patches/<package>-<version>.patch
+
+
+Miscellaneous Notes
+===================
+
+    * New packages
+	If you feel the urge to use a new package, please feel free. Just
+	understand that it may not compile, or it may cause compile time
+	problems for other packages that depend on it. Obviously it is possible
+	to figure out how to use the new package, otherwise this hint and linux
+	in general wouldn't be possible. It just takes some logic and patience.
+
+        WARNING:  GTK+-2 and GNOME-2 are not compitible with GNOME-1.4. Please
+	do not attempt to install these unless you really know what you are
+	doing.
+
+    * FHS Compliance
+
+        This hint is entirely (?) FHS (www.pathname.com/fhs/) compliant.
+        You are by no means bound to these instructions, but we cannot
+        guarantee the same results if you do stray.
+
+        GNOME is quite large and scattered.  Choosing /usr as the
+        $GNOME_PREFIX above will be a very messy decision.
+
+    * Compiler Optimizations
+
+        If you don't know what these are, you'll be better off ignoring this.
+        The large majority of these packages will honor the $CFLAGS variable.
+        Those that don't (off the top of my head) are libpng, openssl, libdb,
+        and python.  There were some others, but they had to be patched for
+        other reasons so that 'feature' was added.  If you have problems with
+        any packages at runtime, please recompile it without *any*
+        optimizations before telling us about it. The optimization I use by
+	default is -Os which means compile for -O2 except when it increases the
+	size of the binary.
+
+    * Symlinks
+
+        These symlinks are here to provide other applications easy access to
+        the package's libraries and headers.  This saves us (and you) much
+        time and effort in hacking Makefiles and such in an attempt to find
+        them.  If you don't follow the symlinking instructions, you are on
+        your own with the detection of these packages by others.
+
+    * Objective C
+
+        Several GNOME packages/applications can make use of the objective C
+        compiler, if available.  Some packages will fail if you don't install
+        the proper packages to make use of it, others will fail because you
+        don't have it.  It is not required in any way.
+
+        To install the objc compiler, follow the directions for GCC in the
+        shared section of the LFS book (chapter 6, as of 3.3).  Make the
+        following change:
+            Instead of:  --enable-languages=c,c++
+            Use:  --enable-languages=c,c++,objc
+
+        Install gcc per the instructions and continue your quest.
+
+    * TODO - Known bugs/issues
+
+        *  Add dependency notes.  GnuCash is a good example.  If you wish to
+           skip it, you can skip at least three other packages too.
+
+        *  Rid of the MISSING's.
+
+
+Software installation
+=====================
+
+
+Prerequisites not covered here
+******************************
+
+    In addition to a base LFS system, you will need the following:
+
+        X11:  http://www.xfree86.org/
+        zlib: ftp://ftp.uu.net/graphics/png/src
+
+    See the X11 hint for their installation.
+
+
+Pre-GNOME packages
+******************
+Unzip-542
+	Unix Unzip, used to extract some zip files.
+
+
+cd unix &&
+cp Makefile ../ &&
+cd .. &&
+make linux &&
+cp unzip funzip unzipsfx /usr/bin
+
+
+
+***NOTE: You must install db-3, but don't have to install db-4 if you do not
+         wish to. If you want to install db-4, you must install db-3 first, then
+	 upgrade to db-4. The sed script after db-3 isn't necessary if you
+	 install db-4. It is provided for both versions, just so you don't
+	 forget. Remember, you MUST install db-3 no matter what.
+
+Berzerkeley DB: (3.3.11 specific)
+    UCB's database library version-3. (Necessary whether you build db-4 or not)
+
+
+cd build_unix/
+../dist/configure --prefix=/usr --enable-compat185 \
+--enable-static --enable-shared
+make docdir=/usr/doc/Berkeley-DB all install
+cd /usr/lib/ && ln -sf libdb-3.3.a libdb.a
+sed 's/^DB185/DB/' /usr/include/db_185.h > /usr/include/db_185.h.new
+mv /usr/include/db_185.h.new /usr/include/db_185.h
+
+
+
+
+Berzerkeley DB: (4.0.14 specific)
+    UCB's database library version-4. (optional, but db-3 is not optional
+    whether you decide to install db-4 or not.
+
+cd build_unix/
+../dist/configure --prefix=/usr --enable-compat185 \
+--enable-static --enable-shared
+make docdir=/usr/doc/Berkeley-DB all install
+cd /usr/lib/ && ln -sf libdb-4.0.a libdb.a
+sed 's/^DB185/DB/' /usr/include/db_185.h > /usr/include/db_185.h.new
+mv /usr/include/db_185.h.new /usr/include/db_185.h
+
+
+
+
+readline-4.2a:
+    GNU readline.  Command line history and editing.
+
+
+CFLAGS=$C_OPTS \
+./configure --prefix=/usr &&
+make all install &&
+ldconfig
+
+
+
+bc-1.06:
+    GNU calculator.
+
+CFLAGS=$C_OPTS \
+./configure --prefix=/usr --with-readline
+sed 's|\(^_PR.*readline.*$\)|/* \1 */|' bc/scan.l > new-scan.l &&
+mv new-scan.l bc/scan.l &&
+make all install &&
+ldconfig
+
+
+
+openssl-0.9.6d:
+    Open source SSL library.
+
+    *** See FHS note!
+    *** See symlink note!
+
+
+export OPENSSL_ROOT=/usr/local/openssl &&
+./config --prefix=$OPENSSL_ROOT --openssldir=$OPENSSL_ROOT shared threads &&
+make &&
+make install &&
+cd /usr/lib && 
+for file in lib{crypto,ssl}.{a,so.0.9.6}
+do
+ln -s $OPENSSL_ROOT/lib/$file
+done &&
+ln -s libcrypto.so.0.9.6 libcrypto.so.0 &&
+ln -s libssl.so.0.9.6 libssl.so.0 &&
+ln -s libcrypto.so.0 libcrypto.so &&
+ln -s libssl.so.0 libssl.so &&
+cd /usr/include &&
+ln -s $OPENSSL_ROOT/include/openssl &&
+cd $OPENSSL_ROOT/include &&
+for i in openssl/*; do ln -s $i; done &&
+unset OPENSSL_ROOT &&
+ldconfig
+
+
+
+Python-2.1.2: (optional)
+    The Python interpreted programming language.
+
+OPT=$C_OPTS \
+./configure --prefix=/usr --with-threads &&
+make all install &&
+ldconfig
+
+    *** FHS note - if installed anywhere else a symlink must be made from
+        the python binary to /usr/bin/python eg
+        ln -s <path-to-python> /usr/bin/python
+
+
+
+
+
+PostGreSQL-7.2.1: (optional)
+    The most advanced open source SQL server.
+    You should probably read the documentation, but this is how I like it.
+
+    *** See FHS note!
+    *** See symlink note!
+
+
+export PGSQL_ROOT=/usr/local/postgresql &&
+CFLAGS=$C_OPTS \
+./configure --prefix=$PGSQL_ROOT --with-ssl --disable-static &&
+make all install &&
+cd /usr/lib &&
+for file in lib{pq,pgeasy}.so.2.1; do
+ln -s $PGSQL_ROOT/lib/$file
+done &&
+ln -s libpq.so.2.1 libpq.so.2 &&
+ln -s libpgeasy.so.2.1 libpgeasy.so.2 &&
+ln -s libpq.so.2 libpq.so &&
+ln -s libpgeasy.so.2 libpgeasy.so &&
+cd /usr/include &&
+ln -s $PGSQL_ROOT/include/* ./ &&
+unset PGSQL_ROOT &&
+ldconfig
+
+
+
+MySQL-3.23.51: (optional)
+    A fast open source SQL server.
+    You should probably read the documentation, but this is how I like it.
+
+    *** See FHS note!
+    *** See symlink note!
+
+
+export MYSQL_ROOT=/usr/local/mysql &&
+CFLAGS='-fomit-frame-pointer -s' \
+CXXFLAGS='-fomit-frame-pointer -s' \
+./configure --prefix=$MYSQL_ROOT --disable-static --enable-thread-safe-client \
+--without-debug --without-bench --without-readline --with-berkeley-db=./bdb &&
+make all install &&
+cd /usr/lib &&
+ln -s $MYSQL_ROOT/lib/mysql/libmysqlclient.so.10.0.0 &&
+ln -s libmysqlclient.so.10.0.0 libmysqlclient.so.10 &&
+ln -s libmysqlclient.so.10 libmysqlclient.so &&
+cd /usr/include &&
+ln -s $MYSQL_ROOT/include/mysql &&
+unset MYSQL_ROOT &&
+ldconfig
+
+
+
+jpeg-6b:
+    Library for accessing jpeg images.
+
+CFLAGS=$C_OPTS \
+./configure --prefix=/usr --enable-shared --enable-static &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+libpng-1.2.1:
+    Library for accessing png images.
+
+
+cp scripts/makefile.linux Makefile &&
+sed s/-g// Makefile > ~tmp &&
+sed s/'-O3'/'-O3 -fomit-frame-pointer -s'/ ~tmp > Makefile &&
+make ZLIBINC=/usr ZLIBLIB=/usr prefix=/usr all install &&
+ldconfig
+
+
+
+
+libungif-4.1.0b1:
+    Library for accessing gif images.
+
+CFLAGS=$C_OPTS \
+./configure --prefix=/usr &&
+make all install &&
+ldconfig
+
+
+
+tiff-v3.5.7:
+    Library for accessing tiff images.
+
+./configure --prefix=/usr --with-GCOPTS=' -Os ' \
+--with-OPTIMIZER=' -fomit-frame-pointer -s ' --noninteractive &&
+make all install &&
+ldconfig
+
+
+
+
+lcms-1.08:
+    Color correction/management library. 
+
+
+cd src &&
+sed /CFLAGS/s/'-g -O4'/'-Os -s'/ Makefile > ~tmp &&
+mv ~tmp Makefile &&
+make all install &&
+ldconfig
+
+
+
+libmng-1.0.3:
+    Library for accessing mng (animated) images.
+    mng is the Open Source alternative to animated gifs
+        
+CFLAGS=$C_OPTS \
+./configure --prefix=/usr --with-zlib=/usr \
+--with-jpeg=/usr --with-lcms=/usr &&
+make all install &&
+ldconfig
+
+
+
+
+libiconv-1.8:
+    An iconv() implementation that properly supports UTF-*.
+
+CFLAGS=$C_OPTS \
+./configure --prefix=/usr --enable-static --enable-shared &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+glib-1.2.10:
+    An extension library to glibc.
+
+CFLAGS=$C_OPTS \
+./configure --prefix=/usr --enable-threads --enable-debug=no &&
+make all install &&
+ldconfig
+
+
+
+
+GTK+-1.2.10:
+    The Gimp Toolkit.. an X11 widget library.
+
+CFLAGS=$C_OPTS \
+./configure --prefix=/usr --enable-debug=no --with-x &&
+make all install &&
+ldconfig
+
+
+
+
+ORBit-0.5.17:
+    A CORBA implementation.
+
+CFLAGS=$C_OPTS \
+./configure --prefix=/usr &&
+make all install &&
+mkdir -p $GNOME_ROOT/lib &&
+cd $GNOME_ROOT/lib &&
+for i in /usr/lib/libIDL*; do ln -s $i; done &&
+ldconfig
+
+
+
+
+libxml-1.8.17:
+    The gnome-xml library (Used for much more than gnome).
+
+CFLAGS=$C_OPTS \
+./configure --prefix=/usr --with-zlib=/usr --with-buffers &&
+make all install &&
+cd $GNOME_ROOT/lib &&
+ln -s /usr/lib/xmlConf.sh &&
+ln -s /usr/lib/libxml.a &&
+ln -s /usr/lib/libxml.la &&
+ln -s /usr/lib/libxml.so.1.8.17 &&
+ln -s libxml.so.1.8.17 libxml.so.1 &&
+ln -s libxml.so.1 libxml.so &&
+ldconfig
+
+
+
+
+libxml2-2.4.19:
+    The xml library.
+
+CFLAGS=$C_OPTS \
+./configure --prefix=/usr --with-zlib=/usr \
+--with-readline=/usr --with-buffers \
+--with-threads --with-python &&
+make all install &&
+cd /usr/include/libxml2 &&
+for i in libxml/*; do ln -sf $i; done &&
+cd $GNOME_ROOT/lib &&
+ln -s /usr/lib/xml2Conf.sh &&
+ln -s /usr/lib/libxml2.so.2.4.19 &&
+ln -s /usr/lib/libxml2.a &&
+ln -s /usr/lib/linxml2.la &&
+ln -s libxml2.so.2.4.19 libxml2.so.2 &&
+ln -s libxml2.so.2 libxml2.so &&
+ldconfig
+	
+
+
+	
+GhostScript-6.53:
+    The GhostScript package.  Used for post-script and network printing.
+
+	From inside the ghostscript-6.53 directory do:
+
+tar zxvf <path/to/jpeg6bsrc.tar.gz>
+mv jpeg-6b jpeg
+tar jxvf <path/to/zlib-1.1.4.tar.bz2>
+mv zlib-1.1.4 zlib
+
+	Then:
+
+patch -Np1 -i ../patches/ghostscript-6.53.patch &&
+sed /CFLAGS_STANDARD/s/-O2/'-Os -fomit-frame-pointer -s'/ \
+src/unix-gcc.mak > Makefile &&
+make  &&
+make install &&
+ldconfig
+
+
+
+
+GhostScript Fonts:
+    GhostScript Fonts.
+    This will create the fonts directory, there are other GhostScript fonts available if
+    you feel so inclined.
+
+
+cd /usr/X11R6/share/ghostscript
+tar zxvf <path/to/gnu-gs-fonts.std-6.0.tar.gz>
+tar zxvf <path/to/gnu-gs-fonts.other-6.0.tar.gz>
+
+
+
+
+ImageMagick-5.4.6-3:
+    Provides many useful image manipulation functions, plus a few handy
+    executables.
+    NOTE: if you have the TrueType fonts installed in a different
+              path you will have to changes the --with--ttf-fontpath.
+
+CFLAGS=' -O3 -s -funroll-loops -finline-functions ' \
+CXXFLAGS=' -Os -s -funroll-loops -finline-functions ' \
+./configure --prefix=$GNOME_ROOT --enable-shared --enable-static \
+--with-ttf-fontpath=/usr/X11R6/lib/X11/fonts/ttf \
+--with-gs-font-dir=/usr/X11R6/share/ghostscripts/fonts \
+--with-x &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+imlib-1.9.14:
+    Library providing access to all of the above image formats.
+        
+CFLAGS=$C_OPTS \
+./configure --prefix=/usr --with-x &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+audiofile-0.2.2:
+    Library providing access to several different audio formats.
+
+CFLAGS=$C_OPTS \
+./configure --prefix=/usr &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+esound-0.2.24:
+    The enlightened sound daemon.
+        
+CFLAGS=$C_OPTS \
+./configure --with-audiofile --prefix=/usr && 
+make &&
+make install &&
+ldconfig
+
+
+
+
+gtk-engines-0.12:
+    GTK+ themes and theme libraries.
+
+CFLAGS=$C_OPTS \
+gcfg --enable-static --enable-shared &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+expat-1.95.3:
+CFLAGS=$C_OPTS \
+./configure --prefix=/usr/local &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+GNOME core packages
+*******************
+    MISSING:  mc/nautilus
+
+
+
+popt-1.6.4:
+    Red hat's getopt()-ish replacement.
+
+CFLAGS=$C_OPTS \
+./configure --prefix=/usr &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+libunicode-0.4:
+    Gnome's Unicode interface.
+
+CFLAGS=$C_OPTS \
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+gnome-libs-1.4.1.7:
+    The core GNOME libraries.
+
+CFLAGS=$C_OPTS \
+gcfg --with-x &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+gdk-pixbuf-0.18.0:
+    The gtk+ pixbuf library.
+
+CFLAGS=$C_OPTS \
+gcfg --with-x &&
+make &&
+make install &&
+cd $GNOME_ROOT/include &&
+ln -s gdk-pixbuf-1.0/* ./ &&
+ln -s gdk-pixbuf-1.0/* $GNOME_ROOT/include/gnome-1.0/ &&
+ldconfig
+
+
+
+
+oaf-0.6.10:
+    Object Activation Framework for GNOME.
+
+CFLAGS=$C_OPTS \
+gcfg --enable-static --enable-shared \
+--enable-oaf-debug=no &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+libghttp-1.0.9:
+    Library for speaking the http protocol.
+
+CFLAGS=$C_OPTS \
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+
+
+**************************
+NOTE**********************
+**************************
+intl-tools-0.22:
+	Replacement for xml-i18-tools which is supposed to be deprecated.
+	I am still testing results. I am not installing xml-i18-tools on my
+	system, but you may wish to continue doing so. Just be warned I am
+	still uncertain of the final results either way.
+
+gcfg &&
+make &&
+make install &&
+ln -sf $GNOME_ROOT/bin/intltool-extract $GNOME_ROOT/bin/xml-i18n-extract &&
+ldconfig
+
+xml-i18-tools-0.9:
+
+
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+
+*****************************
+END NOTE*********************
+*****************************
+
+
+libxslt-1.0.18:
+
+CFLAGS=$C_OPTS \
+gcfg --with-python &&
+make &&
+make install &&
+ldconfig
+
+
+
+docbook-4.1.2:
+(docbkx412.zip)
+
+mkdir docbook &&
+cd docbook &&
+cp ../docbkx412.zip ./ &&
+unzip docbkx412.zip &&
+mkdir -p /usr/share/sgml/docbook/xml-dtd-4.1.2 &&
+cp -a * /usr/share/sgml/docbook/xml-dtd-4.1.2
+
+
+
+
+openjade-1.3.1:
+
+CFLAGS=$C_OPTS \
+CXXFLAGS=$C_OPTS \
+./configure --prefix=/usr &&
+make &&
+make install &&
+ln -s nsgmls /usr/bin/sgml2xml &&
+ldconfig
+
+
+
+sp-1.3.4:
+
+
+sed s%"opt/local"%"usr"% Makefile > Makefile~ &&
+sed -e /CXX/s/'-O2'/'-Os -fomit-frame-pointer -s '/ \
+    -e /CFLAGS/s/'-O'/'-Os -fomit-frame-pointer -s '/ \
+    Makefile~ > Makefile &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+
+scrollkeeper-0.3:
+    Scrollkeeper Open Documentation Cataloging System.
+
+
+sed 's|=lib/scrollkeeper|=scrollkeeper|g' configure > configure~ &&
+cp configure~ configure &&
+CFLAGS=$C_OPTS \
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+gnome-print-0.36:
+    GNOME print library.
+
+CFLAGS=$C_OPTS \ 
+gcfg --with-zlib=/usr &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+bonobo-1.0.20:
+    GNOME component and compound document system.
+
+
+CFLAGS=$C_OPTS \
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+guile-1.4:
+    GNU scheme implementation.
+
+patch -Np1 -i ../patches/guile-1.4.patch &&
+CFLAGS=$C_OPTS \
+gcfg --with-threads &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+slib-2d1:
+	Scheme library extension.
+
+make prefix=$GNOME_ROOT &&
+make prefix=$GNOME_ROOT install &&
+GUILE_LOAD_PATH=$GNOME_ROOT/share/guile/slib \
+guile -c "(use-modules (ice-9 slib)) (require 'new-catalog)" &&
+ldconfig
+
+
+
+GConf-1.0.9:
+    A configuration database system.
+
+
+patch -Np1 -i ../patches/GConf-1.0.9-2.patch &&
+CFLAGS=$C_OPTS \
+CXXFLAGS=$C_OPTS \
+gcfg --enable-debug=no &&
+make &&
+make install &&
+ldconfig
+
+
+
+gnome-mime-data-1.0.1:
+
+CFLAGS=$C_OPTS \
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+
+
+pkg-config-0.12.0
+
+CFLAGS=$C_OPTS \
+./configure --prefix=/usr &&
+make &&
+make install &&
+ldconfig
+
+
+
+gnome-vfs-1.0.5:
+    GNOME virtual file system.
+
+CFLAGS=$C_OPTS \
+gcfg --enable-gconf --with-openssl=/usr/local/openssl --with-libiconv &&
+make &&
+make install &&
+ldconfig
+
+
+
+control-center-1.4.0.5:
+    GNOME configuration tool.
+
+CFLAGS=$C_OPTS \
+gcfg &&
+make &&
+make install &&
+ln -s ../gnome-panel.h $GNOME_ROOT/include/gnome-1.0/ &&
+ln -s ../applet-widget.h $GNOME_ROOT/include/gnome-1.0/ &&
+ln -s libcappet1/capplet-widget.h $GNOME_ROOT/include/ &&
+ldconfig
+
+
+
+libglade-0.17:
+    Library for loading glade interface files at runtime.
+
+CFLAGS=$C_OPTS \
+gcfg --enable-bonobo --enable-gnomedb &&
+make &&
+make install &&
+ldconfig
+
+
+
+bug-buddy-2.0.8:
+    Gnome front-end to bugzilla for submitting bug reports.
+
+CFLAGS=$C_OPTS \
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+
+
+pygtk-0.6.9:
+    GTK+ python bindings.
+
+CFLAGS=$C_OPTS \
+./configure --prefix=/usr --enable-shared --enable-static &&
+make &&
+make install &&
+ldconfig
+
+
+
+gal-0.19.3:
+    GNOME Application library.
+
+CFLAGS=$C_OPTS \
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+w3c-libwww-5.3.2:
+    w3c's www-ish libraries.
+
+patch -Np1 -i ../patches/w3c-libwww-5.3.2.patch &&
+CFLAGS=$C_OPTS \
+gcfg --with-zlib --with-md5 --with-ssl=/usr/local/openssl &&
+make &&
+make install &&
+ldconfig
+
+
+
+glibwww-0.2:
+    Glib extension for access to w3c-libwww
+
+CFLAGS=$C_OPTS \
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+gtkhtml-1.0.4:
+    An html parsing library.
+
+patch -Np1 -i ../patches/gtkhtml-1.0.4-2.patch &&
+CFLAGS=$C_OPTS \
+gcfg --with-bonobo --with-gconf &&
+make &&
+make install &&
+ln -s ../gtkhtml $GNOME_ROOT/include/gnome-1.0 &&
+ldconfig
+
+
+libgtop-1.0.13:
+    Library for accessing /proc.
+
+    (If build fails because of ISDN_MAX_CHANNELS, add #define
+    ISDN_MAX_CHANNELS 64 to the .c file that failed and recompile.
+    This is a kernel issue.  2.4.6 has fixed it.)
+
+CFLAGS=$C_OPTS \
+gcfg --with-libgtop-guile --with-libgtop-inodedb --with-x &&
+make &&
+make install &&
+ldconfig
+
+
+gmp-4.0.1:
+    GNU's precision math library.
+
+CFLAGS=$C_OPTS  \
+./configure --prefix=/usr &&
+make &&
+make install &&
+ldconfig
+
+
+
+gdbm-1.8.0:
+    GNU's dbm replacement library.
+
+CFLAGS=$C_OPTS \
+gcfg &&
+make BINOWN=root BINGRP=root &&
+make install &&
+ldconfig
+
+
+
+
+librep-0.15.2:
+    Lisp implementation.
+
+patch -Np1 -i ../patches/librep-0.15.2-2.patch &&
+CFLAGS=$C_OPTS \
+gcfg --with-readline --enable-shared --enable-static --with-gprof &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+rep-gtk-0.15:
+    Lisp bindings for GTK+.
+
+CFLAGS=$C_OPTS \
+gcfg --with-gnome --with-libglade --with-gdk-pixbuf \
+--with-gnome-canvas-pixbuf &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+gob-1.0.12:
+    GTK+ Object Builder.
+
+CFLAGS=$C_OPTS \
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+
+libgda-0.2.96:
+    Library to interface SQL servers.
+
+sed 's/libmysqlclient.a/libmysqlclient.so/g' configure > conf.new &&
+sed 's/\(ORB.*\)which\(.*\)/\1type -p\2/' conf.new > configure &&
+CFLAGS=$C_OPTS \
+gcfg --with-mysql=/usr/local/mysql --with-postgres=/usr/local/postgresql &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+sawfish-1.0.1:
+    The Sawfish window manager.
+
+CFLAGS=$C_OPTS \
+gcfg --with-gdk-pixbuf --with-x --with-audiofile --enable-capplet \
+--enable-themer --with-esd --disable-linguas &&
+make &&
+make install &&
+ldconfig
+
+
+gnome-core-1.4.1:
+    Core GNOME applications. The patch is optional and only effects what
+    splash screen you get when you start gnome.
+
+patch -Np1 -i ../patches/gnome-core.1.4.1-2.patch
+CFLAGS=$C_OPTS \
+gcfg --with-window-manager=sawfish &&
+make &&
+make install &&
+ln -s ../gnome-panel.h $GNOME_ROOT/include/gnome-1.0/ &&
+ldconfig
+
+
+gnome-common-1.2.1:
+    Autoconf/make files for GNOME.
+
+CFLAGS=$C_OPTS \
+gcfg
+make &&
+make install &&
+ldconfig
+
+librsvg-1.0.3:
+
+
+CFLAGS=$C_OPTS \
+./configure --prefix=$GNOME_ROOT
+make &&
+make install &&
+ldconfig
+
+eel-1.0.2:
+
+
+CFLAGS=$C_OPTS \
+./configure --prefix=$GNOME_ROOT 
+make &&
+make install &&
+ldconfig 
+
+gnome-objc-1.0.40: (optional)
+
+    *** See the OBJC note
+
+    Objective C bindings for GNOME.
+
+CFLAGS=$C_OPTS \
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+
+gnome-admin-1.0.3:
+    Administration utilities.
+
+CFLAGS=$C_OPTS \
+gcfg --with-messages=/var/log/sys.log
+make &&
+make install &&
+ldconfig
+
+gnome-applets-1.4.0.5:
+    Many different GNOME applets.
+
+CFLAGS=$C_OPTS \
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+
+
+gnome-audio-1.4.0:
+    Sounds.
+
+make install
+
+
+
+gnome-python-1.4.2: (optional)
+    Python binding for GNOME
+
+CFLAGS=$C_OPTS \
+gcfg --with-gtkhtml &&
+make &&
+make install &&
+ldconfig
+
+
+
+
+gnome-games-1.4.0.4:
+    Games!
+
+CFLAGS=$C_OPTS \
+CXXFLAGS=$C_OPTS \
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+
+gnome-media-1.2.3:
+    Multimedia applications.
+
+CFLAGS=$C_OPTS \
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+
+
+gnome-network-1.0.2:
+    Network applications/utilities.
+        If you don't have objc (see note), apply the patch.
+
+CFLAGS=$C_OPTS \
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+
+
+gnome-pim-1.4.0:
+    Personal information manager for GNOME.
+
+CFLAGS=-Os \
+CXXFLAGS=-Os \
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+
+
+gnome-utils-1.4.1.2:
+    Several miscellaneous utilities.
+
+CFLAGS=-Os \
+CXXFLAGS=-Os \
+gcfg --with-messages=/var/log/sys.log &&
+make &&
+make install &&
+ldconfig
+
+
+
+***********NOTE**********************************************
+You should pick either gmc or nautilus as a desktop manager.
+gmc is old and depreicated, but smaller and faster than 
+nautilus. nautilus on the otherhand is big an fat, but new
+and very pretty and functional. On slower machines you should
+definately not choose nautilus.
+In fact you might decide you don't want either on real slow
+machines.
+
+
+mc-4.5.55:
+	mc includes gmc which is the older gnome desktop manager
+	if you have samba you should include --with-samba in the
+	configure. If you have e2undel installed (you should) then
+	you should also have --with-ext2undel enabled.
+
+CFLAGS=$COPTS \
+./configure --prefix=$GNOME_ROOT --with-ncurses --with-gnome \
+	--with-gpm-mouse --with-subshell --with-vfs --with-x \
+	--disable-static &&
+make &&
+make install &&
+ldconfig
+
+
+nautilus-1.0.6
+
+CFLAGS=$C_OPTS \
+./configure --prefix=$GNOME_ROOT --disable-mozilla-component \
+	--with-libiconv &&
+make &&
+make install &&
+ldconfig
+
+**************************************************************
+
+
+
+xscreensaver-4.02:
+    Screensavers!
+
+CFLAGS=$C_OPTS \
+gcfg --with-gl --with-gle --with-gtk --with-gnome --with-hackdir=xdemos &&
+make &&
+make install &&
+ldconfig
+
+
+gnome-user-docs-1.4.1.1:
+    GNOME Documentation.
+
+gcfg &&
+make &&
+make install &&
+ldconfig
+
+
+
+users-guide-1.2:
+    More GNOME documentation.
+
+gcfg
+make &&
+make install &&
+ldconfig
+
+
+GNOME applications
+******************
+  MISSING:  Evolution,
+
+
+galeon-1.2.5:
+	First install mozilla-1.0 (not mozilla-1.1) by
+	following the mozilla hint by tushar. Use the
+	make install method with one addendum if he hasn't
+	added this to his hint yet. Copy the headers that
+	seem to be missed by $ make install. You can do this
+	by issuing the following command substituting $MOZ_SRC
+	and $MOZ_PREFIX with the source and --prefix direcoties
+	accordingly. This command is entirely safe as it will not
+	effect anything previously installed and will only copy
+	what has not been already copied.
+
+cp -Lur $MOZ_SRC/dist/include/* $MOZ_PREFIX/include/
+	
+	Now you want to set your global environment to inlcude the
+	location of mozilla. Do this by ( substiture $MOZ_PREFIX ):
+
+	echo "export MOZILLA_FIVE_HOME=$MOZ_PREFIX/lib/mozilla-1.0.0"
+
+	then logout and relogin (don't just export it in a terminal window
+	
+	After you have done the above then follow the rest for galeon
+	(If you have decided to install nautilus then include 
+	--enable-nautilus-view=yes) :
+
+CFLAGS=$C_OPTS \
+CXXFLAGS=$C_OPTS \
+./configure --prefix=$GNOME_ROOT \
+--with-mozilla-home=$MOZ_PREFIX \
+--with-mozilla-libs=$MOZ_PREFIX/lib/mozilla-1.0.0 \
+--with-mozilla-inlcudes=$MOZ_PREFIX/include \
+--with-nspr-includes=$MOZ_PREFIX/include/nspr &&
+make &&
+make install &&
+ldconfig
+
+
+dia-0.88:
+    Diagram creation application.
+        gcfg \
+          --enable-gnome \
+          --enable-bonobo \
+          --enable-debug=no \
+          --with-python
+        make all install
+
+g-wrap:
+    Glib scheme bindings.
+        gcfg
+        make all install
+
+libole2-0.2.3:
+    MS OLE library.
+        gcfg
+        make all install
+
+gb-0.0.20:
+    GNOME-basic.  (Yes, kinda like visual-basic).
+        Apply the patch
+        gcfg --without-runtime-debug
+        make all install
+
+gnumeric-1.0.5:
+    GNU Spreadsheet application.
+        Apply the patch
+        gcfg \
+          --with-bonobo \
+          --with-guile \
+          --with-gb \
+          --with-python
+        make all install
+
+Guppi-0.40.3:
+    Library for creating/drawing graphs and charts.
+        gcfg --enable-gnumeric
+        make all install
+
+glade-0.6.2:
+    A quick GUI IDE.
+        gcfg \
+          --with-gnome \
+          --with-bonobo \
+          --disable-gnome-db
+        make all install
+
+gnucash-1.6.6:
+    GNU money management program.. quite similar to quickbooks and such.
+        Apply the patch
+        gcfg (add --enable-sql if you have postgres)
+        make all install    
+
+
+
+NOTE: I haven't built this one yet....I can't verify it will work, but it used
+	work with abi-0.7.14, but that's very very old. I will update this
+	soon.
+
+abiword-0.99.1:
+    GNU Word processor. 
+        Apply the patch
+        cd abiword/abi/src/
+        make \
+          prefix=$GNOME_ROOT \
+          ABI_OPT_GNOME=1 \
+          ABI_OPT_BONOBO=1 \
+          OPTIMIZER="$CFLAGS \
+            -L/usr/X11R6/lib -I/usr/X11R6/include \
+            -L$GNOME_ROOT/lib -I$GNOME_ROOT/include \
+            -L/usr/local/lib -I/usr/local/include"
+        make install \
+          prefix=$GNOME_ROOT \
+          ABI_OPT_GNOME=1 \
+          ABI_OPT_BONOBO=1 \
+          OPTIMIZER="$CFLAGS \
+            -L/usr/X11R6/lib -I/usr/X11R6/include \
+            -L$GNOME_ROOT/lib -I$GNOME_ROOT/include \
+            -L/usr/local/lib -I/usr/local/include"
+
+
+xmms-1.2.7
+	eXtensible MultiMedia System
+
+CFLAGS=-Os \
+./configure --prefix=/opt/xmms
+make LDFLAGS=-libiconv &&
+make install
+
+
+Other apps
+**********
+
+  There are many more gnome applications out there, but most are a fairly
+simple build and aren't (yet) covered in this hint.  A few you may wish to
+check out are:
+
+    * GTM - Gnome Transfer Manager (a nice little download manager)
+    * PAN - Pimp Ass Newsreader
+    * Encompass - gtkhtml based browser
+    * xChat - the best GUI irc client, 'nuff said
+    * gnotepad - gvim owns, but nice for mutilple docs at once
+    * Balsa - nice stable GUI mail app, based on Pine
+    * Pharmacy - Gnome CVS front end
+    * Gimp - the root of it all, graphics app, total ownage
+    * EOG - Eye of Gnome.. an image viewer
+    * GQView - a better gtk+ based image viewer
+
+
+
+Frequently Asked Questions
+==========================
+
+    Q:  How do I properly start gnome?
+    A:  You do one of the following:
+            echo gnome-session > ~/.xinitrc
+        or, if you wish to enable those annoying little sounds,
+            echo gnome-session --enable-sound > ~/.xinitrc
+
+    Q:  I'm trying to build packageXXX from CVS sources, or just regenerate
+        its configure script from configure.in, but autoconf bitches about not
+        having some other gnome package installed.  WTF?
+    A:  Autoconf is dumb and can/will only use one search directory for the
+        .m4 files these packages install.  You should probably do the
+        following:
+
+            mv $GNOME_PREFIX/share/aclocal/* /usr/share/aclocal/ &&
+            rm -r $GNOME_PREFIX/share/aclocal && cd $GNOME_PREFIX/share &&
+            ln -s /usr/share/aclocal
+
+    Q:  Am I stupid?
+    A:  Obviously, yes.
+
+============
+End of hint.
+
+

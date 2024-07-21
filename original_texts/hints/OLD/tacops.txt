@@ -1,0 +1,153 @@
+TITLE:		Tactical Ops: Assault on Terror
+LFS VERSION:	All (that use glibc 2.3.x)
+AUTHOR:		Gard Spreemann <g_spreemann@yahoo.com>
+
+SYNOPSIS:
+	Install, update and play "Tactical Ops: Assault on Terror" on an LFS
+	system using glibc 2.3.x.
+
+HINT:
+Version: 0.0.1 - 01/09/2003 (dd/mm!)
+
+Changelog:
+0.0.1 - 01/09/2003
+	First version.
+
+Background:
+Tactical Ops ("TacOps" from now on) was originally an Unreal Tournament mod, but
+is today a standalone game using the Unreal Tournament engine. Luckily, this
+makes it playable under Linux. Support for this is rather good (see
+http://www.icculus.org/~ravage/tacops/), but systems that use glibc 2.3.x
+(for which the Linux installer and updaters were not compiled) will run into
+problems with the straightforward approach described on the previously mentioned
+page. I thought I'd explain a quick and easy way to get it working.
+If you don't know what TacOps is, check out http://tactical-ops.to - it truly
+is a great game.
+
+The problem:
+The installer needs Wine to unpack certain files, and comes with
+a precompiled Wine for this purpose. The problem is that this Wine is linked
+to an older glibc, and will not work with glibc 2.3.x. The problem is
+described at http://icculus.org/~ravage/tacticalops/faq.html where a solution
+is also given. However, this solution did not work for me. If it works for you,
+then you don't need to read on.
+
+Notes:
+Whatever you do related to this hint is your own responsibility. If your hard
+drive gets wiped, or your computer explodes, that is your own responsibility.
+I have no responsibility for whatever damages may result from following this
+hint. Nor am I affiliated with the TacOps developers or Icculus.
+
+Requirements:
+- TacOps retail(!) CD
+- XFree86 with OpenGL support
+- GNU/Linux system with glibc 2.3.x
+
+I. INSTALLING WINE
+  1)	We need a Wine linked against our own glibc. If you do not already have
+  	Wine installed, install it now. Follow the documentation at
+	http://winehq.org or the Wine hint if you are in doubt about what to do.
+  2)	Make sure root has a working Wine configuration. As root, try:
+  	 wine notepad
+	If you get an error message about /root/.wine not being available, you
+	need to set up a working Wine configuration for root. This is described
+	in the good documentation provided at winehq.org.
+
+II. DOWNLOADIG, FIXING AND RUNNING THE INSTALLER
+  1) 	First, you will obviously need the TacOps Linux installer. Get it at
+	http://icculus.org/~ravage/tacticalops/files/tacticalops-3.1.5-install
+	-x86.run (one line).
+  2)	Mount the TacOps CD wherever you wish, e.g:
+  	 mount /dev/cdrom /mnt/cdrom
+  3)	Extract the files from the installer:
+  	 sh ./tacticalops-3.1.5-install-x86.run --keep
+	The installer will fail right away with a pretty segfault if X is not
+	available, but not to worry, the contents of the intaller is now
+	available to us (hence the --keep option). If X is available, the
+	installer will start, so just exit it if it does.
+  4)	Enter the directory created by the command in the previous step:
+  	 cd tacticalops-3.1.5-install
+	From here on, you have two options; your choice will depend on
+	whether X is available for the installation or not. The "b" option is
+	untested by me, and is only for those who do not have X available
+	during the install. If you're going to follow the "b" option, you still
+	need to do step 5. If you are a n00b, it is preferable not to follow
+	the "b" option.
+  5)	This is where this hint and the FAQ differ. Why? Simply because the
+  	FAQ's way didn't work for me. I might have done stuff the wrong way,
+	but hey...
+  	Enter the Wine directory in the dir created by the installer in step 3:
+  	 cd wine
+	Now, for each of the binary files here, locate your system-wide Wine's
+	equivalent. Not all files are available system-wide, but the ones that
+	are, you delete and replace with symlinks to their system-wide
+	equivalents. At least "wine" and "wineserver" should be available, or
+	something is severly b0rked with your Wine install.
+	The installer will now use your system-wide Wine, linked against
+	your glibc, which is what we want.
+  5b)	__Only if X is not available during the install! UNTESTED!__
+  	The console installer itself, unlike the graphical installer, needs
+	patching to work with glibc 2.3 aswell. Enter the console installer's
+	directory and remove the installer:
+	 cd setup.data/bin/Linux/x86
+	 rm setup
+	Download a working (hopefully) console installer, place it in that
+	directory, and make it executable:
+	 wget http://zerowing.idsoftware.com/linux/setup-RH9/setup
+	 chmod 755 setup
+	Let's hope it works... if not, try the regular way, using the X-based
+	installer.
+  6)	If you did not follow the "b" option, make sure X is available to the
+  	installer! This is vital. In the top level directory of the
+	tacticalops-3.1.5-install dir, run the installer:
+	 SETUP_CDROM=/path/to/cd ./setup.sh
+	Install the game. If you see errors regarding the extraction of the
+	files then Wine is not doing its thing correctly, or you didn't properly
+	mount the CD, or the CD is damaged.
+
+III. DOWNLOADING THE PATCHES AND PATCHING THE GAME
+  1)	Did you think you were done? Oh no! We're now moving into territory
+  	which, at the time of writing, was not covered by the Icculus FAQ.
+	You may delete the directory created in step II.3.
+	Download each and every Linux patch for the game, from 3.3.2 and up to
+	the latest one. At the time of writing, you would be getting these
+	patches:
+	http://icculus.org/~ravage/tacticalops/files/tacticalops-3.3.2-x86.run
+	http://icculus.org/~ravage/tacticalops/files/tacticalops-3.4.0-x86.run
+  2)	The patches too need to some patching to work with glibc 2.3.x. They
+  	do not need Wine though.
+	Extract the contents of the first patch (not inside the TacOps dir):
+	 sh ./tacticalops-3.3.2-x86.run --keep
+	The patch will segfault nicely. Enter the dir left by the patch:
+	 cd tacticalops-3.3.2
+	Enter the subdirectory in which the patcher program is located:
+	 cd bin/Linux/x86
+	Remove the glibc 2.3 incompatible patcher:
+	 rm loki_patch
+	Download the glibc 2.3 compatible patcher:
+	 wget http://gspr.dyndns.org/~gspr/lfs-hints/files/loki_patch
+	(It would be very nice if someone could mirror this, as my connection is
+	not too fast, and the site from which I got the file is even slower).
+	Make it executable:
+	 chmod 755 loki_patch
+  3)	Return to the top level directory (tacticalops-3.3.2) and run:
+  	 ./update.sh
+	It should patch your game nicely.
+  4)	Repeat step 2 and 3 for each patch up the chain. You must make sure to
+  	apply every patch in the chain.
+  5)	Run the game. It damn well better work.
+  6)	Make sure to always fear "=ARNA=GoE" (me) on whatever server you're on!
+
+
+-------
+I hope this hint was of some help.
+Thanks to the Icculus people for making TacOps and so many other nice games work
+with Linux.
+
+System used for testing the described approach:
+- Kernel 2.6.0-test4
+- XFree86 4.3.0
+- Nvidia 4496 drivers
+- glibc 2.3.2
+
+(If you need a nice server to play on, try 62.97.225.216:7777).

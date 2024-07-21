@@ -1,0 +1,146 @@
+TITLE:		Using Linux Logo to Spruce Up Your Login Prompt
+LFS VERSION:	4.0 (should work with earlier versions without much hassle)
+AUTHOR:		Robert Park <rbpark@ualberta.ca>
+
+SYNOPSIS:
+	How to get an attractive login prompt using the Linux Logo utility.
+
+HINT:
+
+Changelog
+---------
+
+Revision 1.8  2002/12/24 08:39:20  feztaa
+Fixed stupid typo ;)
+
+Revision 1.7  2002/12/24 08:02:23  feztaa
+Updated to version 4.06
+
+Revision 1.6  2002/09/15 05:40:33  feztaa
+Changed email address, among other misc fixes.
+
+Revision 1.5  2002/06/09 03:56:36  feztaa
+Added some initial notes, and changed the style of the code blocks so they'd
+(hopefully) be easier to read.
+
+Revision 1.4  2002/05/05 04:30:07  feztaa
+Removed references to the logo I created, in favor of a better logo
+that comes with linux_logo
+
+Revision 1.3  2002/05/05 03:17:36  feztaa
+Misc changes to improve readability.
+
+Revision 1.2  2002/04/27 20:26:52  feztaa
+Updated to LFS 3.3, LinuxLogo 4.02.
+
+Intro
+-----
+
+If you've used mandrake, and seen it boot into runlevel 3, you've probably
+noticed the cute ANSI/ASCII-art Tux that precedes the login prompt. This hint
+will tell you how to create the same effect on your LFS system.
+
+Notes
+-----
+
+In an attempt to make this easier to read, all "code blocks" that you should
+execute on the commandline start and end with "##--CODE--##". Feel free to copy
+that onto the commandline along with the code itself, it won't hurt anything.
+
+Requirements
+------------
+
+All you need is the source code to linux logo, which can be found here:
+
+http://www.deater.net/weave/vmwprod/linux_logo
+
+I used version 4.06 to write this hint, but other versions will work as well.
+
+This hint uses SysVInit bootscripts, though it's not hard at all to implement
+this with BSD-style bootscripts.
+
+Instructions
+------------
+
+1. Unpack linux_logo, and compile it like this:
+
+##--CODE--##
+make logos-all &&
+make install
+##--CODE--##
+
+2. I advise you to read the README and configure linuxlogo to the way you want
+it to display the logo when you are logging in. I configured mine like this:
+
+##--CODE--##
+echo -n '-L 13 -F "\n\nFeztux GNU/#O #V on #H.\nCompiled #C.' > /etc/linux_logo.conf
+echo '\n#N #M #X #T #P.\n#R RAM, #B Bogomips Total. \n#E"' >> /etc/linux_logo.conf
+##--CODE--##
+
+Explanation: we are creating the config file for the program, which really is
+just a file that contains commandline options for it.
+
+The -L option tells it to use the 13th logo, which is the one I happen to like
+the most, but keep in mind that you might be compiling with a different set of
+logos, so your numbers may vary. (try "linux_logo -L list" to see a list of
+available logos, and then pick the one you want).
+
+The -F option configures how the system information is formatted (read the
+readme on how to set this option).
+
+If you want to have linux_logo clear the screen before printing the logo, and
+thus hiding the output of your bootscripts after everything finishes loading,
+add the -f option to this file. This also has the added benefit of clearing the
+screen whenever you log out; so if other people use your computer, they won't
+be able to see what you were doing before you logged out.
+
+3. Now we'll make the bootscript for it:
+
+##--CODE--##
+cat > /etc/rc.d/init.d/issue << "EOF"
+#!/bin/bash
+# Begin $rc_base/init.d/issue
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+case "$1" in
+	start|stop)
+		echo "Setting /etc/issue..."
+		linux_logo -t "Console: \l" >/etc/issue 2>&1
+    evaluate_retval
+		;;
+
+	*)
+		echo "Usage: $0 {start|stop}"
+		exit 1
+		;;
+esac
+
+# End $rc_base/init.d/issue
+EOF
+chmod 755 /etc/rc.d/init.d/issue
+##--CODE--##
+
+The -t option here simply specifies some custom text that we want to display in
+the issue file, but that we wouldn't want to display when linux_logo is run
+normally (which is why we don't put it in the config file). When you boot,
+certain codes in the /etc/issue file are interpreted and replaced with some
+information.  In this case, the '\l' is being replaced with your current tty.
+
+5. Finally, make the symlinks to the script. You can run the script while your
+computer boots and shuts down if you wish, but it really only makes sense to
+run it while the computer is booting. So, only make the symlink in /etc/rc3.d,
+assuming you boot to runlevel 3:
+
+##--CODE--##
+cd /etc/rc.d/rc3.d &&
+ln -s ../init.d/issue S35issue
+##--CODE--##
+
+The End
+-------
+
+You're done! Reboot your computer and enjoy the new logo. ;)
+
+If you have any questions, do not hesitate to ask!

@@ -1,0 +1,97 @@
+TITLE:          GNU Autoconf Macro Archive
+AUTHOR:         Kevin M. Buckley,
+DATE:           2021-11-16
+SYNOPSIS:       LFS-style install instructions for the Autoconf-archive
+LICENSE:        GNU Free Documentation License Version 1.2
+
+DESCRIPTION:
+
+As no other package in {B,}LFS requires macros from the autoconf-archive
+the {B,}LFS authors do not include any mention of it in the Books,
+
+Should you, as I did, have a need to use macros from the Autoconf-archive,
+then this Hint may be of use, in that it takes its text from a personally
+rendered version of sources for a section for Autoconf-archive.
+
+At the time of writing, the latest version of Autoconf-archive was
+2021.02.19, although using other sources, older or updated, should 
+just be a matter of replacing the date string, used for versioning,
+with that of whichever sources you are looking to deploy.
+
+Note also that the version in the example commands was deployed against
+a slightly updated LFS version 11.0, although again, as the install
+process only puts files at certain locations, the instructions in the
+hint should work with any LFS version.
+
+ATTACHMENTS:
+* None
+
+PREREQUISITES:
+* Base LFS system
+* Basic understanding of obtaining and building packages
+
+
+HINT:
+
+Introduction to Autoconf-archive
+
+
+The Autoconf-archive contains the complete content of the GNU Autoconf
+Macro Archive, a collection of more than 500 macros for GNU Autoconf.
+
+
+This package is known to build and work properly using an LFS-11.0 platform.
+
+
+Package Information
+
+    Download (HTTP): https://ftp.gnu.org/gnu/autoconf-archive/autoconf-archive-2021.02.19.tar.gz
+    Download (FTP): ftp://ftp.gnu.org/gnu/autoconf-archive/autoconf-archive-2021.02.19.tar.gz
+    Download MD5 sum: 4f06adfbe3f1a2dada06066cf460e5ab
+    Download size: 652 KB
+    Estimated disk space required: 4.4 MB
+    Estimated build time: less than 0.1 SBU
+
+
+Installation of Autoconf-archive
+
+
+Note: The installation only requires that the macros get installed to
+their correct location so there is no separate make command, nor is
+there a test suite.
+
+
+Install Autoconf-archive by running the following commands:
+
+./configure --prefix=/usr \
+            --docdir=/usr/share/doc/autoconf-archive-2021.02.19
+
+
+Now, as the root user:
+
+make install
+
+
+Command Explanations
+
+  --docdir=/usr/share/doc/autoconf-archive-2021.02.19
+
+this ensures the documentation will go into a versioned directory.
+
+
+Installed Directories:
+
+/usr/share/aclocal
+/usr/share/doc/autoconf-archive-2021.02.19
+/usr/share/info
+
+The first of those is where the macros will be placed, noting that
+as LFS installs Autoconf, it should already exist, whilst the latter,
+again a directoy that should exist on an LFS system, sees some Info
+pages installed into it.
+
+
+CHANGELOG:
+[2021-11-16]
+    Initial hint
+

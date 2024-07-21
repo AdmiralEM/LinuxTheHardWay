@@ -1,0 +1,377 @@
+TITLE:                  Linux to Windows 
+LFS VERSION:            LFS CVS [20030603]
+AUTHOR:                 Nathan Coulson <conathan@conet.dyndns.org>
+                        Seth W. Klein <sk@sethwklein.net>
+SYNOPSIS:
+        Ever want to compile windows programs from linux?  This hint shows
+how to build i386-pc-mingw32, i386-pc-cygwin32, and i386-pc-msdosdjgpp
+cross compilers.
+
+VERSION:        0.1
+CHANGELOG:
+        0.1: Text has been fixed up, updated to gcc 3.3.1  Compile libraries
+             first
+
+HINT:
+        First, to cover some of the basics. To compile the libraries for
+these compilers, you need the compilers, but to compile the compilers, you
+need the libraries.  This circular dependency is solved by starting with
+binary versions of the libraries.
+
+        I am going to define some variables for use in the commands below,
+and you may edit them as you see fit.  PREFIX is the destination directory,
+while TARGET is the type of compiler you wish to install.
+
+i386-pc-mingw32 [binary libraries]
+==================================
+        MinGW is a collection of freely available and freely distributable
+Windows specific header files and import libraries combined with GNU toolsets
+that allow one to produce native Windows programs that do not rely on any
+3rd-party DLLs.
+
+FILES:
+        binutils-2.14.tar.bz2           [ftp://ftp.gnu.org/gnu/binutils]
+        gcc-3.3.1.tar.bz2               [ftp://ftp.gnu.org/gnu/gcc]
+        mingw-runtime-3.0.tar.bz2       [http://www.sf.net/projects/mingw]
+        w32api-2.3.tar.bz2              [http://www.sf.net/projects/mingw]
+
+ENV:
+        PREFIX=/opt/cross-compile_bin
+        TARGET=i386-pc-mingw32
+        export PATH=$PREFIX/bin:$PATH
+
+LIBRARIES:
+
+        These must be installed into the correct directories, so we use tar's
+-C option to specify the destination.  We also make sure that the directory
+exists
+
+        mkdir -p $PREFIX/$TARGET
+        tar -xjf mingw-runtime-3.0.tar.bz2 -C $PREFIX/$TARGET
+        tar -xjf w32api-2.3.tar.bz2 -C $PREFIX/$TARGET
+
+BINUTILS:
+        And now for binutils.  The only difference from the LFS instructions,
+is the --target flag.
+
+        tar -xjf binutils-2.13.2.tar.bz2
+        mkdir binutils-build
+        cd binutils-build
+        ../binutils-2.13.2/configure --prefix=$PREFIX --target=$TARGET
+        make
+        make install
+
+GCC:
+        We then compile GCC last, so it uses the above libraries.  You may have
+noticed the --enable-version-specific-runtime-libs, I have added that, so that
+libraries are installed within their own seperate folder.
+
+        tar -xjf gcc-3.2.3.tar.bz2
+        mkdir gcc-build
+        cd gcc-build
+        ../gcc-3.2.3/configure --prefix=$PREFIX --target=$TARGET \
+          --enable-threads=win32 --enable-languages=c,c++ \
+          --enable-version-specific-runtime-libs
+        make
+        make install
+
+END:
+        To use your new cross-compiler, put $PREFIX/bin first in your PATH.
+(It will already be there if you set the variables as above.)
+
+        If you want to try it out, type in the following
+
+        echo 'main() { puts("Hello World"); }' > test.c
+        $TARGET-gcc test.c -o test.exe
+
+        Copy this to a windows machine (if avaliable), and run it.  (It
+should print "Hello World" to the screen before exiting).
+
+MinGW does not require any addition files to run on windows.
+
+i386-pc-mingw32 [compiled libraries]
+====================================
+FILES:
+        binutils-2.13.2.tar.bz2         [ftp://ftp.gnu.org/gnu/binutils]
+        gcc-3.2.3.tar.bz2               [ftp://ftp.gnu.org/gnu/gcc]
+        mingw-runtime-3.0-src.tar.bz2   [http://www.sf.net/projects/mingw]
+        w32api-2.3-src.tar.bz2          [http://www.sf.net/projects/mingw]
+  * Note that we use the source code of the 2 libraries this time
+
+ENV:
+        PREFIX=/opt/cross-compile 
+        TARGET=i386-pc-mingw32
+        export PATH=$PREFIX/bin:$PATH
+  * We have changed the prefix to /opt/cross-compile, as to make a fresh install
+  * This path adds onto the previous path for the binary version, otherwise it
+    cannot find $TARGET-gcc.
+
+LIBRARIES:
+        Since we now have a i386-pc-mingw32 toolchain, we can install the
+libraries.  We move w32api-2.3 to w32api, because mingw-runtime searches for
+header files in ../w32api/include.  [you can watch the packages as it compiles
+to verify this].  We install to $PREFIX/$TARGET, as the libraries do not install
+themselves to the $TARGET directory by default, and if we installed to /usr,
+this would overwrite our default headers.  I also had to override the programs
+that configure uses by default on mingw-runtime, for it does not appear to use
+the --target flag.
+
+        tar -xjf mingw-runtime-3.0-src.tar.bz2
+        tar -xjf w32api-2.3-src.tar.bz2
+        mv w32api-2.3 w32api
+        mkdir mingw-build
+        cd mingw-build
+        ../mingw-runtime-3.0/configure --prefix=$PREFIX/$TARGET --target=$TARGET
+        make CC="i386-pc-mingw32-gcc" DLLTOOL="i386-pc-mingw32-dlltool" \
+            AS="i386-pc-mingw32-as" AR="i386-pc-mingw32-ar" \
+            LD="i386-pc-mingw32-ld" RANLIB="i386-pc-mingw32-ranlib"
+        make install
+        cd ..
+        mkdir w32api-build
+        cd w32api-build
+        ../w32api/configure --prefix=$PREFIX/$TARGET --host==$TARGET
+        make
+        make install
+        cd ..
+
+BINUTILS:
+        Compile as above.
+
+GCC:
+        Compile as above.
+
+END:
+        The compiled version should work the same way as the binary way.
+
+i386-pc-cygwin32 [binary libraries] (Untested)
+===================================
+        Cygwin is a Linux-like environment for Windows.
+
+FILES:
+        binutils-2.13.2.tar.bz2         [ftp://ftp.gnu.org/gnu/binutils]
+        gcc-3.2.3.tar.bz2               [ftp://ftp.gnu.org/gnu/gcc]
+        cygwin-1.3.22-1.tar.bz2         [http://www.cygwin.com/mirrors.html]
+        w32api-2.3.tar.bz2              [http://www.sf.net/projects/mingw]
+  * I got w32api-2.3 from mingw, and just used it for cygwin.  seems to work... but I
+  beleive you can also download w32api from www.cygwin.com/mirrors.html
+
+ENV:
+        PREFIX=/opt/cross-compile_bin
+        TARGET=i386-pc-cygwin32
+        export PATH=$PREFIX/bin:$PATH
+
+LIBRARIES:
+        I am not completely familiar with where libraries files go,  but it
+seems good enough to compile the next part.  [If anyone has any useful
+information, please email conathan@conet.dyndns.org].
+
+mkdir -p $PREFIX/$TARGET
+mkdir tmp
+tar -xjf cygwin-1.3.22-1.tar.bz2 -C tmp
+cp -a tmp/usr/include/* $PREFIX/$TARGET/include
+cp -a tmp/usr/lib/* $PREFIX/$TARGET/lib
+tar -xjf w32api-2.3.tar.bz2 -C $PREFIX/$TARGET
+
+BINUTILS:
+        tar -xjf binutils-2.13.2.tar.bz2
+        mkdir binutils-build
+        cd binutils-build
+        ../binutils-2.13.2/configure --prefix=$PREFIX --target=$TARGET
+        make
+        make install
+
+GCC:
+        When I checked gcc -v on cygwin, it was compiled with 
+--enable-threads=posix, so I'll use it below.
+
+        tar -xjf gcc-3.2.3.tar.bz2
+        mkdir gcc-build
+        cd gcc-build
+        ../gcc-3.2.3/configure --prefix=$PREFIX --target=$TARGET \
+            --enable-threads=posix --enable-languages=c,c++ \
+            --enable-version-specific-runtime-libs
+        make
+        make install
+
+END:
+        To use your new cross-compiler, put $PREFIX/bin first in your PATH.
+        (It will already be there if you set the variables as above.) In
+        addition, when building a package configured with autoconf, pass
+        --host=$TARGET to the configure script.
+
+        If you want to try it out, type in the following
+
+        echo 'main() { puts("Hello World"); }' > test.c
+        $TARGET-gcc test.c -o test.exe
+
+        Copy this to a windows machine (if avaliable), and run it.  (It
+should print "Hello World" to the screen before exiting).  Please note that
+you require the cygwin environment for windows, downloadable at www.cygwin.com.
+The advantage of cygwin over mingw, is that most linux programs could probably
+be easly compiled for cygwin, although requiring the cygwin.dll to run.
+
+i386-pc-cygwin32 [compiled libraries] (Untested)
+==============================================
+FILES:
+        binutils-2.13.2.tar.bz2         [ftp://ftp.gnu.org/gnu/binutils]
+        gcc-3.2.3.tar.bz2               [ftp://ftp.gnu.org/gnu/gcc]
+        cygwin-1.3.22-1-src.tar.bz2      [http://www.cygwin.com/mirrors.html]
+        w32api-2.3-src.tar.bz2           [http://www.sf.net/projects/mingw]
+  * again, I got w32api-2.3 from mingw, and just used it for cygwin.  seems to 
+    work...
+  * This path adds onto the previous path for the binary version, otherwise it
+    cannot find $TARGET-gcc.
+
+ENV:
+        PREFIX=/opt/cross-compile
+        TARGET=i386-pc-cygwin32
+        export PATH=$PREFIX/bin:$PATH
+
+LIBRARIES:
+        It appears that the cygwin libraries behave better then the mingw ones
+do, and a simple --prefix=$PREFIX should install nicely.  It even uses
+the correct programs to recompile itself.  w32api is automatically compiled
+when you add it to the winsup directory, and the cygwin sources will
+not compile without it, afaik.
+
+        tar -xjf cygwin-1.3.22-1-src.tar.bz2
+        tar -xzf w32api-2.3-src.tar.gz
+        mv w32api-2.3 cygwin-1.3.22-1/winsup/w32api
+
+        mkdir cygwin-build
+        cd cygwin-build
+        ../cygwin-1.3.22-1/configure --prefix=/usr --target=$TARGET
+        make
+        make install
+        cd ..
+        rm -rf cygwin-1.3.22-1 cygwin-build
+
+BINUTILS:
+        The above instructions are sufficient.
+
+GCC:
+        The above instructions are sufficient.
+
+END:
+        The compiled version should work the same way as the binary way
+
+i386-pc-msdosdjgpp [binary libraries]
+==================================
+FILES:
+        binutils-2.13.2.tar.bz2         [ftp://ftp.gnu.org/gnu/binutils]
+        gcc-3.2.3.tar.bz2               [ftp://ftp.gnu.org/gnu/gcc]
+        gcc323s2.zip                    [http://www.delorie.com/pub/djgpp/current/v2gnu/]
+        djcrx203.zip                    [http://www.delorie.com/pub/djgpp/current/v2/]
+        autoconf-2.13.tar.bz            [ftp://ftp.gnu.org/gnu/autoconf]
+        automake-1.5.tar.bz2            [ftp://ftp.gnu.org/gnu/automake]
+
+ENV:
+        PREFIX=/opt/cross-compile_bin
+        TARGET=i386-pc-msdosdjgpp
+        export PATH=$PREFIX/bin:$PATH
+
+LIBRARIES:
+        We use the -a on unzip, so that it automatically formats the text files
+for linux.  Compile stubify [used for GCC I believe], and then just copy over
+the headers and libraries.
+
+        mkdir -p $PREFIX/$TARGET/{bin,include,lib}
+        mkdir tmp
+        cd tmp
+        unzip -a ../../lfs.packages/djcrx203.zip
+        cp -r include/* $PREFIX/$TARGET/include
+        cp -r lib/* $PREFIX/$TARGET/lib
+        cd src/stub
+        gcc stubify.c -o $PREFIX/$TARGET/bin/stubify
+        cd ../..
+        cd ..
+        rm -rf tmp
+
+BINUTILS:
+        binutils does not appear to require any libraries to compile itself, so
+we install it first.
+
+        tar -xjf binutils-2.13.2.tar.bz2
+        mkdir binutils-build
+        cd binutils-build
+        ../binutils-2.13.2/configure --prefix=$PREFIX --target=$TARGET
+        make
+        make install
+
+GCC:
+        GCC is harder to build then the above targets, as we have to patch the
+sources first.  On the http://www.delorie.com/djgpp site, you can find a 
+gcc323s.zip file, but it does not store filepermissions and therefore it is
+easier for us to patch.
+
+        We require older versions of autoconf and automake to patch gcc
+properly, as indicated on the gcc's faq.  The instructions are provided below.
+
+        export PATH=$PREFIX/tmp/bin:$PATH
+
+        mkdir -p $PREFIX/tmp
+        tar -xjf /autoconf-2.13.tar.bz2
+        cd autoconf-2.13
+        ./configure --prefix=$PREFIX/tmp
+        make
+        make install
+        cd ..
+        rm -rf autoconf-2.13
+        tar -xjf ../lfs.packages/automake-1.5.tar.bz2
+        cd automake-1.5
+        ./configure --prefix=$PREFIX/tmp
+        make
+        make install
+        cd .. 
+        rm -rf automake-1.5 
+
+        Now, onto patching the gcc source.  Any errors
+
+        mkdir gcc
+        cd gcc
+        unzip -a ../../lfs.packages/gcc323s2.zip
+        chmod 755 unpack-gcc.sh
+        ./unpack-gcc.sh ../../lfs.packages/gcc-3.2.3.tar.gz
+        cd ..
+
+        This has unarchived and patched the source to gcc/gnu/gcc3.23,
+and we can finally compile it
+
+        cd gcc/gnu
+        mkdir gcc-build
+        cd gcc-build
+        ../gcc-3.23/configure --prefix=$PREFIX --target=$TARGET \
+          --with-headers=$PREFIX/$TARGET/include --enable-languages=c,c++ \
+          --enable-version-specific-runtime-libs
+        make
+        make install
+        cd ../../..
+        rm -rf gcc
+
+        We do not require the autotools anymore, so...
+
+	rm -rf $PREFIX/tmp
+
+END:
+        To use your new cross-compiler, put $PREFIX/bin first in your PATH.
+(It will already be there if you set the variables as above.) In addition,
+when building a package configured with autoconf, pass --host=$TARGET to the
+configure script.
+
+TODO
+====
+i386-pc-cygwin32:
+	-Test Compiled Binaries, and determine requiraments to run
+i386-pc-msdosdjgpp: (Test, Find a way to compmile the libraries [hard])
+        -Test Instructions
+        -Figure out how to actually run the compiled programs [listed on
+djgpp's howto page at www.delorie.com/djgpp]
+        -Compile the libraries [looks like extracting djlsr203.zip, then
+extract djcrx203.zip into it]
+        -check --enable-threads value
+
+
+gcc, I noticed like to stick C++ libraries under the /include directory.  I
+dont know if that is good or not, so I used
+--enable-version-specific-runtime-libs to counteract this.  (It was probably
+a typo, and was my fault though.  I'll double check someday).

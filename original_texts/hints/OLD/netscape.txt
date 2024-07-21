@@ -1,0 +1,51 @@
+TITLE:		Netscape 4.72+
+LFS VERSION:	any
+AUTHOR:		unknown <unknown>
+
+SYNOPSIS:
+	How to fix the missing library problem while installing Netscape 4.72 (as of v. 4.74, the problem still hasn't been fixed, and therefore this hint is very useful (but the soname has to be changed to the name of the missing library)).
+
+HINT:
+Here is a little trick I discovered while trying to get 
+Netscape Communicator 4.72 running on my LFS system.
+
+If you do a ldd on the binary, you will see that libstdc++-libc6.1-1.so.2 
+is not found. 
+
+A simple Symbolic link between your actual Standard-C++ Library and 
+the missing one in Netscape is reported to work, so a simple
+
+cd /usr/lib
+ln -s libstdc++-3-libc6.2-2-2.10.0.so libstdc++-libc6.1-1.so.2
+
+should do the trick.
+Make sure that the first file is your Standard C++ lib (ls libstdc++*)
+and the second on matches the filename your Netscape is missing.
+
+Another Way of doing it:
+
+The solution can be found in the egcs.spec file from the 
+Redhat 6.2 SRPMS CD. Here is the procedure for those that don't have the CD.
+
+Quoted directly from the spec file:
+
+# build a fake libstdc++.so.2.9 library for compatibility with other distros
+pushd $RPM_BUILD_ROOT/usr/lib ; {
+        touch foo.c
+        ../bin/g++ -fPIC -L. -shared -o libstdc++.so.2.9.dummy \
+                -Wl,-soname,libstdc++.so.2.9
+        rm -f foo.c
+} ; popd
+
+Of course the soname is changed, so the steps become:
+
+g++ -fPIC -L. -shared -o libstdc++-2-libc6.1-1-2.9.0.so \
+-Wl,-soname,libstdc++-2-libc6.1-1-2.9.0.so
+
+then run /sbin/ldconfig as root.
+
+I did this on my normal system, 
+where I have two versions of libstdc++, the RH 6.2 version and the
+gcc-2.95.2 (patched to pgcc) version. 
+I moved the RH version out of the way and installed the dummy
+library. Netscape continues to work. I didn't try this on the LFS system yet.

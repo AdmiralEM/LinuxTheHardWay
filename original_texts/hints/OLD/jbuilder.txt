@@ -1,0 +1,51 @@
+TITLE:		JBuilder8-Howto
+LFS VERSION:	any GCC3*
+AUTHOR:		Tobias Ottmar <lfs_otti@gmx.de>
+SYNOPSIS:	How to get JBuilder8 working using any working Java SDK installed on 
+your box
+HINT:
+
+I recently recompiled my LFS-System using GCC-3.2.2...if you're reading this, I 
+think you know about the issues with SUN's precompiled JDK / JRE. I followed 
+Tushar Teredesai's Hint "Compiling Java 2 SDK from Scratch" and had no problems 
+so far...but: Borland's JBuilder uses it's own JDK, linked against gcc2 
+libraries. To get JBuilder working, do the following:
+
+extract the .tar.gz-file:
+
+tar xvfz /where/JBuilder/is/jb8_linux.tar.gz
+
+install JBuilder using your own Java:
+
+cd jb8_linux/
+./per_install.bin LAX_VM $JAVA_HOME/bin/java
+
+(note: JAVA_HOME must be correctly set to your Java 2 SDK homedir)
+
+After installing JBuilder you have to modify a configuration file to tell 
+JBuilder not to use its own java:
+In JBuilders installation dir, change in file bin/jdk.config the lines javapath 
+and addpath according to your Java installation, my jdk.config for example:
+
+---begin jdk.config----
+
+#
+# Set the path for the JDK
+javapath /opt/java/bin/java
+# Add the tools.jar
+addpath /opt/java/lib/tools.jar
+
+# Force standard VM settings for all applications
+vmparam -Xverify:none
+
+# +-----------------------------------------------------+
+# |                                                     |
+# |    Uncomment the following line if you are having   |
+# |  problems with your default file encoding.  This    |
+# |    problem is evident in some locales               |
+# |                                                     |
+# +-----------------------------------------------------+
+#vmparam -Dfile.encoding=ISO8859_1
+
+
+---end jdk.config----

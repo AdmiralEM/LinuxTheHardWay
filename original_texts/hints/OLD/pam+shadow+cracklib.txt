@@ -1,0 +1,484 @@
+TITLE:		Linux-PAM + CrackLib + Shadow
+LFS VERSION:	3.2+
+AUTHOR:		Ted Riley <reesonline@messages.to>
+
+SYNOPSIS:
+	How to configure cracklib, Linux-PAM and the Shadow suite
+
+HINT:
+
+CONTENTS
+========
+	 1. Introduction
+	 2. Changelog
+	 3. Resources
+	 4. CrackLib
+	 5. Linux-PAM
+	 6. Shadow
+	 7. PAM Configuration
+	 8. Trouble
+	 9. Other Programs
+	10. Closing
+
+
+INTRODUCTION
+============
+We're going to install cracklib, Linux-PAM and the shadow package, in
+that order.  (Shadow requires the PAM libraries, which require the
+cracklib libraries.)  This hint can be used if you already have an LFS
+installation in place or if you are installing LFS for the first time.
+Once the binaries are in place, we will create and/or modify the
+necessary configuration files to get everything up and running smoothly.
+Please note:  Do not log out until all the configuration files have been
+created, since you will not be able to log back in.  In fact, the safest
+thing to do is test your configurations in a separate virtual terminal
+before ending your session.
+
+
+CHANGELOG
+=========
+Current Version
+1.2 - 2002.06.10
+	Modified hint to work "in-line" with LFS installation
+	Replaced shadow patch with make flags
+	Replaced cracklib 'sed' command with make flags
+
+1.1 - 2002.05.31
+	Corrected directories in shadow patch
+	Added troubleshooting section
+	Added other programs section
+	Added /usr/share/dict/words symbolic link and explained
+
+1.0 - 2002.05.07
+	Updated explanation of shadow/PAM incompatibility
+	Cosmetic/grammatical changes
+
+0.9 - 2002.04.28
+	Original draft
+
+
+RESOURCES
+=========
+You will need the following packages:
+
+cracklib (2.7 as of this hint):
+   http://www.users.dircon.co.uk/~crypto/download/cracklib,2.7.tgz
+NOTE: That is not a typo; that is a comma.
+
+a dictionary:
+   http://www.cotse.com/wordlists/allwords
+NOTE: This website also has a dictionary called 'cracklib' but it is
+15.6MB compared to 'allwords' which is 467KB.  I have had cracklib
+seg fault with the larger dictionary, but not with the smaller.  I know
+others (with better systems than mine) who have used the 'cracklib'
+dictionary successfully.  Your mileage may vary.
+
+Linux-PAM (0.75 as of this hint):
+   http://wwww.kernel.org/pub/linux/libs/pam/pre/library/Linux-PAM-0.75.tar.gz
+NOTE: There is a cracklib-files.tgz here.  DO NOT USE IT.  This version
+of cracklib appears to be 2.5.1, which has a known vulnerability
+(see http://www.cert.org/vendor_bulletins/VB-97.16.CrackLib)
+
+Shadow (4.0.3 as of this hint):
+   ftp://ftp.pld.org.pl/software/shadow/shadow-4.0.3.tar.gz
+NOTE: There is no note for this one; insert humor attempt here.
+
+
+CRACKLIB
+========
+The following assumes that you downloaded the 'allwords' dictionary.
+If you chose a different one, you will have to change the commands
+below to match.
+
+From the directory where you downloaded the dictionary:
+	
+cp allwords /usr/share/dict/ &&
+cd /usr/share/dict &&
+ln -s allwords words
+
+One note about the above commands:  Traditionally, the /usr/share/dict
+directory had only one file: words.  The FHS standard does not prohibit
+other files from being here as long as they are wordlists as well.  I
+like to remember what dictionary I used, which is why I do not simply
+rename 'allwords' to 'words.'  Creating the link to 'words' helps other
+programs which might look in the standard location for a dictionary
+(that is, the '/usr/share/dict/words' file).
+
+Next, in the cracklib directory, we need to create a couple files:
+	
+cat >> crack.h << "EOF"
+#ifndef CRACKLIB_H
+#define CRACKLIB_H
+/* Pass this function a password (pw) and a path to the
+ * dictionaries (/usr/lib/cracklib_dict should be specified)
+ * and it will either return a NULL string, meaning that the
+ * password is good, or a pointer to a string that explains the
+ * problem with the password.
+ * You must link with -lcrack
+ */
+extern char *FascistCheck(char *pw, char *dictpath);
+#endif
+EOF
+
+cat >> util/create_cracklib_dict << "EOF"
+#!/bin/sh
+if [ -z "$*" ]; then
+	echo "Usage:"
+	echo "  $0 wordlist ..."
+	echo
+	echo "This script takes one or more word list files as arguments"
+	echo "and converts them into cracklib dictionaries for use"
+	echo "by password checking programs. The results are placed in"
+	echo "/usr/lib/cracklib_dict.*"
+	echo
+	echo "Example:"
+	echo "$0 /usr/share/dict/words"
+else
+	/usr/sbin/mkdict $* | /usr/sbin/packer /usr/lib/cracklib_dict
+fi
+EOF
+
+And finally we compile cracklib from the source directory:
+
+make DICTPATH=/usr/lib/cracklib_dict SRCDICTS=/usr/share/dict/words install &&
+cp cracklib/libcrack.a /usr/lib &&
+cp crack.h /usr/include &&
+cp util/{mkdict,packer,create_cracklib_dict} /usr/sbin
+
+Command Explanations:
+
+cat >> crack.h ... : These commands create a header file for programs
+	to use when compiling with the crack library.
+cat >> util/create_cracklib_dict ... : These commands create a script
+	which takes a wordlist as an argument and creates a new cracklib
+	dictionary.
+make ... install : Makes the cracklib libraries with the correct
+	dictionary locations
+cp cracklib.a /usr/lib : The make install command does not install the
+	static cracklib library, so we do it here.
+cp crack.h /usr/include : This command copies the header file we created.
+cp util/mkdict util/packer util/create_cracklib_dict : This command
+	copies the scripts and binaries needed to create new cracklib
+	dictionaries.
+
+Please note:  The crack.h and create_cracklib_dict scripts were based
+on those found in the cracklib.tgz archive.  Credit goes to the authors
+of the originals, although they were unlisted (unless the author was
+Alec Muffett, who wrote the cracklib library, in which case credit goes
+to him). 
+
+
+LINUX-PAM
+=========
+Now we will compile PAM:
+
+./configure --enable-static-libpam --with-mailspool=/var/mail \
+	--enable-suplementedir=/usr/lib &&
+make &&
+make install &&
+cd /lib &&
+for name in libpam libpamc libpam_misc; do
+	ln -s ${name}.so.0.75 ${name}.so.0
+	done
+
+Command Explanations:
+
+./configure --enable-static-libpam : This builds static PAM libraries as
+	well as the dynamic libraries
+--with-mailspool=/var/mail : This flag makes the mailspool directory
+	FHS-compliant
+--with-suplementedir=/usr/lib : This flag installs the unix_chkpwd
+	binary in an FHS-compliant location
+for name in libpam libpamc libpam_misc; do : The installer creates
+	broken symlinks.  These commands correct the library links.
+
+If you don't have sgml tools on your computer, you will receive an error
+message after the install.  To install the docs manually, run the
+following commands from the Linux-PAM source directory:
+
+cd doc
+tar zxf Linux-PAM-0.75-docs.tar.gz
+cp -a html /usr/share/doc/Linux-PAM/
+cd /usr/share/doc
+chown -R root:root Linux-PAM
+touch Linux-PAM
+cd Linux-PAM
+touch *
+
+(The final three commands aren't necessary unless you use a time-stamp
+sensitive install manager like install-log.)
+
+
+SHADOW
+======
+There is an incompatibility between the current versions of Shadow and
+the latest versions of Linux-PAM.  For the record, the maintainer of the
+shadow package believes the incompatibility lies in the PAM libraries,
+not in shadow.  Therefore, he advises using a different version of PAM.
+(available from ftp://ftp.pld.org.pl/software/pam/).  However, I prefer
+to use the latest versions of both packages; the compiler flags below
+will accomplish this.
+
+LDFLAGS="-lpam -lpam_misc" ./configure --prefix=/usr --enable-shared \
+	--with-libpam --without-libcrack &&
+make &&
+make install &&
+cd /usr/sbin &&
+ln -sf vipw vigr &&
+rm /bin/vipw &&
+mv /bin/sg /usr/bin &&
+mv /lib/{libmisc.*a,libshadow.*a} /usr/lib &&
+cd /usr/lib &&
+ln -sf ../../lib/libshadow.so
+sed 's%/var/spool/mail%/var/mail%' etc/login.defs.linux > /etc/login.defs
+cp debian/securetty /etc/securetty
+
+Command Explanations:
+LDFLAGS="..." ./configure : The compiler flags allow the shadow package
+	to link correctly against the PAM libraries; they must be
+	entered on the same line as the configure command.
+--enable-shared : Shadow no longer creates shared libraries by default,
+	so this flag is used.
+--with-libpam : This flag compiles with PAM support.
+--without-libcrack : Cracklib will be called through PAM, so we do not
+	need it here.
+ln -sf vipw vigr ... ln -s ../../lib/libshadow.so : These commands fix
+	broken links and un-installed libraries.  They are also useful for
+	refreshing the time-stamps on the files if you use a time-stamp
+	sensitive installer (like install-log).
+sed ... login.defs : This will create the /etc/login.defs file (if you
+	don't already have one) and will make the mail directory
+	FHS-compliant.
+cp debian/securetty /etc/securetty : This will create the securetty file
+	which prevents root logons from all but listed terminals.
+
+Please note:  We no longer need the 'limits' and 'login.access' files in
+/etc since PAM will handle these functions.  You may safely delete these
+files if you had previously created them.
+
+
+PAM CONFIGURATION
+=================
+We are almost done.  Now we will customize our setup.  Please note that
+the PAM configuration files below are necessary for PAM to function.
+Without these files, you will not be able to log in.
+
+You can comment out the following entries in login.defs since PAM is now
+handling them.  In the right column are the PAM modules which replace
+the entries:
+
+DIALUPS_CHECK_ENAB	(not sure - anyone know?)
+LASTLOG_ENAB		(pam_lastlog.so)
+MAIL_CHECK_ENAB		(pam_mail.so)
+OBSCURE_CHECKS_ENAB	(pam_cracklib.so)
+PORTTIME_CHECKS_ENAB	(pam_time.so)
+CONSOLE			(pam_securetty.so)
+MOTD_FILE		(pam_motd.so)
+NOLOGINS_FILE		(pam_nologin.so)
+PASS_MIN_LEN		(pam_cracklib.so)
+SU_WHEEL_ONLY		(pam_wheel.so)
+CRACKLIB_DICTPATH	(pam_cracklib.so)
+PASS_CHANGE_TRIES	(pam_cracklib.so)
+PASS_ALWAYS_WARN	(pam_cracklib.so)
+MD5_CRYPT_ENAB		(pam_unix.so with md5 flag)
+CONSOLE_GROUPS		(pam_groups.so)
+ENVIRON_FILE		(pam_env.so)
+
+Several people have noticed a small problem with pam_issue.so.
+Specifically, if you enter the correct password the first time, the login
+fails, even if pam_issue is set to optional.  However, if the wrong password
+is entered at least once, the correct password will work for any further
+attempts. I think this is because the first issue file is displayed by agetty,
+not login.  All the other issue messages are displayed by login.  So, if you
+succeed the first time, pam_issue is not called.  I'm not sure how to get
+around this problem (since even the optional setting doesn't work), so I
+have left the issue command in /etc/login.defs and taken it out of PAM. If
+anyone knows how to fix this, please let me know.
+
+If you want to use the access or limits modules (among others), you can edit
+the configuration files in /etc/security/.  Currently, my files are still
+fully commented out (the default), so I'm not much help for suggestions
+on those.  If anyone is using these files, I would love to hear from
+them, though.
+
+Below are my pam.d files.  I prefer separate files under pam.d as
+opposed to one file (/etc/pam.conf), but use whichever you prefer.
+In fact, if you want to, you can use both by specifying the
+--enable-both-confs flag when compiling Linux-PAM.
+
+/etc/pam.d/login:
+# Begin /etc/pam.d/login
+auth	requisite	pam_securetty.so
+auth	requisite	pam_nologin.so
+auth	required	pam_env.so
+auth	required	pam_unix.so
+account	required	pam_access.so
+account	required	pam_unix.so
+session	required	pam_motd.so
+session	required	pam_limits.so
+session	optional	pam_mail.so	dir=/var/mail standard
+session	optional	pam_lastlog.so
+session	required	pam_unix.so
+# End /etc/pam.d/login
+
+/etc/pam.d/other:
+# Begin /etc/pam.d/other
+auth		required	pam_deny.so
+auth		required	pam_warn.so
+account		required	pam_deny.so
+session		required	pam_deny.so
+password	required	pam_deny.so
+password	required	pam_warn.so
+# End /etc/pam.d/other
+
+/etc/pam.d/passwd:
+# Begin /etc/pam.d/passwd
+password	required	pam_cracklib.so	\
+    retry=3 difok=8 minlen=15 dcredit=3 ocredit=3 ucredit=2 lcredit=2
+password	required	pam_unix.so	md5 shadow use_authtok
+# End /etc/pam.d/passwd
+
+/etc/pam.d/shadow:
+# Begin /etc/pam.d/shadow
+auth		sufficient	pam_rootok.so
+auth		required	pam_unix.so
+account		required	pam_unix.so
+session		required	pam_unix.so
+password	required	pam_permit.so
+# End /etc/pam.d/shadow
+
+/etc/pam.d/su:
+# Begin /etc/pam.d/su
+auth	sufficient	pam_rootok.so
+auth	required	pam_unix.so
+account	required	pam_unix.so
+session	required	pam_unix.so
+# End /etc/pam.d/su
+
+/etc/pam.d/useradd:
+# Begin /etc/pam.d/useradd
+auth		sufficient	pam_rootok.so
+auth		required	pam_unix.so
+account		required	pam_unix.so
+session		required	pam_unix.so
+password	required	pam_permit.so
+# End /etc/pam.d/useradd
+
+One final note:  The shadow file (and useradd, for that matter) require
+a password field, or else they will return a 'PAM chauthtok failed'
+error.  Also, the shadow file affects many of the other programs in the
+shadow suite (chfn, chage, groupdel, userdel, etc.).  These programs
+interface with PAM as 'shadow' instead of their own program name.
+
+
+TROUBLE
+=======
+Here are a couple problems that crept up while I was installing the above
+programs myself.  Just in case you run in these problems yourself, here
+are some tips to help you resolve them.  Of course, you will not need
+these because everything will work great the first time. ;-)
+
+Cracklib Seg Fault:
+With a large dictionary file, cracklib gave a segmentation fault the
+second time I tried to change a password.  (The first time worked.)
+To fix this, I ran the script create_cracklib_dict, as listed below (I
+was using the 'cracklib' dictionary at the time):
+
+create_cracklib_dict /usr/share/dict/cracklib
+
+This command rebuilt the cracklib dictionary files and cracklib worked
+fine the next time I changed a password.  Then it crashed again the
+following time.  However, when I ran the above command with the 
+'allwords' dictionary listed above, cracklib worked and has worked since. 
+
+As noted above, this error may be a result of my computer's limited RAM
+and swap space.  Other people have stated that the cracklib dictionary
+has worked fine for them.
+
+Incorrect Root Password:
+Later, due to a misconfiguration, I found myself unable to log in as root.
+To fix this, I used a boot disk (the Slackware boot disk, to be exact)
+which allowed me to log in as root without a password.  Once I was
+logged in, I mounted my LFS system.  Then, I renamed the pam.d directory
+and created a new pam.d directory with only the 'other' file.  This
+temporary file is listed below:
+
+# Begin temporary /etc/pam.d/other
+auth		required	pam_unix.so	nullok
+account		required	pam_unix.so
+session		required	pam_unix.so
+password	required	pam.unix.so	nullok
+# End temporary /etc/pam.d/other
+
+I also edited my /etc/passwd file (after making a backup, of course) and
+removed the password field for root.  After rebooting, I was able to log
+in as root without a password.  Then, I copied my original pam.d directory
+back in place and changed the root password, testing the configuration
+in another virtual terminal.
+
+
+OTHER PROGRAMS
+==============
+
+The main reason to install PAM (at least for me) was so that different
+programs could use it.  Below are a few programs that utilize PAM, as
+well as instructions how to compile PAM support into them.
+
+SSH:
+OpenSSH (from http://www.openssh.com/) has a compile option for PAM.
+Simply specify the --with-pam flag when you run the configure script.
+The PAM configuration file I use for ssh is almost identical to the one
+used for login, with one exception: the securetty line is removed (so we
+can log in through ssh from anywhere).  For simplicity's sake, the file
+is listed below:
+
+/etc/pam.d/sshd:
+# Begin /etc/pam.d/sshd
+auth	requisite	pam_nologin.so
+auth	required	pam_env.so
+auth	required	pam_unix.so
+account	required	pam_access.so
+account	required	pam_unix.so
+session	required	pam_motd.so
+session	required	pam_limits.so
+session	optional	pam_mail.so	dir=/var/mail standard
+session	optional	pam_lastlog.so
+session	required	pam_unix.so
+# End /etc/pam.d/sshd
+
+PPPD:
+Another program that is useful if you use a modem (including DSL) is
+the pppd program (available from http://www.samba.org/ppp/).  To enable
+PAM in pppd, simple add the USE_PAM=y flag after the make command. 
+My configuration file for ppp is sparce compared to sshd and login,
+simply because I do not use ppp except to dial out.  The configuration
+file for pppd is listed below:
+
+/etc/pam.d/ppp:
+# Begin /etc/pam.d/ppp
+auth	requisite	pam_nologon.so
+auth	required	pam_unix.so
+account	required	pam_unix.so
+session	required	pam_unix.so
+# End /etc/pam.d/ppp
+
+Please note that the file is called ppp, not pppd.  This is because the
+ppp daemon uses "ppp" to interface with PAM instead of "pppd."
+
+
+CLOSING
+=======
+Many thanks to Yannick Tousignant for writing the previous pam hint and
+helping me get my foot in the door.  And of course, thanks to Gerard
+Beekmans and the rest of the LFS crew.  
+
+Also, thanks to the following individuals for their contributions:
+Thien Vu
+Adrian Woffenden
+
+If you need additional help, be sure to check out the Linux-PAM manuals
+at http://www.kernel.org/pub/linux/libs/pam/Linux-PAM-html/
+Also, help may be available on the Shadow mailing list at
+http://lists.pld.org.pl/archive/index.htm?10
+
+Enjoy.

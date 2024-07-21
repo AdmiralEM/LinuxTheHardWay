@@ -1,0 +1,193 @@
+AUTHOR: Jerome Pinot <ngc891@gmail.com>
+
+DATE: 2005-12-01
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: Encrypting swap partition
+
+DESCRIPTION:
+Here is a way to enable disk encryption on HLFS system. Aim is to provide native
+swap encryption and possibility to encrypt the root partition later, with
+third-part software.
+
+ATTACHMENTS:
+* ftp://ngc891.blogdns.net/pub/hlfs/hlfs-607-eswap-1.patch
+* http://www.linuxfromscratch.org/patches/downloads/util-linux/util-linux-2.12r-loop_AES-3.1b.patch 
+* http://www.linuxfromscratch.org/patches/downloads/linux/linux-2.6.14.3-loop_AES-3.1b.patch
+* http://www.linuxfromscratch.org/patches/downloads/gnupg/gnupg-1.4.2-loop_AES-3.1b.patch
+
+PREREQUISITES:
+This hint is written for HLFS but can be easily applied to LFS. You should have 
+some basic knowledge about devices and using swap.
+
+HINT:
+
+I. About encrypting disk
+------------------------
+
+A Linux system already provides some basic security environment including users 
+and groups, passwords, permissions, and n
+ow access control via SELinux project.
+
+However, this could be not enough in some cases like attackers with physical
+access. If someone can physically access your hard drive and mount it in an 
+other computer, he overpasses the system and can read whatever he wants.
+
+The problem is the same with the swap partition. It stores short lifetime data 
+including most of the things you have just done with the computer and that 
+didn't fit in the RAM. The system continously overwrite this partition and there
+is no easy structure inside but an attacker could seek in for passwords and 
+other data you just typed.
+
+One protection against this kind of attack is swap encryption. It means cipher 
+your data with an algorithm, so you need a passphrase and/or a key to access 
+clearly to it. Even, some ciphers like AES provide you "plausible deniability".
+It means there is no way to know that the partition is actually encrypted 
+because it looks just like trash, like an empty partition. So, there is no 
+more problem for the syst
+em being overpassed by physical access.
+
+Encrypting your partitions could increase drastically your data security.
+
+II. How to do?
+--------------
+
+There is several ways to encrypt disk on Linux, including cryptoloop, dm-crypt,
+loop-AES and StegFS.
+
+StegFS is a special encrypted file system. It's sounds really great but is still
+under development and needs big modifications of the base system.
+
+Cryptoloop was a special loop device included in the kernel that provides access
+to encrypted device by loopback. Everybody was happy to have such an easy way to 
+access encrypted device, but unfortunately, it was found that cryptoloop has a 
+flaw and cannot be trust. If you can find cryptoloop in some linux distribution,
+it was actually removed from the official Linux kernel source code [1].
+
+dm-crypt is an encrypted device mapper created to replace cryptoloop [2]. You 
+can find it in the official source, under the device mapper sub-section. It is
+supposed to avoid the flaw of cryptoloop, but actually, it fails. You ca
+n find 
+on the web more informations about that [3]. So even if it's available natively 
+in the kernel it should be avoid for more security.
+
+*UPDATE* It seems that dm-crypt could be use now, and the flaw corrected in the
+kernel. It uses a definitly different process which may be explain in an other
+LFS hint.
+
+So there is loop-AES. It is stable and modular and needs few modifications to 
+the base system. It consists of patches to apply to the kernel (2.4 and 2.6) and
+some utilities. Using multi-key with loop-AES avoids the flaw of cryptoloop and 
+dm-crypt. It uses the AES algorithm which is known to be one of the strongest 
+available. Moreover, there is already an LFS hint for encrypting root partition 
+using loop-AES [4].
+
+You can find loop-AES here:
+http://sourceforge.net/projects/loop-aes/ 
+
+[1] http://lwn.net/Articles/67216/ 
+[2] http://kerneltrap.org/node/2433 
+[3] http://mareichelt.de/pub/texts.cryptoloop.php 
+[4] http://linuxfromscratch.org/~devine/erfs-howto.html 
+
+III. Encrypting swap
+---------------
+-----
+
+It's a matter of applying 2 patches and changing a little the /etc/fstab file.
+The easiest way is to patch the svn version of the book like this:
+
+-- Optional --
+ 
+ wget ftp://ngc891.blogdns.net/pub/hlfs/hlfs-607-eswap-1.patch
+ cd HLFS
+ patch -Np1 -i ../hlfs-607-eswap-1.patch
+ 
+-- Optional --
+
+Unfortunatly, it can be out of date so you have choice to follow the other way:
+
+1. First you need to apply the util-linux-2.12r-loop_AES-3.1b.patch to the
+util-linux before building it during chapter 6. This patch enables the use of 
+mount, umount, and swapon for encrypted devices.
+
+ $ patch -Np1 -i ../util-linux-2.12r-loop_AES-3.1b.patch
+
+2. You need to change the line about swap file in the /etc/fstab (chapter 7)
+
+from:	/dev/[yyy]	swap	swap	pri=1	0	0
+to:	/dev/[yyy]	swap	swap	sw,loop=/dev/loop7,encryption=AES128,pri=1	0	0
+
+The swap will be mount using a loopback device with a multikeys AES encryption. 
+It uses the last loop device so you will be able to use from /dev/loop0 to 
+/dev/loop6 for other purpose.
+
+3. 
+Finally, you must patch your kernel source before "make menuconfig" in
+chapter 7:
+
+ patch -Np1 -i ../linux-2.6.14.3-loop_AES-3.1b.patch
+
+Then, during "make menuconfig", you MUST select loop-AES under loop item of the
+block sub-section or your swap partition may not be available. You should enable
+BLK_DEV_LOOP_AES and BLK_DEV_LOOP_KEYSCRUB.
+
+IV. Setting up third-part software
+----------------------------------
+
+You can find the following packages in ftp://ngc891.blogdns.net/pub/hlfs/packages 
+
+1. GnuPG 1.4.2
+
+The build process of GnuPG is explained at the end of the HLFS book, security section.
+
+2. Sharutils 4.3.81
+
+We need sharutils for uuencode to convert randon binary data from /dev/urandom
+to random ascii data for keys generation.
+
+ sed -e 's/^CFLAGS .*$/& -pie -fpie/' -i `find . -name Makefile.in` &&
+ ./configure --prefix=/usr &&
+ make && make install
+
+3. Aespipe 2.3b
+
+Add some flags and build aespipe:
+
+ sed -e 's/^LINK .*$/& -nointl/' -i Makefile.in
+ sed -e '10,0s/^/CFLAGS+=-pie -fpie\n&/' -i Makefile.in
+ &&
+ ./configure --prefix=/usr &&
+ make && make install
+
+ACKNOWLEDGEMENTS:
+Thanks to the author of loop-AES, Jari Ruusu
+
+CHANGELOG:
+[2005-12-01]
+  * updated for Linux 2.6.14.3, util-linux 2.12r, loop-AES 3.1b, sharutils 4.81
+  * removed GnuPG section, it's in the HLFS book now
+  * added a note about dm-crypt
+[2005-07-12]
+  * new URLs
+  * kernel 2.6.11.12, loop-AES 3.0d, sharutils 4.3.80
+  * patch for HLFS r534
+[2005-04-14]
+  * updated for Linux 2.6.11.7
+  * update the HLFS patch to r461
+[2005-03-27]
+  * updated for loop-AES 3.0c
+[2005-03-18]
+  * updated for Linux 2.6.11.4 and GnuPG 1.4.1
+  * added hlfs book patch
+  * some fixes
+[2005-02-27]
+  * Added Sharutils and aespipe
+  * Some fixes
+[2005-02-19]
+  * Added GnuPG compilation guide
+  * Few fixes
+[2005-02-13]
+  * Initial version
+

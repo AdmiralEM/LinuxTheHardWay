@@ -1,0 +1,158 @@
+TITLE:		Installation of RedHat Package Manager 4.0
+LFS VERSION:	2.3.6
+AUTHOR:		Jason Gurtz <jason(at)tommyk(dot)com>
+
+SYNOPSIS:
+	The RPM package is used for installing, building, and maintaining '.rpm' packages.
+
+HINT:
+Background:
+RPM is a package manager of dubious value to the average LFS'er. However, 
+certain closed-source commercial applications require it for installation. 
+Additionally, playing with it may be of educational value, and it may 
+ease administration of a large and diverse network of UNIX and UNIX-like 
+computers. Maybe it can do more than simply "Ruining a Perfectly 
+good Machine."  ;)
+
+*NOTE*
+The INSTALL file mentions that both the Berkeley db1 and db3 packages are
+needed.  I did not need to use or install the db1 package for a successfully
+installed build of RPM-4.0.  Needless to say, I am not an experienced user
+of RPM, so there may be some functionality that requires this somehow (maybe
+conversion of old RPM packages to new?).  In any instance, please post any
+needed changes to the lfs-apps ML and or mail me direct at the above addy
+:)
+
+
+Source:
+RedHat is the maintainer and active developer of the RPM package.  It's
+home page is http://www.rpm.org/
+
+Package Name:	rpm-4.0.tar.gz		(RPM 4.0)
+Download here:	ftp://ftp.rpm.org/pub/rpm/dist/rpm-4.0.x/
+USE:			This is the main package
+
+Package Name:	zlib-1.1.3.tar.gz		(zlib compression lib.)
+Download here:	ftp://ftp.freesoftware.com/pub/infozip/zlib/
+USE:			For compression support
+
+Package name:	db-3.1.17.tar.gz		(Berkeley db3)
+HTTP Download:
+http://www.sleepycat.com/update/3.1.17/db-3.1.17.tar.gz
+USE:			RPM-4.0 uses this as it's database
+
+Package Name:	gnupg-1.0.4.tar.gz	(GNU Privacy Guard)
+Download here:	ftp://ftp.gnupg.org/pub/gcrypt/gnupg/
+USE:			For Cryptographically signing your packages
+
+These other packages are needed/recommended, but you should have these all
+ready installed as part of the base LFS system.
+
+Among other things:
+-bzip2
+-gzip
+-gettext
+-perl
+-GNU tar
+
+Installation:
+
+First we'll install zlib.  (should be easy)
+
+    ./configure && make test && make install
+
+Next lets install our crypto (gnupg)...  The use of this software
+requires a source of random numbers.  There are a few ways, but the 
+easiest is to use /dev/random and /dev/urandom.  If you don't have these 
+in your /dev directory create them with:
+
+    mknod /dev/random c 1 8
+    mknod /dev/urandom c 1 9
+
+Now we build.  As root do:
+
+    ./configure --disable-nls && make && make install
+
+Installation defaults to /usr/local/bin, make sure this is in your path.
+When install finishes you should create your key pair.  As root:
+
+    gpg --gen-key
+
+This will start a script that creates a dir or few and some
+files. It will tell you to re run it so just type the same thing again 
+(gpg --gen-key). This starts a scrip asking for real name, etc to be 
+associated with your key. Because your system is prolly not to busy it 
+may complain that it needs more Bytes from the /dev/random.  You can 
+simply start typing (a lot) what ever you feel like and it will finish, 
+but the easiest way to generate more randomness is to log into another 
+virtual terminal and start compiling our next package.  :)
+
+So, let's do the Berkeley db-3.17 package.  Two things are special:  the
+configure script is located in the dist sub-directory 
+(/usr/src/db-3.1.17/dist/), and you run configure like this:
+
+    ./configure --enable-compat185
+
+This is because the original RPM versions used the db1 database from
+sleepycat.  Next, do your:
+
+    make && make install
+
+While this is going (takes a little bit) monitor your gnupg key creation.
+When that finishes make a symlink in /usr/local/bin for backwards
+compatibility:
+
+    ln -s /usr/local/bin/gpg /usr/local/bin/gpgm
+
+That was the last part to installing gnupg.  Now when the db3 finishes
+installing note that it is installed to /usr/local/BerkeleyDB.3.1/...  That
+will be important for our last step, installing the rpm-4.0 package.
+
+First run the preliminary script like this:
+
+    ./autogen.sh --noconfigure
+
+Somewhat irritatingly a source file seems to want to find something where
+it's not, so:
+
+    cd /usr/src/rpm-4.0/lib/ && vim db3.c
+
+type ':12' <enter> to goto line 12 and change it to read:
+
+    #include </usr/local/BerkeleyDB.3.1/include/db.h>
+
+Now we're ready to go.  Pay careful attention to the stuff
+prepended to the
+../configure invocation:
+
+    LIBS='-L/usr/local/BerkeleyDB.3.1/lib' \
+> CPPFLAGS='-I/usr/local/BerkeleyDB.3.1/include' \
+> ./configure
+
+When ./configure finishes just run (as root):
+
+    make && make install
+
+You can disregard all the pointer warnings that fly by. When it's done, you
+should be able to type:
+
+    rpm --version
+
+and see the version come up.  One last thing to do is initialize and 
+rebuild the database. As root, type:
+
+    rpm --initdb
+    rpm --rebuilddb
+
+A good final test of basic functionality is to download an SRPM package.
+This will be  someDumbProg-0.0.1.src.rpm  All it is is a tarball in 
+disguise. To get at it simply:
+
+    rpm -i -vv someDumbProg-0.0.1.src.rpm
+
+note from the -vv (extra verbose) output that the .tar.gz gets dumped in
+/usr/local/src/redhat/SOURCES  along with maybe a patch file or other nice
+extras.  Also note that the database itself is at /var/local/lib/rpm/Packages  
+There are 3 levels of "rc" config files. global is /usr/local/lib/rpm/rpmrc  
+Machine specific is /etc/rpmrc user level is ~/.rpmrc
+

@@ -1,0 +1,255 @@
+AUTHOR: Daniel Baumann <daniel.baumann@panthera-systems.net>
+
+DATE: 2004-12-04
+
+LICENSE: GNU General Public License
+
+SYNOPSIS: How to install Window Maker on LFS.
+
+PRIMARY URI: http://archive.daniel-baumann.ch/linux-from-scratch/hints/window-maker/
+
+DESCRIPTION:
+How to install Window Maker on your LFS-system.
+
+PREREQUISITES:
+A complete LFS-system with an X Window System and libpng (see BLFS for instructions).
+
+HINT:
+--------------------------------------------------------------------------------
+
+Window Maker 0.91.0
+===================
+
+This hint is originally written by Corbin Bates <dracolinux@softhome.net>.
+Now updated and maintained by Daniel Baumann.
+
+
+1. Introduction to Window Maker
+===============================
+
+Window Maker is an X11 window manager designed to give additional integration
+support to the GNUstep Desktop Environment. In every way possible, it reproduces
+the elegant look and feel of the NeXTSTEP GUI. It is fast, feature rich, easy to
+configure, and easy to use. In addition, Window Maker works with GNOME and KDE,
+making it one of the most useful and universal window managers available.
+
+
+1.1. Package information
+========================
+
+  * Download (HTTP): http://www.windowmaker.org/pub/source/release/WindowMaker-0.91.0.tar.bz2
+
+  * Download (FTP): ftp://ftp.windowmaker.org/pub/source/release/WindowMaker-0.91.0.tar.bz2
+
+  * MD5 Sum: be07953e905d1e42fe7a65ac2193a5f9
+
+  * Download size: 2.7 MB
+
+  * Estimated Disk space required: 64 MB
+
+  * Estimated build time: 0.59 SBU
+
+
+1.2. Additional downloads
+=========================
+
+Optional:
+
+  * Window Maker extra package
+
+    This is the extra data package for Window Maker. It contains some icons and
+    a few themes.
+
+    Download: http://www.windowmaker.org/pub/source/release/WindowMaker-extra-0.1.tar.gz
+
+
+  * Clip-caption patch
+
+    Aesthetical change to the Window Maker clip. The workspace number is now in
+    the lower right corner, the workspace name in the upper left. The workspace
+    name will be truncated using an ellipsis if it is too long.
+    Fixes inconsistent popup 'balloon'. The clip now uses the same balloon as
+    other appicons/miniwindows/etc.
+
+    Download: http://www.linuxfromscratch.org/patches/downloads/WindowMaker/WindowMaker-0.91.0-clip_captions-1.patch
+
+
+  * Workspace-number patch
+
+    Makes workspace numbering by the wmsetbg tool start at 1 instead of 0, just
+    like it does for the rest of Window Maker.
+
+    Download: http://www.linuxfromscratch.org/patches/downloads/WindowMaker/WindowMaker-0.91.0-wmsetbg_workspace_number-1.patch
+
+
+  * Optional preference-directory patch
+
+    Changes the preference directory from ~/GNUstep to ~/.GNUstep.
+
+    Note:	Set --datadir=~/.GNUstep/Library and
+    		--with-iconsdir=~/.GNUstep/Library/Icons on installing other
+		GNUstep applications.
+
+    Download: http://www.linuxfromscratch.org/patches/downloads/WindowMaker/WindowMaker-0.91.0-preference_directory-1.patch
+
+
+1.3. Window Maker dependencies
+==============================
+
+Required:
+
+  * X Window System (see BLFS for instructions)
+
+  * libpng (see BLFS for instructions)
+
+
+Optional:
+
+  * libXPM
+  
+    There is builtin support for XPM files, but it will not load images in some
+    uncommon encodings.
+
+
+  * libtiff
+
+  * libjpeg
+  
+  * libgif or libungif
+  
+  * libHermes
+  
+    Faster pixel conversion in the wraster library.
+
+
+2. Installation of Window Maker
+===============================
+
+Install Window Maker by running the following commands:
+
+   __________________________________________________________________________
+  |                                                                          |
+  |  patch -Np1 -i ../WindowMaker-0.91.0-clip_captions-1.patch &&            |
+  |  patch -Np1 -i ../WindowMaker-0.91.0-wmsetbg_workspace_number-1.patch && |
+  |  patch -Np1 -i ../WindowMaker-0.91.0-preference_directory-1.patch &&     |
+  |                                                                          |
+  |  ./configure --prefix=/usr --sysconfdir=/etc &&                          |
+  |  make &&                                                                 |
+  |  make install &&                                                         |
+  |  /sbin/ldconfig                                                          |
+  |__________________________________________________________________________|
+
+
+If you want to strip the debugging symbols from the binaries and make them
+smaller, you can use 'make install-strip' instead of 'make install'.
+
+If you have downloaded the extra package, install it with:
+
+   __________________________________________________________________________
+  |                                                                          |
+  |  ./configure --prefix=/usr                                               |
+  |  make &&                                                                 |
+  |  make install &&                                                         |
+  |__________________________________________________________________________|
+
+
+3. Comannd explanations
+=======================
+
+--sysconfdir=/etc/: This switch puts configuration files in /etc/ instead of
+		    /usr/etc.
+
+
+4. Configuring Window Maker
+===========================
+
+
+4.1. Config files
+=================
+
+/etc/GNUstep/*, ~/GNUstep/* (or ~/.GNUstep/* with the preference-directory
+patch).
+
+
+4.2. Configuration information
+==============================
+
+Do not forget to backup your current xinitrc-file before proceeding:
+
+   __________________________________________________________________________
+  |                                                                          |
+  |  cat > ~/.xinitrc << "EOF"                                               |
+  |  exec wmaker                                                             |
+  |  EOF                                                                     |
+  |__________________________________________________________________________|
+
+This starts Window Maker automatically after XFree86 is up and running. If you
+like to set Window Maker as the default window manager for all users on your
+system, edit /etc/X11/xinit/xinitrc instead.
+
+After you have sucessfully started Window Maker, you can configure all options
+with WPrefs.
+
+
+5. Contents
+===========
+
+The Window Maker package contains WPrefs, get-wings-flags, get-wraster-flags,
+get-wutil-flags, geticonset, getstyle, seticons, setstyle, wcopy, wdread,
+wdwrite, wkdemenu.pl, wm-oldmenu2new, wmagnify, wmaker, wmchlocale, wmsetbg,
+wmsetup, wpaste, wsetfont, wxcopy, wxpaste and libExtraWINGs.a, libWINGs.a,
+libWMaker.a, libWUtil.a, libwraster.a libraries.
+
+
+7. Description
+==============
+
+  * WPrefs
+
+    WPrefs is the Window Maker Preferences Utility.
+
+
+  * wmagnify
+
+    wmagnify is a screen magnifying glass.
+
+
+  * wmaker
+
+    wmaker is the window manager itselfs.
+
+
+6. Other
+========
+
+Links:
+
+  * http://www.dockapps.org/
+  
+  * http://www.bensinclair.com/dockapp/
+
+  * http://web.cs.mun.ca/~gstarkes/wmaker/
+
+  * http://www.lonelymachines.org/wm_themes.html
+
+  * http://www.jessanderson.org/wmthemes/
+
+--------------------------------------------------------------------------------
+
+ACKNOWLEDGEMENTS:
+  * Corbin Bates <dracolinux@softhome.net> for the original hint.
+  * Oliver Brakmann <obrakmann@gmx.net> for updating the Window Maker-Patches.
+
+CHANGELOG:
+[2004-12-04]
+  * Formal changes.
+  * Minor text changes.
+  * Added Command explanations.
+  * Updated to Window Maker 0.91.0.
+[2004-07-10]
+  * Typographic mistakes corrected.
+[2004-05-29]
+  * Minor text changes.
+  * Typographic mistakes corrected.
+[2004-05-23]
+  * Initial revision.

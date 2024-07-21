@@ -1,0 +1,224 @@
+TITLE:          Setting up syslog-ng
+LFS VERSION:    any
+AUTHOR:         Jim Gifford <giffordj@linkline.com>
+
+SYNOPSIS:
+        How to setup syslog-ng, a replacement for sysklogd.
+
+HINT:
+$Revision: 1.1 $
+
+Introduction to syslog-ng
+
+Download location		http://www.balabit.hu/en/downloads/syslog-ng
+Version used			1.5.21
+libol library used		0.3.3
+
+syslog-ng is a a syslogd replacement, but with new functionality. The
+original syslogd allows messages only to be sorted based on prioiry/facility
+pairs. Syslog-ng adds the posibility to filter based on message contents using
+regular expressions. The new configuration shceme is intuitive and powerful.
+Forwarding logs over TCP and remembering all forwarding hops makes it ideal
+for firewall environments.
+
+---
+Installation of syslog-ng
+
+Install syslog-ng's libol by running the following commands:
+
+./configure --prefix=/usr --enable-shared &&
+make &&
+make install
+
+---
+Install syslog-ng by running the following commmands|
+
+./configure --prefix=/usr --sysconfigdir=/etc &&
+make &&
+make install
+
+----
+Configuring syslog-ng
+
+Config files
+
+/etc/syslog-ng/syslog-ng.conf
+
+Create the syslog-ng.conf file by running:
+
+cat > /etc/syslog-ng/syslog-ng.conf << "EOF"
+# Begin /etc/syslog-ng/syslog-ng.conf
+
+#
+# Syslog-ng configuration for Linux from Scratch
+#
+
+options { 	sync (0);
+		time_reopen (10);
+		log_fifo_size (1000);
+		long_hostnames(off); 
+		use_dns (no);
+		use_fqdn (no);
+		create_dirs (no);
+		keep_hostname (yes);
+	};
+
+source src {	unix-stream("/dev/log");
+		internal();
+		pipe("/proc/kmsg");
+	    };
+
+destination authlog { file("/var/log/authorize.log"); };
+destination syslog { file("/var/log/syslog.log"); };
+destination cron { file("/var/log/cron.log"); };
+destination daemon { file("/var/log/daemon.log"); };
+destination kernel { file("/var/log/kernel.log"); };
+destination lpr { file("/var/log/lpr.log"); };
+destination user { file("/var/log/user.log"); };
+destination uucp { file("/var/log/uucp.log"); };
+destination mail { file("/var/log/mail.log"); };
+destination news { file("/var/log/news.log"); };
+destination debug { file("/var/log/debug.log"); };
+destination messages { file("/var/log/messages.log"); };
+destination everything { file("/var/log/everything.log"); };
+destination console { usertty("root"); };
+destination console_all { file("/dev/tty12"); };
+
+filter f_auth { facility(auth); };
+filter f_authpriv { facility(auth, authpriv); };
+filter f_syslog { not facility(authpriv, mail); };
+filter f_cron { facility(cron); };
+filter f_daemon { facility(daemon); };
+filter f_kernel { facility(kern); };
+filter f_lpr { facility(lpr); };
+filter f_mail { facility(mail); };
+filter f_news { facility(news); };
+filter f_user { facility(user); };
+filter f_uucp { facility(cron); };
+filter f_news { facility(news); };
+filter f_debug { not facility(auth, authpriv, news, mail); };
+filter f_messages { level(info..warn) and not facility(auth, authpriv, mail, news); };
+filter f_everything { level(debug..emerg) and not facility(auth, authpriv); };
+
+filter f_emergency { level(emerg); };
+filter f_info { level(info); };
+filter f_notice { level(notice); };
+filter f_warn { level(warn); };
+filter f_crit { level(crit); };
+filter f_err { level(err); };
+
+log { source(src); filter(f_authpriv); destination(authlog); };
+log { source(src); filter(f_syslog); destination(syslog); };
+log { source(src); filter(f_cron); destination(fcron); };
+log { source(src); filter(f_daemon); destination(daemon); };
+log { source(src); filter(f_kernel); destination(kernel); };
+log { source(src); filter(f_lpr); destination(lpr); };
+log { source(src); filter(f_mail); destination(mail); };
+log { source(src); filter(f_news); destination(news); };
+log { source(src); filter(f_user); destination(user); };
+log { source(src); filter(f_uucp); destination(uucp); };
+log { source(src); filter(f_debug); destination(debug); };
+log { source(src); filter(f_messages); destination(messages); };
+log { source(src); filter(f_emergency); destination(console); };
+log { source(src); filter(f_everything); destination(everything); };
+log { source(src); destination(console_all); };
+
+# END /etc/syslog-ng/syslog-ng.conf
+
+---
+Configuration information
+
+Please note that this only is a sample configuration and you
+will MOST CERTAINLY have to edit this to suite your needs. This
+should work with most configuration. For more configuration
+information check man syslog-ng or go to the syslog-ng web site at
+http://www.balabit.hu/static/syslog-ng/reference/book1.html for
+the basic docuemenation
+
+---
+Make syslog-ng start on bootup
+
+Create the /etc/rc.d/init.d/syslog-ng by running:
+
+cat > /etc/rc.d/init.d/syslog-ng << "EOF"
+#!/bin/sh
+# Begin $rc_base/init.d/syslog-ng - Syslog-ng loader
+
+# Based on sysklogd script from LFS-3.1 and earlier.
+# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+
+source /etc/sysconfig/rc
+source $rc_functions
+
+case "$1" in
+	start)
+		echo "Starting System Log..."
+		loadproc syslog-ng
+		;;
+	stop)
+		echo "Stopping System Log..."
+		killproc syslog-ng
+		;;
+
+	restart)
+		$0 stop
+		sleep 1
+		$0 start
+		;;
+
+	status)
+		statusproc syslog-ng
+		;;
+
+	*)
+		echo "Usage: $0 {start|stop|restart|status}"
+		exit 1
+		;;
+esac
+
+# End $rc_base/init.d/syslog-ng
+EOF
+
+---
+Make the script executable and create the appropriate symlinks by
+running:
+
+chmod 755 /etc/rc.d/init.d/syslog-ng &&
+ln -s /etc/rc.d/init.d/syslog-ng /etc/rc.d/rc0.d/K40syslog-ng &&
+ln -s /etc/rc.d/init.d/syslog-ng /etc/rc.d/rc1.d/K80syslog-ng &&
+ln -s /etc/rc.d/init.d/syslog-ng /etc/rc.d/rc2.d/S10syslog-ng &&
+ln -s /etc/rc.d/init.d/syslog-ng /etc/rc.d/rc3.d/S10syslog-ng &&
+ln -s /etc/rc.d/init.d/syslog-ng /etc/rc.d/rc4.d/S10syslog-ng &&
+ln -s /etc/rc.d/init.d/syslog-ng /etc/rc.d/rc5.d/S10syslog-ng &&
+ln -s /etc/rc.d/init.d/syslog-ng /etc/rc.d/rc6.d/K40syslog-ng
+
+---
+Last step
+
+You will need to prevent sysklogd from starting
+
+rm /etc/rc.d/rc0.d/K40sysklogd &&
+rm /etc/rc.d/rc1.d/K80sysklogd &&
+rm /etc/rc.d/rc2.d/S10sysklogd &&
+rm /etc/rc.d/rc3.d/S10sysklogd &&
+rm /etc/rc.d/rc4.d/S10sysklogd &&
+rm /etc/rc.d/rc5.d/S10sysklogd &&
+rm /etc/rc.d/rc6.d/K40sysklogd
+
+
+---
+Extra: Logging of Iptables Information
+
+Add the following information to log all iptables information
+into it's own file called /var/log/iptables.log
+
+destination iptables { file("/var/log/iptables.log"); };
+filter f_iptables { match("IN="); };
+log { source(src); filter(f_iptables); destination(iptables); };
+
+
+Mail suggestions to giffordj@linkline.com
+
+New Version of this document can be viewed from
+http://www.jg555.com/cvs
+

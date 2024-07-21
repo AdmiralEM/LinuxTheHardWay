@@ -1,0 +1,191 @@
+AUTHOR:		Jim Gifford <hints at jg555.com>
+		With thanks to Kelldan <kelledin@users.sourceforge.net>
+		Originally by Jason Gurtz <jason(at)tommyk(dot)com> rpm.txt
+		Originally by Sergey Ostrovsky <sergey@linuxfromscratch.org> rpm_glibc22.txt
+		
+DATE:		2006-01-27
+
+LICENSE:	GNU Free Documentation License Version 1.2
+
+SYNOPSIS:	The RPM package is used for installing, building and maintaining
+		'.rpm' packages
+
+DESCRIPTION:	This hint will show you how to install rpm to be used with LFS.
+
+PREREQUISITES:	From LFS Build : Zlib, Bzip2, Gzip, Gettext, Perl, Sed, and Tar.
+		From BLFS : Berkeley DB, CVS, Expat, GnuPG, and Libxml2.
+		From Other : See Dependencies
+
+OPTIONAL
+REQUISITES:	From BLFS : Python
+
+HINT:
+
+BACKGROUND:
+
+RPM is a package manager of dubious value to the average LFS'er. However, 
+certain closed-source commercial applications require it for installation. 
+Additionally, playing with it may be of educational value, and it may 
+ease administration of a large and diverse network of UNIX and UNIX-like 
+computers. Maybe it can do more than simply "Ruining a Perfectly 
+good Machine."
+
+SOURCE:
+
+RedHat is the maintainer and active developer of the RPM package. It's
+home page is http://www.rpm.org/
+
+There is a download site for RPM, but I recommend taken the snapshot from
+their cvs to you don't have find the dependencies.
+
+GET SOURCE:
+
+The following information will download the current CVS version of RPM. It
+will also fix a couple of build issues by removing wnh from the build. wnh
+is not included as of this writing of the hint. In the future we should
+be able not to remove it.
+
+cvs -z 9 -d :pserver:anonymous@cvs.rpm.org:/cvs/devel co -r rpm-4_4 rpm
+cd rpm
+RPMVER="`cat configure.ac | grep AC_INIT | cut -f2 -d, | cut -f2 -d' '`"
+sed -e 's|wnh/Makefile||g' configure.ac
+sed -e 's|wnh/Makefile||g' Makefile.am
+cd ..
+mv rpm rpm-$RPMVER
+tar jcvf rpm-$RPMVER.tar.bz2 rpm-$RPMVER
+
+DEPENDENCIES:
+
+Package Name:	beecrypt-4.1.2.tar.gz
+Download here:	http://prdownloads.sourceforge.net/beecrypt/beecrypt-4.1.2.tar.gz?download
+
+Build Beecrypt as follows:
+
+        ./configure --prefix=/usr --enable-shared &&
+        make &&
+        make install
+
+Package Name:	neon-0.25.5.tar.gz
+Download here:	http://www.webdav.org/neon/neon-0.25.5.tar.gz
+
+Build Neon as follows:
+
+        ./configure --prefix=/usr --enable-shared &&
+        make &&
+        make install
+
+PATCHES:
+
+No Patches are required for the CVS version.
+
+INSTALLATION:
+
+First rebuild the configure and makefiles for rpm:
+
+	cd /usr/src/rpm*
+	./autogen.sh --noconfigure
+
+Build RPM as follows:
+	
+	Notes:
+
+		If you have python installed, you can remove
+		the --without-python.
+
+	For NPTL Based Machines:
+
+		./configure --prefix=/usr \
+			    --enable-posixmutexes \
+			    --without-selinux \
+        	            --without-python \
+                	    --without-javaglue &&
+		make &&
+		make install
+
+	For LinuxThreads Based Machines:
+
+		./configure --prefix=/usr \
+			    --disable-posixmutexes \
+			    --disable-pthreadsmutexes \
+			    --without-python \
+			    --without-selinux \
+			    --without-javaglue &&
+		make &&
+		make install
+
+You will also need to create the proper lock directory for RPM to function
+correction.
+
+	install -d /var/lock/rpm
+
+At this point you will need to initialize the RPM database with the following
+commands. Do not use this command if you are upgrading to a newer version of
+RPM.
+
+	rpm --initdb --root=/
+
+Use this command if your upgrading your RPM installation
+	
+	rpm --rebuilddb --root=/
+
+You can disregard all the pointer warnings that fly by. When it's done, you
+should be able to type:
+
+	rpm --version
+
+A good final test of basic functionality is to download an RPM package.
+This will be  someDumbProg-0.0.1.src.rpm  All it is is a tarball in 
+disguise. To get at it simply:
+
+	rpm -i -vv someDumbProg-0.0.1.rpm
+
+note from the -vv (extra verbose) output that the .tar.gz gets dumped in
+/usr/local/src/redhat/SOURCES  along with maybe a patch file or other nice
+extras.  Also note that the database itself is at /var/local/lib/rpm/Packages  
+There are 3 levels of "rc" config files. global is /usr/local/lib/rpm/rpmrc  
+Machine specific is /etc/rpmrc user level is ~/.rpmrc
+
+# Optional Setup for Alien
+
+Most LFS users don't want to use RPM, but rpm can benefit us when we are
+trying to locate patches and source codes. The utility named alien can
+convert these rpm packages into something more useful for use to us.
+
+Package Name:	alien_8.61.tar.gz		(Alien 8.61)
+Download here:	http://kitenet.net/programs/alien
+
+INSTALLATION:
+
+Alien is simple to install, here are the instructions.
+
+	perl Makefile.PL &&
+	make &&
+	make install
+
+Alien is now ready for use. You can download a srpm or .src.rpm and
+use the follow line to convert it into .tgz file
+
+	alien -t filename.rpm
+
+This will create an archive file that can be extracted.
+
+WARNING: When extracting the newly create .tgz file, use a separate 
+directory, and move the file in before extracting. Files will be
+extracted into the currect directory.
+
+VERSION:	1.10
+
+CHANGELOG:	1.10 Corrected Typos. Updated Programs.
+		1.9 Updated svn
+		1.8 Added missing depenencies for neon: expat and libxml2
+		1.7 Fixed Typo's and updated instructions based on glibc
+		1.6 Added missing dependencies: beecrypt and neon
+		1.5 Updated to RPM 4.4.2 - Updated Alien to 8.50
+		1.4 Fixed Email Address
+		1.3 CVS to SVN Information
+		1.2 Added Previous Authors Information
+		1.1 Updated to New Format and New Version
+		1.0 Adopted by Jim Gifford
+
+ New Version of this document can be viewed from
+	http://svn.jg555.com/svn/repos/hints/rpm.txt

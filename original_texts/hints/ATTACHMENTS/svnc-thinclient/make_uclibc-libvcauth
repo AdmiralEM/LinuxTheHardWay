@@ -1,0 +1,5 @@
+i386-uclibc-gcc -Os -fno-strength-reduce    -I. -I../include   -I/usr/X11R6/include    -Dlinux -D__i386__ -D_POSIX_C_SOURCE=199309L -D_POSIX_SOURCE -D_XOPEN_SOURCE -D_BSD_SOURCE -D_SVID_SOURCE    -DNO_MESSAGE_CATALOG -DFUNCPROTO=15 -DNARROWPROTO       -c -o vncauth.o vncauth.c
+i386-uclibc-gcc -Os -fno-strength-reduce    -I. -I../include   -I/usr/X11R6/include    -Dlinux -D__i386__ -D_POSIX_C_SOURCE=199309L -D_POSIX_SOURCE -D_XOPEN_SOURCE -D_BSD_SOURCE -D_SVID_SOURCE    -DNO_MESSAGE_CATALOG -DFUNCPROTO=15 -DNARROWPROTO       -c -o d3des.o d3des.c
+rm -f libvncauth.a
+i386-uclibc-ar clq libvncauth.a vncauth.o d3des.o
+ranlib libvncauth.a

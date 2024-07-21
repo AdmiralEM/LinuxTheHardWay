@@ -1,0 +1,19 @@
+TITLE:		SoundBlaster Live!
+LFS VERSION:	any
+AUTHOR:		unknown <unknown>
+
+SYNOPSIS:
+	How to install a SB Live!
+
+HINT:
+> Installing alsa 0.5.7
+> I realized I had no information to create the modules.conf I required
+> for a SoundBlaster-Live so I downloaded
+>   alsaconf-0.4.3b.tar.gz
+
+Actually, you don't even need alsa in order to use the Live!.
+
+Just grab the latest source code from
+http://opensource.soundblaster.com/snapshot.html, compile and install it, then
+run "insmod soundcore && insmod emu10k1", and you have sound!
+

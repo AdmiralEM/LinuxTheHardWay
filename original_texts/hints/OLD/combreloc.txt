@@ -1,0 +1,83 @@
+TITLE:		Setting up combreloc on recent binutils
+LFS VERSION:	3.3+ (maybe earlier)
+AUTHOR:		Zack Winkles <sativa93@bellsouth.net>
+
+SYNOPSIS:
+	Configuring/tricking binutils to use the -z combreloc option
+
+HINT:
+Contents
+
+	* Introduction
+	* Methods
+	* Problems
+
+Introduction
+
+   Recent versions of binutils (actually its ld) include a new option that
+   reaps the same loading inprovements as objprelink of KDE fame, but for
+   all programs compiled by it. As a general rule you can expect around 20%
+   to 30% faster loading times. I personally have had no problems compiling
+   *EVERYTHING* on my system with it (including gcc, glibc, etc).
+
+Methods
+
+   Here's the real meat of it all. Even though all you really need to do is
+   to link the program with this option, it can be quite hard getting all of
+   your options passed down to ld. One particular example is gcc. To get it
+   to use the option on its libgcc_s.so binary you have to set about eight
+   environmental variables and edit a few Makefiles. But if you want to do it
+   that way the proper was is to set the LDFLAGS variable:
+
+	export LDFLAGS='-z combreloc'
+
+   should work. I'd estimate about 50% of packages actually recognize and use
+   that variable though. We don't want to stop there do we? Let's take it a
+   step further and set the CFLAGS variable too:
+
+	export CFLAGS='**YOUR_CFLAGS** -z combreloc'
+	export CXXFLAGS='**YOUR_CFLAGS** -z combreloc'
+
+   If you don't understand why I set CXXFLAGS too you have worse things to
+   worry about than loading times on a computer... Onward. Even then programs
+   like bzip2 won't be optimized. Let's take it further:
+
+	export CC='gcc -z combreloc'
+	export CXX='g++ -z combreloc'
+
+   Think that's good enough of a job? I sure don't. When compiling gcc it
+   doesn't care about any of your flags: it ignores them all and uses its
+   own tags and compilers. Here's the easiest/most aggressive method to do
+   this for your entire system. WARNING: All programs you compile with have
+   -z combreloc run on ld. There is no longer a way to use ld without the
+   option outside of calling ld.orig or removing the script and moving
+   ld.orig to ld (the reverse of the following instructions).
+
+	mv /usr/bin/ld /usr/bin/ld.orig &&
+	cat > /usr/bin/ld << "EOF"
+	#!/bin/sh
+	# Begin /usr/bin/ld
+	# Wrapper script to use -z combreloc option on all executables
+	# By: Zack Winkles
+
+	exec /usr/bin/ld.orig -z combreloc "$@"
+
+	# End /usr/bin/ld
+	EOF
+	chmod 755 /usr/bin/ld
+
+   Now you can unset CC, CFLAGS, and all the other stuff we did before in
+   the hint. Aren't you glad you read the whole hint ;). There's just one
+   last issue to address. When initially compiling the system and you're in
+   the static chroot'd environment, how do you get your stuff optimized then?
+   its pretty easy actually. Take the above instructions and modify every
+   instance of /usr/bin to /static/bin. Then even the static binutils will
+   optimize. Pretty easy ay?
+
+Problems
+
+   So far I have never had a single problem with anything I compiled using
+   even the most aggressive method listed. The only thing I've noticed is
+   better performance. If you have any problems let me know and I'll try to
+   help you out.
+

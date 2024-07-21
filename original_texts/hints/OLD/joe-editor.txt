@@ -1,0 +1,25 @@
+TITLE:		Joe Hint
+VERSION:	any
+AUTHOR:		Richard Lightman <richard@reika.demon.co.uk>
+
+SYNOPSIS:
+	Installing Joe.
+
+
+HINT:
+Very configurable, easy to learn and plenty of features.
+I used this for several months until having to press two
+buttons to play back macros annoyed me too much.
+
+Download: ftp://ftp.std.com/src/editors/joe2.8.tar.Z
+
+What's a .Z? Who cares, gzip can handle it.
+unpack the source then:
+
+sed -e 's@\(WHEREJOE = \).*@\1/usr/bin@'\
+    -e 's@\(WHERERC = \).*@\1/etc@'\     
+    -e 's@\(WHEREMAN = \).*@\1/usr/share/man/man1@'\
+    Makefile >makefile                              
+make
+make install
+

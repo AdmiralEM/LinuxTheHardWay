@@ -1,0 +1,409 @@
+TITLE:		How to build LFS using multiple GCC instances in parallel
+LFS VERSION:	All (fixes for 4.1)
+AUTHOR:		Daniel Baumann <danielbaumann@linuxmail.org>
+
+SYNOPSIS:
+	How to build a LFS system in less time using multiple GCC instances in
+	parallel
+
+HINT:
+
+CHANGELOG
+=========
+
+	* 2003-06-21	Typographic and other misstakes corrected, Glibc-command
+			revised and XFree86-command (BLFS) added
+
+	* 2003-06-07	Initial revision
+
+
+DISCLAIMER
+==========
+
+You use this LFS-Hint at your own risk.
+
+Neither the author, nor the Linux From Scratch project accepts any reponsibility
+for anything that happens when using this document or associated files.
+
+This hint is based on the smp-hint written by Adam Greenblatt
+<agreenbl@aol.com>, now updated and maintained by Daniel Baumann
+<danielbaumann@linuxmail.org>.
+
+I would like to thank Adam for allowing to continue his good work.
+
+
+INTRODUCTION
+============
+
+GNU Make can build multiple targets in parallel GCC instances using the '-j'
+switch.
+
+On single-processor machines, the GCC instances will be automatically scheduled 
+on the processor. This gains speed because a single GCC instance rarely use all 
+ressources, the rest can be used by another instance.
+
+On multi-processor machines, the GCC instances will be automatically scheduled
+between the processors. This gains speed because it makes use of the additional 
+application-processor(s) (CPU(s) number 1-?) instead of only using the
+boot-processor (CPU number 0).
+
+A few packages fail to build in parallel: their makefiles contain implicit
+dependencies that force them to build serially (arguably, this is a bug in those
+packages). A couple other packages, notably Glibc and XFree86, use other
+makefile trickery in place of '-j'.
+
+Here is a step by step description of the changes needed. Similar changes will
+probably work fine on other versions of the book, but your mileage may vary.
+
+
+FIXES FOR LFS-BOOK
+==================
+
+Chapter 2. Important information
+--------------------------------
+
+Insert the following paragraph after the "About $LFS" paragraph:
+
+	About $CC_PARALLEL
+
+	As with $LFS above, we will use the variable $CC_PARALLEL below to
+	specify how many instances of GCC to build with. Replace $CC_PARALLEL
+	with a numeric value. A good value seems to be 2 instances per
+	processor. In example for a dual-processor system, I suggest to use
+	CC_PARALLEL=4.
+
+	Machines with Jackson Technologie (also known as Intel Hyper-Threading)
+	should enable it. In fact, every logical processor has its own floating-
+	point-unit (FPU), only the caches are shared. Therefore, you get the
+	nearly doubled performance on FPU-calculations with only a little loss
+	on overhead for managing the shared cache. A good value here is 2
+	instances per logical processor. In example for a dual-processor system
+	with enabled Jackson Technologie, I suggest to use CC_PARALLEL=8.
+
+	Generally on very fast systems (2GHz and more), it is also save to use
+	more than 2 instances per (logical) processor. I personally use 5 per
+	processor, but I will leave this up to you to choose.
+
+	The rest of the book assumes you have set $CC_PARALLEL as an environment
+	variable, in example
+
+		export CC_PARALLEL=4
+
+	If you use the '-j'-flag without a number followed, GNU Make will start
+	an infinit number of GCC instances. This often crashs your system and
+	should therefore not be used (especially noticed on compiling Glibc
+	which does hang nearly everytime the machine).
+
+Chapter 5. Preparing the LFS system
+-----------------------------------
+
+Installing Bash-2.05a
+	No changes - bash does not like to be made in parallel.
+
+Installing Binutils-2.13.2
+	Change:	make LDFLAGS="-all-static"
+	To:	make -j $CC_PARALLEL LDFLAGS="-all-static"
+
+Installing Bzip2-1.0.2
+	Change:	make CC="gcc -static -s"
+	To:	make -j $CC_PARALLEL CC="gcc -static -s"
+
+Installing Diffutils-2.8.1
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Fileutils-4.1
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Findutils-4.1
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Gawk-3.1.1
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing GCC-3.2.1
+	Change:	make BOOT_LDFLAGS="-static" bootstrap
+	To:	make -j $CC_PARALLEL BOOT_LDFLAGS="-static" bootstrap
+
+Installing Grep-2.5
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Gzip-1.2.4a
+	Change:	make LDFLAGS="-static"
+	To:	make -j $CC_PARALLEL LDFLAGS="-static"
+
+Installing Make-3.80
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Patch-2.5.4
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Sed-4.0.3
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Sh-utils-2.0
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Tar-1.13
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Texinfo-4.3
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Textutils-2.1
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Util-linux-2.11y
+	Change:	make -C lib
+		make -C mount mount umount
+
+	To:	make -j $CC_PARALLEL -C lib
+		make -j $CC_PARALLEL -C mount mount umount
+
+Chapter 6. Installing basic system software
+-------------------------------------------
+
+Entering the chroot environment
+	Change:	chroot $LFS /static/bin/env -i \
+			HOME=/root TERM=$TERM PS1='\u:\w\$ ' \
+			PATH=/bin:/usr/bin:/sbin:/usr/sbin:/static/bin \
+			/static/bin/bash --login
+
+	To:	chroot $LFS /static/bin/env -i \
+			HOME=/root TERM=$TERM PS1='\u:\w\$ ' \
+			PATH=/bin:/usr/bin:/sbin:/usr/sbin:/static/bin \
+			CC_PARALLEL=$CC_PARALLEL \
+			/static/bin/bash --login
+
+Installing Linux Kernel-2.4.20
+	No changes - we are just installing the header files here.
+
+Installing Man-pages-1.54
+	No changes - we are just installing the man-pages here.
+
+Installing Glibc-2.3.1
+	Change: make
+	To:	make PARALLELMFLAGS="-j $CC_PARALLEL"
+
+Installing GCC-3.2.1
+	Change:	make bootstrap
+	To:	make -j $CC_PARALLEL bootstrap
+
+Installing Zlib-1.1.4
+	Change:	make LIBS="libz.so.1.1.4 libz.a"
+	To:	make -j $CC_PARALLEL LIBS="libz.so.1.1.4 libz.a"
+
+Installing Findutils-4.1
+	Change:	make libexecdir=/usr/bin
+	To:	make -j $CC_PARALLEL libexecdir=/usr/bin
+
+Installing Gawk-3.1.1
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Ncurses-5.3
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Vim-6.1
+	Change:	make CPPFLAGS=-DSYS_VIMRC_FILE=\\\"/etc/vimrc\\\"
+	To:	make -j $CC_PARALLEL \
+			CPPFLAGS=-DSYS_VIMRC_FILE=\\\"/etc/vimrc\\\"
+
+Installling M4-1.4
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Bison-1.875
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Less-378
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Groff-1.18.1
+	No changes - groff does not like to be made in parallel.
+
+Installing Textutils-2.1
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Sed-4.0.3
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Flex-2.5.4a
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Binutils-2.13.2
+	Change:	make tooldir=/usr
+	To:	make -j $CC_PARALLEL tooldir=/usr
+
+Installing Fileutils-4.1
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Sh-utils-2.0
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Gettext-0.11.5
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Net-tools-1.60
+	No changes - net-tools do not like to be made in parallel.
+
+Installing Perl-5.8.0
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Texinfo-4.3
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Autoconf-2.57
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Automake-1.7.2
+	Change:	make install
+	To:	make -j $CC_PARALLEL install
+
+Installing Bash-2.05a
+	No changes - bash does not like to be made in parallel.
+
+Installing File-3.39
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Libtool-1.4.3
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Bin86-0.16.3
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Bzip2-1.0.2
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Ed-0.2
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Kbd-1.08
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Diffutils-2.8.1
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing E2fsprogs-1.32
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Grep-2.5
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Gzip-1.2.4a
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Man-1.5k
+	No changes - man does not like to be made in parallel.
+
+Installing Lilo-22.2
+	No changes - lilo does not like to be made in parallel.
+
+Installing Make-3.80
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Modutils-2.4.22
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Netkit-base-0.17
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Patch-2.5.4
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Procinfo-18
+	Change:	make LDLIBS=-lncurses
+	To:	make -j $CC_PARALLEL LDLIBS=-lncurses
+
+Installing Procps-3.1.5
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Psmisc-21.2
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Shadow-4.0.3
+	No changes - shadow does not like to be made in parallel.
+
+Installing Sysklogd-1.4.1
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Sysvinit-2.84
+	Change:	make -C src
+	To:	make -j $CC_PARALLEL -C src
+
+Installing Tar-1.13
+	Change:	make
+	To:	make -j $CC_PARALLEL
+
+Installing Util-linux-2.11y
+	Change:	make HAVE_SLN=yes
+	To:	make -j $CC_PARALLEL HAVE_SLN=yes
+
+Installing Glibc-2.3.1
+	Change:	make
+	To:	make PARALLELMFLAGS="-j $CC_PARALLEL"
+
+Chapter 8. Making the LFS system bootable
+-----------------------------------------
+
+Installing Linux-2.4.20
+	Change:	make bzImage
+		make modules
+
+	To:	make -j $CC_PARALLEL bzImage
+		make -j $CC_PARALLEL modules
+
+
+FIXES FOR BLFS-BOOK
+===================
+
+Chapter 26. Installing X
+------------------------
+
+Installing XFree86-4.3.0
+	Change: WORLDOPTS="" make World 2>&1 | tee xfree-compile.log &&
+	To:	WORLDOPTS="" make TOPPARALLELMFLAGS="-j $CC_PARALLEL" \
+			World 2>&1 | tee xfree-compile.log &&
+
+
+END OF PARALLELCOMPILING-HINT

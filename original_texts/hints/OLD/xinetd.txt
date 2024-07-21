@@ -1,0 +1,216 @@
+TITLE:          Setting up xinetd
+LFS VERSION:    any
+AUTHOR:         Peter Hall <peter.hall@hgus.gu.se>
+
+SYNOPSIS:
+        How to setup the internet service daemon, xinetd.
+
+HINT:
+v1.2
+
+Introduction to xinetd
+
+Download location		http://www.xinetd.org/pub/xinetd
+Version used			2.3.3
+Package size			268k
+Estimated Disk space required	1.3M
+
+xinetd is an internet service daemon. Instead of having many
+different servers running at the same time, only xinetd is loaded..
+Whenever a request for a service is made, xinetd fires the
+corresponding server up. It does this in a more secure manner
+than it's precursor inetd.
+
+Installation of xinetd
+
+Install xinetd by running the following commands:
+
+./configure --prefix=/usr &&
+make &&
+make install
+
+Configuring xinetd
+
+Config files
+
+/etc/xinetd.conf
+
+Create the xinetd.conf file by running:
+
+cat > /etc/xinetd.conf << "EOF"
+# Begin /etc/xinetd.conf
+
+# Default configuration options that apply to all servers, can be
+# overriden per service.
+
+defaults
+{
+    instances      = 10
+    log_type       = FILE /var/log/service.log 
+    log_on_success = HOST PID
+    log_on_failure = HOST RECORD
+}
+
+# The service name must be in /etc/services in order to obtain
+# the correct port.
+# If it's a non-standard server/port, use "port = X"
+service ftp
+{
+    socket_type    = stream
+    protocol       = tcp
+    wait           = no
+    user           = root
+    server         = /usr/sbin/proftpd
+    
+}
+
+#service telnet
+#{
+#    socket_type    = stream
+#    protocol       = tcp
+#    wait           = no
+#    user           = root
+#    no_access      = 0.0.0.0 
+#    only_from      = 127.0.0.1
+#    banner_fail    = /etc/telnet_fail 
+#    server         = /usr/sbin/in.telnetd
+#}
+
+service ssh
+{
+    socket_type    = stream
+    protocol       = tcp
+    wait           = no
+    user           = root
+    port           = 22
+    server         = /usr/sbin/sshd
+    server_args    = -i
+}
+
+service http
+{
+    socket_type    = stream
+    protocol       = tcp
+    wait           = no
+    user           = root
+    server         = /usr/local/apache/bin/httpd
+}
+
+#service finger
+#{
+#    socket_type    = stream
+#    protocol       = tcp
+#    wait           = no
+#    user           = root
+#    no_access      = 0.0.0.0
+#    only_from      = 127.0.0.1
+#    banner_fail    = /etc/finger_fail
+#    server         = /usr/sbin/in.fingerd
+#    server_args    = -l
+#}
+
+# End /etc/xinetd.conf
+EOF
+
+---
+
+Configuration information
+
+Please note that this only is a sample configuration and you
+will MOST CERTAINLY have to edit this to suite your needs.
+However, I only have sshd on my system and the above configuration
+works for me, xinetd states in /var/log/daemon.log that servers
+are missing but still starts.
+
+Configuring the daemons to use xinetd
+
+One last thing you have to do before you're able to test xinetd out is
+to make sure that your daemons know they're being started from
+(x)inetd and not running in standalone mode.
+
+For sshd this is accomplished by passing it an extra argument.
+"server_args = -i" tells the SSH daemon that it should run in
+inetd mode.
+
+Apache, Proftpd and probably many others handles this via their
+config file. Find the line in /etc/httpd.conf and/or
+/etc/proftpd.conf that reads:
+"ServerType standalone"
+and change standalone to inetd
+
+Now run xinetd as root and make sure it works.
+
+
+Make xinetd start on bootup
+
+Create the /etc/rc.d/init.d/xinetd by running:
+
+cat > /etc/rc.d/init.d/xinetd << "EOF"
+#!/bin/sh
+# Begin /etc/rc.d/init.d/xinetd
+
+#
+# Include the functions declared in the /etc/init.d/functions file
+#
+
+source /etc/rc.d/init.d/functions
+
+case "$1" in
+        start)
+                echo -n "Loading xinet super daemon"
+                loadproc /usr/sbin/xinetd
+                ;;
+
+        stop)
+                echo -n "Stopping xinet super daemon"
+                killproc /usr/sbin/xinetd
+                ;;
+
+        restart)
+                $0 stop
+                /usr/bin/sleep 1
+                $0 start
+                ;;
+
+        status)
+                statusproc /usr/sbin/xinetd
+                ;;
+
+        *)
+                echo "Usage: $0 {start|stop|reload|restart|status}"
+                exit 1
+        ;;
+
+esac
+
+# End /etc/init.d/xinitd
+EOF
+
+---
+
+Make the script executable and create the appropriate symlinks by
+running:
+
+chmod 755 /etc/rc.d/init.d/xinetd &&
+ln -s /etc/rc.d/init.d/xinetd /etc/rc.d/rc1.d/K110xinetd &&
+ln -s /etc/rc.d/init.d/xinetd /etc/rc.d/rc2.d/K110xinetd &&
+ln -s /etc/rc.d/init.d/xinetd /etc/rc.d/rc3.d/S30xinetd &&
+ln -s /etc/rc.d/init.d/xinetd /etc/rc.d/rc4.d/S30xinetd &&
+ln -s /etc/rc.d/init.d/xinetd /etc/rc.d/rc5.d/S30xinetd &&
+ln -s /etc/rc.d/init.d/xinetd /etc/rc.d/rc6.d/K110xinetd
+
+
+Contents
+
+The xinetd package contains xinetd and itox
+
+xinetd
+
+xinetd is a superdaemon, similar to inetd
+
+itox
+
+itox converts inetd.conf style configuration files to xinetd.conf
+
+
+Mail suggestions to peter.hall@hgus.gu.se

@@ -1,0 +1,74 @@
+TITLE:		Installing dig, nslookup and host
+LFS VERSION:	3.3 -/+
+AUTHOR:		Jim Harris <jim_harris@maxtor.com>
+
+SYNOPSIS:
+	How to install the dig, nslookup and host utilities.
+
+HINT:
+Version 0.1
+14-JUN-2002
+
+Introduction
+------------------------------
+
+This hint explains how to install the dig (domain information groper), nslookup 
+and host utilities from ISC BIND version 9 without installing the rest of the 
+package (a full DNS server.)  If you prefer to setup a complete DNS server, 
+please see the BIND hint available at 
+http://hints.linuxfromscratch.org/hints/bind.txt.
+
+This hint assumes that you already have a valid DNS server to use and a valid 
+network connection.
+
+Be aware that many, or all, of these utilities are also available under the 4.x 
+and 8.x versions of BIND, however, this installation process will only work 
+with BIND version 9.x due to major changes in the installation process from 
+prior releases of BIND.
+
+Where to get BIND
+------------------------------
+
+For this hint, BIND version 9.2.1 was used, but any version in the 9.x family 
+will most likely work.
+
+The source for BIND can be obtained from:
+	ftp://ftp.isc.org/isc/bind9/9.2.1/bind-9.2.1.tar.gz
+
+Building and Installing
+------------------------------
+
+Because we are only installing the dig, nslookup and host utilities, we can 
+save time by building only the libraries required by these binaries, thus, the 
+steps taken to build and install will vary slightly from a standard configure / 
+make / make install process.
+
+$ tar xvfz bind-9.2.1.tar.gz
+$ cd bind-9.2.1
+$ ./configure --prefix=/usr
+
+	* A note on FHS compliance.  I have changed the default installation 
+location from /usr/local to /usr.  Many people would argue that this is not FHS 
+compliant because it is an optional package, however, I feel that these three 
+utilities are a critical part of any GNU/Linux installation.  If you feel 
+differently, you can optionally run ./configure without the --prefix argument 
+to install these utilities to their default locations under /usr/local.
+
+$ make -C lib/dns &&
+  make -C lib/isc &&
+  cd bin/dig &&
+  make &&
+  make install
+
+Configuration
+------------------------------
+
+All three utilities try to use the name servers and search paths found in 
+/etc/resolv.conf unless you tell them to do otherwise at invocation.  If you do 
+not have a valid resolv.conf, dig and host may appear to hang.
+
+An example of a minimum /etc/resolv.conf:
+
+search <domain suffix of ISP>
+nameserver <ip of dns server>
+nameserver <ip of secondary dns server>

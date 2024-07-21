@@ -1,0 +1,30 @@
++++ expatreader.py	2004-03-02 06:37:05.000000000 -0600
+@@ -2,6 +2,10 @@
+ SAX driver for the pyexpat C module.  This driver works with
+ pyexpat.__version__ == '2.22'.
+ """
++# 2004 FEB 29 . ccr . Pass base to resolveEntity2 method of EntityResolver
++#                   . object, because system IDs are relative to the
++#                   . file that defines them, not the file that references
++#                   . them.
+ 
+ version = "0.20"
+ 
+@@ -390,7 +394,16 @@
+         if not self._external_ges:
+             return 1
+ 
+-        source = self._ent_handler.resolveEntity(pubid, sysid)
++        try: # 2004 FEB 29
++            source = self._ent_handler.resolveEntity2(pubid, sysid, base)
++            new_method_exists = True
++        except AttributeError:
++            new_method_exists = False
++        if new_method_exists:
++            pass
++        else:
++            source = self._ent_handler.resolveEntity(pubid, sysid)
++
+         source = saxutils.prepare_input_source(source,
+                                                self._source.getSystemId() or
+                                                "")

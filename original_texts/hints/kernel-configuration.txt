@@ -1,0 +1,255 @@
+AUTHOR:         Bruce Dubbs <bdubbs@linuxfromscratch.org>
+
+DATE:           2009-05-28
+
+LICENSE:        The MIT License
+
+SYNOPSIS:       Considerations when configuring the Linux kernel
+
+PREREQUISITES:  None
+
+
+DESCRIPTION:
+    When building an LFS system, the last package built is the kernel itself.  This is
+    the most complicated package to configure in LFS and is the most variable among users.
+    This hint is provided to help users decide how to configure their kernel.
+
+REFERENCES:  In the kernel tarball:
+             README
+             Documentation/kbuild/kconfig.txt 
+             Documentation/cdrom/
+             Documentation/devices.txt
+             Documentation/filesystems/
+             Documentation/laptops/
+             Documentation/pcmcia/
+             Documentation/sound/
+             Documentation/networking/
+             Documentation/scsi/
+
+             There are many other files in the documentation tree that can give
+             detailed information about kernel options.
+
+
+HINT:
+
+    The process of building the kernel is described in Chapter 8 of the LFS
+    book.  However, detailed instruction on the configuration of the kernel
+    depend on many factors.  This hint is an attempt to help the new user
+    through the complicated process of selecting configuration parameters.
+
+    The primary output of the configuration process is the .config file,
+    however even if a .config file is placed into the linux package tree, one
+    of the configuration processes must be run to set up other internal files
+    necessary for the build process to complete properly.
+
+    One rule of thumb to use in selecting configuration items is when in doubt, 
+    use the default for that option.
+
+1.  Starting the configuration process
+
+    The configuration file is in the root of the linux directory with the name 
+    .config.  It is an ascii file with entries such as:
+
+    #
+    # General setup
+    #
+    CONFIG_LOCALVERSION=""
+    CONFIG_LOCALVERSION_AUTO=y
+    # CONFIG_IPC_NS is not set
+
+    a.  make menuconfig
+
+    This is the primary user interface to kernel configuration.  It is a
+    ncurses based application that generates a menu tree for a user to select
+    configuration items.  Using the enter key and the arrow keys, you can
+    examine each item, including a help page.  
+
+    The "Enter" key selects an option from the bottom of the page.  Which item
+    that is selected is controlled by the left and right arrow keys.  
+    <Select> goes down to a submenu if the selected line has a trailing ---> symbol.
+    <Exit> goes up a menu.  If at the top menu, the program is exited.  
+    <Help> brings up a page explaining the current option.
+
+    The current item is selected with the up and down arrow key.  The space bar
+    toggles the selection between 'build into the kernel' annotated with a [*],
+    'build as a loadable module' annotated as [M], or don't build at all
+    displayed as [ ].
+
+    b.  make xconfig
+
+    This is a Qt based GUI interface to the menu items.  It utilizes a mouse to
+    make selections and scroll windows.  Clicking on an item performs the same
+    functions as the spacebar in menuconfig.
+
+    c.  make oldconfig
+
+    A command line interface is available to take an old configuration file and
+    port it to the new kernel.  To use it, run:
+
+       cp user/some/old.config .config
+       make oldconfig
+
+    The program will prompt you for missing or changed options.  The prompt will
+    end with something like:
+
+       Group CPU scheduler (GROUP_SCHED) [N/y/?] (NEW)
+
+    Responding with <return> takes the first (capitalized) option.  In some
+    cases, the choice will look like:
+
+       PCI slot detection driver (ACPI_PCI_SLOT) [N/m/y/?] (NEW)
+
+    if building as a module is available.  To override the default, just type
+    the appropriate letter.
+ 
+    New kernel releases often introduce new config symbols.  Often more
+    important, new kernel releases may rename config symbols.  When this
+    happens, using a previously working .config file and running "make
+    oldconfig" won't necessarily produce a working new kernel for you, so you
+    may find that you need to see what NEW kernel symbols have been introduced.
+
+    To see a list of new config symbols when using "make oldconfig", use
+
+        cp user/some/old.config .config
+        yes "" | make oldconfig > conf.new
+        grep "(NEW)" conf.new
+
+    d.  make defconfig
+
+    Use the default symbol values from either arch/$ARCH/defconfig
+    or arch/$ARCH/configs/${PLATFORM}_defconfig, depending on the architecture.
+
+    For most LFS systems, $ARCH will be x86  and  ${PLATFORM} will be i386 or 
+    x86_64.  These values are derived from the uname utility.
+
+    e.  make help
+
+    A list of configuration targets and other utilities.
+
+
+2.  About modules
+
+    Most commercial distributions build as many options as possible as modules.  This
+    allows the kernel to only load what it needs when it needs it.  It also takes
+    a lot of space and increases boot time by trying virtually every driver it has
+    available.  For instance an Ubuntu system has 97 MB of modules.
+
+    Allowing modules is not required.  They can be turned off with a kernel configuration
+    option.  However, if this is done, it precludes using some proprietary modules 
+    like Nvidia or VMware drivers.
+
+    Since LFS does not use an initrd, some drivers like disk and filesystem drivers
+    for the root partition are required to be built into the kernel.  Most often these
+    are just SATA (CONFIG_ATA) or PATA (CONFIG_IDE) drivers and the ext3 
+    (CONFIG_EXT3_FS) drivers,
+
+    On an LFS system, you presumably know (or can find out with tools such as lspci)
+    what hardware you have on your system.  I recommend that you minimize the modules
+    that you build.  After all, you can always go back and recompile with different 
+    options.  
+
+    Loading modules can be controlled with /etc/modprobe.conf.  For more details see
+    man 5 modprobe.conf.  Additionally, modules can be loaded automatically by the
+    LFS modules boot script when directed by its configuration file, 
+    /etc/sysconfig/modules.
+
+3.  Configuration sections
+
+    The main menu if the configuration programs is split out into the 
+    following sections:
+
+     a.  General setup  
+      
+         Provides overall Linux options.
+
+     b.  Enable loadable module support 
+
+         Provides the ability to load kernel modules.  Sub-options
+         provide additional capabilities related to modules.
+
+     c.  Enable the block layer 
+
+         This needs to be enabled to be able to mount any disk drive.
+
+     d.  Processor type and features  
+
+         The defaults will set most of these properly for
+         your hardware, but you may want to disable options that 
+         may not apply such as Multi-core scheduler support.  You
+         can also set the number of CPUs that the kernel supports.
+
+         You can also set support for some specific laptop brands.
+
+     e.  Power management and ACPI options 
+
+         Controls ACPI (Advanced Configuration and Power Interface) or
+         APM (Advanced Power Management) BIOS support.  These options are most 
+         useful on laptops.
+
+     f.  Bus options (PCI etc)
+         
+         Generally only PCI suport is needed here on newer systems.  Go
+         with the defaults.
+
+     g.  Executable file formats / Emulations
+
+         Generally only ELF support is needed.
+
+     h.  Networking support 
+
+         This is where networking (including wireless) is enabled.
+         Netfilter (firewall) capabilities are also defined here.  
+         The defaults are generally satisfactory.
+
+     i.  Device Drivers 
+
+         This is one of the most important configuration areas.  If you want
+         the hardware to work, it has to be enabled with a driver.  Check 
+         your devices on a currently running system with `lspci -v` to 
+         confirm what hardware you have.  Enable any network or usb devices
+         that you may have.  Video drivers and sound cards are also enabled 
+         here.  
+
+         Take your time in this section and make sure you add drivers for
+         all the hardware you want to use.
+
+     j.  Firmware Drivers
+
+         The default is generally OK here.
+
+     k.  File systems
+
+         If you want reiser, ext4, jfs, xfs, kernel automounter support, or nfs, 
+         you need to select those capabilities here.
+
+     l.  Kernel hacking
+
+         If you make changes here, you better know why.
+
+     m.  Security options
+
+         The defaults are generally OK here too.
+
+     n.  Cryptographic API
+
+         Specialized crytographic capabilites.  The defaults are OK here.
+
+     o.  Virtualization (NEW)
+
+         Allows using your Linux host to run other operating systems inside 
+         virtual machines (guests). 
+
+     p.  Library routines 
+
+         Various CRC routines.  The defaults are generally appropriate here 
+         unless you have special requirements. 
+
+CHANGELOG:
+   [2009-05-28]
+      Initial Release
+   [2009-05-29]
+      Fix Typos.  Add pointer to /etc/sysconfig/modules.  Thanks to Trent Shea.
+   [2010-03-18]
+      Add discusssion of some additional make options.
+
+

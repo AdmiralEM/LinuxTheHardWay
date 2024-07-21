@@ -1,0 +1,401 @@
+TITLE:		PHP4 hint
+LFS VERSION:	2.4
+AUTHOR:		J. Jones <jdj@darkside.dynup.net>
+
+SYNOPSIS:
+This hint should get apache and PHP up and running, with the majority of PHP's features enabled.  The methods used here seem (to me) to be the perfect balance between performance and efficient resource usage.  PHP will be compiled statically into apache, which gives the best performance, yet most of PHP's extras will be built as shared modules, keeping the httpd binary nice and small (read sexy).
+
+HINT:
+	Version:        1.0-test1
+
+I have to assume alot of configuration options in this hint,
+so if you do stray (mainly on the --prefix's), pay attention! :)
+
+=====================================
+Software used/mentioned/etc in this hint.
+
+Apache
+  http://httpd.apache.org/dist/
+
+PHP
+  http://php.net/downloads.php
+
+MySQL
+  Seemingly the most popular free SQL server
+  http://www.mysql.com/downloads/
+
+PostGreSQL
+  Excellent free SQL server
+  http://postgresql.readysetnet.com/sites.html
+
+Berkeley DB3
+  Screw SQL, use this!
+  http://www.sleepycat.com/download.html
+
+GD - 1.8.4 is the recommended version at this time.
+  Image creation on the fly
+  http://www.boutell.com/gd/
+
+    zlib
+      Compression library
+      ftp://ftp.freesoftware.com/pub/infozip/zlib/
+
+    libjpeg
+      Jpeg library
+      ftp://ftp.uu.net/graphics/jpeg/
+
+    libpng
+      PNG library
+      ftp://ftp.libpng.org/pub/png/src/
+
+    libungif
+      Patent-free gif library
+      ftp://prtr-13.ucsc.edu/pub/libungif/
+
+    libttf/libfreetype
+      True Type font library (YOU WANT THIS!)
+      http://freetype.sourceforge.net/
+
+OpenSSL
+  Wonderful encryption library
+  http://www.openssl.org/
+
+mhash
+  Provides access to several hashing algorithms
+  http://mhash.sourceforge.net/dl
+
+(lib)mcrypt
+  Provides access to several encryption schemes
+  http://mcrypt.hellug.gr/
+
+readline
+  GNU readline (It's what makes bash so cool)
+  ftp://ftp.gnu.org/gnu/readline/
+
+pspell
+  The new API for aspell/ispell
+  http://pspell.sourceforge.net/
+
+Imap - 2000c please, not the latest beta they'd like you to have :)
+  WU's imap library
+  ftp://ftp.cac.washington.edu/imap/old/imap-2000c.tar.Z
+
+Curl
+  Client URL library
+  http://curl.haxx.se/download.html
+
+libxml
+  XML DOM library, not to be confused with apache's expat,
+  used by php's xml parser.
+  http://www.xmlsoft.org/#Downloads
+
+LDAP
+  LDAP server and library
+  http://www.openldap.org/software/download/
+
+zziplib
+  The zlib of zip files
+  http://zziplib.sourceforge.net/
+
+=====================================
+Where to start...
+
+----------------
+
+APACHE
+
+Extract the apache source.  Move this directory to 
+/usr/local/apache (mv ./apache_1.3.17 /usr/local/apache).
+Cd into /usr/local/apache.
+
+Edit the config.layout file to suit your tastes.  After that, run
+
+		./configure \
+		--with-perl=/usr/bin/perl \
+		--enable-module=all \
+		--enable-shared=max \
+		--disable-module=proxy \
+		--disable-module=usertrack \
+		--disable-module=auth_anon \
+		--disable-module=auth_db \
+		--disable-module=auth_dbm
+
+This will cause apache to build all of its modules as DSO's (Dynamic Shared
+Objects), thus reducing the size of the httpd binary.  This is how I do it,
+feel free to stray as much as you wish.  It will not affect anything else.
+Allowing some of those modules to compile statically would probably boost
+performance, but that's another hint.  ;)  FEEL FREE TO IMPROVE UPON THIS!
+
+We'll come back to apache later.
+
+----------------
+
+GD
+	
+The libraries this package depends on are all fairly easy to install.  I won't
+get into them.  I assume a --prefix=/usr on the first three (jpeg, ungif, png)
+and --prefix=/usr/X11R6 on the last two (ttf/freetype, t1).  Also, compile those 
+libraries in the order they are listed, especially the last two.
+
+Extract the gd-1.8.4 source.  Download the patch (it builds a .so for you :)
+from ^^^^GD-URL^^^^.  Applying this patch should be as simple as:
+	zcat gd-1.8.4-shared.patch.gz | patch -p0
+Edit the Makefile as you see fit (installation prefixes, possible removal of
+the freetype flags, which I don't recommend at all).  The Makefile will read
+the $CFLAGS environment variable, so don't worry about those.
+
+	make all install
+
+----------------
+
+Imap
+
+The newest imap c-client libs are very beta.  I recommend sticking with the
+latest stable release, 2000c.  My patch won't work on anything else without
+some hacking, anyway. ;)
+
+Extract the imap-2000c package, download the patch (which creates a .so for
+you too :) from ^^^^IMAP-URL^^^^.  Apply it with:
+	zcat imap-2000c-shared.patch.gz | patch -p0
+Cd into the imap-2000c directory, and issue the following commands:
+	chmod a+x Build-me
+	./Build-me
+
+That should be all there is to it.  This source tree is rather nasty in my
+opinion, so if the build fails for you, yell at me.  Email me the WU-imap.sucks
+file created by:
+	make clean
+	./Build-me >WU-imap.sucks 2>&1
+and I'll see what I can do.
+
+----------------
+
+PHP
+
+Basically what I do is strip the php interpreter down to the bare minimum,
+compile it statically into apache, then build php's extras as shared objects
+which can be loaded by scripts (or at startup in the php.ini).
+
+PHP Static Apache module:
+Extract the php source.  Enter the directory.  Issue the following, note that
+you must change these paths toooooo:
+
+	./configure \
+	--prefix=/path/to/apache \
+	--with-config-file-path=/path/to/apaches/conf/files \
+	--with-apache=/path/to/apache \
+	--disable-pear \
+	--without-mysql \
+	--disable-xml \
+	--without-pcre-regex \
+	--disable-posix \
+	--with-openssl=/path/to/openssl \
+	--enable-trans-sid
+	make all install
+
+Unfortunately the openssl stuff won't yet (or isn't able to) build as a shared
+object, so if you want it, you have add it now.  I have yet successfully
+hacked it up to build as a .so; if anyone has, let me know! :)  (Even the
+current CVS versions won't).
+
+Now, back to apache.  Issue the same exact configure command you did
+previously to apache, adding the following line:
+
+	--activate-module=src/modules/php4/libphp4.a
+
+You can now make all install on apache.
+
+
+PHP CGI interpreter:
+
+This is completely optional, but nice to have, in my opinion.  This will
+create a php binary interpreter, which you can use just like perl or sh.  Do
+NOT use this for web pages.
+
+In the php source directory, do the following:
+
+	make distclean
+	./configure \
+	--prefix=/usr/local \
+	--with-config-file-path=/usr/local/etc \
+	--enable-force-cgi-redirect \
+	--enable-discard-path \
+	--disable-pear \
+	--without-mysql \
+	--disable-session \
+	--without-pcre-regex \
+	--disable-posix \
+	--disable-xml \
+	--with-openssl=/path/to/openssl
+	make all install
+
+You will now have a /usr/local/bin/php command line interpreter.
+
+
+PHP's extras:
+
+Now the fun part.  Do a make distclean on the php source tree.
+
+NOTES:  PHP has a bundled mysql client library, so it doesn't require
+	mysql to be installed to support it.  If you are using pspell, you need the
+	patch from ^^^^PSPELL-PATCH^^^^ in order for php to compile successfully.
+	This library was updated recently, and changed the api a bit.  That patch
+	will fix php's pspell support.  DOM XML (libxml) requires BOTH libxml-1.* and
+	libxml2-* to be installed.
+
+./configure options  
+	--with-apache=/usr/local/apache == Path to apache 
+		source tree, build as apache module
+
+Database stuff... 
+	For MySQL support...
+	--with-mysql=shared,/optional/path/to/mysql (see note above)
+			 ==  Include the mysql client
+	For PostGreSQL support...
+	--with-pgsql=shared,/pgsql/install/prefix  ==  Include pg 
+		client, prefix to postgres install
+	For DB3 support (YOU HAVE TO TRY THIS! IT SMOKES THE *SQL's!)
+	--enable-dba=shared  == enable the db abstraction layer
+	--with-db3=/usr  == add db3 support to it!
+ 
+For GD support...
+	--with-gd=shared,/usr/X11R6  ==  Use gd, prefix to gd install
+	--with-jpeg-dir=/usr   ==  jpeg libs are prefixed here
+	--with-xpm-dir=/usr/X11R6   ==  xpm libs are prefixed here
+	--with-ttf=/usr/X11R6   ==  use ttf, and it's prefixed
+	    here
+	--with-t1lib=/usr/X11R6  ==  use type 1 fonts,
+	    and prefix is here
+	--enable-gd-imgstrttf
+	--enable-gd-native-ttf
+
+Encryption and compression stuff...
+	For mhash...
+		--with-mhash=shared,/usr  ==  use mhash, prefixed here
+	For mcrypt...
+		--with-mcrypt=shared,/usr  ==  use mcrypt, prefixed here
+	For zlib...
+		--with-zlib=shared,/usr  ==  use zlib functions, and it's prefixed here
+	For bzip2...
+		--with-bz2=shared,/usr  == bzip2!
+	For zziplib
+		--with-zziplib=shared,/usr == zzip!
+
+Imap support...
+	--with-imap=shared,/prefix/to/imap/  == enable the imap functions
+	--with-imap-ssl=/path/to/openssl  == add ssl support!
+
+Miscellaneous...
+	--with-pcre-regex=shared  == Perl Compatible Regular Expressions! (builtin)
+	--with-pspell=shared,/path/to/pspell  == Pspell support
+	--with-curl=shared,/path/to/curl  == use curl!
+	--with-ldap=shared,/path/to/openldap  == enable ldap functions
+	--with-gettext=shared,/usr == GNU gettext support!
+	--with-readline=shared,/usr == GNU Readline support!
+	--enable-bcmath=shared  == bcmath precision calculations (builtin)
+	--with-gmp=shared		== GNU precision math lib (builtin)
+	--enable-posix=shared  == posix functions (builtin)
+	--enable-calendar=shared == calendar conversion (builtin)
+	--enable-ctype=shared == character type functions (builtin)
+	--enable-filepro=shared  == bundled filepro support (builtin)
+	--enable-shmop=shared  == shmop support (builtin)
+	--enable-sysvsem=shared  == SystemV semaphore functions (builtin)
+	--enable-sysvshm=shared == SystemV shared memory functions (builtin)
+	--with-xml=shared  == XML parsing support (builtin)
+	--enable-wddx=shared  == XML wddx stuff (builtin)
+	--with-domxml=shared,/path/to/libxml  == DOM XML stuff
+	--enable-ftp=shared  ==  enable ftp functions (builtin)
+	--enable-sockets=shared   ==  enable network socket functions 
+	    (builtin)
+	--enable-yp=shared  == yp support (builtin)
+	--enable-dbase=shared  == old dbase read-only support (builtin)
+	--enable-exif=shared  == exif support (builtin)
+
+The =shared options creates a shared library which php 
+will load, allowing you to update one or more modules/features,
+without recompiling apache and php.
+
+Here's the entire ./configure command, with every option shown above.  Be sure
+to fix the paths.  ;)
+
+	./configure \
+	--with-apache=/usr/local/apache \
+	--with-mysql=shared,/optional/path/to/mysql \
+	--with-pgsql=shared,/pgsql/install/prefix \
+	--enable-dba=shared \
+	--with-db3=/usr \
+	--with-gd=shared,/usr/X11R6 \
+	--with-jpeg-dir=/usr \
+	--with-xpm-dir=/usr/X11R6 \
+	--with-ttf=/usr/X11R6 \
+	--with-t1lib=/usr/X11R6 \
+	--enable-gd-imgstrttf \
+	--enable-gd-native-ttf \
+	--with-mhash=shared,/usr \
+	--with-mcrypt=shared,/usr \
+	--with-zlib=shared,/usr \
+	--with-bz2=shared,/usr \
+	--with-zziplib=shared,/usr \
+	--with-imap=shared,/prefix/to/imap/ \
+	--with-imap-ssl=/path/to/openssl \
+	--with-pcre-regex=shared \
+	--with-pspell=shared,/path/to/pspell \
+	--with-curl=shared,/path/to/curl \
+	--with-ldap=shared,/path/to/openldap \
+	--with-gettext=shared,/usr \
+	--with-readline=shared,/usr \
+	--enable-bcmath=shared \
+	--with-gmp=shared \
+	--enable-posix=shared \
+	--enable-calendar=shared \
+	--enable-ctype=shared \
+	--enable-filepro=shared \
+	--enable-shmop=shared \
+	--enable-sysvsem=shared \
+	--enable-sysvshm=shared \
+	--with-xml=shared \
+	--enable-wddx=shared \
+	--with-domxml=shared,/path/to/libxml \
+	--enable-ftp=shared \
+	--enable-sockets=shared \
+	--enable-yp=shared \
+	--enable-dbase=shared \
+	--enable-exif=shared \
+	--disable-nls \
+	| tee ~/php-config.log
+
+This script tends to fly by fairly quick.. so check the ~/php-config.log for
+the results.
+
+PHP's configure script doesn't seem to carry it's -L's and -I's very well.  If
+you get any fatal errors, check the config.log.  My workaround for this is
+adding the following to the beginning of that ./configure line:
+
+	CFLAGS=$CFLAGS\ -L/usr/local/lib\ -L/usr/X11R6/lib\ -I/usr/local/include\
+-I/usr/X11R6/include <configure command above>
+
+Hopefully this will be worked out in the future.
+
+Once everything looks ok, issue a make.  Once completed, choose a location to
+keep these .so's, like /usr/local/lib/php, cd into the modules directory, and
+cp *.so /usr/local/lib/php/.  You may wish to strip -g those modules also.
+
+Now, the key here is your php.ini.  Copy the php.ini-dist file from the php
+source directory to
+/config/file/path/you/chose/when/you/built/the/apache/module/php.ini.  In this
+file, change the extension_dir to the /path/you/copied/the/*.so's.
+
+If you wish for php to load any of these at startup, add extension=name.so to
+the php.ini.  To load these at runtime, this seems the most effective way.
+
+	Say I need the mysql support.  At the beginning of my script, I'd have this:
+		if (!function_defined('mysql_query')) { dl('mysql.so'); }
+	Please note the ! :)
+
+You may wish to ldd all of these .so's.. they will kill the httpd children if
+they are dl()'d and can't find a library they need (it's better than killing
+apache altogether though, eh?).
+
+Feel free to email me with any questions about this process or using these
+shared objects.  I welcome any suggestions for improving upon this too.
+----------------

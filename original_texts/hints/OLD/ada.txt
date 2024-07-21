@@ -1,0 +1,121 @@
+TITLE:		Ada Compiler Hint
+LFS VERSION:	All, (any Linux/UNIX system using gcc)
+AUTHOR:		Chris Lingard	chris@stockwith.co.uk
+
+SYNOPSIS:
+
+For some time gcc has been available with an Ada compiler called gnat
+
+The Ada compiler is unusual in that it is written in Ada.  All the
+other languages that gcc supports have their compiler written in C.
+
+>From gcc-3.1, Ada is included in the 'everything' tar ball
+
+HINT:
+
+First the dependencies/downloads required
+tcsh:
+tcsh-6.11.tar.bz2	from    tcsh.org
+Just get the latest version.
+
+gnat:
+gnat-<version>-<hardware>.tar.bz2           from cs.nyu.edu/pub/gnat/<version>
+
+ 
+/gnat-3.14p/gnat-3.14p-i686-pc-linux-gnu-bin.tar.bz2 currently, (for PCs)
+
+There is a note in directory gnat about latest version, change directory
+to this, it is currently 3.14p.
+
+(Do not worry about the i686, this runs in AMD too)
+If you are lucky enough to have a machine other than a PC; then get
+the file for the appropriate hardware.
+
+You need tcsh because the scripts to unpack the Ada compiler are csh scripts.
+
+Build tcsh any way you want; then move tcsh to /bin
+Then go to /bin and do
+ln  -s tcsh  csh
+This allows us to use scripts starting with #!/bin/csh
+
+We now need to put the Ada compiler in a temporary location.  It will only
+be used for the stage1 build of gcc.
+
+Set up a temporary account on your machine.  Let us call this account Compiler
+Log in as Compiler and unpack the gnat tar ball.  This expands into a
+directory called gnat-3.14p-i686-pc-linux-gnu-bin, cd into this directory.
+
+Run the script  ./doconfig
+
+When offered a choice of locations to install gnat, take option 3
+
+  3) Install GCC C compiler and GNAT files in non-standard locations
+     that you will specify.
+
+When asked for the location to install,  give the home directory of
+this account
+
+    Specify the base directory you want to use for installation:
+
+/home/Compiler
+
+This will display what is to be installed, and where.
+
+Now use  ./doinstall to install the compiler in this account
+
+cd  to the home directory of Compiler and edit .bash_profile
+
+Make sure that $HOME/bin and the location of gcc are in the PATH
+
+Add the following
+ADAC=$HOME/bin/gnatgcc
+export ADAC
+
+cd into bin, (the account's bin) and change the name of gcc to gnatgcc
+mv gcc   gnatgcc
+
+This completes the preparation.  Log out, and then log in again
+
+Test that it is set up right:
+$ADAC  -v  should be the gnatgcc in $HOME/bin, a static gcc-2.8
+gcc -v should be your standard gcc, the normal compiler
+
+Please note that this bootstrap compiler is not complete, but is just
+enough to build the Ada in gcc.
+
+Now unpack the source of gcc.  If you have downloaded the Ada source
+separately it goes into srcdir/gcc/ada
+
+Change directory to srcdir/gcc/ada and do
+
+touch treeprs.ads [es]info.h nmake.ad[bs]
+
+Now make a build directory somewhere and cd into it
+
+Do your favourite srcdir/configure for gcc except that the following is used:
+
+ --enable-languages=c,c++,ada
+
+You can just miss out the language directive and build all the options.
+
+Put the configure output into a file and check that the Ada stuff has been
+recognised
+
+checking floating point format... IEEE (little-endian)
+checking for gnatbind... gnatbind
+checking for compiler driver that understands Ada... gcc
+checking for mktemp... no
+
+The build instructions are
+
+    make bootstrap
+    cd gcc
+    make gnatlib_and_tools
+    cd ..
+
+This is also required if you are building a Chapter 5, static compiler.
+
+You can now install the compiler and build huge Ada systems
+
+Delete the account Compiler, it is no longer needed
+

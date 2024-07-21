@@ -1,0 +1,150 @@
+AUTHOR: Nathan Hall <nrh2@aber.ac.uk>
+AUTHOR: Original hint by Eric Miller <emiller@techskills.com>
+
+DATE: 2003-09-26
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: This will create an functioning duplicate of a finished LFS system.
+
+DESCRIPTION: This is useful for:
+
+	-  Creating a backup of an LFS system on the same physical machine. That
+    way	if something goes wrong in BLFS, users can boot into the Backup system
+    and	repair thier original LFS. (or reverse the process to "restore" thier
+    system to its original state.)
+
+	-  Doing a quick install on another system, e.g. "clone". If you have
+    two identical systems with the same hardware, remove a hard drive from one,
+    mount in the LFS box, and follow the instructions here.
+
+PREREQUISITES:
+
+You will need really only three things to complete this _very_ simple project:
+
+- a finished LFS system
+- access to your original host system
+- some hard drive space, unpartitioned, at least as large as your LFS system
+
+HINT:
+
+Once you have finished building an LFS system, it might be a good idea to create
+a backup of the new system, before continuing with BLFS and other projects. In
+doing so, you can confidently experiment with your new system and not "buy the
+farm" if things go terribly wrong.  A good time to do this is right at the end
+of the LFS book, and before moving on to BLFS.  This hint will explain how to
+create a dual-boot LFS system, using a finished LFS system as a model, without
+doing another install.
+
+If you followed the LFS book, your host system (the one you built LFS from),
+will still be available in lilo. You may, however, have gotten rid of that
+puppy just as soon as you logged into LFS without errors. There are creative
+ways to get around the fact that you may not have access to your original host
+system (the one you built LFS from). You can use the LFS boot CD, or a boot
+floppy with the necessary tools (post to lfs-support for the url to the CD,
+ see other hints for making boot floppies).
+
+Finally, unpartitioned drive space canbe on _any_ installed fixed drive.  You
+can even install a drive from another (identical) system, make this backup,
+re-install the drive in the original system, and you have two LFS systems for
+the price of one! (to do this, you would ignore the editing of fstab, and you
+would need to use a boot-disk to run lilo and make the system bootable)
+
+So, if you have those three things, let's do it!  For this hint, we will use a
+sample system that looks like:
+
+/dev/hda1	Host system
+/dev/hda2	Swap
+/dev/hda3	LFS (original) #we will call this the source
+/dev/hda4	the destination of our "backup" #we will call this the target
+
+Note:  If you are doing this at the end of the LFS book, or after any other big
+jobs, you may want to get rid of /static, /usr/src, and any other big files like
+lfs-sources.tar. You may also want to run the --strip script at the end of the
+book (4.0). This is not necessary, and if you are uncomfortable deleting files
+or running the script, then don't! It will only make your backup (considerably)
+smaller and the process much faster.
+
+********************************************************************************
+STEP-BY-STEP:
+
+-  Boot your system into the original host linux (or Boot CD or floppy).
+
+-  fdisk /dev/hda (or whatever drive you using as the target)
+
+-  Create a primary partition that is at least slightly bigger than the data of
+   the source LFS.  When in doubt, 1GB should be PLENTY for post LFS system.
+
+-  mke2fs /dev/hda4 (change to your situation, use /dev/hd## of target)
+
+-  mkdir /mnt/backup (also mkdir /mnt/lfs, if its not there already!)
+
+-  mount /dev/hda3 /mnt/lfs (change to your situation, use /dev/hd## of source)
+
+-  mount /dev/hda4 /mnt/bckp (change to your situation, use /dev/hd## of target)
+
+-  cd /mnt/lfs (do not forget this, seriously!!!!)
+
+-  cp -Rav * /mnt/backup
+
+-  Take a break.....
+
+-  When cp is complete, do:
+
+	vim /mnt/backup/etc/fstab
+
+   and edit the fstab to include an entry for the new partition.  Refer to the
+   LFS book, ch6, editing FSTAB, for detailed info if you need it.
+
+-  Save the new fstab, reboot the system (shutdown -r now).
+
+-  At the lilo prompt, choose your original (source) LFS system.
+
+-  Login as usual, and do:
+
+	cp /etc/lilo.conf /anydir/anywhere
+	vim /etc/lilo.conf
+
+   Edit lilo to INCLUDE the new (target) system.  The LFS book gives a good
+   example of what lilo.conf should look like, do <man lilo.conf> to see a VERY
+   good example of a dual boot lilo.conf entry.
+
+-  Save the new lilo.conf
+
+-  run lilo (its in your path, just type lilo and <enter>).  Watch for errors!
+   If
+   lilo produces errors, do not proceed!! Check your syntax based on the errors,
+   and edit lilo.conf as needed.  When in doubt, replace the copy of lilo.conf
+   to its original location (/etc) and start over.
+
+-  When lilo exits without error (e.g. wrote *LFS, wrote backup), reboot and
+   choose the new backup system in lilo!
+
+-  login, make sure everything is cool.
+
+-  reboot, choose your original LFS system, proceed to make a mess of it without
+   fear!
+
+********************************************************************************
+
+To "restore" your system back to the point of the backup, just reverse the
+process! By reverse, I don't mean the steps. Simply make a backup of the backup,
+on the partition where the messed up LFS is.  Don't forget to either:
+    * rm -r * in /
+    * mke2fs
+to wipe out all the stuff on the bad partition, otherwise you will "restore" the
+good stuff next to bad stuff.
+
+ACKNOWLEDGEMENTS:
+  * Erik Miller for the original hint
+  * Chris Lingard and others for their help in the original hint
+
+CHANGELOG:
+[2003-09-26]
+  * Hint ownership changed from Erik Miller to Nathan Hall.
+  * Changed the format of the hint to coincide with the new
+    format of the LFS hints.
+
+
+
+

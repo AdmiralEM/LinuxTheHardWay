@@ -1,0 +1,37 @@
+TITLE:		Root Privileges
+LFS VERSION:	any
+AUTHOR:		Nemmy <forever@subdimension.com>
+
+SYNOPSIS:
+	How to prevent file deletion/modification, even from root.
+
+HINT:
+===========================================================================
+Ed. note: as an unknown person explained:
+"I was reading the lfs-hints and I came across the root-priveleges hint. I
+am not sure if this is what was intended by the hint, but it sounds as if
+any user can set this attr to a file and thereby prevent root from being
+able to change/delete, etc.
+
+That is not *quite* true. The superuser has to be the one to set and remove
+the bit from a file. Once superuser sets this bit, then yes it is basically
+unchangeable unless the bit is removed."
+===========================================================================
+
+A less-known feature of the ext2 filesystem:
+
+  you can set a file to not be changable by anyone including root, like so:
+
+        chattr +i somefile.txt
+
+  this can be undone via the command:
+
+        chattr -i somefile.txt
+
+Like this even root can't delete this file. See man chattr for more
+information.
+
+e.g.: chattr +i -R /usr/lib would recursively  change  attributes  of
+directories and their contents.
+
+Source: http://bastille-linux.sourceforge.net/faq.html

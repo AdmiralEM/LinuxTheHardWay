@@ -1,0 +1,878 @@
+TITLE:		uClibc-based bootfloppy
+LFS VERSION:	All (tested against LFS-pre4.0)
+AUTHOR:		Csaba Henk <ekho@math-inst.hu>
+
+SYNOPSIS: 
+	This hints shows a quick and dirty way of creating a
+	cutting-edge bootfloppy from scratch, based on uClibc, a
+	lightweight C library. "Quick and dirty" means using an ad-hoc,
+	non-chroot, but safe development environment. 
+
+VERSION:	0.5
+
+CONTENTS
+
+Introduction
+What do we need?
+Installing uClibc on the development platform
+Setting up the development environment
+Creating the root filesystem
+Installing uClibc for the bootdisk
+Compiling the linux kernel
+Installing busybox
+Installing gpm
+Other programs
+Creating the bootdisk
+Credits, contributions, bugs and weirdnesses
+Appendix A -- the mkbootdisk script
+
+PREFACE
+
+* For the most recent version check out 
+
+http://www.math-inst.hu/~ekho/lowlife/uclibc-bootfloppy.txt
+
+* See changelog at 
+
+http://www.math-inst.hu/~ekho/lowlife/Changelog
+
+* Comments, ideas, critics, flames are welcome.
+
+* (If you are an LFS user, you can skip this.) Although this document is
+formally an LFS hint, you can see use of it without knowing what LFS is
+(I tried to write it keeping this possibility in mind). Anyway, I
+recommend you to check out what LFS is. If you are not familiar with
+compiling source code in unix/linux environment, then there is no use of
+going on without checking out what LFS is. Consult the following docs
+first:
+
+http://www.linuxfromscratch.org/lfs/intro.shtml
+http://www.linuxfromscratch.org/faq/
+http://www.linuxfromscratch.org/view/4.0/chapter02/chapter02.html
+
+HINT
+
+Introduction
+------------
+
+I feel that the bootfloppy created in the BLFS-book is not enough
+customized to its task. It uses the system glibc and the system
+bootscripts. These are overkill for a bootfloppy. Here we will create a
+bootfloppy based on the uClibc C library, which is just made for such
+purposes. 
+
+The bootfloppy will be cutting edge: uses uClibc and Busybox which are
+actively developed projects for the embedded platform. Moreover, I used
+a kernel from the 2.4.* branch (but feel free to use other kernel
+releases). It is a good question to ask whether this is useful: many floppy
+distros use older kernels for reducing resource usage. I can say the
+following: on the one hand, I can afford using a recent kernel as my
+bootfloppy merrily runs on my 486 with 8M RAM; on the other hand, from
+the moment I began to use this up-to-date stuff, the problems with handling
+the terminal buffer and plip timeouts vanished. So unless you are really
+tight in resources, I think using a recent kernel is a good idea. 
+
+We will also use some kind of development environment, just to stay on
+the safe side.
+
+This hint has a continuation: there we will describe how to install the
+svga vncviewer on the bootfloppy, which then becomes capable of turning a
+machine to an X terminal. (Check out the svnc-x_terminal hint:
+
+http://hints.linuxfromscratch.org/hints/svnc-x_terminal.txt
+http://www.math-inst.hu/~ekho/lowlife/svnc-x_terminal.txt
+
+) 
+
+Additional info and downloadable bootdisk image with svnc can be found
+at my homepage (or at its mirror):
+
+http://www.math-inst.hu/~ekho/lowlife/
+http://www.personal.ceu.hu/students/01/Csaba_Henk/lowlife/
+
+In this hint the assumption of using an x86 PC (both for making and
+booting the floppy) and gcc is set. You may try to port it to another
+architecture / compiler. Doing it on another architecture should not
+be hard. Doing it with another compiler depends on how much does
+uClibc support that compiler.  
+
+If you copy command from this hint to your shell, be careful that
+line-terminating backslashes (\) will keep their position (no whitespace
+characters should follow them). A possible solution is open this hint in
+the Vim GUI, and copy'n'paste from there.
+
+What do we need?
+----------------
+
+We will need the following programs; most recent versions are
+recommended.
+
+* Addons for the development platform:
+
+sudo (optional)
+ ftp://ftp.sudo.ws/pub/sudo/
+
+* Programs for the bootfloppy:
+
+linux kernel 
+ http://www.kernel.org
+uClibc
+ http://www.uclibc.org/downloads/
+busybox
+ http://www.busybox.net/downloads/
+gpm (optional)
+ ftp://arcana.linux.it/pub/gpm
+
+Installing uClibc on the development platform
+---------------------------------------------
+
+Usually we will optimize to size; in case of uClibc it's done
+automatically.
+
+In the uClibc source tree type
+
+make menuconfig
+
+uClibc now has a configuration interface similar to that of the linux
+kernel.  Apply the following setting:
+
+Library Installation Options  --->
+	(/lib) Shared library loader path 
+
+Apart from this, the default configuration is quite suitable, probably you need
+not change anything (especially you need not use full math support). However,
+taking a look at the options never hurts; you should make sure that the "Linux
+kernel header location" field is filled in correctly (if the kernel release you
+use for the floppy is not the same as the one used on the development platform,
+you should use the headers of the release used for the floppy), and you may
+consider fine-tuning the target processor type. After you exit, 
+
+make &&
+make install
+
+Further on we assume that you installed uClibc into
+/usr/i386-linux-uclibc/ (the default installation location). 
+
+Setting up the development environment
+--------------------------------------
+
+We definitely need some kind of development environment to protect
+us from mucking up our system; eg., if we are in the file system
+which we will put on the floppy, it is very easy to mistake usr with
+/usr, and without such a protection, you can imagine that this
+mistake can have serious consequences... 
+
+We will create a non-privileged user named bootdisk for doing the
+job. First choose a home directory for bootdisk and store this value
+in $BDISKHOME. Then type:
+
+groupadd bootdisk &&
+useradd -g bootdisk -s /bin/bash -d $BDISKHOME bootdisk &&
+mkdir -p $BDISKHOME &&
+cat > $BDISKHOME/.bash_profile << "EOF"
+export CFLAGS=-Os
+export PATH=/usr/i386-linux-uclibc/bin/:$PATH:$HOME/bin
+export CC=i386-uclibc-gcc
+EOF
+
+Of course, you may specify more cflags, like -march=i486. The above
+setting of the $PATH variable assumes that the usual directories to
+be contained in the path are already set in /etc/profile. 
+
+So the idea is that we will work as user bootdisk; however, there are
+some tasks during the bootdisk creation which require a privileged user
+-- namely, mounting ext2 files and raw-copying to a floppy. 
+
+We can do two things about this problem: 
+
+1) Ignore it, and execute these tasks as root.  
+
+2) Make a script named mkbootdisk for doing this tasks. This script must
+be executable only by root (mode 744). With the help of the sudo utility
+we let the bootdisk user to use this script as well. That is, we put it
+to $BDISKHOME/bin and then type:
+
+echo "
+bootdisk ALL = NOPASSWD: $BDISKHOME/bin/mkbootdisk" >> /etc/sudoers
+     
+A realization of mkbootdisk can be found in Appendix A, or at
+
+http://www.math-inst.hu/~ekho/lowlife/mkbootdisk
+
+Typing "mkbootdisk -h" will print a brief information on usage.
+
+We have the desired environment. We go on compiling the programs. Become
+user bootdisk:
+
+su - bootdisk
+
+In the rest of the hint we will act as user bootdisk (except if you
+don't use the mkbootdisk script: then the appropriate actions are to be
+done as root).
+
+Some of the commands below assume that the actual source archive is
+decompressed in $HOME (which is the same as the prior $BDISKHOME). 
+Software installation instructions always start at the point when the
+source tarball is already decompressed and you entered the source
+directory (unless we explicitely claim to act differently).
+
+Creating the root filesystem
+-----------------------------------------
+
+We will put the files of the root filesysem of the floppy to a directory
+named rfloppy. Firstly we create the directory and a basic tree of
+subdirectories which vaguley resembles the FHS idea:
+
+cd &&
+mkdir -p rfloppy/{dev,proc,etc/init.d,sbin,bin,lib,mnt,usr,var/log} &&
+cat > rfloppy/etc/init.d/rcS << "EOF" &&
+#!/bin/sh
+mount proc /proc -t proc
+EOF
+
+The etc/init.d/rcS file will be the startup script for the floppy. Put
+there what you want to be done in the beginnig -- eg., syslogd, klogd,
+loading modules, starting gpm, etc.  
+
+A very minimal etc directory is used in this setup. Enriching it (with
+files like passwd, group, fstab, modules.conf, and so on) is up to you
+-- this minimalist solution works anyway. 
+
+Installing uClibc for the bootdisk 
+----------------------------------
+
+We copy the necessary libraries of uClibc to the bootdisk.
+
+cp -a /usr/i386-linux-uclibc/lib/{ld-uClibc*,libc.so.0,libuClibc-*} \
+ ~/rfloppy/lib 
+
+Compiling the linux kernel
+---------------------------
+
+We will compile a network-aware kernel optimized to size. We don't give
+a complete reference, we just highlight some crucial points.If you need
+not network-awareness, you may omit TCP/IP netowrking and network
+drivers; but even in this case it is strongly recommended to include
+"Unix domain sockets". 
+
+In the kernel source tree type:
+
+sed -e 's%-O2%-Os%g' -e '/^CFLAGS_KERNEL/s%\(^.*$\)%\1 -Os%' Makefile > \
+ Makefile.tmp &&
+mv Makefile.tmp Makefile
+
+The above commands set optimization for size in the Makefile. Edit the
+Makefile if you want further optimizations. 
+
+Now you should configure the kernel with "make menuconfig". Choose
+carefully the value in the "Processor type and features  --->  Processor
+family" meupoint. When choosing options, it is advised to include only
+those features you really need. Some important ones:
+
+Networking options  --->
+	<*> Unix domain sockets
+	[*] TCP/IP networking
+
+In the "Network device support  --->" menupoint choose those network
+drivers you intend to use. If you want to use plip, choose it as a
+module, and also set:
+
+Parallel port support  --->
+	<*> Parallel port support
+	<M>   PC-style hardware
+
+This is advised because of the following: as I experienced, if no
+option is given, the kernel initializes the parallel port (PC-style)
+IRQ-less!  At boot time we won't have the possibility to pass options
+to the kernel, as we won't use a boot loader or initrd. Thus we can
+set the appropriate IRQ value only if we load the parallel port
+driver as module. Also, to gain more control over the NIC drivers,
+consider building them as modules.
+
+In this hint we use the devfs facility, so choose 
+
+File systems  --->
+	[*] /dev file system support
+  	[*]   Automatically mount at boot
+
+(See a more detailed description in the devfs hint:
+
+http://hints.linuxfromscratch.org/hints/devfs.txt
+
+). 
+
+And don't forget to include support for the mouse type you will use with
+the bootfloppy (if you will use any). 
+
+Now compile the kernel with the 
+
+make dep && make bzImage && make modules
+
+commands. Then type
+
+mkdir $HOME/rfloppy/lib/modules
+
+and copy the NIC driver modules from the drivers/net directory to
+$HOME/rfloppy/lib/modules, and also the other modules you built. Eg., if
+you use plip, you will need the drivers/parport/parport_pc.o
+module.
+ 
+We assume that you do not delete the kernel source. If you do want
+to delete it, copy arch/i368/boot/bzImage to a safe place before doing
+so.
+
+If you have troubles with configuring the kernel properly, my .config file
+might be of your help:
+
+http://www.math-inst.hu/~ekho/lowlife/linux-2.4.19/.config
+
+Installing busybox
+------------------
+
+Before making it, adjust the Config.h file according to your needs. To
+make busybox work with devfs, be sure that the 
+
+#define BB_FEATURE_DEVFS
+
+line is uncommented (not prefixed with "//"); and it is advised to
+enable standard Unix utilities, moreover if you want to use network with
+the floppy, consider uncommenting: 
+
+#define BB_IFCONFIG
+#define BB_TELNET
+#define BB_TFTP
+#define BB_FEATURE_IFCONFIG_STATUS
+
+Then install it with
+
+make CROSS=i386-uclibc- &&
+make PREFIX=$HOME/rfloppy install
+
+If you have troubles with configuring busybox properly, my Config.h file
+might be of your help:
+
+http://www.math-inst.hu/~ekho/lowlife/busybox-0.60.5/Config.h
+
+Installing gpm
+--------------
+
+Having mouse at the console is not necessary, but very comfortable for a
+bootfloppy as well. If you want it, install gpm by running the following
+commands:
+
+export LDFLAGS="-lm" &&
+./configure &&
+make && 
+unset LDFLAGS &&
+strip src/gpm &&
+mkdir -p $HOME/rfloppy/{usr/sbin,var/run} &&
+cp src/gpm $HOME/rfloppy/usr/sbin &&
+cp -a /usr/i386-linux-uclibc/lib/{libm-*,libm.so.0} ~/rfloppy/lib
+
+[The /var/run directory is needed for gpm at runtime.]
+
+Other programs
+--------------
+
+Now if there is anything more you want to have on the floppy, compile it
+and put it to the appropriate place under $HOME/rfloppy. A list of some
+possible extensions: 
+
+* devfsd (
+
+http://ftp.kernel.org/pub/linux/daemons/devfsd/
+
+) is not necessary for the bootfloppy, devfs work fine without it. So
+install it only if you know what you are doing. However, it needs to be
+hacked to get it compiled against uClibc. There is a patch for devfsd at 
+
+http://www.math-inst.hu/~ekho/lowlife/devfsd-1.3.25-uclibc.patch
+
+and you can find some explanation on it at
+
+http://www.math-inst.hu/~ekho/lowlife/
+
+Note that devfsd depends on the libdl.so.0 library of uClibc (which is a
+symlink to libdl-0.9.*.so). You have to put these to the /lib of your
+filesystem.
+
+* The svnc-x_terminal hint tells you how to compile and install svgalib
+and the svga vncviewer to the floppy, giving the bootfloppy the
+capabilities of an X terminal.
+
+* You can put tinylogin (
+
+http://tinylogin.busybox.net/
+
+) to the floppy if you want a correct login system on it (with the
+configuration described in this hint you just get a prompt after
+booting).
+
+* You can put utelnetd ( 
+
+http://www.pengutronix.de/software/utelnetd_en.html
+
+) to the floppy if you want to access it remotely. However, don't forget
+that communication is not encrypted under telnet!
+
+* One more useful program is hdparm (
+
+http://ftp.ibiblio.org/pub/Linux/system/hardware
+
+): if you boot with this floppy, the harddisk is probably not used, but
+still is a source of noise by its spinning. You can stop it with
+hdparm. (See its -y option.)
+
+Creating the bootdisk
+---------------------
+
+Put a floppy to the floppy drive. If you use the mkbootdisk script,
+check whether the device name of the floppy drive is set correctly in
+the script (it is set to /dev/fd0 and no option can change it, in order
+to prevent the bootdisk user in being able to muck up the development
+platform), and whether the $MKE2FSAPP, $RDEVAPP variables in the script
+store the correct path to the mke2fs, rdev utilities in your system
+(they should if you follow standards). If everything is fine, simply run 
+
+cd &&
+sudo mkbootdisk
+
+If you don't use the mkbootdisk script, become root, store the name of
+your floppy device (typically /dev/fd0) in the variable $DISK. Now its
+time to find out how big the root filesystem of the floppy should be,
+and how much inodes should it have. Concerning the size, I think the
+size of the stuff in the rfloppy directory + 150k is enough; concerning
+the number of inodes, I think the number of files in rfloppy + 100 is
+enough. But you should know. Store the chosen filesystem size in the
+variable $SIZE (the number of kilobytes), and the chosen number of
+inodes in the variable $INODES. Then type the following:
+
+cd $BDISKHOME &&
+# We we create and compress the root filesystem of the floppy:
+dd if=/dev/zero of=rootfs bs=1k count=$SIZE &&
+yes | mke2fs -m 0 -N $INODES rootfs &&
+mkdir -p loop &&
+mount rootfs -o loop loop &&
+rmdir loop/lost+found &&
+cp -a rfloppy/* loop &&
+chown -R 0:0 loop/* &&
+umount loop &&
+dd if=rootfs bs=1k | gzip -v9 > rootfs.gz 
+
+Now check whether rootfs.gz and your kernel image
+(linux-2.4.*/arch/i386/boot/bzImage) fit on a floppy together (a floppy
+is of 1440k usually but it can be formatted to bigger sizes as well). If
+everything is fine, go on:
+
+# We copy the kernel to the floppy:
+let KERNELSIZE=`dd bs=1k of=$DISK < linux-2.4.*/arch/i386/boot/bzImage 2>&1 | 
+ sed -n '1s%\([0-9][0-9]*\).*%\1%p'`+1 &&
+# We perform some adjustments on the kernel copied to the floppy:
+rdev $DISK 0,0 &&
+rdev -R $DISK 0 &&
+rdev -r $DISK `expr 16384 + $KERNELSIZE` &&
+# Finally we copy the compressed filesystem to its appropriate place \
+# on the floppy:
+dd if=rootfs.gz of=$DISK bs=1k seek=$KERNELSIZE
+
+[Explanation -- also for those who wonder how the mkbootdisk script
+works
+
+"yes | mke2fs -m 0 -N $INODES rootfs":
+
+This pipe construct is a common trick for answering stupid questions
+non-interactively.
+
+"# We copy the kernel to the floppy" :
+
+In the command after this comment we not only copy the kernel to floppy,
+but we also store the number of transferred kb's in the variable
+$KERNELSIZE.
+
+"# We perform some adjustments on the kernel copied to the floppy" :
+
+We won't have a bootloader to tell the kernel where to find its root
+filesystem. The commands after this comment set some specified bits
+in the kernel, thus hardwiring the location of the root filesystem to
+it: firstly, we tell the kernel to seek for the filesystem in the
+floppy, secondly, we tell the kernel that a ramdisk is to be made and
+the filesystem is to be decompressed to it, thirdly, we tell the
+kernel the location of the filesystem within the floppy. The number
+16384 = 2^14 is used for shifting within the range of bits in the
+kernel devoted for describing these data. For more information
+consult with the Bootdisk HOWTO available at tldp.org. 
+
+"# Finally we copy [...]" :
+
+In the dd command after this comment we use the seek option to copy the
+compressed filesystem nicely after the kernel image.]
+
+Now you have the floppy, boot & enjoy! 
+
+Credits, contributions, bugs and weirdnesses
+--------------------------------------------
+
+See it in the svnc-x_terminal hint.
+
+
+
+* * * Appendices * * *
+
+
+
+Appendix A -- the mkbootdisk script
+-----------------------------------
+
+If you copy and paste the script below to a separate file, be careful
+that line-terminating backslashes (\) will keep their position in the
+separate file (no whitespace characters should follow them).
+
+%%%<mkbootdisk>%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#!/bin/bash
+
+#
+# A script for making the bootdisk creation process easy and safe 
+#
+# If you develop your own floppy linux, then it is advised to do it as a 
+# non-privileged user (in order to not suck if you happen to do
+# something  stupid :), and use this (root owned and executable) script
+# via the sudo utility. 
+
+# Below are some values set. Adjust them if necessary.
+
+
+DISK=/dev/fd0
+DEVICE="$DISK"
+FSDIR=rfloppy
+unset FSGZ
+KERNEL=linux-`uname -r`/arch/i386/boot/bzImage
+TOADD=16384 # Comes from kernel internals, do no change!
+MKE2FSAPP=/sbin/mke2fs
+RDEVAPP=/usr/sbin/rdev # The $MKE2FSAPP and $RDEVAPP variables contain \
+# an absolute path because of the following: \
+# by my idea this script is used by a non-privileged user (via sudo) \
+# whose path does not contain the mke2fs, rdev executables 
+MKBOOTREC="$HOME"/.mkbootdisk
+EXTRA_SIZE=150 # Free space left on root filesystem of floppy
+EXTRA_INODES=100 # Free inodes left on filesystem of floppy
+FLOPPYSIZE=1440
+VERSION="0.5"
+
+# Do not edit what follows unless your intention is hacking!
+
+firstcheck=yes  
+compress=yes # Any value other than "no" defaults to production of a \
+#gzipped rootfs 
+KERNELSIZE=x
+[ -s "$MKBOOTREC" ] && KERNELSIZE=`cat "$MKBOOTREC"`
+dokernelcopy=no # Becomes yes if $KERNELSIZE set to a numerical value
+unset TMPDIR
+manuallysetkernelsize=no # This variable tracks down whether -r option is used
+
+#
+# Usage
+#
+
+if [ "$1" = "-h" -o "$1" = "--help" ]; then 
+	echo "\
+----------------
+Bootdisk creation utility, version $VERSION. Usage:
+With -h or --help being the 1st arg, this help is shown; otherwise
+
+`basename "$0"` -k kernelimg -f filesys_dir -s filesys_size -i filesys_inodes \\
+-r kernelimg_size -c floppy_size [-g gzipped_filesys -d]
+
+where \"kernelimg\" is the linux kernel image to be booted by the floppy,
+and \"filesys_dir\" contains the files to be put in the root filesystem.
+
+Default values are: 
+-k $KERNEL 
+-f $FSDIR 
+-s <size of files in filesys_dir + ${EXTRA_SIZE}k> 
+-i <number of files in filesys_dir + ${EXTRA_INODES}>
+-r \`cat ~/`basename "$MKBOOTREC"`\`, or x if ~/`basename \
+"$MKBOOTREC"` is empty or does not exist 
+-c $FLOPPYSIZE
+
+Explanations of options:
+-r kernelimg_size	a kernelimg of the given size (in kb) is supposed to be
+ 			on the disk and kernel copying is skipped, unless size 
+			is x instead of a number
+-g gzipped_filesys	gzipped_filesys is copied to the disk
+			(instead of the contents of filesys_dir)
+-d  			the floppyimage is written to stdout instead of $DISK
+-c floppy_size 		if the floppy image were bigger than floppy_size 
+			(in kb), the process is aborted, unless floppy_size is 
+			x instead of a number
+
+Further comments:
+
+If kernel is copied and -r was used with a non-numerical value, its size
+is stored in ~/`basename "${MKBOOTREC}"` (delete that file before using a
+new kernel image, or use -r x !!)
+
+For sake of safety, `basename "$0"` utilizes mktemp; if you don't have it
+temporary file creation is still done as safely as it's possible
+
+Example:
+* A compressed filesystem is produced from the contents of filesys_dir by
+	`basename "$0"` -r 0 -d > rootfs.gz
+* A floppy can be made using this compressed filesystem by
+	`basename "$0"` -g rootfs.gz
+----------------"
+	exit 1
+fi
+
+
+#
+# Getting options
+#
+
+while getopts "g:k:f:dr:c:s:i:" option; do
+	case $option in 
+		g) FSGZ="$OPTARG"
+		   compress=no;;
+		k) KERNEL="$OPTARG";;
+		f) FSDIR="$OPTARG";;
+		d) DEVICE="&1";;
+		r) KERNELSIZE="$OPTARG"
+		   [ "$OPTARG" -ge 0 ] &>/dev/null && 
+		   manuallysetkernelsize=yes;;
+		c) FLOPPYSIZE="$OPTARG";;
+		i) INODES="$OPTARG";; 
+		s) SIZE="$OPTARG";;
+		*) exit 1;;
+	 esac
+done
+
+
+
+
+#
+# Functions
+#
+
+#
+# Auxiliary fnc's
+
+
+# gzipimp -- the concrete way of doing the compression
+
+gzipimp()
+{
+	dd if=$1 bs=1k | gzip -v9 > $2
+	# I could not figure out why it is the way to do gzipping, but this is
+	# what is suggested by the clever guys. I'd be happy to be informed
+	# about it...
+} 
+
+#cleanup -- removes temporary files
+
+cleanup()
+{
+	[ -e "$TMPDIR" ] && echo "Removing temporary files..." >&2 
+	rm -rf "$TMPDIR" >&2 
+}
+
+#error -- if something goes wrong... 
+
+error()
+{
+	echo Error: "$1" >&2
+	cleanup
+	exit 1
+} 
+
+#maketmpdir -- creates a tmp dir as safely as possible
+
+maketmpdir()
+{
+	if ! TMPDIR=`mktemp -d /tmp/mkbootdisk.$$.XXXXXXXXXX 2>/dev/null`
+	then
+		TMPDIR=/tmp/mkbootdisk.$$.$RANDOM$RANDOM &&
+		rm -rf "$TMPDIR" &&
+		mkdir -m 700 "$TMPDIR"
+	fi ||
+	error "Unable to create temporary directory"	 
+}
+
+#findoutFSGZ -- finds out the appropriate value of $FSGZ
+
+findoutFSGZ()
+{
+	[ $compress = yes ] && FSGZ="$TMPDIR"/mkbootdisk-gzipped_fs
+}
+
+#
+# Important fnc's
+
+
+# check -- checks the validity of arguments
+
+check()
+{
+	for v in RDEVAPP MKE2FSAPP; do #Checking whether these apps can be found
+		[ -x "`eval echo \\$$v`" ] ||
+		error \
+"the value of \$$v is wrong -- `eval echo \\$$v` is not an executable"
+	done
+
+	for v in SIZE INODES; do # Syntax check of variables
+		[ -z "`eval echo \\$$v`" ] ||
+		[ "`eval echo \\$$v`" -ge 0 ] &>/dev/null || 
+		error \
+"wrong value for option -- \$$v is not a non-negative integer"  
+	done
+
+	for v in FLOPPYSIZE KERNELSIZE; do 
+		[ "`eval echo \\$$v`" = x ] ||
+		[ "`eval echo \\$$v`" -ge 0 ] &>/dev/null ||
+		error \
+"Wrong value for option -- \$$v is neither x, nor non-negative integer"
+	done
+
+	if [ "$compress" != no ]; then # checking whether $FSDIR is a directory
+		[ "`file -bL "$FSDIR"`" = directory ] ||
+		error "$FSDIR is not a directory."
+	fi
+
+	if [ $KERNELSIZE = x ]; then #checking whether the kernelimg exists
+		[ "`file -bL "$KERNEL"`" = 'x86 boot sector' ] || 
+		error "$KERNEL is not a kernelimg." 
+	else 
+		[ "$firstcheck" = yes ] && 
+		echo \
+"A kernelimg of size $KERNELSIZE is supposed to be on the disk,
+kernel copying is skipped" >&2 
+	fi
+ 
+	if [ "$compress" = no ]; then #checking whether the gzipped fs exists
+		file -bL "$FSGZ" | grep \
+		'gzip compressed data' > /dev/null || 
+		error "$FSGZ is not a gzipped file"
+		[ "$firstcheck" = yes ] && 
+		echo \
+"An existing compressed filesystem is used as root filesystem,
+filesystem creation is skipped." >&2 
+	fi
+
+	firstcheck= 
+}
+
+# getfsdata -- Finds out size and inode number param's of the filesystem
+# to be created
+
+getfsdata()
+{
+	if [ $compress = yes ]; then
+		[ -z "$SIZE" ] &&
+		SIZE=$(expr $EXTRA_SIZE + `du -sD "$FSDIR" | awk '{print $1}'`)
+	
+		[ -z "$INODES" ] &&
+		INODES=$(expr $EXTRA_INODES + `find "$FSDIR" -follow | wc -l`)
+
+	fi
+}
+
+# compressfs -- Adjusts and compresses the filesystem
+# (Now also creates the filesys but the name is kept)
+
+compressfs()
+{
+	[ "$compress" = no ] && return 0
+	compress=no
+
+	tmpfs="$TMPDIR"/mkbootdisk-rfloppy
+	tmpmountpt="$TMPDIR"/mkbootdisk-mountpt
+ 
+	echo \
+"Creating an ext2 filesystem of size ${SIZE}k and with $INODES inodes" >&2
+	dd if=/dev/zero of="$tmpfs" bs=1k count=$SIZE
+	yes | "$MKE2FSAPP" -m 0 -N $INODES "$tmpfs" > /dev/null 
+	mkdir -p "$tmpmountpt"
+	mount "$tmpfs" -o loop "$tmpmountpt"
+	rmdir "$tmpmountpt"/lost+found 
+	cp -a "$FSDIR"/* "$tmpmountpt"
+	chown -R 0:0 "$tmpmountpt"/*
+	if umount "$tmpmountpt"; then
+		echo "Compressing the filesystem..." >&2
+		gzipimp "$tmpfs" "$FSGZ"
+	else
+		error "some problem occured with unmounting the file system."
+	fi
+}
+
+
+# floppysizecheck -- checks whether will be enough space on floppy
+
+floppysizecheck()
+{
+	[ $FLOPPYSIZE = x ] && return 0
+	FSGZSIZE=$(( `dd if="$FSGZ" of=/dev/null bs=1k 2>&1 |
+	 sed -n '1s%\([0-9][0-9]*\).*%\1%p'` + 1 ))
+	[ $(($KERNELSIZE + $FSGZSIZE)) -gt $FLOPPYSIZE ] &&
+	error "
+size of kernel: 	       $KERNELSIZE
+size of compressed filesystem: $FSGZSIZE
+are altogether:		       $KERNELSIZE + $FSGZSIZE = \
+$(($KERNELSIZE + $FSGZSIZE))
+which exceeds your floppy size ($FLOPPYSIZE)"
+}
+
+# kernelcopy -- copies and installs the kernelimg to disk
+
+kernelcopy()
+{
+	[ $KERNELSIZE = x ] || return 0
+ 
+	tmpdiskimg="$TMPDIR"/mkbootdisk-diskimg 
+	echo Copying kernel to diskimage file... >&2
+	KERNELSIZE=$(( `dd if="$KERNEL" of="$tmpdiskimg" bs=1k 2>&1 |
+	 sed -n '1s%\([0-9][0-9]*\).*%\1%p'` + 1 )) ||
+	error "cannot create disk image file" 
+	echo $(( $KERNELSIZE - 1 ))+1 records in/out >&2
+	[ $manuallysetkernelsize = yes ] || echo $KERNELSIZE > "$MKBOOTREC" 
+
+	echo Adjusting the kernelimg to mount the file system as rootfs... >&2 
+	"$RDEVAPP" "$tmpdiskimg" 0,0 
+	"$RDEVAPP" -R "$tmpdiskimg" 0
+	"$RDEVAPP" -r "$tmpdiskimg" `expr $TOADD + $KERNELSIZE`
+	dokernelcopy=yes
+}
+
+diskwrite()
+{
+	if [ $dokernelcopy = yes ]; then 
+		echo "Completing the diskimage..." >&2
+		dd if="$FSGZ" of="$tmpdiskimg" bs=1k seek=$KERNELSIZE 
+		echo Writing the diskimage to device... >&2
+		eval "dd if=$tmpdiskimg bs=1k >$DEVICE" 
+	elif [ $dokernelcopy = no ]; then
+		echo Writing the compressed file system to device... >&2
+		eval "dd bs=1k seek=$KERNELSIZE >$DEVICE" < "$FSGZ"
+	else
+		error 'bogus value for $dokernelcopy' 
+	fi || 
+	error "it seems that there is some problem with the target device."
+}
+
+
+#
+# Program body
+#
+
+maketmpdir
+findoutFSGZ
+check
+getfsdata
+compressfs
+kernelcopy
+floppysizecheck
+check
+diskwrite
+cleanup
+exit 0
+%%%</mkbootdisk>%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+END of "uClibc-based bootfloppy" hint

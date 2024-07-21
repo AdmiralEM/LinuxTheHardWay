@@ -1,0 +1,123 @@
+TITLE:		lm_sensors
+LFS VERSION:	3.0
+AUTHOR:		Adam Ottley (aottley@shaw.ca)
+
+SYNOPSIS:
+	lm_sensors is a set of drivers for hardware monitoring devices such as
+the lm7x series.  It depends upon the i2c set of kernel drivers for accessing
+the devices.
+
+HINT:
+
+	From the lm_sensors homepage at http://www.netroedge.com/~lm78/,
+download the lm_sensors-2.6.2.tar.gz package.  If you have kernel 2.4.12 or
+earlier, you also need the i2c-2.6.2.tar.gz package.  Kernel versions 2.4.13
+and later have version 2.6.1 of the i2c package, but you should check the i2c
+changelog to see if any bugs were fixed that affect your hardware.
+
+If you have an IBM ThinkPad, don't even think about installing lm_sensors.
+It will ruin your laptop and force you to send it to the factory for fixing.
+
+-------------------------
+
+
+Configuring the kernel
+
+The lm_sensors package requires a configured kernel tree.  Configure the
+kernel with your options of preference, then run "make dep" to finish
+generating the files that lm_sensors needs.
+
+If you're using the kernel's built-in i2c support, set the following options
+under the Character Devices/I2C Support to either Y or M before building:
+
+- I2C support
+- I2C bit banging interfaces
+- I2C device interface
+- I2C /proc interface
+
+
+-------------------------
+
+
+Installing the i2c package
+
+Take a look at the top-level Makefile in the i2c-2.6.2 directory.  Point the
+LINUX variable to your Linux source tree and the LINUX_INCLUDE_DIR variable to
+where you want the i2c headers installed (default /usr/local/include/linux).
+To build and install the i2c modules into the /lib/modules/<kernelversion>/misc
+directory, just run:
+
+  make &&
+  make install
+
+
+-------------------------
+
+
+Installing the lm_sensors package
+
+Again, look at the top-level makefile and point the LINUX variable to your
+kernel source tree, point I2C_HEADERS to where you installed the i2c headers
+(point it to your kernel tree if you used the kernel's built-in i2c), change
+PREFIX to where you want the programs and libraries installed, and adjust any
+other variables to suit your machine.  Once that's done, run:
+
+  make &&
+  make install
+
+to install the modules, programs and libs.
+
+
+-------------------------
+
+
+Configuration
+
+First, you should create the i2c-* device files with the MAKEDEV script in
+/dev:
+
+  cd /dev
+  ./MAKEDEV i2c
+
+In the prog/detect directory in the lm_sensors source tree there is a perl
+script called sensors-detect that will ask a few questions, detect what i2c
+module you need, and probe the i2c bus on your chipset for devices.  After
+the probe, it'll give you a list of commands to place in your rc.local so
+that the proper modules are loaded upon startup, as well as the lines you
+need to put in /etc/modules.conf.
+
+The lm_sensors installation puts a sample sensors.conf file in the /etc
+directory.  Look around in that file and make any changes you want.  It's
+very verbosely commented.
+
+To test the package, load the modules the sensors-detect script told you,
+then run "sensors".  A sample output would be:
+
+lm79-i2c-0-2d
+Adapter: SMBus PIIX4 adapter at 5000
+Algorithm: Non-I2C SMBus adapter
+VCore 1:   +2.03 V  (min =  +1.90 V, max =  +2.09 V)
++3.3V:     +3.32 V  (min =  +3.13 V, max =  +3.45 V)
++5V:       +5.02 V  (min =  +4.72 V, max =  +5.24 V)
++12V:     +11.67 V  (min = +11.36 V, max = +12.58 V)
+-12V:     -11.89 V  (min = -11.33 V, max = -12.55 V)
+-5V:       -5.07 V  (min =  -4.74 V, max =  -5.24 V)
+fan1:     2518 RPM  (min = 1500 RPM, div = 4)
+fan3:     4218 RPM  (min = 3000 RPM, div = 2)
+temp:      +37.0°C  (limit =  +60°C, hysteresis =  +50°C)
+vid:      +2.00 V
+alarms:   Board temperature input (usually LM75 chips)
+alarms:   Chassis intrusion detection
+
+
+You might see a few ALARMs in your first check, but don't panic.  They could
+very well be unconnected inputs or bad fan divisors.  Check the lm_sensors
+FAQ before you start worrying.
+(http://www2.lm-sensors.nu/~lm78/cvs/lm_sensors2/doc/FAQ)
+
+
+-------------------------
+
+
+With the base system in place, you can now get other programs (i.e. gkrellm,
+ksysguard) to use lm_sensors for system monitoring.

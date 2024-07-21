@@ -1,0 +1,156 @@
+AUTHOR: Tushar Teredesai <tushar AT linuxfromscratch DOT org>
+
+DATE: 2006-02-14
+
+LICENSE: BSD
+
+SYNOPSIS: Installing multiple autotool versions in parallel.
+
+DESCRIPTION:
+GNU's autotools comprises of three packages:
+* autoconf: <http://www.gnu.org/gnu/autoconf/>
+* automake: <http://www.gnu.org/gnu/automake/>
+* libtool: <http://www.gnu.org/gnu/libtool/>
+Details on how to use these packages can be found at their homepage. Also
+refer to the autotools hint.
+
+There are some misconceptions in the LFS community regarding autotools. Before
+going into the installation details, we will first tackle these
+misconceptions.
+* Misconception: Autotools are a "core" part of a system.
+  Counter argument: These tools are useless for most of the LFSers. They are
+  only useful for folks who are maintaining an autotools based package.
+  Someone compiling a package from source only needs autotools if they have a
+  patch that requires the package to be re-autoconfed. Currently there is a
+  grand total of 4 packages in BLFS and 0 packages in LFS that need autotools.
+  And perhaps, that requirement can be removed if a patch is generated that
+  patches the final files instead of the .in or .am files.
+* Misconception: I only need the latest version of the tools.
+  Counter argument: The various versions of autotools are not compatible with
+  each other. That is why all the distributions install multiple versions of
+  these packages in parallel. The various autotool versions are more like
+  glib-1.x and glib-2.x series. If a package needs glib-1.x branch, you cannot
+  just expect it to work with glib-2.x branch. The distributions install the
+  following versions of packages:
+  - autoconf: 2.13 2.59
+  - automake: 1.4-p6 1.5 1.6.3 1.7.9 1.8.5 1.9.6
+  - libtool: 1.5.20
+
+This hint details a way to install these multiple versions in parallel and
+allow you to choose which version to use. The general way to only install
+versions that you need, when you need it.
+
+ATTACHMENTS:
+* http://www.linuxfromscratch.org/hints/downloads/attachments/autotools-multiversion/autoconf-wrapper
+* http://www.linuxfromscratch.org/hints/downloads/attachments/autotools-multiversion/automake-wrapper
+(Note: The following patches are optional but recommended)
+* http://www.linuxfromscratch.org/patches/downloads/autoconf/autoconf-2.13-race.patch
+* http://www.linuxfromscratch.org/patches/downloads/autoconf/autoconf-2.13-fedora_macro_fixes-1.patch
+* http://www.linuxfromscratch.org/patches/downloads/automake/automake-1.4-p6-fedora_fixes.patch
+* http://www.linuxfromscratch.org/patches/downloads/automake/automake-1.5-fedora_fixes.patch
+
+PREREQUISITES:
+None.
+
+HINT:
+
+The multiple versions will be installed by making use of the --program-suffix
+argument to the configure script. Then a wrapper script is installed that will
+use the appropriate version based on the value of an envar. If no variable is
+declared, the latest version is used.
+
+* Installation of autoconf-2.13:
+    patch -Np1 -i ../autoconf-2.13-race.patch
+    patch -Np1 -i ../autoconf-2.13-fedora_macro_fixes-1.patch
+    ./configure --prefix=/usr --program-suffix=-2.13
+    make acdatadir=/usr/share/autoconf-2.13
+    make acdatadir=/usr/share/autoconf-2.13 install
+
+* Installation of autoconf-2.59:
+    ./configure --prefix=/usr --program-suffix=-2.59
+    make pkgdatadir=/usr/share/autoconf-2.59
+    make pkgdatadir=/usr/share/autoconf-2.59 install
+
+* Installation of automake-1.4-p6:
+    patch -Np1 -i ../automake-1.4-p6-fedora_fixes.patch
+    ./configure --prefix=/usr --program-suffix=-1.4
+    make
+    make install
+    rm -v -f /usr/bin/*-1.4-1.4
+
+* Installation of automake-1.5:
+    patch -Np1 -i ../automake-1.5-fedora_fixes.patch
+    ./configure --prefix=/usr --program-suffix=-1.5
+    make
+    make install
+    rm -v -f /usr/bin/*-1.5-1.5
+
+* Installation of automake-1.6.3:
+    ./configure --prefix=/usr --program-suffix=-1.6
+    make
+    make install
+    rm -v -f /usr/bin/*-1.6-1.6
+
+* Installation of automake=1.7.9:
+    ./configure --prefix=/usr --program-suffix=-1.7
+    make
+    make install
+    rm -v -f /usr/bin/*-1.7-1.7
+
+* Installation of automake-1.8.5:
+    ./configure --prefix=/usr --program-suffix=-1.8
+    make
+    make install
+    rm -v -f /usr/bin/*-1.8-1.8
+
+* Installation of automake-1.9.6:
+    ./configure --prefix=/usr --program-suffix=-1.9
+    make
+    make install
+    rm -v -f /usr/bin/*-1.9-1.9
+
+* Installation of autoconf-wrapper:
+    install -v autoconf-wrapper /usr/bin
+    ln -v -sf autoconf-wrapper /usr/bin/autoconf
+    ln -v -sf autoconf-wrapper /usr/bin/autoheader
+    ln -v -sf autoconf-wrapper /usr/bin/autom4te
+    ln -v -sf autoconf-wrapper /usr/bin/autoreconf
+    ln -v -sf autoconf-wrapper /usr/bin/autoscan
+    ln -v -sf autoconf-wrapper /usr/bin/autoupdate
+    ln -v -sf autoconf-wrapper /usr/bin/ifnames
+
+* Installation of automake-wrapper:
+    install -v automake-wrapper /usr/bin
+    ln -v -sf automake-wrapper /usr/bin/aclocal
+    ln -v -sf automake-wrapper /usr/bin/automake
+
+* Installation of libtool-1.5.20:
+    ./configure --prefix=/usr
+    make
+    make install
+
+* Using a specific version of autotools:
+By default, autoconf-2.59 and automake-1.9 are used.
+
+To use a particular version of autoconf, export the envar WANT_AUTOCONF.
+Alternately, run the version specific executable.
+
+To use a particular version of automake, export the evnar WANT_AUTOMAKE.
+Alternately, run the version specific executable.
+
+To identify which version you would need to regenerate the files, use the
+following:
+* For autoconf, check the file configure. It will have the version of autoconf
+  that was used to generate the package.
+* For automake, check the file Makefile.in. It will have the version of
+  automake that was used to generate the package.
+
+ACKNOWLEDGEMENTS:
+  * Gentoo and Fedora maintainers.
+
+CHANGELOG:
+[2005-12-09]
+  * Initial Version of the hint.
+[2006-02-14]
+  * Smrutee: Happy Valentine's Day.
+  * Corrected patch download location. Thanks to Geoff Johnson.

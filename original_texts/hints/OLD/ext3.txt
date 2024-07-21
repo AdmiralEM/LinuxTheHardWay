@@ -1,0 +1,37 @@
+TITLE:		Ext3 hint
+LFS VERSION:	All kernel 2.4 and later versions
+AUTHOR:		Hywel Mallett <circular@hmallett.co.uk>
+
+SYNOPSIS:	How to use Ext3 if you don't want ReiserFS
+
+HINT:
+The ext3 filesystem has the advantage over ReiserFS that it is
+backward-compatible with ext2, and that conversion from ext2 to ext3 is trivial
+(e.g. if you have a separate /home partition).
+
+1. Don't bother building reiserfs-utils. (You may if you wish, but unless you
+are going to use ReiserFS elsewhere, there is no benefit).
+
+2. When building your kernel, ensure you compile in ext3 support. This may be as
+a module or built into the kernel. However, should you wish to have an ext3 root
+partition, then it must be compiled into the kernel.
+
+3. Edit the /etc/fstab file, changing the filesystem type to auto. You may
+alternatively change it to ext3, but should you accidentally build a kernel with
+only ext2 support, it will not recognise the ext3 filesystem type.
+
+4. For each partition on which you wish to use ext3, run:
+	tune2fs -j /dev/<partition>
+   This will create the journal on the same partition.
+
+5. Remount the relevant partitions. (Or simply reboot)
+
+Once you are up and running, it may be an idea to check the tune2fs man page, to
+find what other options are available, particularly the fsck frequency. Since the
+idea of a journalling filesystem is to prevent unwanted fscks, you may wish to
+disable them entirely. An alternative way to do this is to change the sixth field
+in the /etc/fstab file to 0. On systems where extra downtime may not be such a
+problem, you may wish to leave the fscks enabled. In addition, you may like to
+create the journal on a different drive.
+Additional information is available at
+http://www.zip.com.au/~akpm/linux/ext3/ext3-usage.html

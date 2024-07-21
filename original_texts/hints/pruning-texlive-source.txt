@@ -1,0 +1,248 @@
+﻿Nores on reducing the size of installed texlive-from-source.
+------------------------------------------------------------
+
+AUTHOR:
+
+Ken Moffat <zarniwhoop at ntlworld dot com>
+
+Comments can be sent to the blfs-dev or blfs-support lists at
+linuxfromscratch (subscription required).
+
+DATE:
+
+2023-07-30
+
+LICENSE:
+
+CC-BY https://creativecommons.org/licenses/by/4.0/
+(c) 2023 Ken Moffat
+
+SYNOPSIS:
+
+Reduce the space occupied by a full texlive install.
+
+DESCRIPTION:
+
+A full BLFS install of texlive from source takes 7.7GB before asy,
+biber, dvisvgm and xindy are added.  On a small partition that can cause
+problems, and it increases the space needed for backups.  Almost nobody
+will use everything that is included in current texlive.
+
+PREREQUISITES:
+
+Texlive source install (the separate worked example is specific to
+TL2023 and to my requirements, but the methods should work in the
+future for however you use TexLive (provided you have determined what
+sorts of documents you wish to render)).
+
+HINT:
+
+1. introduction
+---------------
+
+In BLFS we make a full install of almost everything shipped in the
+texlive-source tarball (except dvisvgm) and then provide separate
+instructions for building xindy and for the current versions of
+asy (asymptote), biber and dvisvgm.
+
+The resulting install is large (7.7GB for texlive source) and on
+one of my machines that gives me problems (I reuse filesystems after
+a while, and before that I back them up from time to time using
+rsync - I have to keep an eye on the space used for doing that, and
+I have no wish to repartition that machine.
+
+Examination shows there are vast numbers of files in texlive, in
+particular it includes source in gnu style so that everything can be
+modified and recreated if you have the tools (e.g. fonts) as well as
+all the original tfm and type1 fonts as well as modern TrueType and
+OTF fonts.
+
+It also contains many packages, a large number of which are either
+obsolete or only for specific usages (e.g. typesetting equations - an
+original requirement for Knuth but no use to a non-scientist,
+typesetting music (normal notation, tablature, gregorian chant) and
+many packages specific to old (non-unicode) character sets.
+
+In addition most packages provide documentation, both as tex source
+and as pdf files.  ConTeXt provides a lot of documentation and examples
+including much that dates back to its early development (although the
+context mkii files have now gone).
+
+Binary texlive provides various schemes to install more or less of
+texlive - our source install equates to scheme-full.  The details are in
+texlive.tlpdb.  Some old documentation is at
+https://tug.org/TUGboat/tb34-3/tb108preining-distro.pdf - I attempted
+to write some perl code to parse that, testing scheme-medium when I had
+what appeared to be the correct lists of programs and texmf-dist files,
+but it turned out that I had far more programs than were actually in that
+scheme, and random differences in files or package directories in
+texmf-dist.  Since the source of things like fonts is unlikely to be
+useful for the average user, I do not think that parsing the tlpdb, and
+then maintaining that for future years, is a practical approach.
+
+I offer the following comments for anyone who feels inclined to try
+parsing the tlpdb to then reduce a source install:
+
+(i.) The (old) documentation on the tlpdb is at
+ https://tug.org/TUGboat/tb34-3/tb108preining-distro.pdf
+
+(ii.) You will not be able to use tlmgr to update anything (obvious, but
+perhaps worth pointing out).
+
+(iii.) The 'commands' in the tlpdb can be ignored after a full source
+install because they have been invoked during the install.
+
+(iv.) Some things, particularly hyphenation files, are complete in a
+full install but may be much smaller in lesser installs.
+
+(v.) Parts of texlive are in TLCore items - broadly described as the
+essentials for everyone - others are in individual packages.  A scheme
+contains a number of collections.  A collection depends on packages
+but it can also depend on other collections.  A package contains some
+metadata, various texmf-dist files (sometimes shown as RELOC/) and can
+depend on other packages or on name.ARCH.
+
+(vi.)  The other package dependencies appear to be there for people who
+add extra packages to a chosen scheme.  The name.ARCH files translate to
+x86_64-linux in the case of BLFS on x86_64.  Not every one of these
+ actually exists, a couple of the ARCH items are windows only and for
+other architectures there might not be binaries for everything.
+
+(vii.) Further, name.ARCH files will contain 1 or more programs, with
+various names not necessarily related to the package name.
+
+
+2. Overview of my approach.
+---------------------------
+
+I considered that much of the docs, source, and fonts directories was of
+ no interest to me.  I was generally reluctant to remove packages - I
+can see occasional packages which are clearly of no  interest to me, but
+removing packages means identifying what uses them in case something I
+use needs them, and I could not justify the time.
+
+After looking at what was in texlive-dist, I copied that to a work area
+as a 'master source' and then made another copy as a working source,
+using only the things I thought I wanted.  Sometimes I found it easiest
+to delete a chunk of the working copy, and then copy in specific
+directories and files from the master - some of the font-related files
+are in deep structures, or in directories which contain a lot more than
+I wanted.  Like the installed texmf-dist, the working copy is owned by
+root:root.
+
+I also assembled my test files.  You need to determine what you wish to
+render (I assume you will remove at least some of the fonts!).  I found
+a lot of my earlier files were using old Type1 fonts, for the future I
+intend to use TTF or OTF fonts in new documents.
+
+Then I tarred up the current working copy of texmf-dist, removed the
+installed version (I can copy back the master if things go badly wrong)
+untarred my working copy, and (IMPORTANT) ran 'mktexlsr' so that the
+ls-R files only referenced what was actually present.  For an initial
+run that merely stops an engine looking for something which has been
+removed, but on a later run after adding something which was needed it
+is necessary to update ls-R so that the new addition can be found.
+
+I note that mktexlsr updates ls-R at the prefix used when texlive was
+configured and built.
+
+The important decision is "What can you remove without adversely
+affecting your own usage ?"  Clearly that is an indivudual decision,
+so although I have produced an example it is unlikely to be the
+best match for anyone else's needs.
+
+
+3. Debugging the attempts to remove things.
+-------------------------------------------
+
+3.1 I have not attempted to remove any programs from the bin directory.
+    Some of these are symlinks and it would be necessary to inspect all
+    the programs to ensure that a removed program is not the target of
+    a wanted program.  Also, if you remove a program and later discover
+    that you now want it you must either work from a backup, or else
+    reinstall full texlive.
+
+3.2 For looking at what a failed attempt to render a document is doing
+    my first tool is strace, https://github.com/strace/strace/releases.
+    I have been using strace-6.2 since 2023, configured with
+     ./configure --prefix=/usr --enable-mpers=no
+
+3.3 For debugging anything except ConTeXt (at the moment, ConTeXt in
+    BLFS is explicitly mkiv, NOT luametatex) you can set the environment
+    variable KPATHSEA_DEBUG to give information.  I set it to -1 which
+    provides everything it offers (a huge amount of output) , the
+    important bit field values seem to be 2 (hash tables and map files),
+    4 (file open/close) and 32 (file searches).  For most of my testing,
+    a value of 32 is adequate, it still provides masses of output.
+
+3.4 When things go bad (particularly in removing fonts) it helps to have
+    a second system with a full install to compare the results.
+
+3.5 For debugging context mkiv installed with the current BLFS
+    instructions I notice that all runs appear to now start afresh in
+    looking for files, and produce a lot of 'strange' output about file
+    names - it is developed on windows and assumes windows or macOS.
+    My memory says that when mkiv fails it produces an Error with a
+    (constant) number, but the relevant message (hopefully, a missing
+    file) is somewhere before that.
+
+
+4. Space usage in full 2023 texmf-dist
+--------------------------------------
+
+2.6M    asymptote
+25M     bibtex
+24K     chktex
+1.6M    context
+3.5G    doc
+2.7G    fonts
+64K	hbf2gf
+4.7M	ls-R (will be recreated and smaller after removing things)
+232K    makeindex
+300K    metafont
+15M     metapost
+20K     mft
+2.0M    omega
+244K    pbibtex
+4.0K    psutils
+4.0K    README
+130M    scripts
+416M    source
+531M    tex
+42M     tex4ht
+32K     texconfig
+20K     texdoc
+44K     texdoctk
+12K     ttf2pk
+248K    web2c
+32K     xdvi
+3.6M    xindy
+7.3G    total
+
+Clearly, it is worth looking at doc, fonts, and source if wanting to
+reduce the size of texmf-dist.
+
+
+5. My example of what I am currently using to texlive-2023.
+-----------------------------------------------------------
+
+I have created a file detailing how I came up with my current reduced
+2023 installations, explaining why I did, or did not, do various things.
+
+ https://www.linuxfromscratch.org/~ken/TL2023/reduced-2023-texmf.txt
+
+For a few things such as omega I was happy to remove them even though
+the space saved was tiny, but in many other areas I left things because
+I could not be certain they would not be pulled-in by something I use.
+
+CHANGELOG:
+
+2023-07-30 Parentheses and spell-checking in libreoffice.
+           Thanks to Kevin Buckley and Rainer Fiebig for their comments.
+
+2023-07-22 Correct my email, update KPATHSEA_DEBUG comments.
+
+2023-07-14 Initial version.
+
+
+

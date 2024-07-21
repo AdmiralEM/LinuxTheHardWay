@@ -1,0 +1,74 @@
+TITLE:		Apache with a Dynamic IP
+LFS VERSION:	any
+AUTHOR:		Ian Chilton <ian@ichilton.co.uk>
+
+SYNOPSIS:
+	How to get Apache virtual hosting working when you have a dynamic IP,
+        ie. a PPP connection.
+
+HINT:
+
+This document explains how to use Apache's virtual hosting when you have a
+dynamic IP address such as a dialup account, ADSL or a cable modem.
+
+I copied /usr/local/apache/conf/httpd.conf to
+/usr/local/apache/conf/httpd.conf.template and added this to the bottom:
+
+(Do NOT replace the "----REPLACE_THIS_WITH_DYNIP----" bits, they are
+supposed to be typed in like that :)
+
+
+------------ [SNIP httpd.conf.template ] ------------
+
+
+NameVirtualHost ----REPLACE_THIS_WITH_DYNIP----
+
+<VirtualHost ----REPLACE_THIS_WITH_DYNIP---->
+   ServerName www.domain1.com
+   DocumentRoot "/wwwroot/domain1"
+   ErrorLog /var/log/http-domain1-error_log
+   CustomLog /var/log/http-domain1-access_log common
+</VirtualHost>
+
+<VirtualHost ----REPLACE_THIS_WITH_DYNIP---->
+   ServerName www.domain2.com
+   DocumentRoot "/wwwroot/domain2"
+   ErrorLog /var/log/http-domain2-error_log
+   CustomLog /var/log/http-domain2-access_log common
+</VirtualHost>
+
+
+------------ [SNIP httpd.conf.template ] ------------
+
+
+Then, the clever bit..
+
+If you running from /etc/ppp/ip-up, use:
+
+cat /usr/apache/conf/httpd.conf.template |
+   sed -e "s/----REPLACE_THIS_WITH_DYNIP----/$4/g" >
+   /usr/apache/conf/httpd.conf
+
+/usr/local/apache/bin/apachectl restart
+
+
+If not, use:
+
+MYIP=$(/sbin/ifconfig|grep -1 ppp0|cut -s -d ' ' -f12|
+   grep addr|cut -d ':' -f2)
+
+cat /usr/apache/conf/httpd.conf.template |
+   sed -e "s/----REPLACE_THIS_WITH_DYNIP----/$MYIP/g" > 
+   /usr/apache/conf/httpd.conf
+
+/usr/local/apache/bin/apachectl restart
+
+
+And that should be it !!
+
+Just remember that in the future any changes you need to make are
+made to httpd.conf.template, not httpd.conf and after changes
+you need to run the sed statement which creates the httpd.conf.
+(perhaps create a little script to do it for you).
+
+

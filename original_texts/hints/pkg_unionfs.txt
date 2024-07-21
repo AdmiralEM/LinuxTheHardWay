@@ -1,0 +1,612 @@
+AUTHOR: Samad Lotia
+
+DATE: 2008-10-21
+
+LICENSE: GNU GPL 2
+(see http://www.linuxfromscratch.org/hints/downloads/files/LICENSES/gpl-2.txt)
+
+SYNOPSIS: A UnionFS-based package management system
+
+DESCRIPTION:
+  UnionFS is a kernel patch that allows one to merge the contents of many
+  disparate directories so they all appear as a single directory. This
+  functionality provides a basis for a minimal, yet effective,
+  package manager. This approach appeals to those who want a more rational
+  and organized directory structure.
+
+ATTACHMENTS:
+  1) http://www.linuxfromscratch.org/hints/downloads/files/ATTACHMENTS/pkg_unionfs/pkgs
+  2) http://www.linuxfromscratch.org/hints/downloads/files/ATTACHMENTS/pkg_unionfs/manager
+
+PREREQUISITES:
+  Completion of the "Constructing a Temporary System" chapter in the LFS book.
+
+HINT:
+
+Part I. Introduction
+
+UnionFS is a kernel patch that provides the ability to merge many directories
+such that their contents appear together in one directory. The package manager
+proposed here uses this ability to merge the contents of various packages so
+directories like /bin and /lib have the appearance of containing all loaded
+packages.
+
+This type of package management is inspired by GoboLinux's unique take
+on the archaic Unix directory structures*. Instead of installing all packages
+into the /usr directory whose contents can become quite unwieldy, packages
+are installed into their own directories. GoboLinux's package manager 
+creates symbolic links in the necessary directories in order to give the
+appearance that the package is installed in traditional directories.
+A package can be removed by deleting the directory a package was
+installed in, causing the symbolic links pointing to that package to become
+invalidated. GoboLinux demonstrates that a fully-functional GNU/Linux system
+does not require packages to be installed in traditional directories.
+
+* http://www.gobolinux.org/?page=k5
+
+Section I.a. Advantages
+
+The primary benefit of this type of package manager is simplicity. It only
+requires a patched kernel, a startup script for setting up the UnionFS mount
+points, and a script for loading and unloading packages. This approach refrains
+from the canonical black-box style of package management where
+the user issues specialized commands to a complex package manager consisting of
+several tiers of programs and book-keeping files to install or
+uninstall a pacakge. Here, the user issues commands to a script that,
+in turn, merely issues mount commands to UnionFS.
+
+There are some possible benefits of a simpler directory structure:
+
+  * The contents of /bin, /sbin, and /lib merely contain a few files necessary
+    for init scripts.
+
+  * There is no chance an uninstalled package can leave behind stray files in
+    /etc or /usr/share.
+
+  * It is convenient to tuck away special libraries and files needed by a
+    specific package but need to be kept hidden from the rest of the system.
+
+  * It is easier to find configuration files for a package. Instead of hunting
+    down a configuration file in /etc or /usr/share that contains files from
+    all packages, one can browse through a package's directory to look for
+    a file.
+
+This approach is flexible in that determining what constitutes a package is
+up to the user. One can combine several different packages together
+into one super-package so their contents are loaded together. This is
+useful for packages like X.Org, which consists of hundreds subpackages.
+
+A secondary benefit of this approach is version management. In some cases it
+is useful to have multiple versions of the same package installed at the same
+time. One can try out a newer version of a package to see if it
+is satisfactory without affecting the installation of an older version.
+
+Section I.b. Disadvantages
+
+There are several disadvantages to this type of package management.
+
+First, this approach imposes a longer startup time. At system boot, necessary
+packages must be loaded before the system can be fully functional. This
+disadvantage is not a serious setback for most users, since loading one hundred
+and thirty packages takes about four seconds on a relatively new computer.
+
+Second, a package cannot be unloaded if its contents are in use. This
+limitation primarily affects packages consisting of libraries. Running programs
+must be terminated first in order to unload a package they depend on.
+
+Section I.c. How It Works
+
+Assume UnionFS is installed and is working. To demonstrate UnionFS, assume there
+are the directories a, b, and c. a contains the file 1, b contains file 2, and
+c is empty.
+
+  $ ls
+  a b c
+  $ ls -a a
+  . .. 1
+  $ cat a/1
+  one
+  $ ls -a b
+  . .. 2
+  $ cat b/2
+  two
+  $ ls -a c
+  . ..
+
+The following command is then issued:
+  # mount -t unionfs -o "ro,dirs=a:b" none c
+This has the effect of performing a union operation on the contents of a and b
+and storing them in c.
+
+This produces the following result:
+  $ ls
+  a b c
+  $ ls -a a
+  . .. 1
+  $ cat a/1
+  one
+  $ ls -a b
+  . .. 2
+  $ cat b/2
+  two
+  $ ls -a c
+  . .. 1 2
+  $ cat c/1
+  one
+  $ cat c/2
+  two
+
+This functionality is the basis for the package manager. Assume there is a
+binary in directory /pkgs/sed/4.1.5/bin/sed. The package manager
+notices there is a bin directory at /pkgs/sed/4.1.5/bin. It determines that this
+directory's contents should be mapped to the directory /bin.
+The package manager issues mount commands to UnionFS. After the package is
+loaded, /pkgs/sed/4.1.5/bin/sed appears as /bin/sed. A user of the system can
+use the sed program as if it exists in /bin/sed. When a package is unloaded,
+sed is no longer in /bin, yet remains as /pkgs/sed/4.1.5/bin/sed.
+
+Section I.d. Some Preliminary Jargon
+
+While jargon and specialized lexicon should be rigorously eschewed*, some
+preliminary terminology is presented here to reduce the verbosity of this
+document or to clarify potentially ambiguous phrases.
+
+ * Installing a package:
+     The programs, libraries, and configuration files are built and copied to
+     a designated directory for a package. This does not mean the package
+     is available and can be used by the system. Installation is not handled
+     in any way by the package manager proposed here.
+
+ * Loading a package:
+     The programs, libraries, and configurations of a package are made
+     available to the system. In other words, the package manager looks at a
+     package's contents and issues mounts to UnionFS so the appropriate files
+     will be presented in /bin, /lib, /etc, and so on. A package must be
+     installed before it can be loaded.
+
+  * Unloading a package:
+     The opposite of loading, where the contents of a package are made
+     unavailable to the system. A package's contents do not appear in /bin,
+     /lib, /etc, and so on, yet remain in its respective package directory.
+
+  * Uninstalling a package:
+     The opposite of installing, where the package's files are completely
+     removed from disk. A package, if it has been loaded, must be unloaded
+     first before it can be removed. Uninstalling is not handled by the
+     package manager, since rm is sufficient.
+
+  * Source directory:
+      This is a directory, like bin, share, or lib, in a package's
+      directory. Its contents, along with other packages' source directories,
+      are the source for directories that are a target for UnionFS, like
+      /bin, /usr/share, or /lib. In the example demonstrated in Section I.c,
+      /pkgs/sed/4.1.5/bin is a source directory.
+  
+  * Target directory:
+      This is a directory, like /bin or /lib. Its contents are artificially
+      constructed by UnionFS. In the example demonstrated in Section I.c,
+      /bin is the target directory of the source directory /pkgs/sed/4.1.5/bin.
+
+* See Orwell, G. "Politics of the English Language." 1946.
+  http://www.mtholyoke.edu/acad/intrel/orwell46.htm
+
+Part II. Installation
+
+Setting up the package manager is discussed here and should be done
+after the chapter "Constructing a Temporary System" is completed.
+
+Section II.a. The Directory Structure
+
+The following directory structure is assumed in this
+document and provided scripts. It is perfectly reasonable to change this
+structure to one's tastes.
+
+  1) The general directory containing all packages is stored in /pkgs.
+
+  2) A package is installed in a subdirectory of /pkgs. For example, the
+     sed package is installed in /pkgs/sed.
+
+  3) A package's version is a subdirectory in the package's directory. For
+     example, if sed has the version 4.1.5, it is installed in /pkgs/sed/4.1.5.
+     Since each package version has its own directory, multiple versions of
+     the same package can be installed.
+
+  4) The target directories:
+       * /bin,
+       * /etc,
+       * /lib,
+       * /var,
+       * /usr/share,
+       * /usr/man,
+       * /usr/include,
+       * and /usr/info
+     should be created.
+     
+     /usr/bin should link to /bin, and /usr/lib should link to /lib.
+     If one is using a 64-bit machine, the additional /lib64 and /usr/lib64
+     links should point to /lib.
+
+Section II.b. Installing Packages
+
+After the chapter "Constructing a Temporary System," the LFS book describes
+steps for the actual installation of packages in the chapter
+"Installing Basic System Software." The LFS book relies on a package's Makefile
+to determine the location--typically /usr--where the package is to be
+installed. Because packages are installed in non-standard locations, this
+default behavior must be superseded. One can install all packages in the LFS
+and BLFS books in their own directories, including fundamental packages like
+glibc and sysvinit.
+
+Many packages only require the DESTDIR parameter be passed to the Makefile
+when issuing the install command*. Here is an example of Bison-2.3 to
+illustrate the process of installing a typical package.
+
+  1) Create the necessary directories:
+       mkdir -pv /pkgs/bison/2.3
+
+  2) Follow the steps provided by LFS, except for "make install":
+       ./configure --prefix=/usr
+       echo '#define YYENABLE_NLS 1' >> config.h
+       make
+       make check
+
+  3) Run "make install" with the DESTDIR parameter:
+       make DESTDIR=/pkgs/bison/2.3 install
+
+Most packages will follow this format. Unfortunately, not all packages
+use the DESTDIR parameter for installation. Some packages require 
+the configure script's --prefix parameter to determine where the package is to
+be installed. One must look at the README or INSTALL files provided with a
+package to determine this.
+
+Typically, if a package does not have a configure script,
+the DESTDIR parameter will probably not work, and one must consult the
+provided documentation to determine how to install a package in a non-standard
+location.
+
+Some packages require the --sysconfdir parameter for the configure script.
+The LFS book specifies this should be /etc. Since the package is to be
+installed in a non-standard location, this should be set to
+/pkgs/name/version/etc.
+
+* See the section "Package Management" in the LFS book for further discussion.
+  http://www.linuxfromscratch.org/lfs/view/development/chapter06/pkgmgt.html
+
+Section II.c. Setting up the Kernel
+
+By now, all the packages specified in the chapter "Installing Basic System
+Software" should be installed in their own directories.
+
+In the chapter "Making the LFS System Bootable," the LFS book describes
+how to compile and install the kernel. In order to add the UnionFS capability
+to the Linux kernel, one must patch the kernel source code before compiling
+it. Here are the steps to setting up the patch.
+
+  1) Download a kernel patch from:
+       http://www.filesystems.org/project-unionfs.html
+     Unpack the patch.
+
+  2) Download the corresponding kernel version. The file name of the kernel
+     patch may be something like "unionfs-2.5_for_2.6.26.5.diff.gz". Therefore,
+     download the kernel version 2.6.26.5. Unpack the kernel source code.
+
+  4) Apply the kernel patch by first entering the kernel source code directory
+     and then typing:
+       patch -Np1 -i /path/to/unionfs/patch.diff
+
+  5) Follow the steps in the LFS book for setting up a menu configuration for
+     the kernel. While in the configuration program, ensure the UnionFS
+     module is built. The option can be found in
+     Drivers > Filesystems > Layered Filesystems. UnionFS can be built as a
+     module or can be statically linked with the kernel.
+
+  6) Build and install the kernel as specified in the chapter "Making the LFS
+     System Bootable."
+
+Section II.d. Setting up the Scripts
+
+After finishing the "Setting up System Bootscripts" and "Making the LFS System
+Bootable" chapters, one must setup the necessary scripts for package
+management before restarting*. There are two attached scripts, pkgs and manager.
+
+The manager script issues mount commands to UnionFS. This script can be
+copied into /pkgs. This script will be discussed in depth later.
+
+pkgs is an init script that (a) sets up all the mount points necessary for
+package management and (b) loads all the necessary packages for system startup.
+This script should be executed as early in the bootscripts as possible.
+If UnionFS is built as a module, the script should be
+executed after the module has been loaded. Otherwise, this script
+should be executed first. To install this script assuming one is using LFS's
+boot scripts, one should:
+
+  1) Copy pkgs into /etc/rc.d/init.d. 
+
+  2) Make a link of pkgs to /etc/rc.sysinit:
+      a) If UnionFS was built as a module:
+
+         Have the script be executed after the necessary modules have been
+	 loaded:
+           (i) ln -sv /etc/rc.d/init.d/pkgs /etc/rc.d/rc.sysinit/S06pkgs
+
+	 Add UnionFS to /etc/sysconfig/modules in order to have the UnionFS
+	 module be loaded at startup:
+	   (ii) echo unionfs >> /etc/sysconfig/modules
+
+      b) If UnionFS was built into the kernel:
+
+	 Lower the execution order of mountkernfs:
+           (i) mv -v /etc/rc.d/rc.sysinit/S00mountkernfs \
+	             /etc/rc.d/rc.sysinit/S01mountkernfs
+
+	 Have the pkgs script to be executed first:
+	   (ii) ln -sv /etc/rc.d/init.d/pkgs /etc/rc.d/rc.sysinit/S00pkgs
+
+  3) Create the pkgs_startup file:
+       This file is used by pkgs to determine what packages to load at
+       startup. This file is akin to /etc/sysconfig/modules. Each line in this
+       file has the following format:
+         package_name <SPACE> package_version
+
+       This file is typically located in /etc/sysconfig. If one wishes to use
+       another location, change the CONFIG_FILE variable in the pkgs script to
+       the location of this file.
+
+       This file should contain all the packages necessary for the init scripts
+       that follow the pkgs script, like sysklogd and udev, in order for
+       proper system startup. If one wishes to load all available packages 
+       at system startup, type:
+         /pkgs/manager list > /etc/sysconfig/pkgs_startup
+
+If the manager script was not copied into /pkgs, open the pkgs script and
+look for the PKG_LOADER variable. This variable should be changed to the
+location of the manager script.
+
+* In fact, not setting up the package manager will produce a non-bootable
+  system because packages are installed in non-standard locations.
+
+Section II.e. Creating the Necessary Symbolic Links
+
+After the scripts have been installed, a few symbolic links must be created
+for proper system startup, since essential programs like init are not installed
+in standard locations.
+
+The general process for creating the symbolic links is as follows.
+All the programs (1) that are to be executed after the kernel has finished 
+initializing and before the pkgs script can be executed and (2) the libraries
+these programs depend on must have symbolic links in the /bin, /sbin, or
+/lib directories. The pkgs script calls the manager script to load the
+packages, so all programs required by manager and the libraries they depend on
+must also have symbolic links.
+
+Subsection II.e.1. Program Symbolic Links
+
+Here is a list of programs whose symbolic links are typically required.
+Some systems may require additional programs. Those denoted by an
+asterisk are mandatory.
+
+ *1) init -- this program is executed by the kernel after initialization
+       The kernel expects init to be in /sbin/init.
+ *2) bash -- this is executed by init to run the init scripts
+ *3) echo -- this is used by all init scripts to display messages
+ *4) ls -- used by the manager script
+ *5) find -- used by the manager script
+ *6) sed -- used by the manager script
+ *7) mount -- this is used by the mountkernfs, pkgs, and manager scripts
+  8) mountpoint -- this is used by the mountkernfs script
+  9) modprobe -- this is used by the modules script
+ 10) dmesg -- this is used by the consolelog script
+
+To create the symbolic link for a program, one must locate the program first.
+This can be achieved by typing:
+  find /pkgs -name program_name
+
+Next, the symbolic link can be created:
+  ln -sv /path/to/program_name /bin
+    or
+  ln -sv /path/to/program_name /sbin
+
+For example, if one wants to create the symbolic link for init, one must first
+locate it by typing:
+  find /pkgs -name init
+
+If find produces the following result:
+  /pkgs/sysvinit/2.86/sbin/init
+
+The symbolic link can then be created by typing:
+  ln -sv /pkgs/sysvinit/2.86/sbin/init /sbin
+
+Subsection II.e.2. Library Symbolic Links
+
+All of the above programs depend on shared libraries. It is for this reason
+links to the required shared libraries must be in /lib. To determine the
+required libraries, type:
+  ldd /path/to/program
+
+Next, search for the location of the library by typing:
+  find /pkgs -name library_name
+
+Finally, create the symbolic link in /lib if one does not exist:
+  ln -sv /path/to/library /lib
+
+For example, if one wishes to create the symbolic links for bash, one must
+first determine the libraries it requires:
+  ldd /bin/bash
+
+The ldd program may produce the following output:
+  linux-vdso.so.1 =>  (0x00007ffff6bfe000)
+  libreadline.so.5 => /lib/libreadline.so.5 (0x00007fc8ee804000)
+  libhistory.so.5 => /lib/libhistory.so.5 (0x00007fc8ee6fc000)
+  libncursesw.so.5 => /lib/libncursesw.so.5 (0x00007fc8ee596000)
+  libdl.so.2 => /lib/libdl.so.2 (0x00007fc8ee492000)
+  libc.so.6 => /lib/libc.so.6 (0x00007fc8ee258000)
+  /lib64/ld-linux-x86-64.so.2 (0x00007fc8ee941000)
+
+For each of the files listed, a symbolic link should be created.
+"linux-vdso.so.1" is skipped because it does not point to an
+actual file. The library "libhistory.so.5" can be located by typing:
+  find /pkgs -name libhistory.so.5
+
+If find produces the result:
+  /pkgs/readline/5.2/lib/libhistory.so.5
+
+The symbolic link can be created by typing:
+  ln -sv /pkgs/readline/5.2/lib/libhistory.so.5 /lib
+
+Subsection II.e.3. Troubleshooting
+
+During system startup, if the kernel, init, or an init script reports it cannot
+find a certain program, there are two possible reasons: (a) a valid symbolic
+link to the program is not in /bin or /sbin, or (b) all the necessary libraries
+for the program do not have valid symbolic links in /lib.
+
+Part III. Using the Package Manager
+
+Now that installation is completed, one can boot into the LFS system. This
+section describes how to use the package manager.
+
+Section III.a. Loading and Unloading
+
+The manager script does the grunt work for setting up the target directories.
+It provides two functionalities: (1) loading a package and (2) unloading a
+package. Loading and unloading can be done as follows:
+
+  /pkgs/manager load package-name [package-version]
+
+For example, if one wishes to load the package sed, version 4.1.5, one types:
+
+  /pkgs/manager load sed 4.1.5
+
+Specifying the package version is optional. If it is omitted, the first version
+manager finds is used. Unloading the package follows the same format:
+
+  /pkgs/manager unload package-name [package-version]
+
+To unload sed, version 4.1.5, type:
+
+  /pkgs/manager unload sed 4.1.5
+
+The package version must match the same version used to load the package.
+
+Section III.b. Upgrading a package
+
+To upgrade a package, unload the package version that is already loaded, and
+load the new package version.
+
+Suppose there are two versions of the fluxbox package installed:
+  $ /pkgs/manager list fluxbox
+  0.9.16 1.0.0
+
+To switch from 0.9.16 to 1.0.0, one types:
+  # /pkgs/manager unload fluxbox 0.9.16
+  # /pkgs/manager load fluxbox 1.0.0
+
+Section III.c. Diagnostics
+
+The manager script provides a few diagnostic tools:
+
+  * To list all of the packages available and their versions, type:
+      /pkgs/manager list
+
+  * To list all the available versions of a package, type:
+      /pkgs/manager list package-name
+
+  * To check that the correct directories are being unionized, type:
+      /pkgs/manager test package-name [package_version]
+
+Section III.d. Limitations
+
+One of the goals of the package manager is minimalism. Features
+found in most package managers are not available in the one presented here
+because of this choice. However, the limitations listed here can be overcome
+by extending the functionality of the package manager. The scripts are not
+designed to be a byzantine of code, and they contain comments to ease hacking.
+
+The manager script cannot determine what packages are loaded. There are
+no checks made when a package is loaded. Issuing a load command to a package
+already loaded has no effect. Unloading a package that is not loaded will result
+in an error from UnionFS.
+
+If a package depends on another, it is up to the user to load that
+package. No dependency calculations are performed by the package manager.
+
+Section III.d. When to Reload a Package
+
+If a package's contents are modified, there are certain situations where
+reloading a package is necessary for changes to take effect.
+
+Adding files or directories to a source directory like etc or bin does not
+require a reload. Assume there is a package samba, version 2.10.13. There is
+the directory share in the package. If a file called mynotes.txt is added to
+the package's share directory, reloading the package will not be needed, since
+mynotes.txt will immediately appear in /usr/share.
+
+Adding a source directory where one did not exist before
+requires a reload. Assume there is the package gtk with version 2.10.13.
+This package only contains the directory usr; in other words, the directory
+/pkgs/gtk/2.10.13 only contains the directory usr.
+If an etc directory, which did not exist before, is created in
+/pkgs/gtk/2.10.13, a reload is necessary.
+
+Reloads can be accomplished by typing:
+  /pkgs/manager unload package-name package-version
+  /pkgs/manager load package-name package-version
+
+To reload the gtk package with version 2.10.13, one types:
+  /pkgs/manager unload gtk 2.10.13
+  /pkgs/manager load gtk 2.10.13
+
+Section III.e. Editing Files in a Package
+
+When editing a file in a package, one should open the file from
+the /pkgs directory, not from the target directory.
+
+Suppose there is a file in /pkgs/x.org/7.2/etc/X11/x.org,
+which also exists as /etc/X11/x.org. If one wishes to edit this file, it
+should be opened from /pkgs/x.org/7.2/etc/X11/x.org, not /etc/X11/x.org.
+Changes made to /pkgs/x.org/7.2/etc/X11/x.org will immediately become apparent
+in /etc/X11/x.org.
+
+Even though they are technically the same file, if
+/etc/X11/x.org is edited, UnionFS will physically create the directory
+/etc/X11, save the changes made to /etc/X11/x.org, and delete
+/pkgs/x.org/7.2/etc/X11/x.org. This behavior runs against the goal of 
+keeping files in separate directories as much as possible.
+
+Section III.f. Uninstalling a package
+
+To uninstall a package, (a) unload the package, then (b) delete the package
+directory.
+
+Part IV. Concluding Remarks
+
+The goal of this document is to present an alternative package manager based
+on UnionFS to the de-facto standard of black-box style package managers.
+Users wishing for a higher degree of organization over files and directories
+may find this type of package manager useful.
+
+The ideas presented here can be extended, namely:
+
+  1. Other operating systems, like the BSDs, can also take advantage of this
+     type of package management. In fact, the BSD kernels have supported
+     union directories for many years.
+
+  2. The capabilities of the package manager can be improved by hacking the
+     manager script or write additional scripts that automate the
+     installation of packages.
+     
+     Moreover, replacing the manager script with something in a different
+     scripting language may be better. Bash has been a difficult language for
+     the author, and rewriting the manager script in Python
+     would reduce the amount of code and make it cleaner. Adding functionality
+     to the package manager is probably much easier in Python than Bash.
+
+  3. Users can have personal packages in their home directories and can
+     load and unload them. This can be achieved by: (a) allowing mounting to
+     non-root users, (b) copying the manager script to the user's home
+     directory, and (c) modifying the script's "pkg_dir" and "target_dir"
+     variables.
+
+CHANGELOG:
+  [2008-10-30]
+    * Hint created.

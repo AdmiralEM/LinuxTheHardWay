@@ -1,0 +1,32 @@
+TITLE:		Installing Microcode Update Utility
+LFS VERSION:	lfs-3.0-cr2
+AUTHOR:		Berkem Dincman berkemdin@ixir.com
+SYNOPSIS:	Microcode updates Intel processors at boot.
+
+HINT:
+I tried to install the microcode utility on my
+lfs-3.0-cr2 brandnew installation.
+
+First I followed the instructions on the
+linux/Documentation/Changes file with respect to the
+microcode utility, in order to create /dev/cpu ...
+and creating an entry in /etc/modules.conf ...
+
+After compiling and installing microcode utility
+I made some changes to /etc/init.d/microcode_ctl :
+First try to determine the version number of the lfs
+installation by looking at /etc/lfs... and
+interchanging the phrase redhat-version with <lfs-version>
+in the section that checks for the distribution,
+in the same section correcting /etc/rc.d/init.d/functions
+to /etc/init.d/functions.
+Plus erasing the START= daemon ,leaving only
+START=
+
+Finally I created symlinks in rcx.d directories
+  rc2-5 S800microcode
+  rc0,1,6 K200microcode
+
+Now it updates microcode at each boot, nice!
+Suggestions are welcome, especially with respect to the symlinks...
+berkem

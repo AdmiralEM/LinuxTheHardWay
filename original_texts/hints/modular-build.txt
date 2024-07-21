@@ -1,0 +1,276 @@
+AUTHOR:         Jim Gifford <lfs-hints at jg555.com>
+		
+DATE: 		2004-05-18
+
+LICENSE: 	GNU Free Documentation License Version 1.2
+
+SYNOPSIS:	Guide for a Modular Kernel
+
+DESCRIPTION:	This hint will provide information to assist in the
+		use of a modular kernel. This is a guide, not detailed
+		information on how to build a kernel.
+
+PREREQUISITES:	NONE
+
+HINT:
+
+INTRODUCTION:
+
+	In this hint we will explain how to use modules with LFS. This is 
+	not a requirement. The information here is used as an example, since every
+	LFS build is specific to the equipment that it's built on. 
+	
+	If you are not sure of what modules to load, you may not
+	want to use the information that is listed in this appendix. If this is your
+	first LFS build, it is recommended to use a a monolithic kernel. Read this
+	entire appendix before attempting a modular build.
+
+REQUIREMENTS:
+
+	This section will explain how to properly setup the 2.6 Kernel
+	for module support.
+
+	Kernel Requirements for Modules
+
+	To use modules with the kernel it is recommended that you compile in
+	the following options. Listed are the minimal requirements only.
+
+	First select 
+			Loadable module support  --->
+			Check [*] Enable loadable module support
+
+	This will allow you to compile system components as modules. 
+
+	Caveats
+
+	Not everything in the kernel can be compiled as a module, to
+	verify that a particular option can be compiled as a module look for
+	< > brackets before a kernel component.
+
+	Even if the component compiles as a module, your particular setup
+	may not work properly with modules. A good example of this would be an
+	initrd. You can compile <M> RAM disk support as a module, but you would
+	lose the initrd functionality since initrd depends on ramfs, and since
+	ramfs is a module, your initrd functionality is no longer available. 
+
+	Another example of this is Frame Buffer Console devices, if you want
+	them available at boot-up, you need to compile them into the kernel and not as
+	modules. The list goes on, but most of the time it is trial and error to figure
+	out why a modular system doesn't work.
+
+	Check [*] Enable loadable module support
+
+	After selecting the above option, you will now be able to create 
+	loadable modules on your LFS system. This also adds more build steps to
+	your final kernel build.
+
+	Since you have selected loadable module support, you will need at adjust
+	your build of the kernel by adding the next two commands to the build process
+	after make bzImage you will need to issue the following commands.
+
+	make modules
+	make modules_install
+
+	Check <userinput>[*]   Automatic kernel module loading
+
+	After selection these options your kernel will support modules and the
+	autoloading of modules via the modprobe command.
+
+MODPROBE:
+
+	In this section we will explain how to use setup a proper
+	modprobe.conf file for use with LFS.
+
+	Basic Configuration
+
+	The modprobe.conf file follows the devices structure layout that is
+	included with the kernel. Check your linux-{linux-version}/Documentation/devices.txt
+	for information. That file is you guide on how to configure
+	modprobe.conf. WARNING - This may be overwhelming to the novice user
+	and directions need to be followed exactly for everything to work
+	properly.
+
+	I will give you an example using the floppy drive. Each floppy drive
+	has a major # and a minor number. But each floppy drive uses the same
+	driver named floppy. So we can look into devices.txt file and we
+	will find that the major # for a floppy drive is 2, and that it is
+	a block device. In our modprobe.conf file we would specify the
+	following:
+
+	alias block-major-2 floppy
+
+	Advanced Configuration
+
+	If you have more than one SCSI interface the same rules do apply, 
+	but with a slight variance. Say we have a mega-raid controller and a aic7xxx
+	device. We want the mega-raid adapter to be the first one loaded, and the
+	aic7xx the next device. We would search are devices.txt and figure out
+	what the first SCSI drive major and minor # is. In this example the major
+	is 8 and the minor is 1. Remember before a SCSI disk can be used, the
+	sd_mod driver needs to be loaded first. Now depending the # of 
+	drives you have on your mega-raid controller, you will need to
+	figure out what the first drive is going to be for your aic7xxx
+	controller. Remember to check you devices.txt and figure out
+	what is the interval between drives, for SCSI drives it is 16.
+	You will need to add take the # of drives available on your mega-raid
+	controller, which we will use 3 and multiply that by 16, which would give
+	you 48. So the next controllers drive would start out 64, the next logical
+	value. To accomplish this, you will need to specify the following
+	in your modprobe.conf:
+
+	alias block-major-8 sd_mod
+	alias block-major-8-1 megaraid
+	alias block-major-8-48 aic7xxx
+
+MODPROBE.CONF:
+
+	In this section we will give you an working example of a proper
+	modprobe.conf file for use with LFS. </para>
+
+	Sample modprobe.conf
+
+	Below is an example modprobe.conf file. You will need to edit
+	this file and replace the values that are in brackets with the unique
+	values from your system.
+
+	Create the /etc/modprobe.conf file by running the following
+	command:
+
+	cat > /etc/modprobe.conf << "EOF"
+
+	# Binary Format
+	alias binfmt-0000 binfmt_misc
+
+	# Block Major
+	alias block-major-1 rd
+	alias block-major-2 floppy
+	alias block-major-7 loop
+	alias block-major-8 sd_mod
+	alias block-major-8-1 [scsi module for /dev/sda]
+	alias block-major-8-16 [scsi module for /dev/sdb]
+	alias block-major-8-32 [scsi module for /dev/sdc]
+	alias block-major-11 sr_mod
+	alias block-major-11-0 [scsi module for /dev/sr0]
+	alias block-major-11-1 [scsi module for /dev/sr1]
+
+	# Character Major
+	alias char-major-3 ide-core
+	alias char-major-4 serial_core
+	alias char-major-5 serial_core
+	alias char-major-4-64 8250
+	alias char-major-4-65 8250
+	alias char-major-5-64 8250
+	alias char-major-5-65 8250
+	alias char-major-6 lp
+	alias char-major-9 st
+	alias char-major-9-1 [scsi module for /dev/st0]
+	alias char-major-10 misc
+	alias char-major-10-1 psaux
+	alias char-major-10-130 softdog
+	alias char-major-10-135 rtc
+	alias char-major-10-144 nvram
+	alias char-major-10-184 microcode
+	alias char-major-13 input
+	alias char-major-13-32 mousedev
+	alias char-major-21 sg
+	alias char-major-22 ide-core
+	alias char-major-33 ide-core
+	alias char-major-34 ide-core
+	alias char-major-37 ide-tape
+	alias char-major-56 ide-core
+	alias char-major-57 ide-core
+	alias char-major-108 ppp_generic
+	alias char-major-188 usbserial
+	
+	# Net PF
+	alias net-pf-1 unix
+	alias net-pf-2 ipv4
+	alias net-pf-10 off
+	alias net-pf-17 af_packet
+	
+	# Aliases
+	alias dos msdos
+	alias dummy0 dummy
+	alias dummy1 dummy
+	alias iso9660 isofs
+	alias parport_lowlevel parport_pc
+	
+	# Network Devices
+	alias eth0 [network module for eth0]
+	alias eth1 [network module for eth1]
+	alias ppp0 ppp
+	alias ppp-compress-18 ppp_mppe
+	alias ppp-compress-21 bsd_comp
+	alias ppp-compress-24 ppp_deflate
+	alias ppp-compress-26 ppp_deflate
+	alias tty-ldisc-3 ppp_async
+	alias tty-ldisc-14 ppp_synctty
+	
+	# SCSI Devices
+	alias scsi_hostadapter [first scsi device module]
+	alias scsi_hostadapter1 [second scsi device module]
+
+	# USB Devices
+	alias usbdevfs usbcore
+	alias usb-controller [module for first usb controller]
+	alias usb-controller1 [module for second usb controller]
+	alias char-major-81 videodev
+	
+
+	# Video Devices
+	alias fb0 [module for framebuffer]
+
+	# Character Sets
+	alias charCE nls_iso8859_1
+	alias codeUS nls_cp437
+	alias codeUTF nls_utf8
+	EOF
+
+	How to update modprobe.conf
+
+	If you need to add more devices to the modprobe.conf you will
+	need to use information from the help screen of the module and from the
+	devices.txt file that is the Documentation directory of the kernel source.
+	Below is sample data from devices.txt and how to use it in modprobe.conf
+
+	From devices.txt
+	        8 block       SCSI disk devices (0-15)
+        	              0 = /dev/sda          First SCSI disk whole disk
+                             16 = /dev/sdb          Second SCSI disk whole disk
+                       	     32 = /dev/sdc          Third SCSI disk whole disk
+                             ...
+                             240 = /dev/sdp          Sixteenth SCSI disk whole disk
+
+                     Partitions are handled in the same way as for IDE
+                     disks (see major number 3) except that the limit on
+                     partitions is 15.
+	
+	You will need to extract the need information from above. Let's say we
+	have a /dev/sdp which is connected to aic7xxx controller. To add it to our existing
+	modprobe.conf. We would need to know the major number, in this case is block 8
+	and the minor number, in this case is 240. Now to add it to our modprobe.conf
+	file, we would add the following:
+
+	alias block-major-8-240 [scsi module for /dev/sdp]
+
+INITRD:
+
+	This is not recommended if you have never built a LFS system
+	before. If you attempt this, it is at your own risk. Deviating from the book may
+	result in a non-working LFS build.
+
+	If you are going to make a fully modular kernel, you will need to create an initrd
+	to boot your system. You can get full instructions be following the detailed
+	instructions listed in linux-{linux-version}/Documentation/initrd.txt.
+
+	You can also follow the information listed in the initrd hint located at
+	http://www.linuxfromscratch.org/hints/downloads/files/initrd.txt
+
+VERSION:        1.0
+
+CHANGELOG:     	1.0 Initial Release
+
+ New Version of this document can be viewed from http://cvs.jg555.com/viewcvs.cgi/lfs-hints
+
+
+

@@ -1,0 +1,202 @@
+AUTHOR:   David Rosal <davidrr@users.sourceforge.net>
+
+DATE:     2005-02-03
+
+LICENSE:  GNU Free Documentation License Version 1.2
+
+SYNOPSIS: Paco - source code package manager
+
+DESCRIPTION:
+Yet another try to provide a package manager for source code based systems,
+such as LFS. But paco comes with some nice features, such as an optional
+GTK+ graphic interface, and the use of the LD_PRELOAD method to keep track
+of the files installed by the packages.
+
+PREREQUISITES:
+  * For the (optional) GUI: GTK+ >= 2.4 and pkg-config.
+ 
+PRIMARY URL:
+  The latest version of this hint and the sources of paco can be found at:
+    --> http://paco.sourceforge.net
+
+
+HINT:
+
+0. Introduction
+===============
+I wrote paco because I couldn't get satisfied with any existent package
+manager to keep track of my LFS installation.
+
+I used to work with Andy Goth's install-log, which I like much; but
+install-log has some serious limitations due to the use of the "timestamp
+method" to keep track of the files installed by the packages.
+As said in the BLFS book:
+
+    In this technique, a file is timestamped before the installation of
+    the package. After the installation, a simple use of the find
+    command with the appropriate options can generate a log of all the
+    files installed after the timestamp file was created. A package
+    manager written with this approach is install-log.
+
+    Though this scheme has the advantage of being simple, it has two
+    drawbacks. If during installation, the files are installed with any
+    timestamp other than the current time, those files will not be
+    tracked by the package manager. Also, this scheme can only be used
+    when one package is installed at a time. The logs are not reliable
+    if two packages are being installed on two different consoles.  
+
+I also tried CheckInstall, which is widely used by the Linux community, and
+based on the LD_PRELOAD method, which I find better. From the BLFS book:
+
+    In this approach, a library is preloaded before installation. During
+    installation, this library tracks the packages that are being installed
+    by attaching itself to various executables such as cp, install, mv and
+    tracking the system calls that modify the filesystem. For this approach
+    to work, all the executables need to be dymanically linked without the
+    suid or sgid bit. Preloading the library may cause some unwanted
+    side-effects during installation; hence do perform some tests to ensure
+    that the package manager does not break anything and logs all the
+    appropriate files.
+
+But though CheckInstall is very efficient, it finally depends on the package
+manager of the host system (rpm, dpkg or installpkg), so it doesn't fit the
+needs of the LFS community.
+
+So finally I decided to put my fingers on the keyboard, and write a package
+manager with the pros of the above and without their cons. And the result is
+paco (pacKAGE oRGANIZER).
+
+
+1. Usage
+========
+Paco works mainly in two modes:
+
+In log mode, it keeps track of a package installation (though it can be used
+to follow the trace of any command or script), and generates a list of all
+installed files.
+
+In list mode, which is the default, paco retrieves information from the
+generated logs and displays it in a friendly format.
+
+Paco can be used also to remove a package, query for the owner of files or
+print extended information about the packages.
+
+The output of 'paco --help' follows:
+
++-----
+| Usage:
+|   paco [OPTIONS] <packages|files|command>
+| 
+| General options:
+|   -i, --info             Print extended package information, if available.
+|   -L, --logdir=DIR       Use DIR as the paco log directory.
+|   -x, --expand           Expand the command line package names.
+|   -a, --all              Apply to all logged packages (not with -r).
+|   -q, --query            Query for the owners of files.
+|   -u, --update           Update the log of the package.
+|   -U, --unlog            Remove the log of the package.
+|   -v, --verbose          Verbose output (-vv to increase verbosity).
+|   -?, --help             Display this help message.
+|       --usage            Display option summary.
+|   -V, --version          Display version information.
+| 
+| List options:
+|   -1, --one-column       List one package per line.
+|   -b, --block-size=SIZE  Show sizes in SIZE-byte blocks.
+|   -k, --kilobytes        Show sizes in 1024-byte blocks.
+|   -d, --date             Show installation date (-dd shows the hour too).
+|   -f, --files            List installed files.
+|   -m, --missing-files    List missing files.
+|   -c, --shared           List shared files.
+|   -w, --who-shares       With -c: Print the packages that share each file.
+|   -F                     Print the number of installed files.
+|   -M                     Print the number of missing files.
+|   -C                     Print the number of shared files.
+|   -s, --size             Show the size of each package or file.
+|   -n, --missing-size     Print the total missing size of the package.
+|       --sort=WORD        Sort by WORD: 'name', 'date', 'size', 'missing-size',
+|                           'files', or 'missing-files'.
+|   -R, --reverse          Reverse order while sorting.
+|   -t, --total            Print the total.
+|   -y, --symlinks         With -f: Print the contents of symbolic links.
+|   -z, --no-package-name  With -f, -c, -m: Do not print the name of the package.
+| 
+| Remove options:
+|   -r, --remove           Remove the (non shared) files of the package.
+|       --remove-shared    Remove also the shared files.
+|       --batch            Don't ask for confirmation when removing.
+| 
+| Log options:
+|   -l, --log              Log mode.
+|   -p, --package=PKG      Name of the package to log.
+|   -D, --dirname          Use the name of the current directory as the name of
+|                           the package.
+|   -S, --stdin            Read the list of files directly from stdin.
+|   -I, --include=DIR:...  Colon-separated list of paths to include in the log.
+|   -E, --exclude=DIR:...  Colon-separated list of paths to skip.
+|   -+, --append           With -p, -D: If the package is already logged, append
+|                           the list of files to the log.
+| 
+| Note: The list mode is enabled by default.
++-----
+
+
+2. Gpaco
+========
+Gpaco is the GTK+ frontend of paco.
+Its aim is not to replace paco, since it does not provide all of its
+functionalities. Currently supported features are: listing packages or
+files, update the database, query package information and remove packages.
+Gpaco can't log a package installation or query for the owner of files.
+Paco should be used instead.
+
+
+3. Examples
+===========
+1) To log the installation of the package 'boofar-1.0', wich is installed by
+   'make -C src install':
+    
+        paco -lp boofar-1.0 "make -C src install"
+
+   This will create a log file named 'boofar-1.0' in the log directory, with
+   the list of all installed files.
+   (Note that in this example the quotes are required in order to prevent
+   paco to parse '-C' as a command line option).
+
+2) Alternatively, we can use the name of the current directory as the name of
+   the package to log, using the option -D:
+
+        paco -lD "make install && make install.man"
+
+3) If we have forgotten to install a file, it can be added to a previously
+   created log with the option -+:
+
+        paco -lp+ boofar-1.0 "install boofile /usr/bin/boofile"
+
+4) To remove all versions of the package boofar, without asking for
+   confirmation:
+
+        paco -rx --batch boofar
+
+
+CHANGELOG:
+[2005-02-03]
+  * Upgraded to paco-1.8.0.
+
+[2004-11-28]
+  * Changed the email address.
+  * Upgraded to paco-1.7.1
+  * Slight changes in Introduction, Usage and Examples.
+  * Added gpaco description.
+
+[2004-09-03]
+  * Almost everything changed.
+
+[2004-06-22]
+  * Replaced the tarball URL with the project web site one.
+  * Added introduction.
+  * Corrected the 'paco --help' output to include the '-l' option.
+  
+[2004-06-08]
+  * Initial hint.
+

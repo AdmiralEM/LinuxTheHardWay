@@ -1,0 +1,22 @@
+TITLE:		Nano Hint
+VERSION:	any
+AUTHOR:		Righard Lightman <richard@reika.demon.co.uk>
+
+SYNOPSIS:
+	Installing nano.
+
+HINT:
+Pine mail user agent has its own built in editor pico. 
+nano will be a copy of pico, but with GPL 
+It is not complete, but it is perfectly useable. It is 
+small (~80K) but lacks macros. (I added them, and now 
+I use nano as my main editor) 
+
+Download: http://www.nano-editor.org/dist/nano-0.9.21.tar.gz 
+
+unpack the source 
+
+./configure --prefix=/usr 
+make 
+make install 
+

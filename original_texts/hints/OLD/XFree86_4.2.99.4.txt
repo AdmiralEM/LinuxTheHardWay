@@ -1,0 +1,568 @@
+TITLE:          XFree86 4.2.99.x for the Brave and/or Foolish
+
+LFS VERSION:    4.0
+
+AUTHOR:         Dagmar d'Surreal
+
+EMAIL ADDRESS:  Thou shalt not spam. <`echo qntzne@fcrnxrnfl.arg | rot13`>
+
+SYNOPSIS:       This hint explains how to obtain and install a beta-release
+                copy of XFree86 from CVS.
+
+EXPIRES:        2003-3-15
+
+
+HINT:
+
+            *  *  *  First, a word of friendly advice  *  *  *
+
+  As with all software classified as being in BETA release, installation of
+  the software packages mentioned in this document is _not_ meant to be used
+  in a production environment, _nor_ is it meant for the weak of heart, _nor_
+  is it meant for beginners.  Attempting to follow the instructions contained
+  herein unsuccessfully could possibly render your system *unuseable*,
+  and the author of this document will not be responsible for it.  This
+  upgrade should not under any circumstances be considered a trivial matter.
+  You should carefully read this _entire_ document before following _any_ of
+  the instructions listed here.  Changes of this nature may not be easily
+  reversible!
+
+  If you happen to be a newbie, or even still smell like a newbie, you should
+  probably wait for the public release of XFree86 4.3.0 which is being
+  promised us Real Soon Now and search for a more formal set of instructions
+  then.  The only thing this document contains for you is forewarning about
+  what changes might be necessary at that future date.
+
+          *  *  *  Now, on to something more informative  *  *  *
+
+Changelog
+---------
+
+  2003-Feb-17, Updated Appendix B with new libxml version
+               Removed reference to old Bison dependency (yay!)
+               Updated information about the "core" cursor theme
+               Pushed forward the expiry since the XFree86 team did same
+               Clarified reasons for Freetype2 symlinks in /usr/X11R6
+               Acronym cleanups
+
+
+Overview
+--------
+
+  I. Changes from 4.2.x
+  II. Quick List of Prerequisites
+  III. Obtaining the XFree86 Sources
+  IV. Configuring the Build
+  V. Compiling the Binaries
+  VI. Installing
+  VII. Configuration
+  VIII. Extra Information
+
+  Appendices
+  A - Zlib Compression Library
+  B - Libxml2 Library
+  C - PNG Graphics Library
+  D - Expat Library
+  E - Freetype2 Library
+
+
+I. Changes from 4.2.x
+---------------------
+
+  XFree86 4.3.0 is a pretty sizeable change from 4.2.1 releases.  There are
+better places (by far) to get a complete list of the changes, but the ones
+that will be most immediately noticeable to us will be the colored cursor
+changes, no longer having to build an external program to install one's own
+TrueType fonts, and the lack of the expected Xft configuration file.
+The last item in that list is a lot more dangerous than it would at first
+seem to be.
+
+  The colored cursor changes are a nice feature which hasn't quite finished
+cooking yet at the time of this writing.  The code itself appears to do
+everything that it is supposed to do, however, the cursors themselves may
+annoy you.  The default theme for the new cursors is called "redglass" and
+your only other option at this time is called "whiteglass".  Although I have
+been hearing a lot of complaints that redglass is ugly, whiteglass isn't much
+of an option because somehow the PNG images of it that were used to make the
+cursor files got a little broken, and some of the cursors have vertical lines
+sliced out of them.  If you see this on your screen, now at least you'll know
+it's not a hardware issue.  I'm sure this will be fixed in time for the final
+release (although they'll probably still be ugly--get cracking Gimp fiends!).
+It's not known whether or not the nVidia drivers (certainly more likely than
+the ATI ones) will work with this release, but if you enabled the hardware
+accellerated cursor shadow in your config, you'll probably want to go and
+turn it off.  The shadows on these pointers are part of the image and not
+removeable.  Two of them might look pretty weird.
+
+  A quick rundown on how you now go about installing TrueType fonts can be
+covered in just three steps, provided you already have a directory named
+/usr/X11R6/lib/X11/fonts/TrueType on your system.  First, install the font
+file into that directory to make it accessible to everyone.  Second, in that
+directory, run `mkfontscale`.  Thirdly, run `mkfontdir` as usual.  There
+no more mucking around with running `xftcache` or `xset fp rehash` with this
+release and this is a good thing.  By the way, I mentioned TrueType/ as the
+place to install ttf fonts because /usr/X11R6/lib/X11/fonts/TTF appears to be
+a special directory used by XFree86 which is always searched for fonts, and
+is set up when X is installed.  If you never mess with this directory, it
+and the fonts in it will always work, and nothing you do in the TrueType/
+directory will be as likely to bring your display to an unreadable state.
+
+  The changes to the font system are, to my knowledge, one of the more wide-
+sweeping changes for the 4.3.x release.  Some new default TTF font families
+with strange names have been added, and Xft has been replaced with a newer
+version that might have been called Xft2 if not for the fact that it looks
+like instead they're going to call the old one Xft1 and the new one just Xft.
+I know that seems confusing, and you should expect it to be confusing for
+a while yet until they get all the kinks out.  Xft2 is not totally compatible
+with Xft1, either, so expect packages to build against one or the other, but
+not both.  The minor unpleasantness is that because of this, if you use
+anything that links to or uses libXft, you'll likely have to upgrade it
+to the next beta release of whatever it was anyway (this includes Pango and
+Gnome!).  For the time being, however, it all seems binary-compatible enough
+to not fall over and die when you upgrade X, but you might not be able to
+compile new things that expect the old versions of Xft around.  (This might
+not be entirely correct, since I had some fontconfig problems, but I haven't
+yet seen evidence to confirm this one way or the other.  This is not something
+you should spend more than 60 seconds worrying about tho'.)
+
+
+II. Quick List of Pre-requisites
+--------------------------------
+
+  This release of XFree86, presumably being more advanced than previous
+versions, has a slightly larger number of things that should be installed
+before you attempt to compile it.  Mercifully, this release isn't hampered by
+ancient Bison syntax, so it doesn't really matter which version of Bison you
+have installed.
+
+  The thing you will definitely need is CVS.  The XFree86 page mentions a
+utility called CVSup which you should avoid like the plague.  It'll only take
+a moment to install cvs if you don't already have it, and it requires no
+knowledge or finesse to use.  Once tarballs are released you won't need this
+anymore.
+
+  Like previous versions of XFree86, you will need to have shared library
+versions of Freetype2 and zlib installed on the system.  Unlike previous
+versions, this version also needs libpng, expat, and possibly libxml2 as well.
+Libpng and Freetype2 may require additional attention on your part, so in the
+appendices you'll find careful documentation explaining how those two should
+be compiled to ensure they'll work.
+
+
+III. Obtaining the XFree86 Sources
+----------------------------------
+
+  There are _no_ tarballs of the beta.  I'll save you a *huge* amount of time
+by giving you another warning _against_ attempting to build CVSup for use in
+obtaining the source as the XFree86.org site mentions.  Just use plain old
+cvs to get the source unless you _already_ have CVSup (and Modula-3) on your
+system and working.  Building Modula-3 and CVSup can make compiling the JRE
+look easy.
+
+  Not only will I tell you to use cvs, I'll give you the commands you use...
+
+CVSROOT=:pserver:anoncvs@anoncvs.xfree86.org:/cvs
+export CVSROOT
+cvs login
+cvs -z3 checkout -A xc
+
+...if you stick #!/bin/sh in front of that, it's a perfectly useable shell
+script.  Now find yourself a directory with about 700Mb of space free in it,
+and run that puppy.  Enter "anoncvs" for the password and _wait_.
+Sometimes it takes cvs awhile to get going, particularly with massive trees
+of source code.  You should be seeing some crazy network activity already.
+I was not joking about the 700Mb of space.  Fully 350Mb of that will be
+source code, and it will need the rest of the space to compile.  The good
+news is that the completed binaries will take up about the same amount of
+space on your system as the previous version of XFree86 did.   After much
+time has passed, you'll have a fresh set of sources to work from.
+
+  If you have any doubts about your compiler or expect to be doing strange
+things to the source tree, now would be a _very_ good time to make a tarball
+of the CVS source you just downloaded.  Normally any time you wish to update
+your source tree you should be able to cd back into the directory _above_ the
+xc/ directory and reissue the exact same commands as above (it'll take awhile
+to check your files against the files on the remote server, but _far_ less
+time than downloading the whole thing again would), however for paranoia or
+out of habit a tarball might be handy for being able to nuke the entire
+source tree and restoring your copy of the source to a known state of sanity.
+
+  
+IV. Configuring the Build
+-------------------------
+
+  While you can usually get away with skipping the creation of a a host.def
+file to control the build process, this results in a very generic build not
+very well matched to your system.  Once you have read the appendices and
+ensured that the prerequisites are installed properly in your system, cd to
+the top level source directory (xc/) and then create a file called host.def
+in the config/cf/ directory containing the following lines
+
+-----8<-----
+#define HasFreetype2            YES
+
+#define HasZlib                 YES
+#define HasLibpng               YES
+
+#define HasLibxml2              YES
+
+#define HasExpat                YES
+#define UseExpat                YES
+
+#define DefaultGcc2i386Opt -O2 -fno-strength-reduce -march=i586 -mcpu=i686
+----->8-----
+
+  You may wish to edit the last line a bit with respect to the -march argument
+but for anyone on a pentium or better these lines will work fine.  The
+Has* directives are really all that's necessary to get XFree86 to use your
+locally installed copies of the various libraries instead of building it's own
+versions.  The UseExpat directive is there to enable XFree86's use of the
+expat library for handing various things.  It appears that as long as expat
+is present, XFree86 won't bother to use libxml2, but that may or may not be
+entirely accurate.  In any case, we definitely want to prevent XFree86 from
+building it's own version of libxml2 by issuing the HasLibxml2 directive. 
+
+
+V. Compiling the Binaries
+-------------------------
+
+  Once everything is ready, shake your rubber chicken over the monitor, cross
+your fingers, and type:
+
+  make World 2>&1 | tee world.log
+
+  The build will take quite some time to complete, so be patient.  I've been
+told that if you have already built the package once, and changes to the
+source tree have been made (if you're familiar with the output of CVS, make
+a log of what happens when you update your source so you can see if/when these
+happen), you can try using `make Everything` instead of `make World` to
+execute a partial rebuild of the sources without having the build scripts
+methodically obliterate everything that's already been compiled.
+
+  If you're lucky enough for it to get all the way to the end on the first
+try, then congratulations are in order!  If your build stops and complains
+about undefined references to "inflate" or "deflate" then you need to re-read
+the Appendices concerning how your library pre-requisites were installed.  If
+you get any other kind of errors, well... this is a beta release and is not
+actually guaranteed to compile.  Give it a few hours, re-run the cvs commands
+to see if updates to the source tree have been made, and then try _a second
+time_ before posting to a mailing list about it.  
+
+
+VI. Installing
+--------------
+
+  Assuming everything compiled, now would be a good time to make backups of
+your important files, extra fonts, app-default customizations, KDM/GDM config,
+etc.  You might also want to just make a backup of everything you're about
+to delete on a CDR or something but that's up to you.   The one thing you
+should definitely now do is remove _all_ your old XFree86 files.  This means
+the following:
+
+rm -rf /usr/X11R6 /usr/X11
+rm -rf /var/X11R6 /var/X11
+rm -rf /etc/X11
+ldconfig
+
+  This way you will be certain to get a clean set of binaries that won't be
+tripping over any leftovers from the previous install that might break things
+for you.  Now that the way has been paved for your new installation, from the
+xc/ directory, enter:
+
+make install &&
+make install.man &&
+ldconfig
+
+  If these should stop at some point and complain about something being
+missing (this happened to me with two unclean builds) then you may have gotten
+a few things built out of sequence, which is no real calamity.  The first
+thing you should try (which worked both times for me and shouldn't be likely
+to be needed with a release tarball) is to simply cd into the subdirectory
+where files are supposed to be missing and type just plain `make`.  If it runs
+for a little bit, building this and that, and then ends normally, cd back to
+the top level xc/ directory and run `make install` again.  If this doesn't
+work, _then_ you can worry a little over it, but provided you have all the
+requisites installed properly, you should have no problems whatsoever.
+
+  There is one last thing you must do, both for the sake of FHS-compliance and
+to satisfy the whimsy of some archaic applications you might wish to compile.
+You'll need to make some symlinks, using the commands below:
+
+ln -sf /usr/X11R6/include/X11 /usr/include/X11
+ln -sf /usr/X11R6/lib/X11 /usr/lib/X11
+ln -sf /usr/X11R6/bin /usr/bin/X11
+
+  Now you can restore your fonts (although don't put anything new into the
+/usr/X11R6/lib/X11/fonts/TTF directory!) and your app-defaults and your
+xdm/gdm/kdm configuration files, and prepare to configure XFree86 using 
+whatever configuration utility you normally use to create a new configuration
+file.  As before, edit the FontPath directives to include where you installed
+all your font files, but don't bother adding /usr/X11R6/lib/X11/TTF.  As was
+the case with 4.2.1, this directory seems to be hard-wired as one that is
+always searched for fonts, and can save your bacon if something goes horribly
+wrong when you install some new broken TrueType font of your own into the
+/usr/X11R6/lib/X11/TrueType directory.
+
+
+VII. Configuration
+------------------
+
+  After running your usual configuration tool (`xf86cfg`, or if that fails,
+`xf86config` is always a reliable console-only fallback) the usual caveats
+apply to things you may have to edit.  You'll need to make sure the freetype
+module isn't commented out by default in the new configuration file.  You'll
+still need to add the entries for your custom font directories in the FontPath
+section.  You may _also_ now need to edit /etc/fonts/fonts.conf and in the
+top section add an entry for <dir>/usr/X11R6/lib/X11/fonts</dir> for the new
+Xft2/fontconfig stuff, but only that one extra entry is needed.  Thankfully
+this facility appears to search subdirectories without complaint.  I would
+also recommend you do _not_ uncomment the DontZap directive so you can
+CTL-ALT-BKSP your way out of X if something goes wrong.
+
+  Now that you think you have everything installed and properly configured,
+with whatever account you'd normally use from the text console, simply run
+`startx` and see if things start like they're supposed to.  Do not be alarmed
+if you see a set of hideous green and white terminal windows and a clock
+appear.  On this first attempt you're just trying to make sure the display is
+working properly--you won't be happy if you find a problem when the machine is
+trying to boot to runlevel 4 or 5.
+
+  If you're wondering where the colored mouse pointers you've heard so much
+about went to, apparently all those radical changes have scared the XFree86
+devs, and to prevent rioting in the streets XFree86 once again defaults to
+the plain black-with-white-outlines set of cursors.  The new redglass and
+whiteglass themes are still there, tho'.  If you want them, add something akin
+to the following line to your ~/.Xdefaults file:
+
+Xcursor.theme: redglass
+
+  At the moment, redglass and whiteglass are the only two new themes that ship
+with the new XFree86 (get cracking, Gimp fiends!) that are meant for CRT/LCD
+displays, and some searching of the web should turn up any further details
+about them you might need.
+  
+  Provided you're satisfied with the way your display is working, you should
+be able to reinstall GDM or KDM and switch your machine back to runlevel 4 or 5
+now.  Have fun!
+
+
+                                   APPENDICES
+                                   ----------
+
+
+Appendix A - zlib Library
+-------------------------
+
+  XFree86 uses zlib compression for a number of things now.  To this end with
+a little work we can convince it to use the system's version of the zlib
+library, both to prevent it from installing an unnecessary version of it's
+own into /usr/X11R6/lib and to keep other programs from screwing up later if
+your system happens to be using a different version of zlib than XFree86
+does.  LFS normally has you install a shared library version of zlib into
+/usr, but just in case you missed it, here's the executive overview...
+
+  Get the zlib source for version 1.1.4 (current at the time of writing) from
+http://www.libpng.org/pub/png/src/zlib-1.1.4.tar.bz2.  The md5sum for this
+file should be ea16358be41384870acbdc372f9db152.   Untar the package somewhere
+and run the shell script below to compile and install it with relatively
+standard optimizations.  Note: The zlib authors have already spent quite a bit
+of time worrying over optimizations at the assembly level.  Change PKG_ARCH
+and PKG_CPU if you like, but don't mess with the CFLAGS setting!
+
+-----8<-----
+PKG_CPU=`uname -m`
+PKG_ARCH=$PKG_CPU
+
+CFLAGS="-fPIC -O3 -DHAVE_UNISTD_H -DUSE_MMAP -march=$PKG_ARCH -mcpu=$PKG_CPU" \
+./configure --prefix=/usr --shared &&
+make &&
+make test &&
+make install
+----->8-----
+
+
+Appendix B - libxml2 Library
+----------------------------
+
+  This library may actually not be necessary for XFree86 in light of it's
+clear preference for the expat library, but numerous other things use it, and
+we're very sensibly preventing XFree86 from building it's own version of this
+library, so we might as well cover a proper way to build it.
+
+  Start by getting a copy of the source tarball for version 2.5.3 of libxml2
+from http://ftp.gnome.org/pub/GNOME/sources/libxml2/2.4/libxml2-2.5.3.tar.bz2
+which should have an md5sum of c2ee2c99309a732d0e9c32e530241012.  If you are
+planning on using Gnome, you will need Python installed (2.2.2 works fine for
+me) _before_ you build this library, since it will install some python
+bindings which apparently some programs need to build.  For this reason we
+are explicitly instructing the configure script to use both python and threads
+and we will also do the self-tests as a sanity check.  The time to find out
+something is wrong with this library is _now_ instead of 15 packages later,
+because more than just this library will have to be rebuilt if this is done
+incorrectly the first time.
+
+  You can use the shell script below to compile and install libxml2 2.5.3.
+Feel free to change the optimization levels to anything you'd like.
+
+-----8<-----
+#!/bin/sh
+PKG_CPU=`uname -m`
+PKG_ARCH=$PKG_CPU
+PKG_OPT="-O2 -fomit-frame-pointer"
+
+CFLAGS="$PKG_OPT -march=$PKG_ARCH -mcpu=$PKG_CPU" ./configure \
+  --prefix=/usr --with-python --with-threads &&
+make &&
+make check && 
+make install &&
+ldconfig
+----->8-----
+
+
+Appendix C - PNG Graphics Library
+---------------------------------
+
+  This library is necessary because it's used by parts of XFree86 to generate
+those pretty alpha-transparencied mouse cursors.  Unfortunately at the moment
+the latest release of the png library is _broken_ with respect to zlib, and
+if you get any errors while building xcursorgen that mention undefined 
+references to inflate or deflate, this is why.  You have two options:  The
+first option being to use libpng 1.2.4 (which doesn't have this brokenness)
+and the second (preferable) option is to apply a temporary patch found at
+http://www.linuxfromscratch.org/~sklein/libpng-1.2.5-lz.patch to the 1.2.5
+source tree which should eliminate the problem.  If by the time you are
+building this 1.2.6 has been released, it will likely not be broken like this
+and upgrading to it later is highly unlikely to have an adverse affect on 
+XFree86.
+
+  Get the source from http://unc.dl.sourceforge.net/libpng/libpng-1.2.5.tar.bz2
+(it's md5sum will report 3fc28af730f12ace49b14568de4ad934) and untar it
+somewhere, and then use the following shell script to compile and install it
+(after patching it, of course).  This package, like zlib, has already been
+analyzed at length at the assembly level by it's authors, and no extra
+optimizations you may apply are likely to do you any good.  Just be happy with
+changing the PKG_ARCH and PKG_CPU settings.
+
+-----8<-----
+#!/bin/sh
+PKG_CPU=`uname -m`
+PKG_ARCH=$PKG_CPU
+
+make ZLIBLIB=/usr/lib ZLIBINC=/usr/include prefix=/usr \
+  ALIGN="-march=$PKG_ARCH -mcpu=$PKG_CPU" -f scripts/makefile.linux &&
+make prefix=/usr -f scripts/makefile.linux install &&
+ldconfig
+----->8-----
+
+
+Appendix D - Expat Library
+--------------------------
+
+  This library is used by XFree86 for parsing configuration files (among other
+things) and is apparently preferred over libxml2.  Thankfully it is very
+straightforward to build as well.
+
+  The latest version of the expat library is 1.95.6 and can be obtained from
+http://unc.dl.sourceforge.net/expat/expat-1.95.6.tar.gz.  It should have an
+md5sum of ca78d94e83e9f077b5da2bfe28ba986a.
+
+  Feel free to change the optimizations used in the shell script below when
+you install expat although the defaults should work for nearly everyone.
+
+-----8<-----
+#!/bin/sh
+PKG_CPU=`uname -m`
+PKG_ARCH=$PKG_CPU
+PKG_OPT="-O2 -fomit-frame-pointer"
+
+CFLAGS="$PKG_OPT -march=$PKG_ARCH -mcpu=$PKG_CPU" \
+  ./configure --prefix=/usr &&
+make &&
+make install &&
+ldconfig
+----->8-----
+  
+
+Appendix E - Freetype2 Library
+------------------------------
+
+  The Freetype2 library is used by Xft/Xft2 in XFree86 to render TrueType
+fonts onto the display.  Without it, you don't get TrueType fonts at all, let
+alone any anti-aliasing for them.  At the time of this writing, the latest
+version of the Freetype2 library is 2.1.3, which is possibly the most advanced
+version yet.  Perversely, it has the simplest compilation method.
+
+  One of the more useful improvements is that now the library seems to be
+doing a much better job of handling wob/bow-ness (white text on a black field
+versus black text on a white field) issues with anti-aliasing much more
+gracefully.  In previous versions this caused anti-aliased text at small
+font sizes to appear washed out and faded looking.  Considering that most
+TrueType fonts which contain glyphs that are accessed by enabling the patent-
+encumbered bytecode interpreter are already biased towards black text on a
+light background, these glyphs will now look even worse in comparison to
+what you will get without the bytecode interpreter (this translates into what
+should be an improvement for people using light text on a dark background).
+I highly recommend that users no longer enable the bytecode interpreter.
+
+  One of the caveats of version 2.1.3 of the Freetype2 library is that if
+you attempted to get it to use the system's version of the zlib library
+instead of linking in it's own miniature version, the result is a library
+which is _broken_ with respect to zlib in much the same way as libpng-1.2.4
+was.  Considering how small the size difference is (and that technically
+calls to the shared zlib should take more time), the fact that this bug is
+supposedly fixed in the cvs version of the library, and the trouble it would
+take to work around it, it doesn't really make sense to attempt to turn 
+use this feature either.  When the 2.1.4 version comes out which shouldn't
+have this problem, users should be able to easily upgrade.  (It's possible
+that this might even be the default behaviour in the new version, which
+would mean the shell script below would't need any alteration.)
+
+  You can get a copy of the source code for the 2.1.3 version of the library
+from http://unc.dl.sourceforge.net/freetype/freetype-2.1.3.tar.bz2 and it's
+md5sum should be 09775a4111e066f782866d8a57d8481b.  Untar it anywhere you
+like and build it with the shell script below.  You should be able to change
+the optimizations used to anything you feel like.
+
+-----8<----- 
+#!/bin/sh
+PKG_CPU=`uname -m`
+PKG_ARCH=$PKG_CPU
+PKG_OPT="-O2 -fomit-frame-pointer"
+
+CFLAGS="$PKG_OPT -march=$PKG_ARCH -mcpu=$PKG_CPU" \
+  ./configure --prefix=/usr &&
+make &&
+make install &&
+ldconfig
+----->8-----
+
+  One last note about the Freetype2 library... In the past, conflicting
+versions of the library installed in /usr and /usr/X11R6 have caused problems
+for some package authors which drove them to do unusual things to try to get
+around them.  One of the more inflexible ways that were attempted was to get
+the freetype2 headers by forcing the compiler to search /usr/X11R6/include
+alone for them, expecting to get Freetype 2.0.6/9.  This _breaks_ when we
+disable XFree86 building it's own version of the library.  Considering that
+old version of Freetype2 was broken to begin with, and 2.1.3 can handle the
+function calls without any problems, if at some point in the future you have
+problems building things that appear to be the result of this kind of madness,
+(which plagued the wxWindows library for some time) you can use the following
+shell script to put symlinks into /usr/X11R6 pointing to all the parts of
+Freetype2 in /usr.  This solves the problem and doesn't break anything in the
+process.
+
+---------->8----------
+#!/bin/sh
+
+mkdir -p /usr/X11R6/lib &&
+cd /usr/X11R6/lib
+ln -s ../../lib/libfreetype.* .
+mkdir -p /usr/X11R6/include && 
+cd /usr/X11R6/include
+ln -s ../../include/freetype2 .
+ln -s ../../include/ft2build.h .
+----------8<----------
+
+
+
+END

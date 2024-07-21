@@ -1,0 +1,128 @@
+TITLE:          Installing Exim 3.34 using Berkeley DB 4.0.14
+LFS VERSION:    Tested on LFS-3.1
+AUTHOR:         Carsten Lenz <lenz@lenz-online.org>
+
+SYNOPSIS:       How to install Exim 3.34 using Berkeley DB 4.0.14
+
+HINT:           Version 0.1 (03/11/2002)
+
+TABLE OF CONTENTS
+=================
+
+1. Introduction
+2. Files needed
+3. Install Berkeley DB 4.0.14
+4. Fixing the "bug" in Exim
+5. Installing Exim
+
+
+1. Introduction
+===============
+
+I just reinstalled my server after I had found some strange changes in
+the filssystem which I could not explain, maybe I had a unwanted
+visitor on my machine. Due to that I had also to reinstall my
+mailserver Exim.
+The installation of Exim was made how explained in the Exim hint
+(http://hints.linuxfromscratch.org/hints/exim.txt) but I had several
+problems. It began with installing the Berkeley DB.
+
+
+2. Files needed
+===============
+
+Berkeley DB 4.0.14:   http://www.sleepycat.com
+Exim 3.34:            http://www.exim.org
+Patch
+for DB 4.0.14:       
+ftp://ftp.lenz-online.org/pub/exim-db4.0.14.patch.bz2
+
+
+3. Install Berkeley DB 4.0.14
+=============================
+
+To install Berkeley DB on your LFS system exract the tarball and cd
+into the created db directory:
+
+tar xvfz db-4.0.14.tar.gz &&
+cd db-4.0.14
+
+Normally you would now type ../configure and so on, but here it a
+little different. The Berkeley DB can be compiled for many Operating
+Systems. To compile for Linux cd into the directory build_unix and
+from there we start the configure and make procedure:
+
+cd build_unix &&
+../dist/configure --prefix=/usr &&
+make install
+
+I have taken the same prefix like in the original Exim hint because I
+don't know why to change it.
+
+4. Fixing the "bug" in Exim
+===========================
+
+Normally you would now extract the Exim sources and install the
+sources going the "normal" way. The ./configure runs without any
+problems but during the compilation I got the following error:
+
+,---------------------------------------------------
+| >>> convert4r3 script built in util directory
+|
+| gcc -O  -o exim_dbmbuild  exim_dbmbuild.c \
+|  -lnsl -lcrypt  -ldb
+| In file included from dbfn.h:107,
+|                 from exim.h:332,
+|                 from exim_dbmbuild.c:30:
+| /usr/include/db.h:634: parse error before `60'
+| make[1]: *** [exim_dbmbuild] Error 1
+| make[1]: Leaving directory
+| `/usr/src/packages/exim-3.34/build-Linux-i386'
+| make: *** [go] Error 2
+`---------------------------------------------------
+
+The problem is well known in the Exim-users mailinglist and the german
+mailserver newsgroup.
+Because my debugging of that error message was not successful I asked
+in above given newsgroup. I received a hint from Jochen Erwied, which
+fixes the problem.
+
+To apply the exim-db4.0.14 patch extract the exim sources and execute
+the following lines:
+
+tar xvfj exim-3.34.tar.bz2 &&
+cd exim-3.34 &&
+patch -Np1 -i ../exim-db4.0.14.patch
+
+
+5. Installing Exim
+==================
+
+Now you can install Exim how explained in the Exim hint.
+
+
+End.
+
+Now that I have written this little hint, Jochen Erwied mailed me that
+a new Exim version is released witch contains the patch I discriebed
+
+---snip
+From: Philip Hazel <ph10@cus.cam.ac.uk>
+
+I have put Exim 3.35 on the master ftp site:
+
+ftp://ftp.csx.cam.ac.uk/pub/software/email/exim/exim3/exim-3.35.tar.gz
+ftp://ftp.csx.cam.ac.uk/pub/software/email/exim/exim3/exim-3.35.tar.bz2
+
+42d362e40a21bd7ffc298f92c8bd986a  exim-3.35.tar.gz
+dd1600dceb36e7b4295958446b209090  exim-3.35.tar.bz2
+
+This is purely a maintenance release. It fixes a few small problems
+that
+have arisen, including those raised by the bugtraq posting last week.
+---snip
+
+:-(
+
+Whatever, the patchfile is available under above given URL on my ftp
+server.

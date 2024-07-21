@@ -1,0 +1,126 @@
+AUTHOR: Daniel Baumann <daniel.baumann@panthera-systems.net>
+
+DATE: 2004-09-19
+
+LICENSE: GNU General Public License
+
+SYNOPSIS: How to install Scilab on LFS.
+
+PRIMARY URI: http://archive.daniel-baumann.ch/linux-from-scratch/hints/scilab/
+
+DESCRIPTION:
+How to install Scilab on your LFS-system.
+
+PREREQUISITES:
+A complete LFS-system with an X Window System, g77, Tcl, Tk and Xaw3d (instructions included in the hint).
+
+HINT:
+--------------------------------------------------------------------------------
+
+Scilab 3.0
+==========
+
+
+1. Introduction to Scilab
+=========================
+
+Scilab is a numerical computation system similiar to Matlab or Simulink. Scilab
+includes hundreds of mathematical functions, and programs from various languages
+(such as C or Fortran) can be added interactively. It has sophisticated data
+structures (including lists, polynomials, rational functions, and linear
+systems), an interpreter, and a high-level programming language. Scilab has been
+designed to be an open system where the user can define new data types and
+operations on these data types by using overloading. A number of toolboxes are
+available with the system.
+
+
+1.1. Package information
+========================
+
+  * Download (HTTP): http://scilabsoft.inria.fr/download/stable/scilab-3.0.src.tar.gz
+
+  * Download (FTP): ftp://ftp.inria.fr/INRIA/Scilab/distributions/scilab-3.0.src.tar.gz
+
+  * Download size: 11 MB
+
+  * MD5 Sum: d6fc5fe12519f99ccdd492c4ba96935a
+
+  * Estimated Disk space required: 145 MB
+
+  * Estimated build time: 2.3 SBU
+
+
+1.2. Scilab depencies
+=====================
+
+Required:
+
+  * X Window System (see BLFS for instructions)
+
+  * g77 (see BLFS for instructions)
+
+  * Tcl (see BLFS for instructions)
+
+  * Tk (see BLFS for instructions)
+
+  * Xaw3d
+
+    Download (FTP): ftp://ftp.visi.com/users/hawkeyd/X/Xaw3d-1.5E.tar.gz
+
+    Install Xaw3d by running the following commands:
+
+   __________________________________________________________________________
+  |                                                                          |
+  |  cd xc/lib/Xaw3d                                                         |
+  |  mkdir X11; cd X11; ln -fs .. Xaw3d; cd ..                               |
+  |  sed -i -e 's/XCOMM EXTRA_INCLUDES = -I\./EXTRA_INCLUDES = -I\./' \      |
+  |	> Imakefile                                                          |
+  |  xmkmf; make depend; make; make install                                  |
+  |__________________________________________________________________________|
+
+
+2. Installation of Scilab
+=========================
+
+Install Scilab by running the following commands:
+
+   __________________________________________________________________________
+  |                                                                          |
+  |  ./configure --prefix=/usr --with-gnu &&                                 |
+  |  make all &&                                                             |
+  |  make install                                                            |
+  |__________________________________________________________________________|
+
+To test the result, issue: cd tests && make tests.
+
+
+3. Configuring Scilab
+=====================
+
+
+3.1 Config files
+================
+
+~/.scilab_settings
+
+
+4. Contents
+===========
+
+The Scilab package contains intersci, intersci-n, scilab.
+
+
+5. Description
+==============
+
+  * scilab
+
+    scilab is the Scilab program.
+
+--------------------------------------------------------------------------------
+
+CHANGELOG:
+[2004-09-19]
+  * Formal changes.
+[2004-07-17]
+  * Initial revision.

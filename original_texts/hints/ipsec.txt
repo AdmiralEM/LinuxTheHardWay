@@ -1,0 +1,132 @@
+AUTHOR: Dirk Kleinschmidt <dirk dot kleinschmidt at gmx dot net>
+
+DATE: 2005-04-23
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: Using IPsec under LFS
+
+PRIMARY URI: http://www.vinf.de/dirk/
+
+DESCRIPTION: 
+This hint describes step-by-step how to install the necessary tools for IPsec (secure IP connections) under LFS and creates a basic configuration file for a simple transport-mode IPsec connection using AH and ESP  protocols between two computers.
+ 
+PREREQUISITES: 
+To use this hit you will need a LFS system ready with kernel 2.6.10 and OpenSSL installed.
+ 
+HINT: 
+
+Using IPsec under LFS
+
+Before you start, make sure you have a running LFS and OpenSSL installed. If you need to install OpenSSL refer to the BLFS book. These installation instructions (especially configuring ipsec) are based on the official IPsec Howto for Linux.
+
+1. Reconfiguring the kernel
+Get the latest linux kernel source archive from www.kernel.org and unpack it in /usr/src
+$> cd /usr/src &&
+$> wget http://www.kernel.org/pub/linux/kernel/v2.6/linux-2.6.11.7.tar.bz2 &&
+$> tar xfj linux-2.6.11.7.tar.bz2
+
+Copy your current kernel configuration to /usr/src/linux-2.6.11.7 and reconfigure existing features
+$> cd /usr/src/linux-2.6.11.7 &&
+$> cp /boot/config-2.6.11.2 .config &&
+$> make oldconfig
+
+Now customize the kernel features for IPsec support. Make sure you have selected the following features
+$> make menuconfig
+
+Networking support (NET) [Y/n/?] y
+  *
+  * Networking options
+  *
+  PF_KEY sockets (NET_KEY) [Y/n/m/?] y
+  IP: AH transformation (INET_AH) [Y/n/m/?] y
+  IP: ESP transformation (INET_ESP) [Y/n/m/?] y
+  IP: IPsec user configuration interface (XFRM_USER) [Y/n/m/?] y
+
+Cryptographic API (CRYPTO) [Y/n/?] y
+  HMAC support (CRYPTO_HMAC) [Y/n/?] y
+  Null algorithms (CRYPTO_NULL) [Y/n/m/?] y
+  MD5 digest algorithm (CRYPTO_MD5) [Y/n/m/?] y
+  SHA1 digest algorithm (CRYPTO_SHA1) [Y/n/m/?] y
+  DES and Triple DES EDE cipher algorithms (CRYPTO_DES) [Y/n/m/?] y
+  AES cipher algorithms (CRYPTO_AES) [Y/n/m/?] y
+
+Compile and install your configured kernel. Reboot after changing your grub config to boot the new kernel.
+$> make bzImage &&
+$> make modules_install &&
+$> cp .config /boot/config-2.6.11.7 &&
+$> cp arch/i386/boot/bzImage /boot/linux-2.6.11.7 &&
+$> cp System.map /boot/System.map-2.6.11.7 &&
+$> vi /boot/grub/menu.lst &&
+$> reboot
+
+2. Install ipsec-tools
+download the lastest ipsec-tools source tarball from ipsec-tools.sourceforge.net and unpack it in /usr/src
+$> cd /usr/src &&
+$> wget http://switch.dl.sourceforge.net/sourceforge/ipsec-tools/ipsec-tools-0.5.1.tar.bz2 &&
+$> tar xfj ipsec-tools-0.5.1.tar.bz2 
+
+Configure, make and install the ipsec-tools. The ipsec-tools require some kernel headers installed. The LFS book installs them in /usr/include
+$> cd /usr/src/ipsec-tools-0.5.1 &&
+$> ./configure --prefix=/usr --with-kernel-headers=/usr/include &&
+$> make &&
+$> make install
+
+3. Configure ipsec-tools
+You will need two different configrations, one for each host because IPsec works unidirectional. The example below is using the IPsec ah and esp protocol in transport mode. To be able to reconfigure ipsec quickly after rebooting the rules will be stored in /etc/setkey.conf.
+$> cat > /etc/setkey.conf << "EOF"
+$> # Begin 192.168.2.31's setkey.conf
+$> # Drop all rules
+$> flush;
+$> spdflush;
+$> 
+$> # AH SAs
+$> add 192.168.2.31 192.168.2.32 ah 0x200 -A hmac-md5 0xc0291ff014dccdd03874d9e8e4cdf3e6;
+$> add 192.168.2.32 192.168.2.31 ah 0x300 -A hmac-md5 0x96358c90783bbfa3d7b196ceabe0536b;
+
+$> # ESP SAs using 192 bit long keys (168 + 24 parity)
+$> add 192.168.2.31 192.168.2.32 esp 0x201 -E 3des-cbc 0x7aeaca3f87d060a12f4a4487d5a5c3355920fae69a96c831;
+$> add 192.168.2.32 192.168.2.31 esp 0x301 -E 3des-cbc 0xf6ddb555acfd9d77b03ea3843f2653255afe8eb5573965df;
+$> 
+$> # Security policies
+$> spdadd 192.168.2.31 192.168.2.32 any -P out ipsec esp/transport//require ah/transport//require;
+$> spdadd 192.168.2.32 192.168.2.31 any -P in ipsec esp/transport//require ah/transport//require;
+$> # End setkey.conf
+$> EOF
+
+$> cat > /etc/setkey.conf << "EOF"
+$> # Begin 192.168.2.32's setkey.conf
+$> # Drop all rules
+$> flush;
+$> spdflush;
+$> 
+$> # AH SAs
+$> add 192.168.2.31 192.168.2.32 ah 0x200 -A hmac-md5 0xc0291ff014dccdd03874d9e8e4cdf3e6;
+$> add 192.168.2.32 192.168.2.31 ah 0x300 -A hmac-md5 0x96358c90783bbfa3d7b196ceabe0536b;
+$> 
+$> # ESP SAs using 192 bit long keys (168 + 24 parity)
+$> add 192.168.2.31 192.168.2.32 esp 0x201 -E 3des-cbc 0x7aeaca3f87d060a12f4a4487d5a5c3355920fae69a96c831;
+$> add 192.168.2.32 192.168.2.31 esp 0x301 -E 3des-cbc 0xf6ddb555acfd9d77b03ea3843f2653255afe8eb5573965df;
+$> 
+$> # Security policies
+$> spdadd 192.168.2.31 192.168.2.32 any -P in ipsec esp/transport//require ah/transport//require;
+$> spdadd 192.168.2.32 192.168.2.31 any -P out ipsec esp/transport//require ah/transport//require;
+$> # End setkey.conf
+$> EOF
+
+Now load your security association and security policy settings into the kernel:
+$> setkey -f /etc/setkey.conf
+
+To create your own secret keys use
+$> dd if=/dev/random count=16 bs=1| xxd -ps
+for the md5-hmac key and/or for the 3des keys. Insert your keys in the right position of setkey.conf pairs.
+$> dd if=/dev/random count=24 bs=1| xxd -ps
+
+They generate a random value with each call that may be used with ipsec.
+
+4. Finish
+You should create some kind of script that loads the contents of setkey.conf into the kernel during each boot. Otherwise the IP traffic will NOT be encrypted/signed after a reboot until a manual load. To check whether your setup works use some tool like tcpdump.
+
+CHANGELOG: 
+[2005-04-23]
+	initital hint.

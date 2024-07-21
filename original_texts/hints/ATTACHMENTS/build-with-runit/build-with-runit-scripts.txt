@@ -1,0 +1,153 @@
+#!/bin/bash
+
+#-----------------------------------------------------------------
+# Submitted BY: Richard Downing <geek109 at hotmail dot com>
+#
+# Date: 2004-05-04
+#
+# Script Version: 1.1  (Changelog at end of file)
+#
+# Initial Package Version: applies to the Building LFS with runit
+#			    version of 2004-03-29.
+#
+# Upstream Status: Not applicable.
+#
+# Origin: Richard Downing.
+#
+# Description:  Execute to create required runit scripts. See Hint.
+#
+#------------------------------------------------------------------
+# 
+#
+
+mkdir /etc/runit
+
+cat > /etc/runit/1 << "EOF"
+#!/bin/sh
+# System one time tasks
+# The Stage 1 script for runit.
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+
+# mount the swap partition
+/etc/rc.d/init.d/swap start
+
+# mount the /proc pseudo-partition
+# N.B. ----------   Change to mountkernfs for LFS-Bootscripts-2.x
+/etc/rc.d/init.d/mountproc start
+
+# run the fsck checks
+/etc/rc.d/init.d/checkfs start
+
+# remount root rw,
+# and mount all other non-proc auto partitions
+/etc/rc.d/init.d/mountfs start
+
+# clean up after the last boot session by
+# removing stale /var/run and /var/lock files
+# and setting up utmp etc.
+/etc/rc.d/init.d/cleanfs
+
+# Initialise the random number generator
+/etc/rc.d/init.d/random start
+
+# Set the system clock from the rtc
+/etc/rc.d/init.d/setclock start
+
+# Load the keymap file
+/etc/rc.d/init.d/loadkeys
+
+# Bring up the local loopback network
+/etc/rc.d/init.d/localnet start
+
+# Bring up the NICs and network
+# and set up the default gateway
+/etc/rc.d/init.d/network start
+
+touch /etc/runit/stopit
+chmod 0 /etc/runit/stopit
+EOF
+
+chmod +x /etc/runit/1
+
+
+cat > /etc/runit/2 << "EOF"
+#!/bin/sh
+
+PATH=/bin:/sbin:/usr/bin:/usr/sbin
+
+exec env - PATH=$PATH \
+runsvdir /var/service 'log: ............................................................
+........................................................................................
+........................................................................................
+........................................................................................
+.......................................................................'
+EOF
+
+chmod +x /etc/runit/2
+
+
+cat > /etc/runit/3 << "EOF"
+#!/bin/sh
+exec 2>&1
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+
+LAST=0
+test -x /etc/runit/reboot && LAST=6
+
+echo 'Waiting for getties to stop...'
+svwaitdown -xk -t10 /var/service/getty-*
+
+echo 'Waiting for services to stop...'
+svwaitdown -xk -t30 /var/service/*
+
+# save the random number generator seed
+/etc/rc.d/init.d/random stop
+
+# turn swapping off
+/etc/rc.d/init.d/swap stop
+
+# Bring down the network
+# and remove the default gateway
+/etc/rc.d/init.d/network stop
+
+# Bring down the localnet
+/etc/rc.d/init.d/localnet stop
+
+EOF
+
+chmod +x /etc/runit/3
+
+cat > /etc/runit/ctrlaltdel << "EOF"
+#!/bin/sh
+
+PATH=/bin:/usr/bin
+MSG="System is going down in 14 seconds..."
+
+# echo 'disabled.' ; exit
+touch /etc/runit/stopit
+chmod 100 /etc/runit/stopit && echo "$MSG" | wall
+/bin/sleep 14
+EOF
+
+chmod +x /etc/runit/ctrlaltdel
+
+for N in 1 2 3 4 5 6
+do
+mkdir -p /etc/runit/getty-$N
+  echo "#!/bin/bash" > /etc/runit/getty-$N/run
+  echo "exec  /sbin/agetty 38400 tty$N linux" >> /etc/runit/getty-$N/run
+  echo "#!/bin/bash" > /etc/runit/getty-$N/finish
+  echo "exec utmpset -w tty$N" >> /etc/runit/getty-$N/finish
+  chmod +x /etc/runit/getty-$N/*
+  mkdir -p /var/service
+  ln -s /etc/runit/getty-$N /var/service
+done
+
+#------------------------------------------------------------------#
+# Changelog:                                                       #
+#   2004-03-29  V1.0 First release.                                #
+#   2004-04-05  V1.1 Fixed Getty creation script.                  #
+#                    added N.B. for lfs-bootscripts-2.x.x          #
+#------------------------------------------------------------------#

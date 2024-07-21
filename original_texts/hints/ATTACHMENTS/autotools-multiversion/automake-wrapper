@@ -1,0 +1,22 @@
+#!/bin/sh
+
+# Dir where all executables reside
+LOCATION="/usr/bin"
+
+COMMAND=${0##*/}
+
+# Default Version
+if [ -z "$WANT_AUTOMAKE" ]
+then
+	WANT_AUTOMAKE="1.9"
+fi
+
+# Execute the command if found
+if [ -x $LOCATION/$COMMAND-$WANT_AUTOMAKE ]
+then
+	exec $LOCATION/$COMMAND-$WANT_AUTOMAKE $@
+else
+	echo "Cannot find $COMMAND"
+	exit 1
+fi
+

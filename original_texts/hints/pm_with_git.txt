@@ -1,0 +1,129 @@
+AUTHOR: Dieter Scholz <dieter_scholz at gmx dot de>
+
+DATE: 2003-09-17
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS:	Package management with git
+
+DESCRIPTION:
+git (Guarded Installation Tool) is an easy to use, powerful package management
+program. It helps you to keep track about what packages you've installed so far
+and what files 'make install' added to your LFS system.
+
+PREREQUISITES:
+know how to handle an editor like vi, etc.
+
+HINT:
+
+Download:
+---------
+
+The git script was written by Ingo Brueckl and can be found at:
+
+    http://home.wtal.de/ib/freisoft/
+
+Be sure to check the LICENSE file. If you use git in a non-commercial way its
+free, but it does not explicitly mention commercial usage. Please contact the
+author, if you want to use it in a commercial environment.
+
+Overview:
+---------
+
+Here is a small feature list of what you can expect:
+
+- git is easy to use
+- git creates uninstall scripts for every archive
+- no additional software is necessary
+- directories can be excluded from being watched
+- git provides information about files installed more than once
+- git shows the archive name for each registered file
+
+If you start building a completly new system I recommend to use git right from
+the beginning.
+
+Preparation:
+------------
+
+After downloading the git archive manually copy the git script into /usr/sbin.
+
+Open the git script in your favorite editor and adapt the configuration section
+according to your needs (you probably want to add the /usr/src directory to the
+IGNOREDIRS section).
+
+All the directories (and their subdirs) in the WATCHDIRS variable are included
+in the package management process. If you want to exclude subdirectories that
+are part of the WATCHDIRS directories, you should put their names in the
+IGNOREDIRS variable.
+
+Now you are ready for package management.
+
+Basic usage:
+------------
+
+Whenever you install a new package all you have to do is:
+
+1.) Run the normal configure and/or make operations of the package:
+
+    ./configure
+    make
+
+2.) Before you issue the 'make install' command:
+
+    git <package name>
+    make install
+    git <package name>
+
+3.) You now have 4 choices:
+
+    f - create uninstall script
+    s - shows state of installation
+    q - quit
+    r - revoke installation
+
+4.) Look at uninstall script in configured viewer.
+
+If you want to uninstall a package the only thing you have to do is to call the
+uninstall script in the /var/state/git directory (perhaps it is a good idea to
+xcheck dependencies before - see below).
+
+Addional functionality:
+-----------------------
+
+1.) Find the corresponding archive(s) for a given file:
+
+    git --find <path/file>
+
+    returns: list of archives
+
+2.) Crosscheck if files installed by an archive were installed more than once:
+
+    git --xcheck <package name>
+
+Tips:
+-----
+
+#1
+
+Read the README file that comes with the git archive.
+
+Misc:
+-----
+
+I heard the method git uses to keep track of installed files is not 100%
+reliable. But I don't know, under what circumstances the program fails. Please
+send me a note, if you have more information.
+
+If you find any language or logical errors, please contact me directly (see
+above).
+
+To discuss package management please use the blfs.support group.
+
+ACKNOWLEDGEMENTS:
+  * Ingo Brueckl for writing git.
+
+CHANGELOG:
+[2002-04-26]
+  * Hint ownership change. Original Author XXX YYY <xxx at yyy.zzz).
+[2003-09-17]
+  * Changed hint to new format. Made some minor adjustments.

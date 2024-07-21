@@ -1,0 +1,1148 @@
+TITLE:		User Mode Linux
+LFS VERSION:	Any
+AUTHOR:		Randy Hron <rwhron (at) earthlink.net>
+ 
+SYNOPSIS:
+	How to configure a basic user-mode-linux on lfs.
+	  
+HINT:
+This hint is for user-mode-linux (UML) for linux-2.4.x.  It helps you 
+build a UML kernel and create a small root filesystem for UML.  The
+kernel and root_fs build are done with two scripts.  build_uml
+builds the UML kernel and build_rootfs creates a root filesystem.  
+The root filesystem we build can be configured to automatically mount 
+the host / and /usr/src filesystems.  For this reason, and many others
+it's best to only run UML as a non-root user.   You will have to be
+root to create the root_fs though.
+
+Contents:
+=========
+Warning
+Why user-mode-linux?
+Where can I find out more?
+UML Patch for 2.4.x kernel
+Glossary
+What do I need?
+Assumptions for this hint
+Installing uml_utilities
+	uml_mconsole
+	uml_moo
+	uml_mconsole
+	uml_switch
+Building the user-mode-linux kernel
+build_uml - Build UML kernel script from source
+Comments on UML kernel build commands
+Cleaning up UML processes
+Creating a root filesystem for user-mode-linux
+build_rootfs - Root filesystem build script
+Comments on commands to build root_fs
+Logging in
+Using mconsole
+Taking down UML
+Taking down loopback filesystem if something went wrong
+Troubleshooting
+	UML didn't compile.
+	UML hangs with "Initializing stdio console driver"
+	Xterm insane after shutdown
+	Panic when you have root_fs
+	Error building kernel
+	kernel BUG at page_alloc.c:112!
+	ifconfig error
+	ioctl: LOOP_SET_FD: Device or resource busy
+	make does not return when compiling with UML
+Other helpful docs
+IRC Resources
+Mailing lists
+
+Warning
+=======
+This information is meant to be helpful only.  It contains the scripts I use.
+There is no warranty of any kind.  If you use this information, you take full
+liability for anything that goes wrong.
+
+Why user-mode-linux?
+====================
+Experimentation.  It's fun.  You could try a new glibc without fear of changing 
+your LFS by running it in user-mode-linux first.  Setup a virtual network with only 
+one box.  Answer questions like, "what happens if I...". 
+
+Where can I find out more?
+==========================
+Project:  http://user-mode-linux.sourceforge.net/
+HOWTO:    http://user-mode-linux.sourceforge.net/UserModeLinux-HOWTO.html
+Download: http://user-mode-linux.sourceforge.net/dl-sf.html
+
+UML Patch for 2.4.x kernel
+==========================
+The patch for user-mode-linux is available through the Download link.  You need 
+the UML patch for the kernel you want to build.   The UML kernel version can
+be different from your host system.  I.E. you can run 2.4.14 on LFS and boot
+a 2.4.18 UML kernel.  The UML patches come out quite regularly, so check the
+UML webite for patches for newer kernels.  The latest uml-patch should be the
+best.  
+
+uml-patch-2.4.18-18.bz2 goes with kernel linux-2.4.18.  This example happens 
+to be the 18th UML release for 2.4.18.
+
+Glossary
+========
+host:			Your linux box.  It is "hosting" the virtual
+			UML machine(s).
+host kernel:		The kernel for your LFS system.  It "hosts" the
+			UML kernel.
+kernel pool:		Source code tree of stable kernel.  (extracted
+			2.4.x kernel tarball).
+pool:			The HOWTO uses pool to refer to a directory tree,
+			like cvs, linux source, or the UML source tree.
+UML:			User Mode Linux
+vanilla kernel:		Term some people call the official Linus (or Marcelo) 
+			stable release.
+virtual machine: 	Another name for a UML instance.
+
+What do I need?
+===============
+linux-2.4.18.tar.bz2 kernel source
+uml-patch-2.4.18-18.bz2 
+uml_utilities_20020415.tar.bz2
+readline-4.2 or greater.		# for uml_utilities.
+reiserfsprogs-3.x.1b.tar.gz or greater	# 3.x.1a may work.
+cpio-2.4.2
+
+The versions above were current when this hint was written.  Newer 
+versions will work similarly, but you will have to edit the build_uml
+script or pass it a command line argument.
+
+Assumptions for this hint
+=========================
+o  You have the files in the "What do I need" section above.
+o  You have Loopback Device (CONFIG_BLK_DEV_LOOP) support configured in 
+   your host kernel (this doesn't mean lo0 = 127.0.0.1.  Loopback block
+   device allows a regular file to be used as a block device.  We use
+   this feature to create the UML filesystem.
+o  You have TUN/TAP (CONFIG_TUN) configured in your kernel.
+o  You don't have anything in /mnt/uml or /usr/src/uml, as the build scripts
+   included here will unquestionably stomp these directories, (unless you 
+   pass appropriate arguments to the scripts).
+o  You have reiserfsprogs installed, and CONFIG_REISERFS_FS=y set in your host 
+   linux .config.  ext[23] will work also; you'll have to change the build_rootfs 
+   for ext[23] though. 
+o  You have at least 32 megs of free ram.  You can boot UML with less, by passing 
+   mem=#m on the command line.  I.E. ./linux init=/bin/bash mem=16m will boot a 
+   virtual machine with 16 megs of ram.  8 megs is about as small as you can go.
+
+
+Installing uml_utilities
+========================
+We start by installing the uml_utilities.  
+
+tar xjf uml_utilities_20020415.tar.bz2 && 
+cd tools && make && make install
+
+The commands above install five UML utilities in /usr/bin on the "host" system
+(your LFS box).  
+
+uml_mconsole
+------------
+uml_mconsole is the management console for a UML.
+
+uml_moo
+-------
+uml_moo is a clever name for copy on write (COW) merge utility.   The idea
+of COW is that you can share a root_fs (backing store, actually) between 
+multiple UML's, and changes are written to a COW file.  This utility lets 
+you merge the COW file with the backing store.  Check out the UML website
+for details.  This hint won't use uml_moo.
+
+uml_net
+-------
+uml_net is for setting up a network between the host system and UML.  
+uml_net must be installed setuid root so you can setup networking when
+you run UML as a non-root user.
+
+uml_switch
+----------
+uml_switch lets you setup a router network between UML's and the host system.
+uml_switch is also installed in /usr/bin on the host system.  This hint 
+doesn't use uml_switch.
+
+port_helper
+-----------
+Helper for the port channel.  This hint doesn't use port_helper either.
+
+
+Building the user-mode-linux kernel
+===================================
+IMPORTANT NOTE: Don't build user-mode-linux in /usr/src/linux because UML 
+replaces some headers that other linux programs could use.  Also, you don't 
+want to stomp your "host" kernel source.
+
+Note: the scripts below assume your linux kernel source is in 
+/usr/src/sources/l and the user-mode-linux patch in /usr/src/sources/u.
+Change these paths to match where you have the kernel and uml-patch 
+tarballs.  
+
+There is some explanation of the scripts below each one.
+
+build_uml - Build UML kernel script from source
+===============================================
+
+#!/bin/bash
+# build_uml - create user mode linux kernel from source
+# the defaults are good for me, they probably aren't good for you.
+# @(#) $Id: uml.txt,v 1.1 2003/09/13 16:18:16 tushar Exp $
+
+command=${0##.*/}
+
+echo "$command is meant to abort if it encounters a problem."
+echo "The idea is that you can address that problem,"
+echo "then re-run $command from the begining."
+echo
+
+# defaults
+uml_dest="/usr/src/uml"
+kernel_tarball="/usr/src/sources/l/linux-2.4.18.tar.bz2"
+make_opt=""
+tar_z_opt="j"
+uml_patch="/usr/src/sources/u/uml-patch-2.4.18-18.bz2"
+verbose=""
+config=$PWD/.config
+
+function usage {
+	echo "usage: $command [ -c dot_config_file ] [ -d /path/to/uml/target ] "
+	echo "	[ -k /path/to/kernel/tarball.tar.bz2 ] [ -s ] [ -t tar_unZ_opt ]"
+	echo "	[ -u /path/to/uml/patch.bz2 ] [ -v ]" >&2
+	echo 
+	echo "example: $command -d${uml_dest} -k${kernel_tarball} \\"
+	echo "		-u${uml_patch}" >&2
+	echo 
+	echo "options					defaults" >&2
+	echo " c	.config file to use		$config" >&2
+	echo " d	destination for uml tree	$uml_dest" >&2
+	echo " k	linux tarball			$kernel_tarball" >&2
+	echo " s	silent make			$make_opt" >&2
+	echo " t	tar uncompress option		$tar_z_opt" >&2
+	echo " u	user-mode-linux patch		$uml_patch" >&2
+	echo " v	verbose" >&2
+	echo "" >&2
+	exit 1
+}
+
+
+#
+# options
+# c	config file to use
+# d	destination for uml tree
+# k	linux tarball
+# s	silent make
+# t	tar uncompress option
+# u	user-mode-linux patch
+# v	verbose
+while getopts :c:d:k:st:u:v arg
+do
+	case $arg in
+		c)	config=$OPTARG;;
+		d)	uml_dest=$OPTARG;;
+		k)	kernel_tarball=$OPTARG;;
+		s)	make_opt=-s;;
+		t)	tar_z_opt=$OPTARG;;
+		u)	uml_patch=$OPTARG;;
+		# 	v doubles as an option for tar
+		v)	verbose=v;;
+		\?)	echo "$command: Invalid switch $OPTARG" >&2
+			usage;;
+		*)	usage;;
+	esac
+done
+
+# sanity checks
+error=no
+if	[[ ! -f $kernel_tarball ]]
+then	echo -e "\nThere is not kernel tarball in $kernel_tarball" >&2
+	error=yes
+	verbose=yes
+fi
+if	[[ ! -f $uml_patch ]]
+then	echo -e "\nThere is no uml patch in $uml_patch" >&2
+	error=yes
+	verbose=yes
+fi
+if	[[ ! -f $config ]]
+then	if	[[ ! -f /usr/src/linux/.config ]]
+	then	echo -e "\nThere is no $config or /usr/src/linux/.config file," >&2
+		echo -e "which is where $command wanted to get your host config." >&2
+		config=""
+		error=yes
+		verbose=yes
+	fi
+fi
+
+if	[[ $verbose ]]
+then	echo
+	echo "Current options:" >&2
+	echo "config=$config" >&2
+	echo "uml_dest=$uml_dest" >&2
+	echo "kernel_tarball=$kernel_tarball" >&2
+	echo "make_opt=$make_opt" >&2
+	echo "tar_z_opt=$tar_z_opt" >&2
+	echo "uml_patch=$uml_patch" >&2
+	echo "verbose=$verbose" >&2
+fi
+
+if	[[ $error = yes ]]
+then	echo -e "\nErrors detected ... $command will exit.\n" >&2
+	echo -e "The current options are listed above.\n" >&2
+	usage
+fi
+
+[ -c /dev/tap0 ] || mknod /dev/tap0 c 36 16 &&
+echo -n "ok to remove $uml_dest (y/N)? "
+read answer
+case $answer in
+y*|Y*)	echo "removing $uml_dest"
+	rm -rf $uml_dest
+	;;
+*)	echo
+	echo "$command rebuilds the entire uml kernel tree from scratch."
+	echo "If $uml_dest isn't where you want the uml kernel built,"
+	echo "try passing -u /where/i/want/uml/kernel/built to ${command}."
+	echo "exiting."
+	exit
+	;;
+esac
+mkdir $uml_dest &&
+cd $uml_dest &&
+echo "extracting $kernel_tarball in $PWD" &&
+tar x${tar_z_opt}${verbose}f $kernel_tarball &&
+cd linux &&
+# perhaps we should allow other compression formats.
+echo "applying $uml_patch"
+bzcat $uml_patch|patch -p1 &&
+make mrproper &&
+make mrproper ARCH=um &&
+# forgot why we do this
+unset PAGER &&
+if	[[ -f $config ]]
+then	cp $config ${uml_dest}/linux/.config &&
+	yes "y" | make oldconfig ARCH=um
+else	echo "no $config file"
+	echo "using default configuration, which may (not) work"
+fi &&
+# there was a bug around 2.4.9 that required these sed statements.
+sed 's:^CONFIG_GPROF.*:# CONFIG_GPROF is not set:' .config>.config~ &&
+mv .config~ .config &&
+sed 's:^CONFIG_GCOV.*:# CONFIG_GCOV is not set:' .config>.config~ &&
+mv .config~ .config &&
+yes "" | make config ARCH=um &&
+# UML SMP wasn't working on my box.
+sed 's:\(^CONFIG_.*SMP\)=.:# \1 is not set:' .config>.config~ &&
+mv .config~ .config &&
+# Since I'm not using X, don't default to console on xterm.
+sed 's:^CONFIG_CON_CHAN=xterm:CONFIG_CON_CHAN=pty:' .config>.config~ &&
+mv .config~ .config &&
+make dep ARCH=um &&
+make linux ARCH=um &&
+make modules ARCH=um &&
+
+echo "" &&
+echo "The UML kernel is in $uml_dest/linux" &&
+echo "You'll need a root filesystem." &&
+echo "Run 'build_rootfs' to create a root filesystem in $uml_dest/linux"
+# end of build_uml
+
+Comments on UML kernel build commands
+=====================================
+Extract the pristine linux source for your UML tree.  Install the UML patch.
+Keep most of your current configuration (if possible) by copying .config 
+from /usr/src/linux (not really necessary, just convenient).  Say "y" 
+to the new config options from the UML patch.  We run 'sed' against the 
+config file as CONFIG_GPROF and CONFIG_GCOV were not be working perfectly 
+when this was written.  Unset PAGER because I saw "make oldconfig" using 
+$PAGER once and didn't like it.  Creates /dev/tap0 if it doesn't exist.  
+(you set CONFIG_TUN in your host kernel, right?)
+
+Changing UML kernel configuration
+---------------------------------
+If you want to change the configuration for UML from what the host system
+has, you can:
+
+cd /usr/src/uml/linux
+make menuconfig ARCH=um
+make dep ARCH=um
+make linux ARCH=um
+make modules ARCH=um
+
+First boot (maybe)
+==================
+After running the commands above you will have a file called 
+/usr/src/uml/linux/linux.  This is the UML kernel.  You can run it now as
+any user (preferably not root, just to be safe).  It will panic because
+there is no root filesystem for UML yet.  Here is then end of the boot
+when there is no rootfs:
+
+ubd0: Can't open "root_fs": errno = 2
+VFS: Cannot open root device "ubd0" or 62:00
+Please append a correct "root=" boot option
+Kernel panic: VFS: Unable to mount root fs on 62:00
+
+No problem, we'll create a root filesystem in a little bit.  Just hit
+<ctrl c> to kill the UML process.
+
+Cleaning up UML processes
+=========================
+If you were couragous and booted the kernel without root_fs to see the panic, 
+you'll have some UML processes hanging around.  You can kill them with a
+command like:
+
+kill -9 $(ps -fu $LOGNAME|awk '/linux/ {print $2}')
+
+or an alias like:
+
+alias kuml="kill -9 \$(ps -fu\$LOGNAME|awk '/\.\/[l]inux/ {print \$2}')"
+
+Creating a root filesystem for user-mode-linux
+==============================================
+User mode linux will have it's own filesystem.  You have to have 
+CONFIG_BLK_DEV_LOOP defined in your kernel to create a root filesystem 
+for user-mode-linux.  Look at your /usr/src/linux/.config file to see
+if you already have the block loopback device.  If you don't, configure
+and compile your normal (host) boot kernel before continuing. 
+
+We'll create a 200 megabyte root filesystem using reiserfs.  This filesystem
+will not contain everything that a basic LFS system has, but it could.  For
+now, just /bin /sbin /lib, and a few bits of /usr/bin and /etc.
+
+Note: The script below uses "here documents" and is very sensitive to 
+extraneous spaces.  I.E. a space after a '!' character can cause the
+script to not complete.  The safe way to execute this is to pop this
+file into vim and grab the script verbatum.  Then read it and change
+what you want.
+
+There are some variables you may want to change in the script:
+
+About 37 lines into the script there is an "export user=rwhron"
+line.  You want to change that to whatever user you normally login as.  
+We will grab /etc/passwd from the host system, so root for UML will be
+your normal root password.
+
+55 lines into the script you can set "hostfs=true" if you want UML 
+to access the the host root and /usr/src filesystems.
+
+Look at the script closely.  There may be some other things you
+want to change too.  Most of the things you may want to modify
+are in the first 69 lines or so.
+
+build_rootfs - root filesystem build script
+===========================================
+
+#!/bin/bash -e
+# note the "-e" above - it means exit script on any error.
+# @(#) $Id: uml.txt,v 1.1 2003/09/13 16:18:16 tushar Exp $
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+# build_rootfs - create a basic root filesystem for user mode linux
+# uses BSD style init scripts.  (nice and simple).
+
+command=${0##.*/}
+
+# root has to run build_rootfs to execute losetup environment.
+if	[[ $UID != 0 ]]
+then	echo "root has to run $command for losetup" >&2
+	exit 1
+fi
+
+# $uml is where root_fs will be temporarily mounted while
+# it is built.  $uml_root will get blown away by this script.
+uml_root=/mnt/uml
+
+# loopback block device - $loop will be mounted on $uml_root
+loop=/dev/loop0
+
+# cleanup if build_rootfs bombed in a previous run.
+if	mount|grep $uml_root >/dev/null
+then	umount $uml_root
+	losetup -d $loop
+fi
+
+# uml_dest is the directory the uml root filesystem will be built in.
+uml_dest=/usr/src/uml
+
+# root_fs is the default name, if you change it, you'll have to
+# pass an option to uml with the rootfs name.
+root_fs=root_fs
+# if user is set, the script will su to $user and boot uml at the end
+# of build_rootfs
+export user=rwhron
+
+# size of filesystem in megs
+megs=200
+
+# hostname for uml
+uml_hostname=uml
+# uml_tun_ip is the address you want the uml machine to have.
+uml_tun_ip="192.168.0.250"
+# interface address of tap0 (interface to uml) - becomes uml defaultroute.
+# this should not be the same as eth0 or ppp0.
+host_tun_ip="192.168.0.230"
+
+# hostfs lets you mount host filesystem under uml
+host=$(hostname)
+
+# set hostfs to true to mount host / on /mnt/$host and
+# host /usr/src under /mnt/$host/usr/src
+hostfs=true
+
+# set devel=true if you want compilers and header files.
+devel=true
+
+# command to create filesystem --format 3.6 needed for 
+# reiserfsprogs 3.x.0k-pre14 on linux-2.5.x host, to get
+# the --format option for mkreiserfs.
+#mkfs="mkreiserfs --format 3.6"
+mkfs="mkreiserfs"
+
+# set network_server=true if you want uml network server commands
+network_server=true
+
+function usage {
+	echo "usage: $command [ -d /path/to/uml/dest ] [ -f ] [ -g ] [ -h uml_hostname ]"
+	echo "	[ -i uml_ipaddress ] [ -m megs ] [ -n ] [ -s ] [ -r /path/to/uml_root ]"
+	echo "	[ -u /path/to/uml/patch.bz2 ] [ -v ]" >&2
+	echo
+	echo "example: $command -d/usr/src/uml -f -h myuml -i 192.168.0.222 \\"
+	echo "	-m 500 -r/mnt/uml2 >&2"
+	echo
+	echo "options					defaults" >&2
+	echo " d	destination for uml tree	$uml_dest" >&2
+	echo " f	use hostfs			$hostfs" >&2
+	echo " g	add development files		$devel" >&2
+	echo " h	uml hostname			$uml_hostname" >&2
+	echo " i	uml ip address			$uml_tun_ip" >&2
+	echo " m	rootfs size in MB		$megs" >&2
+	echo " n	network server			$network_server" >&2
+	echo " r	uml root for build		$uml_root" >&2
+	echo " s	silent make			true" >&2
+	echo "" >&2
+	exit 1
+}
+
+
+# options
+# d     destination for uml tree
+# s     silent make
+# t     tar uncompress option
+# u     user-mode-linux patch
+# v     verbose
+while getopts :d:fgh:i:m:ns arg
+do
+        case $arg in
+                d)      uml_dest=$OPTARG;;
+                f)      hostfs=true;;
+		g)	devel=false;;	# guru
+                h)      uml_hostname=$OPTARG;;
+                i)      uml_tun_ip=$OPTARG;;
+		m)	megs=$OPTARG;;	# number
+		n)	network_server=false;;
+                r)      uml_root=$OPTARG;;
+                s)      make_opt=-s;;
+                \?)     echo "$command: Invalid switch $OPTARG" >&2
+                        usage;;
+                *)      usage;;
+        esac
+done
+
+# list of daemons in /usr/sbin that you want if network_server=true
+network_usr_sbin_daemons="inetd in.telnetd in.rlogind in.ftpd tcpd"
+
+# commands to grab from /usr/bin on host machine
+usr_bin="awk basename bc cal chroot cksum clear cmp col cut dc diff dirname ed
+egrep ex expr file find fmt fold free ftp fuser gawk getconf grep head id join
+last ldd nohup od passwd paste perl pkill procinfo reset setterm sleep sort split
+ssh ssh-keygen strace strings tail tee test time top tput tr tset tty uptime vi 
+vim vmstat xargs w wc who"
+
+# these might help figuring out <ctrl c \>
+key_cmds="dumpkeys  getkeycodes  setkeycodes  showkey"
+
+usr_bin="$usr_bin $key_cmds"
+
+# eliminate any files that haven't been installed
+for f in $usr_bin
+do	[ -f /usr/bin/$f ] && ub="$ub $f"
+done
+usr_bin="$ub"
+
+# readprofile requires System.map
+usr_sbin="klogd readprofile sshd syslogd tcpdump xinetd"
+# eliminate any files that haven't been installed
+for f in $usr_sbin
+do	[ -f /usr/sbin/$f ] && us="$us $f"
+done
+usr_sbin="$us"
+
+# /usr/bin commands included if $devel is true
+usr_bin_dev="ar as as86 as86_encap autoconf autoexpect autoheader automake
+autoreconf autoscan autoupdate bison c++ c++filt cc cpp flex flex++ g++ gasp
+gcc gdb ld ld86 m4 make nm nm86 objcopy objdump objdump86 patch ranlib size
+size86 strip"
+# eliminate any files that haven't been installed
+for f in $usr_bin_dev
+do	[ -f /usr/bin/$f ] && ud="$ud $f"
+done
+usr_bin_dev="$ud"
+
+# set v=v for verbose build
+v=""
+
+# argument to make ARCH=um install_modules quiet
+silent_make="-s"
+
+########### end of configuration setup ##############
+
+# host system will need a tap interface
+if	[[ ! -c /dev/tap0 ]]
+then	mknod /dev/tap0 c 36 16  
+fi
+
+cd $uml_dest/linux
+
+# use /dev/zero for building a file full of 00000000's
+if	[[ ! -c /dev/zero ]]
+then	mknod --mode 0644 /dev/zero c 1 5
+fi
+
+# create root_fs
+rm -f $root_fs
+dd if=/dev/zero of=$root_fs seek=$megs count=1 bs=1M
+
+# loopback setup
+losetup $loop $uml_dest/linux/$root_fs
+
+# take the defaults creating reiserfs
+yes | $mkfs $loop
+
+mkdir -p $uml_root
+
+# mount the loopback reiserfs file
+mount -t reiserfs $loop $uml_root
+
+cd $uml_root
+# create directory structure and copy /lib /sbin /dev into rootfs
+mkdir -p bin dev etc lib mnt proc root sbin tmp usr/{bin,sbin,src} var/{log,run,tmp}
+chmod 1777 tmp var/tmp
+
+# duplicate the dev directory of the host system 
+cd /dev
+echo -en "/dev\t\t\t\t\t"
+find . -print|cpio -pdm $uml_root/dev
+cd $uml_root/dev
+# create ttyp (slave) and ptyp (master) for console if necessary.
+i=0
+while ((i <= 8))
+do	[[ ! -c ptyp$i ]] && mknod --mode=644 ptyp$i c 2 $i
+	[[ ! -c ttyp$i ]] && mknod --mode=644 ttyp$i c 3 $i
+	((i++))
+done
+
+# # put everything in /sbin /bin and /lib on uml root_fs
+# copy everything in /sbin and /bin on uml root_fs
+cd /sbin
+echo -en "/sbin\t\t\t\t\t"
+find . -print|cpio -pdm $uml_root/sbin
+sleep 1
+cd /bin
+echo -en "/bin\t\t\t\t\t"
+find . -print|cpio -pdm $uml_root/bin
+
+# grab some goodies from /usr/bin and /usr/sbin
+cd /usr/bin
+echo -en "/usr/bin\t\t\t\t"
+find $usr_bin|cpio -pdm $uml_root/usr/bin
+cd /usr/sbin
+echo -en "/usr/sbin\t\t\t\t"
+find $usr_sbin|cpio -pdm $uml_root/usr/sbin
+
+# maybe this will make <ctrl c> work for /dev/console (nope)
+cd /usr
+echo -en "/usr/share/kbd\t\t\t\t"
+find share/kbd|cpio -pdm $uml_root/usr
+echo -en "/usr/share/misc/magic\t\t\t"
+find share/misc/magic*|cpio -pdm $uml_root/usr
+
+# grab linux terminfo and keyboard files
+mkdir -p $uml_root/usr/share/terminfo/l
+[[ -f /usr/share/terminfo/l/linux ]] && cp -p /usr/share/terminfo/l/linux $uml_root/usr/share/terminfo/l
+
+# development support files
+if	[[ $devel == true ]]
+then	echo "Including files for development"
+	cd /usr/bin
+	echo -en "Development commands\t\t\t"
+	find $usr_bin_dev|cpio -pdm $uml_root/usr/bin
+	# gcc libs
+	cd /usr/lib
+	echo -en "/usr/lib/gcc-lib\t\t\t"
+	find gcc-lib *crt*.o|cpio -pdm $uml_root/usr/lib
+	# /usr/$MACHTYPE has some support files for binutils.
+	# get header files too
+	cd /usr
+	echo -en "/usr/include\t\t\t\t"
+	find include $MACHTYPE|cpio -pudm $uml_root/usr
+fi
+
+# networking
+if	[[ $network_server == true ]]
+then	cd /usr/sbin
+	for f in $network_usr_sbin_daemons
+	do	if	[[ -f $f ]]
+		then	cp -${v}p $f ${uml_root}/usr/sbin/${f}
+			chmod +x ${uml}${f}
+		fi
+	done
+	cd -
+fi
+
+# Run ldd on everything to figure out what libs we need.
+cd $uml_root
+echo -en "Libraries\t\t\t\t"
+libs=$(ldd sbin/* bin/* usr/sbin/* usr/bin/* 2>/dev/null|
+awk '/=>/ {print $3}'|egrep -v '^/lib|perl5/'|sort -u|
+sed -e 's:-.*:\*.so\*:' -e 's:\.*so.*:\*so\*:')
+cd /
+# grab all of /lib, other libs needed by commands, and /usr/lib/libc*
+find lib/*so* $libs usr/lib/libc*|sed 's:^/::'|cpio -pudm $uml_root
+if	[[ -f $uml_root/usr/bin/perl ]]
+then	echo -en "Perl libs\t\t\t\t"
+	find usr/lib/perl5|cpio -pdm $uml_root
+fi
+chmod +x $uml_root/*
+# create an empty ld.so.conf for ldconfig
+> $uml_root/etc/ld.so.conf
+ldconfig -${v}r $uml_root
+cd -
+
+echo -en "/etc\t\t\t\t\t"
+# some important things in /etc
+[[ -f /etc/bashrc ]]		&& cp -p /etc/bashrc $uml_root/etc
+[[ -f /etc/hosts ]]		&& cp -p /etc/hosts $uml_root/etc
+[[ -f /etc/inetd.conf ]]	&& cp -p /etc/inetd.conf $uml_root/etc
+[[ -f /etc/inputrc ]]		&& cp -p /etc/inputrc $uml_root/etc
+[[ -f /etc/limits ]]		&& cp -p /etc/limits $uml_root/etc
+[[ -e /etc/localtime ]]		&& cp -d /etc/localtime $uml_root/etc
+[[ -f /etc/login.defs ]]	&& cp -p /etc/login.defs $uml_root/etc
+[[ -f /etc/nsswitch.conf ]]	&& cp -p /etc/nsswitch.conf $uml_root/etc
+[[ -f /etc/profile ]]		&& cp -p /etc/profile $uml_root/etc
+[[ -f /etc/protocols ]]		&& cp -p /etc/protocols $uml_root/etc
+[[ -f /etc/resolv.conf ]]	&& cp -p /etc/resolv.conf $uml_root/etc
+[[ -f /etc/services ]]		&& cp -p /etc/services $uml_root/etc
+[[ -d /etc/ssh ]]		&& cp -rp /etc/ssh $uml_root/etc
+# UML host will need new host keys
+rm -f $uml_root/etc/ssh/*key
+[[ -f /etc/syslog.conf ]]	&& cp -p /etc/syslog.conf $uml_root/etc
+
+# instruct about login
+echo "
+You can log into $uml_hostname with one of your normal accounts or root.
+The passwords are the same as on $(hostname).
+" > $uml_root/etc/issue
+
+# Get passwd and shadow so we can login with the same accounts as the host
+cp -p /etc/passwd /etc/shadow /etc/group $uml_root/etc
+
+
+# basic fstab
+cat<<!>$uml_root/etc/fstab
+/dev/bd0	/		reiserfs	defaults	0 0
+proc		/proc		proc		defaults	0 0
+none		/dev/pts	devpts		defaults	0 0
+!
+
+# append hostfs to fstab if desired
+if	[[ $hostfs == true ]]
+then	cat<<-!>>$uml_root/etc/fstab
+	none		/mnt/$host	hostfs		defaults	0 0
+	none		/mnt/$host/usr/src	hostfs		/usr/src	0 0
+	!
+	mkdir -p $uml_root/mnt/$host/usr/src
+fi
+
+# inittab for uml
+cat <<!>$uml_root/etc/inittab
+# user-mode-linux inittab
+id:3:initdefault:
+si::sysinit:/etc/rc.d/rc.sysinit
+l0:0:wait:/etc/rc.d/rc.0
+l1:S1:wait:/etc/rc.d/rc.1
+l2:2:wait:/etc/rc.d/rc.2
+l3:3:wait:/etc/rc.d/rc.3
+l4:4:wait:/etc/rc.d/rc.4
+l5:5:wait:/etc/rc.d/rc.5
+l6:6:wait:/etc/rc.d/rc.6
+ca:12345:ctrlaltdel:/sbin/shutdown -t1 -a -r now
+su:S016:wait:/sbin/sulogin
+c1:23:respawn:/sbin/agetty console 38400 linux
+!
+
+# startup/rc scripts
+mkdir $uml_root/etc/rc.d
+
+# Create rc.sysinit for uml.
+cat<<!>$uml_root/etc/rc.d/rc.sysinit
+#!/bin/sh
+# begin of /etc/rc.d/rc.sysinit
+
+# Mount root device ro.
+/bin/mount -n -o remount,ro /
+
+# Mount swap partitions.
+/sbin/swapon -a
+
+# Remount root device rw.
+/bin/mount -n -v -o remount,rw /
+
+echo "" > /etc/mtab
+/bin/mount -f -o remount,rw /
+
+# Mount special filesystems
+/bin/mount /proc
+/bin/mount /dev/pts
+
+# Initialize loopback network interface.
+/sbin/ifconfig lo 127.0.0.1
+
+# Set hostname.
+/bin/hostname -v $uml_hostname
+
+# Recreate the utmp file so w/who are correct.
+rm -f /var/run/utmp
+touch /var/run/utmp
+chmod 0644 /var/run/utmp
+
+# end of /etc/rc.d/rc.sysinit
+!
+
+# Create rc.0 for uml.
+cat <<!>$uml_root/etc/rc.d/rc.0
+#!/bin/sh
+# /etc/rc.d/rc.0
+# Sending TERM signal to all processes.
+/sbin/killall5 -15
+
+# Sending KILL signal to all processes.
+/sbin/killall5 -9
+
+# Unmounting swap partitions.
+/sbin/swapoff -a
+
+# put marker in messages
+case "\$0" in
+        *6)
+          /sbin/reboot -w
+          ;;
+        *0)
+          /sbin/halt -w
+          ;;
+esac
+
+/bin/sync
+
+# Remount root filesystem ro.
+/bin/mount -n -o remount,ro /
+
+# Unmount other filesystems
+/bin/umount -a
+
+case "\$0" in
+        *6)
+          /sbin/reboot -d -f -i
+          ;;
+        *0)
+          /sbin/halt -d -f -p
+          ;;
+esac
+# end of /etc/rc.d/rc.0
+!
+# end of here doc for /etc/rc.d/rc.0
+
+# Create rc.1 for uml.
+cat<<!>$uml_root/etc/rc.d/rc.1
+#!/bin/sh
+# /etc/rc.d/rc.1
+
+# Send TERM signal to all processes.
+/sbin/killall5 -15
+
+# Send KILL signal to all processes.
+/sbin/killall5 -9
+
+# Disable eth0.
+/sbin/ifconfig eth0 down
+
+# end of /etc/rc.d/rc.1
+!
+# end of here document for /etc/rc.d/rc.1
+
+# Create rc.2 for uml
+cat<<!>$uml_root/etc/rc.d/rc.2
+#!/bin/sh
+# /etc/rc.d/rc.2
+
+echo "Cleaning /tmp"
+/bin/rm -rf /tmp
+/bin/mkdir --mode=1777 /tmp
+
+# don't put MARK in syslog every 20 minutes
+/usr/sbin/syslogd -m0
+
+# -c set console log level to 3 (warning?)
+# -x Omits EIP translation and therefore doesn't read the System.map file.
+#    Suggestion from Keith Owens on lkml on 10/31/2001.
+#/usr/sbin/klogd -c3 -x -k /boot/System.map-`uname -r`
+/usr/sbin/klogd -c3 -x
+
+# load default keymap
+#/bin/loadkeys -d
+
+# Initialize uml eth0.
+/sbin/ifconfig eth0 $uml_tun_ip up
+/sbin/route add default gw $host_tun_ip
+
+# Starting inetd server.
+if	[[ -r /etc/inetd.conf ]] && [[ -x /usr/sbin/inetd ]]
+then	/usr/sbin/inetd
+fi
+
+if	[[ -x /usr/sbin/sshd ]]
+then	if	[ -d /etc/ssh ]
+	then	if	[ -f /etc/ssh/ssh_host_key ]
+		then	echo "/etc/ssh/ssh_host_key already exists, skipping."
+		else	ssh-keygen -t rsa1 -f /etc/ssh/ssh_host_key -N ""
+		fi
+		if	[ -f /etc/ssh/ssh_host_dsa_key ]
+		then	echo "/etc/ssh/ssh_host_dsa_key already exists, skipping."
+		else	ssh-keygen -t dsa -f /etc/ssh/ssh_host_dsa_key -N ""
+		fi
+		if	[ -f /etc/ssh/ssh_host_rsa_key ]
+		then	echo "/etc/ssh/ssh_host_rsa_key already exists, skipping."
+		else	ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N ""
+		fi
+	fi
+	/usr/sbin/sshd
+fi
+
+# Mount other filesystems
+/bin/mount -a
+# end of /etc/rc.d/rc.1
+!
+
+# links for rc scripts
+cd $uml_root/etc/rc.d
+ln -s rc.2 rc.3
+ln -s rc.2 rc.4
+ln -s rc.2 rc.5
+ln -s rc.0 rc.6
+
+# permissions for rc scripts
+cd $uml_root/etc/rc.d
+chmod 754 rc.[0-2]
+chmod 754 rc.sysinit
+
+# done with /etc
+echo "done"
+
+# install modules from uml kernel
+echo -en "Installing kernel modules\t\t"
+cd $uml_dest/linux
+make $silent_make modules_install INSTALL_MOD_PATH=$uml_root ARCH=um
+echo "done"
+
+# basic .bash_profile for root.
+cd $uml_root/root
+cat<<EOF>.bash_profile
+export PATH="\$PATH:/sbin:/usr/sbin"
+set -o vi
+alias l="ls -l"
+EOF
+
+
+cd /
+sync
+echo "umounting $uml_root"
+umount $uml_root
+echo "detaching $loop"
+losetup -d $loop 
+
+if	! grep -q $user /etc/passwd
+then	echo "change user=$user at the top of $0 to whatever your login name is"
+else	chown $user:root $uml_dest/linux/$root_fs
+fi
+
+# load tun driver on host system - only necessar.
+if	[[ -f /lib/modules/`uname -r`/kernel/drivers/net/tun.o ]] && ! modprobe tun
+then	insmod tun
+fi
+
+cd $uml_dest/linux
+# boot uml if user was specified in script.
+if	[[ $user != "" ]]
+then	# boot up 
+	echo -e "\nBooting uml!\n"
+	su - $user -c "cd $uml_dest/linux&&./linux rootfs=$root_fs eth0=tuntap,,,$host_tun_ip umid=$uml_hostname"
+else	echo "Your uml $root_fs is in $uml_dest"
+	echo "boot uml as a non-root user with a command like:"
+	echo "cd $uml_dest/linux && ./linux rootfs=$root_fs eth0=tuntap,,,$host_tun_ip umid=$uml_hostname"
+fi
+# use the line below for no networking, and no init.  It may be useful
+# for troubleshooting.
+#su - $user -c "cd $uml_dest/linux&&./linux rootfs=$root_fs init=/bin/bash"
+# end of build_root_fs
+
+Comments on commands to build root_fs
+=========================================
+Create a 200 megabyte sparse file called root_fs and associate it with
+/dev/loop0.  Copy devices, /lib, /sbin, /bin, a few things from /etc, and
+/usr/bin into the loopback root filesystem.  If devel=true is set in
+build_rootfs, part of /usr/bin, /usr/lib/gcc-lib and /usr/include will
+be copied too.  Create bsd style init scripts.
+
+If you defined user=somebody, build_rootfs will boot UML.  You can always
+boot UML after building root_fs with a command like:
+
+Switch back to a non-priviledged user and run the kernel:
+
+	./linux init=/bin/bash
+
+or
+
+	./linux rootfs=root_fs eth0=ethertap,tap0,,$uml_ip_address umid=$LOGNAME
+
+Logging in
+==========
+Login to UML as root with your usual root password.  To the host
+filesystem, you will still be a non-priviledged user.  You will
+be root in the UML environment.  Take a look around.  If the terminal
+doesn't format properly, try the reset(1) command.  When you
+are done, type /sbin/halt to kill UML.  If you can't shutdown
+the UML for some reason, just kill the "linux" processes from UML.
+
+Using mconsole
+==============
+You can do some UML management with uml_mconsole.  The "management"
+device is printed in the boot message, and it changes from boot to boot.
+You can make the socket used my mconsole stay the same by adding
+umid=something to the UML command line.  In this example, the
+socket will by /tmp/uml/something/mconsole.
+ 
+	 uml_mconsole /tmp/uml/something/mconsole
+	 (something) version
+	 OK Linux uml 2.4.16-2um #1 Tue Dec 11 21:15:47 EST 2001 i686
+	 (something)
+
+
+Taking down UML
+===============
+sync		# halt in mconsole doesn't sync the filesystem.
+/sbin/halt	# from within UML
+kuml		# alias mentioned earlier if UML processes are still out there.
+
+Taking down loopback filesystem if something went wrong
+=======================================================
+umount /mnt/uml
+losetup -d /dev/loop0
+
+Troubleshooting
+===============
+The first place to look for troubleshooting help is the FAQ at:
+http://user-mode-linux.sourceforge.net/faq.html
+Some other troubleshooting suggestions below.
+
+UML didn't compile
+------------------
+Run "make ARCH=um menuconfig" in the uml source tree (default /usr/src/uml/linux)
+and disabling drivers that are questionable for UML.  This could include DRI,
+APM, sound, and other things that you won't use in UML.  Save the possibly
+better .config file that menuconfig creates into the directory you have 
+build_uml in.  build_uml looks for a .config file in the current directory
+before it tries /usr/src/linux/.config.  Then run:
+make ARCH=um dep linux modules
+
+UML hangs with "Initializing stdio console driver"
+--------------------------------------------------
+The default console is an xterm.  Configure CONFIG_CON_CHAN=pty instead
+of xterm.
+
+Xterm insane after shutdown
+---------------------------
+If your X terminal goes haywire, after killing UML, try "reset;reset;clear".
+
+Panic when you have root_fs
+---------------------------
+If you run UML as non-root, the user running UML must own root_fs.  
+chown the root_fs file, (not everything inside root_fs).
+
+Error building kernel
+---------------------
+  gcc -Wl,-T,/usr/src/uml/linux/arch/um/link.ld  -o linux -static \
+        /usr/src/uml/linux/arch/um/main.o vmlinux.o -L/usr/lib
+	vmlinux.o: In function `linux_main':
+	/usr/src/uml/linux/arch/um/kernel/um_arch.c:211: undefined reference
+	to `remap_profiling_buffers'
+	collect2: ld returned 1 exit status
+	make: *** [linux] Error 1
+  Somehow CONFIG_GPROF in .config is defined to 1.  make mrproper and try building
+  the kernel again.  Read the build_uml script, there's a sed hack in there for this.
+
+
+kernel BUG at page_alloc.c:112!
+------------------------------
+Similar to the previous error.  CONFIG_GPROF and CONFIG_GCOV are set.  Look at
+the sed hack for the CONFIG in build_uml.  Here is what the error may look like:
+
+hrandoz@rushmore:/usr/src/uml/linux$ ./linux
+tracing thread pid = 17848
+Linux version 2.4.15-3um (hrandoz@rushmore) (gcc version 2.95.3 20010315 (release)) #1 Sun Dec 2 13:19:51 EST 2001
+On node 0 totalpages: 8192
+zone(0): 0 pages.
+zone(1): 8192 pages.
+zone(2): 0 pages.
+Kernel command line: root=/dev/ubd0
+Calibrating delay loop... 25.47 BogoMIPS
+kernel BUG at page_alloc.c:112!
+
+ifconfig error
+--------------
+tuntap_open_tramp failed during ifconfig.  The /usr/include/linux/if_tun.h has changed 
+a lot since you installed glibc.  Copy /usr/src/linux/include/if_tun.h to 
+/usr/include/linux/if_tun.h and rebuild the UML kernel.
+
+ioctl: LOOP_SET_FD: Device or resource busy
+-------------------------------------------
+This may show up if build_rootfs bombed for some reason.  It means /dev/loop0 is
+still mounted.  umount /mnt/uml && losetup -d /dev/loop0 and re-run build_rootfs.
+Another possiblitity is that you /dev/loop0 device isn't a block device.
+
+make does not return when compiling with UML
+--------------------------------------------
+I had to reconfigure/compile make on the host system without optimization
+and these configure options:
+
+	./configure --prefix=/usr --disable-job-server 
+
+I've had better luck compiling in UML with CFLAGS and CPPFLAGS unset.
+
+Other helpful docs
+==================
+HOWTO: Loopback Encrypted Filesystem HOWTO  (info about building a 
+	filesystem on a loopback device)
+HOWTO: The Linux Bootdisk HOWTO
+
+IRC Resources
+=============
+irc.openprojects.org #kernelnewbies and #uml
+
+Mailing lists
+=============
+user-mode-linux-user@lists.sourceforge.net
+
+#(@) $Id: uml.txt,v 1.1 2003/09/13 16:18:16 tushar Exp $
+
+Good Luck!

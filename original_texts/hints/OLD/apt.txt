@@ -1,0 +1,182 @@
+AUTHOR: Ben Roberts <benr@wam.umd.edu>
+
+DATE: 2003-09-17
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: Compiling apt-get and dpkg, and getting them to work
+
+DESCRIPTION:
+dpkg and apt-get are a pair of extremely powerful programs for managing
+packages, (in)famous for their ability to easily upgrade an entire Linux
+system.  However, since these tools are designed for installing and
+maintaining Debian GNU/Linux, they were never meant to be installed
+"from scratch."  This hint describes how you can fool these programs
+into working.
+
+PREREQUISITES:
+This hint tries to aim to be as easy to understand as the LFS book
+itself. Some of it, however, does actually require some understanding of
+UNIX commands. While all sets of commands give an explanation as to why
+they should be run, they do not usually include the background on how
+they work.
+
+HINT:
+[I first attempted this process in 2001 for the purpose of installing
+Debian on top of Red Hat without rebooting and without install CD's.  It
+worked quite nicely, but my logs of how I did it were lost when that
+computer's hard drive died. I have attempted to recreate the process
+using a chrooted LFS install on my computer; I hope this works for you
+too.]
+
+First, download the dpkg and apt sources from packages.debian.org/dpkg
+and packages.debian.org/apt (small link near bottom of the page).  The
+versions used to write this hint are dpkg-1.9.21 and 0.5.4.
+
+$ tar xzvf dpkg_1.9.21.tar.gz
+$ cd dpkg-1.9.21
+$ ./configure --prefix=/usr --admindir=/var/lib/dpkg
+
+Note that --with-admindir has a different default setting (/usr/lib/db)
+than what apt and the rest of Debian use, so it's wise to use the
+configure option to make it in the default location now, or make a
+symlink until you download the binary as a dpkg.
+
+If you just type 'make,' the compile will fail unless you have jade
+and debiandoc2html (you probably don't have either of these things).
+The best way around this is to change doc/Makefile; this requires
+disabling doc/Makefile:
+
+$ mv doc/Makefile doc/Makefile.bak
+$ sed 's/^all: /&# /g; s/^install: /&# /g' doc/Makefile.bak > doc/Makefile
+
+(this is further reason to just install the Debian version of the
+package once apt works)
+
+$ make
+$ su
+# make install 
+
+Next we'll install apt.
+
+$ tar xzvf apt_0.5.4.tar.gz
+$ cd apt-0.5.4
+$ ./configure
+
+There aren't any useful options here, not even --prefix is heeded.
+
+$ make
+
+apt doesn't have a 'make install' target, so apt must be installed
+manually.  Fortunately, almost all the relevant files to install are
+located in the bin subdirectory.  The exception is the dselect scripts.
+
+Keep in mind apt probably will not work if these exact directories are
+not used!  I've tried.  This is why no --prefix was given to
+./configure; it doesn't pay attention to what you tell it.
+
+$ su
+# cd bin
+# cp -a libapt-* /usr/lib
+# ldconfig
+# cp apt-cache apt-cdrom apt-config apt-get /usr/bin
+# mkdir /usr/lib/apt
+# cp -R methods /usr/lib/apt
+# cd ..
+# cp -R scripts/dselect /usr/lib/dpkg/methods/apt
+# mkdir -p /etc/apt /var/state/apt/lists/partial \
+	/var/cache/apt/archives/partial
+
+Now, to get it working.  First we need a /etc/apt/sources.list.  Replace
+the sites below with local mirrors, of course.  You might also want
+things like sources and security updates, but this is just a hint, after
+all.
+
+# cat > /etc/apt/sources.list >> EOF
+# Begin /etc/apt/sources.list
+
+deb http://http.us.debian.org/debian testing main contrib non-free
+deb http://non-us.debian.org/debian-non-US testing/non-US main contrib non-free
+
+# end /etc/apt/sources.list
+EOF
+
+If you need to symlink /var/lib/dpkg to /usr/lib/db, do it now.
+
+# ln -s /usr/lib/db /var/lib/dpkg
+
+# touch /var/lib/dpkg/status
+
+# dselect
+
+In dselect, start with the [A]ccess menu and go down to choose apt.
+Keep the config file that was already created above.  Then choose
+[U]pdate.  Now dpkg's available database has been updated.  (for some
+reason, just using apt-get update didn't work for me, if you have
+problems, try this dselect method)
+
+That's pretty much it.  A few things to watch out for: dpkg doens't like
+installing from scratch like this.  Many of the essential packages have
+more complicated dependencies than they list.  You may have problems
+installing things because it thinks other things aren't installed (an
+example is if you try to install libc6, it will complain that dpkg isn't
+installed even though it's not a dependency)  The solution to this is to
+hack /var/lib/dpkg/status.  To solve the example problem given with
+libc6, put this in the database:
+
+Package: dpkg
+Essential: yes
+Status: install ok installed
+Priority: required
+Section: base
+Installed-Size: 2360
+Maintainer: Wichert Akkerman <wakkerma@debian.org>
+Version: 1.9.21
+Replaces: dpkg-doc-ja
+Pre-Depends: libc6.1 (>= 2.2.4-4), libncurses4 (>= 5.2.20020112a-1),
+libstdc++2.10-glibc2.2 (>= 1:2.95.4-0.010810) <--- *PUT THIS ON ABOVE LINE!*
+Description: Package maintenance system for Debian
+ This package contains the programs which handle the installation and
+ removal of packages on your system.
+ .
+ The primary interface for the dpkg suite is the `dselect' program;
+ a more low-level and less user-friendly interface is available in
+ the form of the `dpkg' command.
+ .
+ In order to unpack and build Debian source packages you will need to
+ install the developers' package `dpkg-dev' as well as this one.
+
+One thing to note here is that the version on dpkg is the same as the
+one we installed.  If you want to reinstall dpkg from a package, the
+best thing to do here is to decrement the version number by one, so it
+thinks version 1.9.20 is installed.  Then dpkg will automatically
+"upgrade" itself.
+
+You might even want to put all the packages installed so far by LFS into
+this status database, and hold them all in dselect; that way, you only
+have to worry about the binaries, and you've fooled dpkg into not
+overwriting your pristine LFS installation.
+
+That's it and good luck with your Debian From Scratch!
+(DFS? DG/LFS perhaps?)
+
+It should be noted that this procedure only works for dpkg 1.9.21
+and apt 0.5.4, which were the versions this hint was developed against.
+Newer versions (including dpkg 1.10 and later) have been tried and have
+problems, including requiring as-of-yet unofficial ncurses
+distributions. A procedure for compiling them has not been worked out,
+so their compilations are not covered here. However, if anyone out there
+wants to tell me how to do it I'll include the procedure here if you
+want, but I wouldn't be surprised to find it so different that a new
+hint would be warranted.
+
+ACKNOWLEDGEMENTS:
+  * Xavier Amado <xavier@blackbloodstudios.com> for discovering that
+    dpkg 1.10 doesn't work with these directions.
+
+CHANGELOG:
+[2002-06-12]
+  * Initial hint.
+[2003-09-17]
+  * Changed format to fit new guidelines, added disclaimer about dpkg
+    1.10.

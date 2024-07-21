@@ -1,0 +1,293 @@
+AUTHOR:         Jim Gifford <lfs-hints at jg555.com>
+
+DATE: 		2004-06-20
+
+LICENSE: 	GNU Free Documentation License Version 1.2
+
+SYNOPSIS: 	initrd for LFS
+
+DESCRIPTION: 	This hint will assist you in creating a initrd
+		for your LFS system
+
+PREREQUISITES:  SCSI and USB Modules must be in modules.conf
+		Linux 2.4/2.6 built with modules.
+			Ram disk support compiled in
+			initrd selected
+			Root Filesystem must be compiled in
+		Busybox-1.00-pre10
+HINT:
+
+Introduction to Initial RAMDisk
+
+This hint will help you configure an LFS system for Initial RAMDisk.
+Which will allow you to add modules at start-up instead of compiling them
+into the kernel.
+
+The script will auto-detect all SCSI, IDE and USB modules and add them
+to the initial ramdisk. It will also detect the root from the fstab file
+
+The above items, upon research are best if configured into the kernel. 
+You can look at the help of each of the items for more information.
+
+---
+Assumptions Made in this document
+
+	I have made the following assumptions in this document.
+	Files have been downloaded.
+
+---
+Kernel Configuration for 2.4
+
+	You will need to make sure the following items are configured
+	in your kernel. With out these, the initrd will not work 
+	properly.
+
+	Block devices  --->
+		<M> Loopback device support (or <*>)
+		<*> RAM disk support
+		(4096)   Default RAM disk size
+		[*]   Initial RAM disk (initrd) support
+
+	The root and initrd file systems must be compiled into the kernel.
+
+---
+Kernel Configuration for 2.6
+
+	You will need to make sure the following items are configured
+	in your kernel. With out these, the initrd will not work 
+	properly.
+
+	Device Drivers  --->
+		Block devices  --->
+			<M> Loopback device support (or <*>)
+			<*> RAM disk support
+			(4096)   Default RAM disk size
+			[*]   Initial RAM disk (initrd) support
+
+	The root and initrd file systems must be compiled into the kernel.
+	
+---
+File Systems
+
+	The new script has 3 choices of file systems.
+	ext2, ext3, and cramfs.
+
+	ext2 and ext3 are the most common file systems
+	in use, but the initrd is usually bigger.
+	My initrd with ext3 was only 412k. Compressed with
+	gzip -9
+
+---
+Needed Programs
+	
+	busybox 1.00-pre10
+	----
+
+	Download From
+	http://busybox.net/downloads/busybox-1.00-pre10.tar.bz2	
+
+	Information
+	http://busybox.net
+	
+	Busybox has changed the way the configure the shell. It now
+	uses a menu driven option very similar to make menuconfig
+	in linux.
+
+	Here is the list of the options needed. Anything else
+	will add to the size of your initrd.
+
+	General Configuration --->
+		[*] Support for devfs
+			 NOTE - only if you using devfs
+	Build Options  --->
+		[*] Build BusyBox as a static binary (no shared libs)
+	Coreutils  --->
+		[*] echo (basic SUSv3 version taking no options
+	Linux Module Utilities  ---> 
+		[*] insmod
+		[*]     Support version 2.1.x to 2.4.x Linux kernels
+			NOTE - only if your using a 2.4 kernel
+		[*]     Support version 2.6.x Linux kernels
+			NOTE - only if your using a 2.6 kernel
+	Another Bourne-like Shell  --->
+		[*]     Optimize for size instead of speed
+		[*]     Enable alias support
+		(0) history size
+	Linux System Utilities  --->
+		[*] pivot_root
+		[*] mount
+
+	The build size on my system was 502k, considerably smaller than
+	bash.
+
+	After running make menuconfig you will need to run the
+	following commands.
+
+	make
+	cp busybox /bin/busybox.static
+
+---
+mkinitrd
+
+	For those who do not want to type out the script. It is
+	available on my CVS server at 
+	http://svn.jg555.com/viewcvs.cgi/*checkout*/system/mkinitrd?rev=1&root=scripts
+	
+	This script will create the initial RAM Disk image file.
+	By default this script creates /boot/initrd-{kernelversion}.img
+
+	I have sent a mkinitrd file to be placed
+	in the hints attachments at 
+	http://www.linuxfromscratch.org/hints/downloads/attachments. 
+	
+	The default location for this file is /sbin
+
+	There are options on the new script, it will not just create
+	a initrd anymore. The kernel_version= is the only mandatory
+	option
+
+	Options are the following:
+
+	Required
+        kernel_version={version} = use kernel version
+
+	Optional
+	-ide = remove ide modules [-scsi = remove scsi modules]
+        -usb = remove usb modules [-cdrom = remove cdrom modules]
+ 	-ide-scsi = remove ide-scsi modules
+	-devfs = remove devfs settings from initrd
+	initrdfs={ext2|ext3} = use either ext2 or ext3
+	-module={module} = remove module
+	+module={module} - add module
+        root-device={device} - skips auto detection of the root device
+	order={scsi,ide,usb,added} - sets the order of modules to be loaded
+                                                                                                        
+---
+initrd script
+
+	The following script needs to placed in /etc/rc.d/init.d.
+
+	You will then need to link it to rcsysinit.d.
+
+	It is recommended that this script be run right after
+	mountfs.
+
+	To link the script change to the /etc/rc.d/rcsysinit.d
+	directory and issue the following command.
+
+	ln -sf ../init.d/initrd S41initrd
+
+	#!/bin/sh
+	# Begin $rc_base/init.d/initrd
+
+	# Based on sysklogd script from LFS-3.1 and earlier.
+	# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+
+	source /etc/sysconfig/rc
+	source $rc_functions
+
+	case "$1" in
+		start)
+			if [ -e /initrd/dev/.devfsd ]
+				then
+					umount /initrd/dev
+			fi
+
+			if [ -e /initrd/proc ]
+				then
+					umount /initrd/proc
+			fi
+
+			if [ -e /initrd/sys ]
+				then
+					umount /initrd/sys
+			fi
+
+			if [ -e /initrd/linuxrc ]
+				then
+					umount /initrd
+					echo "Clearing Initial RAM Disk..."
+					blockdev --flushbufs /dev/ram0
+					evaluate_retval
+			fi
+			;;
+		*)
+			echo "Usage: $0 {start}"
+			exit 1
+			;;
+	esac
+
+# End $rc_base/init.d/initrd
+		
+---
+For Lilo
+
+	In order to use the initrd.img file is to add the
+	following entry to you lilo.conf file.
+
+	initrd=/boot/initrd.img
+
+	So your lilo.conf should look something like this.
+
+	image=/boot/vmlinuz-2.4.23
+	label=test
+	initrd=/boot/initrd-2.4.23.img
+	read-only
+
+	If you are just testing. You should make a separate
+	entry in lilo.conf. This will still allow you to boot.	
+
+---
+For Grub
+
+	In order to use the initrd.img file is to add the
+	following entry to you menu.lst file.
+
+	initrd /boot/initrd-2.4.23.img
+
+	So your menu.lst should look something like this.
+
+	title test
+	kernel (hd0,1)/boot/vmlinuz-2.4.23
+	initrd (hd0,1)/boot/initrd-2.4.23.img
+
+---
+For Syslinux
+
+	In order to use the initrd.img file is to add the
+	following to syslinux.cfg file.
+
+	append initrd=initrd-2.4.23.img
+
+	So your syslinux.cfg should look something like this.
+
+	label test
+	kernel vmlinuz
+	append initrd=initrd.img
+
+---
+
+VERSION:        2.11
+
+CHANGELOG:     	2.11 Forgot to update the mkinitrd svn information
+		2.10 Version Updates and CVS to SVN Information
+		2.9 Fixes Typos
+		2.8 Updated initrd script and mkinitrd
+		2.7 Updated Configurations
+		2.6 More 2.6 Updates -- removed romfs
+		2.5 Updated for 2.6 Kernel
+		2.4 Added a choice of the Change_Root Method
+		    and the pivot_root method.
+		2.3 Fixed Typos
+		2.2 Fixed Typos
+		2.1 Forget at add genromfs build information
+		2.0 Did more Research - Found easier way to 
+		    do things and smaller.
+		1.5 Update CVS Information
+		1.4 Updated to New Hint Format
+                1.3 Updated Script
+                1.2 Fixed Typos
+                1.1 Updated Script
+                1.0 Initial Version
+
+ New Version of this document can be viewed from http://svn.jg555.com/viewcvs.cgi/?root=lfs-hints

@@ -1,0 +1,132 @@
+TITLE:		Large Disks
+LFS VERSION:	any
+AUTHOR:		Ivan McDonagh <ivan@svgalib.org>
+
+SYNOPSIS:
+	Using hard-drives > 504Mb
+
+HINT:
+v1.0
+
+1. Why this hint ?
+
+I am using a 486DX100 with a 2.1GB hdd and found that because of the 504MB
+BIOS limitation I couldn't (at first) get my shiny new LFS system to boot.
+This material is covered much more comprehensively in the Large Disk How-To
+but a simple set of instructions would have helped me very much and I hope
+this hint will help others :)
+
+2. Partitioning the drive
+
+Most older BIOSes have a requirement that the boot partition be contained
+entirely within the first 1024 cylinders. Why this is so is discussed in
+the Large Disk How-To but for the moment just accept that this means you
+have to setup your hard-drive differently to someone who does not have an
+old BIOS :)
+
+The problem I had is that I wanted my base distribution to boot from the
+hard-drive and also have my LFS system boot from the hard-drive. I used
+Debian 2.0 and found that this just wasn't going to be so easy !!! The
+solution ? I'm glad you asked :)
+
+I decided that for my installation, a single LFS partition as described in
+the book would be perfectly fine and dandy for my needs and a single
+partition was required for the base distribution. This makes things a lot
+more simple as well :) ... Don't forget to allow another partition for your
+swap area :)
+
+So, we need 3 partitions in total:
+
+1. Base distro
+2. LFS
+3. Swap - to be shared between LFS and whatever your base distro is
+
+BUT ! ... because of the BIOS limitation, we also need a /boot partition
+giving us four in total
+
+So my personal setup now looks something like:
+
+partition	mount point	size
+/dev/hda1	/boot		20Mb
+/dev/hda2	/mnt/lfs	1000Mb (this is the LFS partition, initially mounted at
+/mnt/lfs)
+/dev/hda3	/		750Mb (this is the root partition of the base distro)
+/dev/hda4	swap		30Mb
+
+NOTE - these are not specific partition sizes to take as gospel - adjust
+and rearrange as necessary :) - the only thing you need to be especially
+aware of is putting your /boot partition at the start of the drive and
+keeping the size fairly small - 20Mb is probably as big as you want it and
+even 10Mb is plenty under most circumstances.
+
+3. Installing the base distribution
+
+This really is the easiest part of it all ... just install as you normally
+would to whatever partition you are using (/dev/hda3 in this example) but
+when the time comes and you are asked whether to boot from the hard disk
+say "No" and choose to make a boot floppy instead.
+
+4. Installing LFS
+
+Boot up your machine using the boot floppy that you created in section 3,
+mount the LFS root partition as described in the book and create the
+directories. After you have created all of the directories, make sure you
+mount also the LFS /boot partition. In my example, the command would be:
+
+root:~# mount /dev/hda1 /mnt/lfs/boot
+
+now you are ready to start compiling - go to it :)
+
+5. /etc/lilo.conf and /etc/fstab
+
+This is where you tell the machine how to boot up correctly and so is the
+most important thing to get right :)
+
+/etc/lilo.conf is correct as it stands in the book right now so you
+shouldn't have to anything special except make sure that your root
+partition is correctly named :)
+
+/etc/fstab will need to be altered to suit your setup. Partitions are
+mounted in the order in which they are mentioned in /etc/fstab so it is
+important that you mount your / partition first and then mount the /boot
+partition. Because /boot contains the kernel I like to have it checked
+every so often during the boot sequence and consequently have set the
+options appropriately :)
+
+My /etc/fstab looks like this (you may have to change the partition naming
+to suit yourself)
+
+/dev/hda2 / ext2 defaults 1 1
+/dev/hda1 /boot ext2 defaults 1 1
+/dev/hda4 swap swap defaults 0 0
+proc /proc proc defaults 0 0
+
+Notice that we don't bother with /dev/hda3 which is where the base distro
+is - we don't need that partition any more and so don't mount it. Later on,
+you can use it for mail or news or whatever and add the entry to /etc/fstab
+but it really isn't needed at the moment :)
+
+6. Extras
+
+To make things easier for yourself if think you might boot into the base
+distro more than once you can edit the /etc/fstab file created by the
+distro to ensure that the LFS / and /boot are mounted at boot time. To do
+this just add these lines to the /etc/fstab file:
+
+/dev/hda2 /mnt/lfs ext2 defaults 0 0
+/dev/hda1 /mnt/lfs/boot ext 2 defaults 0 0
+
+notice that I haven't bothered with file system checking at this stage -
+hopefully you won't be rebooting so often that max count is ever reached
+before you are using LFS only :)
+
+7. Thanks
+
+Thanks to Gerard and all of the many contributors for making LFS such an
+easy, educating and entertaining process.
+
+Thanks very much to Andries Brouwer (aeb@cwi.nl) for the informative and
+very well written Large Disk How-To without which I would have given up and
+thrown my computer out of the window :)
+
+Comments on this hint may be directed to me at ivan@svgalib.org

@@ -1,0 +1,193 @@
+diff -Naur lfs-6.3/chapter03/packages.xml lfs-6.3forppc/chapter03/packages.xml
+--- lfs-6.3/chapter03/packages.xml	2010-01-01 20:18:37.000000000 -0700
++++ lfs-6.3forppc/chapter03/packages.xml	2010-01-03 14:04:59.000000000 -0700
+@@ -570,6 +570,15 @@
+     </varlistentry>
+ 
+     <varlistentry>
++      <term>Yaboot (&yaboot-version;) - <token>&yaboot-size;</token>:</term>
++      <listitem>
++        <para>Home page: <ulink url="&yaboot-home;"/></para>
++        <para>Download: <ulink url="&yaboot-url;"/></para>
++        <para>MD5 sum: <literal>&yaboot-md5;</literal></para>
++      </listitem>
++    </varlistentry>
++
++    <varlistentry>
+       <term>Zlib (&zlib-version;) - <token>&zlib-size;</token>:</term>
+       <listitem>
+         <para>Home page: <ulink url="&zlib-home;"/></para>
+diff -Naur lfs-6.3/chapter05/adjusting.xml lfs-6.3forppc/chapter05/adjusting.xml
+--- lfs-6.3/chapter05/adjusting.xml	2010-01-01 20:18:37.000000000 -0700
++++ lfs-6.3forppc/chapter05/adjusting.xml	2010-01-03 13:53:52.000000000 -0700
+@@ -36,19 +36,19 @@
+ 
+   <para>For the sake of accuracy, it is recommended to use a copy-and-paste
+   method when issuing the following command. Be sure to visually inspect the
+-  specs file and verify that all occurrences of <quote>/lib/ld-linux.so.2</quote>
+-  have been replaced with <quote>/tools/lib/ld-linux.so.2</quote>:</para>
++  specs file and verify that all occurrences of <quote>/lib/ld.so.1</quote>
++  have been replaced with <quote>/tools/lib/ld.so.1</quote>:</para>
+ 
+   <important>
+     <para>If working on a platform where the name of the dynamic linker is
+-    something other than <filename class="libraryfile">ld-linux.so.2</filename>,
+-    replace <quote>ld-linux.so.2</quote> with the name of the platform's
++    something other than <filename class="libraryfile">ld.so.1</filename>,
++    replace <quote>ld.so.1</quote> with the name of the platform's
+     dynamic linker in the following commands. Refer to <xref
+     linkend="ch-tools-toolchaintechnotes" role=","/> if necessary.</para>
+   </important>
+ 
+ <!-- Ampersands are needed to allow copy and paste -->
+-<screen><userinput>gcc -dumpspecs | sed 's@^/lib/ld-linux.so.2@/tools&amp;@g' \
++<screen><userinput>gcc -dumpspecs | sed 's@/lib/ld.so.1@/tools&amp;@g' \
+   > `dirname $(gcc -print-libgcc-file-name)`/specs</userinput></screen>
+ 
+   <para>During the build process, GCC runs a script
+@@ -84,7 +84,7 @@
+     and the output of the last command will be of the form:</para>
+ 
+ <screen><computeroutput>[Requesting program interpreter:
+-    /tools/lib/ld-linux.so.2]</computeroutput></screen>
++    /tools/lib/ld.so.1]</computeroutput></screen>
+ 
+     <para>Note that <filename class="directory">/tools/lib</filename>
+     appears as the prefix of the dynamic linker.</para>
+diff -Naur lfs-6.3/chapter05/gcc-pass2.xml lfs-6.3forppc/chapter05/gcc-pass2.xml
+--- lfs-6.3/chapter05/gcc-pass2.xml	2010-01-01 20:18:37.000000000 -0700
++++ lfs-6.3forppc/chapter05/gcc-pass2.xml	2010-01-03 13:53:52.000000000 -0700
+@@ -86,7 +86,7 @@
+ 
+     <para>Apply the following patch to change the location of GCC's default
+     dynamic linker (typically <filename
+-    class="libraryfile">ld-linux.so.2</filename>):</para>
++    class="libraryfile">ld.so.1</filename>):</para>
+ 
+ <screen><userinput>patch -Np1 -i ../&gcc-specs-patch;</userinput></screen>
+ 
+diff -Naur lfs-6.3/chapter05/ncurses.xml lfs-6.3forppc/chapter05/ncurses.xml
+--- lfs-6.3/chapter05/ncurses.xml	2010-01-01 20:18:37.000000000 -0700
++++ lfs-6.3forppc/chapter05/ncurses.xml	2010-01-03 13:53:52.000000000 -0700
+@@ -40,7 +40,7 @@
+     <para>Prepare Ncurses for compilation:</para>
+ 
+ <screen><userinput>./configure --prefix=/tools --with-shared \
+-    --without-debug --without-ada --enable-overwrite</userinput></screen>
++    --without-debug --without-ada --enable-overwrite --without-gpm</userinput></screen>
+ 
+     <variablelist>
+       <title>The meaning of the configure options:</title>
+diff -Naur lfs-6.3/chapter06/chapter06.xml lfs-6.3forppc/chapter06/chapter06.xml
+--- lfs-6.3/chapter06/chapter06.xml	2010-01-01 20:18:37.000000000 -0700
++++ lfs-6.3forppc/chapter06/chapter06.xml	2010-01-03 13:53:52.000000000 -0700
+@@ -44,7 +44,6 @@
+   <xi:include xmlns:xi="http://www.w3.org/2003/XInclude" href="file.xml"/>
+   <xi:include xmlns:xi="http://www.w3.org/2003/XInclude" href="findutils.xml"/>
+   <xi:include xmlns:xi="http://www.w3.org/2003/XInclude" href="flex.xml"/>
+-  <xi:include xmlns:xi="http://www.w3.org/2003/XInclude" href="grub.xml"/>
+   <xi:include xmlns:xi="http://www.w3.org/2003/XInclude" href="gawk.xml"/>
+   <xi:include xmlns:xi="http://www.w3.org/2003/XInclude" href="gettext.xml"/>
+   <xi:include xmlns:xi="http://www.w3.org/2003/XInclude" href="grep.xml"/>
+diff -Naur lfs-6.3/chapter06/coreutils.xml lfs-6.3forppc/chapter06/coreutils.xml
+--- lfs-6.3/chapter06/coreutils.xml	2010-01-01 20:18:37.000000000 -0700
++++ lfs-6.3forppc/chapter06/coreutils.xml	2010-01-03 13:53:52.000000000 -0700
+@@ -40,7 +40,7 @@
+     returns <computeroutput>unknown</computeroutput>. The following patch
+     fixes this behavior for Intel architectures:</para>
+ 
+-<screen><userinput>patch -Np1 -i ../&coreutils-uname-patch;</userinput></screen>
++<screen><userinput># not on ppc patch -Np1 -i ../&coreutils-uname-patch;</userinput></screen>
+ 
+     <para>Prevent Coreutils from installing binaries that will be installed by
+     other packages later:</para>
+diff -Naur lfs-6.3/chapter06/glibc.xml lfs-6.3forppc/chapter06/glibc.xml
+--- lfs-6.3/chapter06/glibc.xml	2010-01-01 20:18:37.000000000 -0700
++++ lfs-6.3forppc/chapter06/glibc.xml	2010-01-03 13:53:52.000000000 -0700
+@@ -79,7 +79,7 @@
+     to check the Glibc we have just installed with the following:</para>
+ 
+ <screen><userinput>sed -i \
+-'s|libs -o|libs -L/usr/lib -Wl,-dynamic-linker=/lib/ld-linux.so.2 -o|' \
++'s|libs -o|libs -L/usr/lib -Wl,-dynamic-linker=/lib/ld.so.1 -o|' \
+         scripts/test-installation.pl</userinput></screen>
+ 
+     <para>The <command>ldd</command> shell script contains Bash-specific
+@@ -311,7 +311,7 @@
+     </indexterm>
+ 
+     <para>By default, the dynamic loader (<filename
+-    class="libraryfile">/lib/ld-linux.so.2</filename>) searches through
++    class="libraryfile">/lib/ld.so.1</filename>) searches through
+     <filename class="directory">/lib</filename> and <filename
+     class="directory">/usr/lib</filename> for dynamic libraries that are
+     needed by programs as they are run. However, if there are libraries in
+diff -Naur lfs-6.3/chapter06/inetutils.xml lfs-6.3forppc/chapter06/inetutils.xml
+--- lfs-6.3/chapter06/inetutils.xml	2010-01-01 20:18:37.000000000 -0700
++++ lfs-6.3forppc/chapter06/inetutils.xml	2010-01-03 13:53:52.000000000 -0700
+@@ -46,7 +46,7 @@
+ <screen><userinput>./configure --prefix=/usr --libexecdir=/usr/sbin \
+     --sysconfdir=/etc --localstatedir=/var \
+     --disable-ifconfig --disable-logger --disable-syslogd \
+-    --disable-whois --disable-servers</userinput></screen>
++    --disable-whois </userinput></screen>
+ 
+     <variablelist>
+       <title>The meaning of the configure options:</title>
+diff -Naur lfs-6.3/chapter06/readjusting.xml lfs-6.3forppc/chapter06/readjusting.xml
+--- lfs-6.3/chapter06/readjusting.xml	2010-01-01 20:18:37.000000000 -0700
++++ lfs-6.3forppc/chapter06/readjusting.xml	2010-01-03 13:53:52.000000000 -0700
+@@ -39,14 +39,14 @@
+ 
+   <important>
+     <para>If working on a platform where the name of the dynamic linker is
+-    something other than <filename class="libraryfile">ld-linux.so.2</filename>,
+-    substitute <quote>ld-linux.so.2</quote> with the name of the platform's
++    something other than <filename class="libraryfile">ld.so.1</filename>,
++    substitute <quote>ld.so.1</quote> with the name of the platform's
+     dynamic linker in the following commands. Refer to <xref
+     linkend="ch-tools-toolchaintechnotes" role=","/> if necessary.</para>
+   </important>
+ 
+ <screen><userinput>gcc -dumpspecs | sed \
+-    -e 's@/tools/lib/ld-linux.so.2@/lib/ld-linux.so.2@g' \
++    -e 's@/tools/lib/ld.so.1@/lib/ld.so.1@g' \
+     -e '/\*startfile_prefix_spec:/{n;s@.*@/usr/lib/ @}' \
+     -e '/\*cpp:/{n;s@$@ -isystem /usr/include@}' &gt; \
+     `dirname $(gcc --print-libgcc-file-name)`/specs</userinput></screen>
+@@ -66,7 +66,7 @@
+   and the output of the last command will be (allowing for
+   platform-specific differences in dynamic linker name):</para>
+ 
+-<screen os="c"><computeroutput>[Requesting program interpreter: /lib/ld-linux.so.2]</computeroutput></screen>
++<screen os="c"><computeroutput>[Requesting program interpreter: /lib/ld.so.1]</computeroutput></screen>
+ 
+   <para>Note that <filename class="directory">/lib</filename> is now
+   the prefix of our dynamic linker.</para>
+@@ -120,7 +120,7 @@
+   and the output of the last command will be (allowing for
+   platform-specific differences in dynamic linker name):</para>
+ 
+-<screen os="s"><computeroutput>found ld-linux.so.2 at /lib/ld-linux.so.2</computeroutput></screen>
++<screen os="s"><computeroutput>found ld.so.1 at /lib/ld.so.1</computeroutput></screen>
+ 
+   <para os="t">If the output does not appear as shown above or is not received
+   at all, then something is seriously wrong. Investigate and retrace the
+diff -Naur lfs-6.3/packages.ent lfs-6.3forppc/packages.ent
+--- lfs-6.3/packages.ent	2010-01-01 20:18:37.000000000 -0700
++++ lfs-6.3forppc/packages.ent	2010-01-03 14:08:38.000000000 -0700
+@@ -509,6 +509,14 @@
+ <!ENTITY util-linux-ch6-du "17.2 MB">
+ <!ENTITY util-linux-ch6-sbu "0.2 SBU">
+ 
++<!ENTITY yaboot-version "1.3.14">
++<!ENTITY yaboot-size "214 KB">
++<!ENTITY yaboot-url "http://yaboot.ozlabs.org/releases/yaboot-&yaboot-version;.tar.gz">
++<!ENTITY yaboot-md5 "9b1246c474eeb37f61081ad762563b35">
++<!ENTITY yaboot-home "http://yaboot.ozlabs.org/">
++<!ENTITY yaboot-ch6-du "1.0XX MB">
++<!ENTITY yaboot-ch6-sbu "0.1XX SBU">
++
+ <!ENTITY vim-version "7.1">
+ <!ENTITY vim-docdir "vim/vim71">
+ <!ENTITY vim-size "6,714 KB">

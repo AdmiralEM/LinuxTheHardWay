@@ -1,0 +1,179 @@
+AUTHOR: Stef Bon <stef at bononline dot nl>
+
+DATE: 2006-07-09
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS: Execute scripts at begin and end of a KDE-session using KDM.
+
+DESCRIPTION:
+
+This hint is about the ability to execute scripts when a KDE session starts 
+and when it stops. 
+
+Earlier I wrote a hint about this using PAM, with the help of the module 
+pam_script. I discovered that PAM is not the best place to do so. PAM is not 
+the place to start scripts, KDM is. KDM provides a very easy way via the 
+Xstartup and Xreset files to execute scripts. PAM has the abilty to do something 
+with the credentials provided at login, with the help of a module called 
+pam_script. 
+
+Original hint is on linux.bononline.nl, 
+"Installation and configuration of sessionscripts using KDM".
+
+
+ATTACHMENTS:
+
+
+PREREQUISITES:
+This hint requires sufficient knowledge of LINUX in general, and scripts in 
+particular.
+
+HINT:
+
+Content:
+1. KDM: the files
+2. Examples
+3. TODO and suggestions
+
+
+1. KDM: the files
+-----------------
+
+KDM uses some files to start and stop:
+
+. Xstartup 
+run as root, after a user succesfully logs in. 
+
+. Xsession
+runs with permissions of the authorized user, to start the desired session (KDE).
+
+. Xreset
+run as root, after the user session has ended.
+
+Where Xstartup is the place to start things up, Xreset is the place to undo these 
+commands.
+
+For more information about these files look at the handbook of KDM.
+
+By adding the following code to the Xstartup file:
+
+
+-- snip --
+
+for script in /etc/session.d/kdm/startup/*.sh; do
+
+	if [ -x $script ]; then
+	
+		eval $script $USER kdm
+
+	fi;
+
+done;
+
+
+and the code to the Xreset file:
+
+
+-- snip --
+
+for script in /etc/session.d/kdm/reset/*.sh; do
+
+	if [ -x $script ]; then
+	
+		eval $script $USER kdm
+
+	fi;
+
+done;
+
+
+Create the directories where the scripts go:
+
+install -m755 -d /etc/session.d/kdm/startup
+install -m755 -d /etc/session.d/kdm/reset
+
+The files in these directories must be accessible for every ordinary user: 
+therefore the permissions are 755. 
+All scripts in these directories should have the same permissions: 755.
+
+Every user should be able to execute the script, but only root is able to 
+modify them.
+
+
+
+2. Example
+----------
+
+
+I'm using this construction myself. The scripts which I let start when a (KDM)session starts are:
+
+
+. dbus (the session part of it). I've written a hint how I've done this:
+      starting-and-stopping-dbus-with-kdm
+
+
+. fusesmb (browsing the smb network using FUSE). I've written a hint about this too:
+      starting-and-stopping-fusesmb-with-kdm
+
+. (un)mounting cifs shares. 
+
+
+. syncing directories from one central place using rsync.
+
+
+The first two are described in hints also available.
+
+Look at http://linux.bononline.nl, My projects, 
+"Installation and configuration of sessionscripts using KDM"
+for the most recent documentation and scripts.
+
+
+
+
+3. TODO and suggestions
+-----------------------
+
+The construction is working, but is not complete:
+
+- it does no logging and proper userfeedback (on the screen) 
+with the hint xconsole_setup.txt (unmaintained: in hints/downloads/files)
+you'll find a way to launch xconsole at startup by root. Using logger and 
+adjusting /etc/syslog.conf it's possible to write messages to it, which
+appear just before the splash screen of KDE comes up.
+On my website is described how to do that.
+
+
+- scripts are executed in the order the command
+
+for script in /etc/session.d/kdm/startup/*.sh; do
+
+works.
+
+Maybe there should be an order. Some scripts first and others later. Just 
+like the rc script works to start and stop scripts in the /etc/rc.d structure.
+
+
+- I'm testing FreeNX now. It turns your desktop into a terminalserver for
+X11 sessions. You should test it!
+There is a hint for LFS already!! 
+It does not work with KDM, so does nothing with the construction I'm using.
+I'll check for a sollution.
+
+
+ACKNOWLEDGEMENTS:
+  * Thanks to the author of pam_script, Izak Burger, for his module and 
+    some usefull hints.
+
+CHANGELOG:
+[2006-01-15]
+  * Initial hint.
+[2006-01-30]
+  * added chapter 3. TODO and suggestions
+[2006-03-21]
+  * removed all PAM related chapters. Soon a new hint only about this will follow.
+[2006-07-07]
+  * added a chapter about the examples
+
+TODO:
+  * add logging via xconsole

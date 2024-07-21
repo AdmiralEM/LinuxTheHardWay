@@ -1,0 +1,147 @@
+AUTHOR: Robert Connolly <cendres at videotron dot ca> (ashes)
+
+DATE:   2004-03-29
+
+LICENSE:        Public Domain
+
+SYNOPSIS:       Hardened cross compiling
+
+PRIMARY URL:	http://www.linuxfromscratch.org/~robert/winter/
+
+DESCRIPTION:
+The previous contents of this hint were added to Hardened Linux From Scratch
+and the HLFS book is reccomended for native platform compiling for Linux.
+http://www.linuxfromscratch.org/hlfs/
+Also see:
+http://www.linuxfromscratch.org/~robert/winter/Linux/
+
+This hint will continue to try to port position independent executables (pie)
+and smashing stack protector (ssp), by default, to non-x86 and non-glibc
+targets. For more information about pie and ssp please reffer to the HLFS
+mailing list and book. The official homepage for ssp is here:
+http://www.research.ibm.com/trl/projects/security/ssp/
+There isn't really an official homepage for pie, except for:
+http://gcc.gnu.org/
+http://gcc.gnu.org/ml/gcc-patches/2003-06/msg00140.html
+
+Both of these features are related to GCC and are as portable as GCC, almost.
+If my information is correct ssp does not work on hppa, but pie does. And pie
+only works on elf systems.
+
+PREREQUISITES: none
+
+HINT:
+These are basicly the same patches as for a native Linux build. The libc patch
+is different but I am trying to find a way to make the same code work on all
+platforms.
+
+ - NetBSD
+As you may already know, NetBSD will build on Linux. This is the complete hint
+for building NetBSD with propolice smashing stack protector.
+http://www.linuxfromscratch.org/~robert/winter/NetBSD/netbsd-ssp.txt
+
+Please note the XF4 patch only works on version 4.3. 4.4 is not yet supported.
+Follow NetBSD's instructions for cross compiling.
+
+ - FreeBSD
+This isn't finished, there is a problem with filc(). If you want to
+test it most of the patching is done, there is a hint here:
+http://www.linuxfromscratch.org/~robert/winter/FreeBSD/freebsd-ssp.txt
+
+ - Todo & Misc
+Make a multiplatform autopie patch, test it against Linux and *bsd.
+
+Uclibc has ssp and pie support, but I have never tested it.
+
+I would like to support gcc-2.95.3 if there is any demand for it, so far none.
+
+Minix and ssp might get along. Either backport ssp to gcc-2.7, or port minix to
+gcc-2.95.3 or gcc3. Minix is an a.out system, not elf, so pie will not work
+because of the minix libc.
+
+Check status of newlib, dietlibc, and others. Ssp should work, maybe pie too.
+
+Testers with funky systems are needed. If you want to help please email me at:
+cendres at videotron dot ca
+
+ACKNOWLEDGMENTS:
+
+* Thanks to the Open Source Community for everything.
+* Thanks to Gnu for the GNU toolchain. http://www.gnu.org/
+* Thanks to Hiroaki Etoh for providing the SSP patch to IBM
+* Thanks to IBM for providing the SSP patch at
+        http://www.research.ibm.com/trl/projects/security/ssp/
+* Thanks to Pappy and the Hardended Gentoo team for development,
+  testing, and patches. http://www.gentoo.org/proj/en/hardened/
+* Thanks to the Pax team for kernel patch. http://pax.grsecurity.net/
+* Thanks to Solar for docs http://dev.gentoo.org/~solar/pax/pie/
+
+CHANGELOG:
+[2003-10-18]
+* Debut
+* Reformat hint
+[2003-10-22]
+* Reformatted the patches so they're much easier to apply.
+* Edit/rewrite hint & synopsis.
+[2003-10-24]
+* Added caveat.
+* Fixed URLS.
+* Lite edit
+[2003-10-25]
+* New bugs found.
+[2003-10-26]
+* GCC 2.95.3 patches made.
+[2003-10-27]
+* XFree86-4.3.0 patch made.
+* Hint is now Beta - Need more feedback.
+[2003-11-03]
+* Edit
+* Reformatted patches.
+[2003-11-12]
+* Reformat patches.
+* Update/edit hint.
+* Add new example tests.
+[2003-11-21]
+* Reformat patches.
+* Add homepage/mirror url.
+* Small edit.
+[2003-12-01]
+* Added Glibc and kernel patches.
+* Rewrote install procedure.
+[2003-12-20]
+* Try to be more informative.
+* Removed Gentoo property.
+* Added Libsafe.
+* Added Pax.
+* Added new versions of binutils and glibc.
+* Added GCC PIE.
+* Rename filename to winter.txt.
+[2003-12-21]
+* Do not use "Enforce non-executable pages"
+* Spell check.
+* Fixed URL.
+[2003-12-22]
+* Added LOPTS to Net-tools.
+* Added LDFLAGS to Perl.
+[2003-12-25]
+* More cflags.
+* New tests.
+[2004-02-02]
+* Update gcc pie patch.
+* Moved Libsafe and ProPolice to prolice.txt
+* Added fpie to hgcc2.sh
+[2004-02-03]
+* Add gnu_pt patches.
+* Add ld -z relro support.
+* Added relro and combreloc to hgcc3.sh
+[2004-02-08]
+* Couple new patches, glibc bugfix
+* Add propolice patch commands
+* Boots with all PaX options now
+* Cleanup - Fix urls/website
+[2004-02-08]
+* Upgrade to gcc-3.3.3
+* New auto patches. Hgcc is obsolete (I hope).
+* Got textrel out of gcc.
+[2004-03-29]
+* Plotted new goal of platform independence.

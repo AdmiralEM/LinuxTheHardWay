@@ -1,0 +1,113 @@
+AUTHOR: Thomas de Roo <thomas@de-roo.org>
+
+ACKNOWLEDGEMENTS:
+
+DATE:2012-011-30
+
+LICENSE: GNU Free Documentation License
+
+SYNOPSIS:
+
+Install a PDF-printer using CUPS and Ghostscript
+
+DESCRIPTION:
+
+This hint describes how you can install a PDF-printer on your (B)LFS-system. 
+
+ATTACHMENTS:
+
+http://download.adobe.com/pub/adobe/printerdrivers/win/all/ppdfiles/adobe.zip
+
+PREREQUISITES:
+
+This hint assumes you have already
+- LFS
+- Ghostscript
+- CUPS
+- wget
+- unzip
+- sudo
+
+HINT:
+
+- Download ans install the Adobe PostScript Printer Description-files:
+wget http://download.adobe.com/pub/adobe/printerdrivers/win/all/ppdfiles/adobe.zip
+unzip adobe.zip
+sudo cp Adobe/ADIST5.PPD /usr/share/cups/model/distiller.ppd
+
+- Make ps2pdf.cups:
+sudo mkdir /usr/lib/cups/pdf
+sudo ln -s /usr/bin/ps2pdfwr /usr/lib/cups/pdf/ps2pdf.cups
+
+- create the backend:
+sudo su -
+cat > /usr/lib/cups/backend/pdf << "EOF"
+#!/bin/sh
+#
+umask 002
+PDFBIN=/usr/lib/cups/pdf/ps2pdf.cups
+FILENAME=
+# filename of the PDF File
+PRINTTIME=`date +%Y-%m-%d_%H.%M.%S`
+# no argument, prints available URIs
+if [ $# -eq 0 ]; then
+        if [ ! -x "$PDFBIN" ]; then
+                exit 0
+        fi
+        echo "direct pdf \"Unknown\" \"PDF Creator\""
+        exit 0
+fi
+# case of wrong number of arguments
+if [ $# -ne 5 -a $# -ne 6 ]; then
+        echo "Usage: pdf job-id user title copies options [file]"
+        exit 1
+fi
+# get PDF directory from device URI, and check write status
+PDFDIR=${DEVICE_URI#pdf:}
+if [ ! -d "$PDFDIR" -o ! -w "$PDFDIR" ]; then
+        echo "ERROR: directory $PDFDIR not writable"
+        exit 1
+fi
+# generate output filename
+OUTPUTFILENAME=
+if [ "$3" = "" ]; then
+        OUTPUTFILENAME="$PDFDIR/unknown.pdf"
+else
+        if [ "$2" != "" ]; then
+                OUTPUTFILENAME="$PDFDIR/$2-$PRINTTIME.pdf"
+        else
+                OUTPUTFILENAME="$PDFDIR/$PRINTTIME.pdf"
+        fi
+        echo "PDF file: $OUTPUTFILENAME placed in: $PDFDIR" >> $LOGFILE
+fi
+# run ghostscript
+if [ $# -eq 6 ]; then
+        $PDFBIN $6 $OUTPUTFILENAME >& /dev/null
+else
+        $PDFBIN - $OUTPUTFILENAME >& /dev/null
+fi
+
+exit 0
+EOF
+exit
+sudo chmod 755 /usr/lib/cups/backend/pdf
+
+- Create the printer in CUPS:
+(You can choose another path for /tmp, where the PDFs will be saved.)
+sudo /usr/sbin/lpadmin -p PDF -v pdf:/tmp -E -P /usr/share/cups/model/distiller.ppd
+
+- Restart CUPS:
+sudo /etc/rc.d/init.d/cups restart
+
+Now you have a printer "PDF" that writes its output to the /tmp directory.
+
+
+ACKNOWLEDGEMENTS:
+
+Based on http://www.linuxquestions.org/linux/answers/Applications_GUI_Multimedia/Setting_up_a_PDF_printer_in_CUPS_in_my_case_in_Slackware
+
+CHANGELOG:
+
+    [2012-12-03]
+     * initial hint
+     

@@ -1,0 +1,287 @@
+AUTHOR: Jaap Struyk <japie@deserver.nl>
+
+DATE: 2005-10-31
+
+LICENSE:  VMWare beta EULA, provided in the package. (and the M$ license regarding the guest OS)
+
+SYNOPSIS: Using VMWare player on a (H)LFS system.
+
+DESCRIPTION: Using Windows XP Pro terminal server on a linux server without running X.
+	     (X-windows is needed for installation of guest OS!!!)
+
+SYSTEM: x86, 32bit, 2.6 kernel, Glibc-2.3.x.
+
+PREREQUISITES:
+
+  * qemu-img (part of qemu)
+    --> http://fabrice.bellard.free.fr/qemu
+
+  * vmplayer (a free (but closed) player for vmware virtual machines)
+    --> http://www.vmware.com/products/player
+  
+  * Xvfb (part of Xorg or Xfree86)
+    --> http://www.x.org
+    --> http://www.xfree86.org
+
+  * Windows XP Professional
+    --> http://www.microsoft.com
+  
+  * rdesktop
+    --> http://www.rdesktop.org
+  
+  * TightVNC
+    --> http://www.microsoft.com
+  
+HINT:
+
+=========
+CONTENTS:
+=========
+
+        1. Introduction
+        2. Installation
+        3. Configuration
+        4. Install guest OS
+        5. Setup server
+        6. Notes
+        7. References
+
+================
+1. INTRODUCTION:
+================
+
+Once in a while there still the need for access to an Windows system, 
+for testing a webpage in IE, running some special application, test something
+or yust to enjoy the fun of screwing something up.
+In the past there was a free version of vmware for personal use, but that changed
+and since running bochs is somewhat cpu consuming thats no option for an
+production enviroment.
+Now there is a free vmware player (still closed source unfortunatly) wich can
+play machines created by a (non free) vmware version, but it's not that hard
+to create your own machine with a free tool and an text editor...
+
+First we setup our vm on a machine with X, and later on we move it to a server
+without X, so we can use it as terminal server.
+
+================
+2. INSTALLATION:
+================
+
+We start with installing qemu, since we need qemu-img to create our virtual disk.
+It's a prety big build, but we only need qemu-img, so you could only install that.
+
+Next we install the vmware player with ./vmware-install.pl (after unpacking)
+The installer will ask some questions, for me the defaults seemed fine.
+The installer will start vmware-config.pl wich will configure the player's setup.
+On networking answer yes (default), I answerd no to NAT and host-only.
+Above is enough to use a private adress in your virtual machine.
+
+On a HLFS machine we have to build kernel modules with: -no-pie -fno-stack-protector-all
+Since vmware-config.pl doesn't accept those in CC env. we have to add them to the modules source.
+
+	tar -xvf /usr/lib/vmware/modules/source/vmmon.tar
+
+Edit vmmon-only/Makefile.kernel and and change the line:
+
+	CC_OPTS += -DVMW_USING_KBUILD -DVMMON -DVMCORE
+	
+	to:
+	
+	CC_OPTS += -DVMW_USING_KBUILD -DVMMON -DVMCORE -no-pie -fno-stack-protector-all
+	
+	tar -cf vmmon.tar vmmon-only
+	mv vmmon.tar /usr/lib/vmware/modules/source/vmmon.tar
+	
+We do the same thing for the vmnet module:
+
+	tar -xvf /usr/lib/vmware/modules/source/vmnet.tar
+
+Edit vmnet-only/Makefile.kernel and and change the line:
+
+	CC_OPTS += -DVMW_USING_KBUILD
+	
+	to:
+	
+	CC_OPTS += -DVMW_USING_KBUILD -no-pie -fno-stack-protector-all
+	
+	tar -cf vmnet.tar vmnet-only
+	mv vmnet.tar /usr/lib/vmware/modules/source/vmnet.tar
+
+After that you can manualy run vmware-config.pl...
+
+=================
+3. CONFIGURATION:
+=================
+
+Create the virtual drive (guess what 2G means ;)
+
+	qemu-img create -f vmdk WindowsXP.vmdk 2G
+
+Create the virtual machine config file WindowsXP.vmx 
+
+	cat > WindowsXP.vmx << "EOF"
+	config.version = "8"
+	virtualHW.version = "3"
+	ide0:0.present = "TRUE"
+	ide0:0.filename = "WindowsXP.vmdk"
+	memsize = "128"
+	MemAllowAutoScaleDown = "FALSE"
+	ide1:0.present = "TRUE"
+	ide1:0.autodetect = "TRUE"
+	ide1:0.fileName = "auto detect"
+	ide1:0.deviceType = "cdrom-raw"
+	floppy0.present = "FALSE"
+	ethernet0.present = "TRUE"
+	usb.present = "FALSE"
+	sound.present = "FALSE"
+	displayName = "WindowsXP"
+	guestOS = "winXPPro"
+	nvram = "WindowsXP.nvram"
+	MemTrimRate = "-1"
+	ide0:0.redo = ""
+	ethernet0.addressType = "generated"
+	uuid.location = "56 4d 5c cc 3d 4a 43 29-55 89 5c 28 1e 7e 06 58"
+	uuid.bios = "56 4d 5c cc 3d 4a 43 29-55 89 5c 28 1e 7e 06 58"
+	uuid.action = "create"
+	ethernet0.generatedAddress = "00:0c:29:7e:06:58"
+	ethernet0.generatedAddressOffset = "0"
+	tools.syncTime = "TRUE"
+	ide1:0.startConnected = "TRUE"
+	checkpoint.vmState = "WindowsXP.vmss"
+	EOF
+
+Create the vmplayer config file .vmware/preferences
+
+	cat > .vmware/preferences << "EOF"
+	pref.grabOnKeyPress = "FALSE"
+	pref.autoFitFullScreen = "fitHostToGuest"
+	pref.view.navBar.type = "favorites"
+	pref.mruDest0.present = "FALSE"
+	pref.mruDest0.destString = ""
+	pref.mruDest0.user = ""
+	pref.mruDest1.present = "FALSE"
+	pref.mruDest1.destString = ""
+	pref.mruDest1.user = ""
+	pref.mruDest2.present = "FALSE"
+	pref.mruDest2.destString = ""
+	pref.mruDest2.user = ""
+	pref.mruDest3.present = "FALSE"
+	pref.mruDest3.destString = ""
+	pref.mruDest3.user = ""
+	pref.mruDest4.present = "FALSE"
+	pref.mruDest4.destString = ""
+	pref.mruDest4.user = ""
+	pref.mruDest5.present = "FALSE"
+	pref.mruDest5.destString = ""
+	pref.mruDest5.user = ""
+	pref.mruDest6.present = "FALSE"
+	pref.mruDest6.destString = ""
+	pref.mruDest6.user = ""
+	pref.mruDest7.present = "FALSE"
+	pref.mruDest7.destString = ""
+	pref.mruDest7.user = ""
+	webUpdate.checkLast = "1130514727"
+	webUpdate.lastCheck.status = "err_connect"
+	pref.vmplayer.exit.vmAction = "poweroff"
+	pref.vmplayer.webUpdateOnStartup = "FALSE"
+	pref.vmplayer.deviceBarToplevel = "FALSE"
+	pref.vmplayer.showStatusBar = "FALSE"
+	xinfo.noDGA = "TRUE"
+	hint.xinfo.noDGA = "FALSE"
+	hint.mks.noXKB = "FALSE"
+	gui.fullScreenResize = "FALSE"
+	hint.svgax.noDGAisXFree86 = "FALSE"
+	EOF
+
+====================
+4. INSTALL GUEST OS:
+====================
+
+Start the player with
+
+	vmplayer WindowsXP.vmx
+	
+If you get a question on startup regarding an "identifyer", say always create one.
+Now it's time to install Windows XP, with that your on your own, luckely no drivers needed.
+Yust make sure you add your users, give them passwords and enable terminal services.
+If all went well you have a shiny fresh XP. (personaly I gave a static IP, do what you want)
+Test it with
+
+	rdesktop -u $USER -p $PASSWORD -g 800x600 -a 16 $WINXP_IP_ADRESS
+
+If all is working well it's time to move the setup to our server.
+Off-course you can leave it at your workstation if you are happy so far.
+
+================
+5. SETUP SERVER:
+================
+
+Next we login to our server and create the vmware user
+
+	groupadd -g 66 vmware
+	useradd -c 'vmWare user' -d /srv/vmware -g vmware -s /bin/bash -u 66 vmware
+	mkdir /srv/vmware
+	mkdir /srv/vmware/.vmware
+
+Copy all the needed files to the server
+
+	/srv/vmware/WindowsXP.vmdk
+	/srv/vmware/WindowsXP.vmx
+	/srv/vmware/.vmware/preferences
+	
+Install vmplayer on your server, same way as above.
+
+Make sure you have Xvfb installed, if you came this far that won't be a problem.
+
+Set proper rights
+
+	chown -R vmware.vmware /srv/vmware
+
+And fire up the thing
+
+	su - vmware -c "PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/X11R6/bin nice -n 10 Xvfb :1012 -screen 0 640x480x8 -fbdir /srv/vmware &"
+	su - vmware -c "PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/X11R6/bin DISPLAY=:1012 vmplayer '/srv/vmware/WindowsXP.vmx' &"
+
+=========
+6. NOTES:
+=========
+
+The identifyer thingy can be a problem, if a virtual machine is moved vmplayer will complain.
+Since all interaction between vmplayer and the user is via X you will not know that.
+Monitor your system with top, the vmplayer will consume a lot off cpu when Windows is starting,
+if you don't see that there is a problem, check your syslog and the logfile in /srv/vmware
+A workaround for this is to do the first start on your server via vnc, so you can watch vmplayer
+starting, if that goes fine (without interaction) it will also work in Xvfb.
+
+If you dislike the idea of bying a Windows XP Profesonal (Home edition doesn't have a remote desktop server)
+Maybe you have a home edition (license) laying around (provided with your bought pc)
+it is an option to upgrade your home to pro, it will save some bucks...
+
+Another option is to buy an (old) Windows 2000 Advanced Server, if your lucky you can
+get it cheap and it offers license for 5 clients, instead of the one XP-pro has.
+Only have to change the line guestOS = "winXPPro" to guestOS = "win2000pro" in your vmx file.
+(and to make it more pretty, I would change all XP names to 2K, but that's your choice ;)
+
+==============
+7. REFERENCES:
+==============
+
+http://www.lemoncube.com/104.html
+http://johnbokma.com/mexit/2005/10/26/vmware-player-windows-xp.html
+http://www.hackaday.com/entry/1234000153064739
+
+CHANGELOG:
+[2005-10-31]
+  * Initial hint.
+[2005-11-01]
+  * Added license and changelog entry.
+  * Added cat command for creation of config files.
+  * Added 2 sections to the notes regarding windows licenses.
+[2005-11-02]
+  * Added HLFS install instructions for vmware.
+
+
+-- 
+http://linuxfromscratch.org/mailman/listinfo/hints
+FAQ: http://www.linuxfromscratch.org/faq/
+Unsubscribe: See the above information page

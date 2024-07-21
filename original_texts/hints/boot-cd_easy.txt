@@ -1,0 +1,904 @@
+AUTHOR: (original) Thomas Foecking <thomas@foecking.de> and 
+  Christian Hesse <mail@earthworm.de>
+  (updates) Jimmy Anderson <jimmy.anderson1056@gmail.com>
+
+DATE:  2011-03-12
+
+LICENSE: GNU Free Documentation License Version 1.2
+
+SYNOPSIS:  Easy Bootable CD of your LFS 
+
+
+DESCRIPTION:
+
+With a little effort, a bootable CD/DVD can be created from an LFS system.
+The CD created by this hint could be used as a rescue CD, an LFS build 
+system, or for whatever other purpose the user can concoct.
+
+Briefly the bootable CD provides a root filesystem that is 
+sourced mostly by the (read only) CD contents but with a few 
+certain directories overlayed by ram and thus writable.   
+
+Briefly, the procedure is: a CD bootloader is 
+added to the LFS system, a kernel and a ramdisk is created, which
+when booted, mounts the LFS system (written on CD) as the root filesystem
+and then overlays portions of it with a ram based filesystem  which 
+allows the user to 'write' to some portions of the CD based file system.
+
+This hint does not create a "live CD".  The end result of this hint is a 
+LFS system that runs off of CD but with only a few directories 
+being 'writable' by the user and with (except for /tmp) only a 
+small (few megabytes) amount of writable space.  /tmp will be overlayed
+by a tmpfs file system and (typically) have 100's of megabytes of space.
+
+If instead, a live CD is desired, the LFS LiveCD project, or one of 
+the other Live CD projects may be a more appropriate resource to use.
+The value of this 'bootable CD' is that it is simple to do, and
+easy to modify and fix.
+
+The instructions in this hint have been tested with X86 LFS 6.6 & 6.7.
+It probably will work with other current LFS books as well.  It also
+works for building a PowerPC bootable CD.  This hint assumes 32bit cpu.
+
+Note that the instructions in this hint are executed as root.  As such, it is 
+possible that a mistyped or misunderstood instruction could destroy the
+data and/or OS on your system.   It is prudent to back up any important 
+data on your system before attempting to use this hint to create a bootable
+CD.   Ideally, you should perform this task on a system which is only 
+used by you and which you can easily reinstall without difficulty.  That 
+way, any mistakes you make will not affect others and will have minimal
+impact on you.   Fair notice...
+
+ATTACHMENTS:
+None
+
+PREREQUISITES:
+
+Familiarity with building LFS.   The build system must have a writable
+CDROM drive and the tool set required to create (mkisofs) ISO images
+and write them to CDs.   If your system has the 'genisoimage' tool 
+instead of mkisofs, that will work fine also.
+
+HINT:
+
+Contents
+--------
+
+    1. What do you need and what is the idea?
+    2. Configure & compile Kernel, add packages, other tweaks
+    3. Add bootloader.
+    4. Move /etc /var /root /home to /fake/needwrite and make symlinks
+    5. Create boot script which mounts the ramdisk
+    6. Tweaks for running with CD as root fs.
+    7. Create initial ramdisk
+    8. (Optional) compress /usr
+    9. Create initial ramdisk
+    9a. Burn the Boot CD
+    10. Reboot and enjoy
+
+
+1. What do you need and what is the idea?
+   --------------------------------------
+
+	What do you need?
+
+	First of all you need to build an LFS system, which you want to burn
+	on CD. You may want to have a LFS CD for creating new LFS systems
+	on other computers. Whatever your ideas are, you'll first have to
+	create this special system on your LFS partition.
+	(e.g. I have created a LFS system with xfree86 and windowmaker;
+	now I can boot from CD and create new LFS systems without missing
+	xfree86 & windowmaker)
+
+	- another linux/unix system to create some stuff and burn the CD
+	- CD-R(W) drive to burn your LFS system and boot image on CD
+	- 1 CD-R + 1 CD-RW is very recommended for saving money
+
+	- obtain some additional software:
+
+	(x86)     syslinux: (contains isolinux to boot the LFS kernel on CD)
+ftp://www.kernel.org/pub/linux/utils/boot/syslinux/syslinux-4.03.tar.gz
+
+	(PowerPC) yaboot: (bootloader for PowerPC)
+http://yaboot.ozlabs.org/releases/yaboot-1.3.16.tar.gz
+
+	
+	Download either syslinux (x86) or yaboot (PowerPC) as appropriate
+	for your architecture and put the source in $LFS/sources for later
+	use.
+
+
+	What is the idea?
+	- Create kernel with ramdisk and initrd support
+	- Move /etc /var /root /home to /fake/needwrite
+	- Set symlinks
+		/etc  -> /fake/needwrite/etc
+		/var  -> /fake/needwrite/var
+		/...   -> /fake/needwrite/...
+	- Mount /dev/ram0 to /fake/ramdisk
+	- Copy /fake/needwrite/* to /fake/ramdisk/
+	- Remount /dev/ram0 to /fake/needwrite
+
+	We'll have read-write access on /etc /var /root /home
+	because they point to /fake/needwrite which is then a ramdisk
+
+	You are able to do the most things from the other linux/unix
+	system by setting LFS to your LFS mountpoint. LFS=/path/to/lfs
+	e.g.:
+
+export LFS=/mnt/lfs
+
+	Don't forget to set LFS again when you do a reboot!
+
+
+2. Build LFS system, configure & compile Kernel
+   --------------------------
+
+   Do this step in the chroot environment.
+
+   The first step is to build your LFS system as is described in
+the LFS book.   While in the chroot environment, you will configure & 
+build the kernel.  When configuring your kernel, make sure that the 
+following kernel configuration settings are enabled 
+(as builtins, not as modules).
+
+	You need initrd support!
+		"General setup  --->" 
+			"<*> Initial RAM filesystem and RAM disk ..."
+
+	You need ramdisk support!
+		"Block devices  --->" 
+			"<*> RAM block device support"
+			"(16384)   Default RAM disk size"
+			"[*]   Initial RAM disk (initrd) support"
+
+	You need ext2 file system support!
+		"File systems  --->"
+			"<*> Second extended fs support"
+
+	You need ISO 9660 CDROM file system support!
+		"File systems  --->"
+			"<*> ISO 9660 CDROM file system support"
+
+You may need to compress your file system (to fit on CD), and to do so
+will need squashfs also.  It may not be required but it is best to 
+just go ahead and enable it anyway while we are building our
+kernel to keep things simple.
+
+	(If compressing) You need squashfs file system support!
+		"File systems  --->"
+			"<*> Squashfs file system support"
+
+   Then compile and install your kernel & modules just
+as is described in the LFS book.
+
+   Copy the newly built kernel and associated .config file  to /boot:
+
+cp .config /boot/lfskernel.config
+#
+# on x86 do:
+cp arch/i386/boot/bzImage /boot/lfskernel && cp System.map /boot/
+#
+# on a PowerPC do:
+cp vmlinux /boot/lfskernel && cp System.map /boot/
+
+   Set all the configuration settings described in the LFS book
+as appropriate for your system.  Especially important is that you
+set your LFS system root password (or remove it entirely).   If 
+you don't, you will not be able to login when you boot your CD.
+
+   Space will be tight on a CD (not so much on a DVD) so remove any 
+files and directories that are no longer needed.  $LFS/tools
+is no longer needed and should be removed.   If you won't need the
+files in $LFS/sources when running on the CD, some or all of 
+those can be removed to reduce the size of the image.
+
+   The /usr file system can (optionally) be compressed (later) to free up
+space.   Compressing it will reduce the size by a couple hundred megabytes 
+or so.
+
+   Using BLFS (or other techniques) add any additional packages that 
+you require in your LFS system.  
+
+   You will not be able to create directories or files in most portions
+of the filesystem so think ahead about what you will need to do
+and add whatever directories or files that you might need later when 
+running on the CD.  For example, maybe create /mnt/lfs and it's 
+associated /tools symlink.
+
+#
+mkdir /mnt/lfs
+ln -sv /mnt/lfs/tools /
+#
+
+At this point, it might be wise to save off a copy of your LFS system
+in case you screw up and want to start over again at this point.
+
+
+3. Install the bootloader (isolinux or yaboot)
+   -------------------------------
+
+	Do this step in the chroot environment.
+
+	We also need a bootloader on the CD to boot the kernel and ramdisk.
+
+	isolinux will be used for the bootloader for X86 machines.  
+
+	yaboot will be used for PowerPC MACs.  On PowerPC machines
+	that don't use openfirmware, yaboot is not used and you can skip 
+	building it.  For those machines, you will have to figure out the
+	boot loader installation yourself.
+	
+
+# On an X86 machine do:
+#------------------- copy and paste ------------------------------
+#
+# Unpack, install and configure isolinux
+#
+cd /sources
+zcat syslinux-4.03.tar.gz | tar x
+mkdir /isolinux
+cp syslinux-4.03/core/isolinux.bin /isolinux/
+rm -fr syslinux-4.03
+#
+#	If all files associated with the boot process should be in one
+#	directory we have to move kernel and the Rest of /boot to /isolinux.
+#
+mv /boot/* /isolinux
+#
+#	Now we create a symlink from boot to isolinux.
+#
+cd /
+rmdir boot
+ln -s isolinux boot
+#
+#	Kernel & co can now be found in /boot again.
+#	But isolinux still needs a config-file, so we create it now:
+#
+cat > /isolinux/isolinux.cfg << "EOF"
+default bootcd
+prompt 1
+timeout 40
+
+label bootcd
+  kernel lfskernel
+  append initrd=initrd.gz root=/dev/ram0 init=/linuxrc ramdisk_size=16384
+
+label initrdshell
+  kernel lfskernel
+  append initrd=initrd.gz root=/dev/ram0 init=/bin/bash ramdisk_size=16384
+EOF
+#
+#	isolinux is now installed completely.
+#
+#------------------- end copy and paste ---------------------------
+
+
+# It's a bit more lengthy on a PowerPC machine.  Do:
+#------------------- copy and paste ------------------------------
+#
+mkdir -p /ppc/mac
+mkdir -p /ppc/ppc32
+#
+# If it isn't already installed, build and install yaboot.
+#
+cd /sources
+tar xvfz yaboot-1.3.16.tar.gz
+cd yaboot-1.3.16
+sed -i 's%/usr/local%/usr%' man/*
+make PREFIX=/usr
+make PREFIX=/usr install
+cd ..
+cp /usr/lib/yaboot/yaboot /ppc/mac
+#
+# Create an open firmware configuration file.
+#
+cat > /ppc/mac/ofboot.b << "EOF"
+<CHRP-BOOT>
+<COMPATIBLE>
+MacRISC MacRISC2 MacRISC3 MacRISC4
+</COMPATIBLE>
+<DESCRIPTION>
+LFS CD PPC bootloader
+</DESCRIPTION>
+<BOOT-SCRIPT>
+" screen" output
+load-base release-load-area
+boot cd:,\ppc\mac\yaboot conf=cd:,\ppc\ppc32\yaboot.conf
+</BOOT-SCRIPT>
+<OS-BADGE-ICONS>
+1010
+f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8
+f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f80000000000000000000000000000f8
+f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+</OS-BADGE-ICONS>
+</CHRP-BOOT>
+EOF
+
+#
+# Create a yaboot message file
+#
+cat > /ppc/ppc32/yaboot.msg << "EOF"
+MacRISC type machine...
+____________________________________________________
+
+
+GNU/Linux LFS PPC - 32bit
+
+EOF
+
+#
+# Create a yaboot configuration file.
+#
+cat > /ppc/ppc32/yaboot.conf << "EOF"
+message=/ppc/ppc32/yaboot.msg
+delay=20
+
+init-message = "\nWelcome to LFS bootCD 2 \nHit <TAB> for boot options.\n\n"
+timeout=150
+default=bootcd
+#enablecdboot
+#enableofboot
+#enablenetboot
+
+image=/boot/lfskernel
+	label=bootcd
+	initrd=/boot/initrd.gz
+	append="rootdelay=2 init=/linuxrc root=/dev/ram0 ramdisk_size=16384"
+	read-write
+	pause-after
+
+image=/boot/lfskernel
+	label=initrdshell
+	initrd=/boot/initrd.gz
+	append="rootdelay=2 init=/bin/bash root=/dev/ram0 ramdisk_size=16384"
+	read-write
+	pause-after
+
+EOF
+
+#
+#------------------- end copy and paste ---------------------------
+
+
+
+
+4. Move /etc /var /root /home to /fake/needwrite
+   --------------------------------------------------
+
+	Do this step in the chroot environment.
+
+
+	This step will all directories needing write access to /fake/needwrite 
+	and create symlinks from their original locations.
+
+#------------------- copy and paste ------------------------------
+#
+# move directories
+#
+mkdir -p /fake/{needwrite,ramdisk}
+cd /
+mv etc/ var/ root/ home/ fake/needwrite/
+#
+# create symlinks so that everything seems to be as before
+#
+ln -s fake/needwrite/etc etc
+ln -s fake/needwrite/var var
+ln -s fake/needwrite/root root
+ln -s fake/needwrite/home home
+ls -l
+#
+#  You should see the following symlinks.
+#
+#	 etc  -> fake/needwrite/etc
+#	 home -> fake/needwrite/home
+#	 root -> fake/needwrite/root
+#	 var  -> fake/needwrite/var
+#
+#------------------- end copy and paste ---------------------------
+
+
+
+
+5. Create boot script which mounts the ramdisk
+   --------------------------------------------
+
+	Do this step in the chroot environment.
+
+	Ok, we have /etc /var /root /home linked to
+	/fake/needwrite which is first read-only.
+	To be able to login (and to run services on runlevel x
+	which need write access to /etc /var /root or /home)
+	we must call a script from our /etc/rc.d/init.d/ directory which
+	creates a ramdisk to /fake/needwrite with write access.
+
+	The following script creates a ramdisk to /fake/ramdisk and
+	will copy everything of /fake/needwrite to /fake/ramdisk.
+	Then it remounts the ramdisk to /fake/needwrite.
+
+#------------------- copy and paste ------------------------------
+#
+cat > /etc/rc.d/init.d/create_ramdisk << "EOF"
+#!/bin/sh
+
+dev_ram=/dev/ram0
+dir_ramdisk=/fake/ramdisk
+dir_needwrite=/fake/needwrite
+
+source /etc/rc.d/init.d/functions
+
+case "$1" in
+        start)
+                echo -n "Creating ext2fs on $dev_ram ...              "
+                /sbin/mke2fs -m 0 -i 1024 -q $dev_ram > /dev/null 2>&1
+                evaluate_retval
+                sleep 1
+                echo -n "Mounting ramdisk on $dir_ramdisk ...         "
+                mount -n $dev_ram $dir_ramdisk
+                evaluate_retval
+                sleep 1
+                echo -n "Copying files to ramdisk ...                 "
+                cp -dpR $dir_needwrite/* $dir_ramdisk > /dev/null 2>&1
+                evaluate_retval
+                sleep 1
+                echo -n "Remount ramdisk to $dir_needwrite ...        "
+                umount -n $dir_ramdisk > /dev/null 2>&1
+                sleep 1
+                mount -n $dev_ram $dir_needwrite
+                sleep 1
+                ;;
+        *)
+                echo "Usage: $0 {start}"
+                exit 1
+                ;;
+esac
+EOF
+chmod 0755 /etc/rc.d/init.d/create_ramdisk
+#
+#	create_ramdisk should be the first script excecuted by init,
+#	so we set this link:
+#	/etc/rc.d/rcsysinit.d/S00create_ramdisk -> ../init.d/create_ramdisk
+#
+cd /etc/rc.d/rcsysinit.d
+ln -s ../init.d/create_ramdisk S00create_ramdisk
+#
+#------------------- end copy and paste ---------------------------
+
+
+
+
+6. Configure LFS to run from CD
+   ----------------------
+
+	Do this step in the chroot environment.
+
+	Since the root filesystem will be mounted from our startup script,
+we have to change /etc/fstab of LFS.   Delete all entries you don't need. 
+(e.g. all /dev/hd*) and add /tmp as a tmpfs file system.  Also, the
+startup scripts need to be tweaked for running on a CD (file systems
+don't need to be checked or remounted rw).   And since the startup
+script runs before the device nodes have been populated, we have to 
+manually create some device nodes for it.
+
+
+#------------------- copy and paste ------------------------------
+#
+cat > /etc/fstab << "EOF"
+# Begin /etc/fstab for a bootable CD
+
+# file system  mount-point  type   options         dump  fsck
+#                                                        order
+#/dev/EDITME     /            EDITME  defaults        1     1
+#/dev/EDITME     swap         swap   pri=1           0     0
+proc           /proc        proc   defaults        0     0
+sysfs          /sys         sysfs  defaults        0     0
+devpts         /dev/pts     devpts gid=4,mode=620  0     0
+tmpfs          /dev/shm     tmpfs  defaults        0     0
+tmp            /tmp         tmpfs  defaults        0     0
+# End /etc/fstab
+EOF
+#
+#
+# Remove file system check.
+#
+rm -f /etc/rc.d/rcsysinit.d/S30checkfs
+#
+# Disable remounting of / as rw in S40mountfs
+#
+cd /etc/rc.d/init.d
+cp -f mountfs origmountfs
+grep -v 'remount' origmountfs >mountfs
+chmod 0755 mountfs
+#
+# Ensure that /dev/loop0 exists (compressed /usr requires it).
+mknod /lib/udev/devices/loop0 b 7 0
+#
+#------------------- end copy and paste ---------------------------
+
+
+
+7. Create initial ramdisk
+   ----------------------
+
+    If you are chrooted into your LFS system, exit from chroot and return
+to your host system.   Unmount any virtual file systems that are mounted
+into the $LFS tree.   
+
+    To ensure that everything is in a good state for the remainder of this
+procedure, it may be best to simply shutdown and restart your host system.
+
+	Make sure LFS is set after rebooting!!
+
+export LFS=/mnt/lfs
+
+#------------------- copy and paste ------------------------------
+#	Add device nodes that will be needed before /dev has been
+#	populated
+#
+mknod $LFS/dev/ram0 b 1 0
+#
+#------------------- end copy and paste ---------------------------
+
+	Now we create the initrd image file and filesystem.  
+
+#------------------- copy and paste ------------------------------
+#
+#
+dd if=/dev/zero of=$LFS/boot/initrd bs=1024 count=8192
+mke2fs -m 0 -i 1024 -F $LFS/boot/initrd
+#
+mount -o loop $LFS/boot/initrd $LFS/mnt
+cd $LFS/mnt
+mkdir bin lib dev proc mnt
+#
+mknod $LFS/mnt/dev/ram0    b  1  0
+mknod $LFS/mnt/dev/null    c  1  3
+mknod $LFS/mnt/dev/zero    c  1  5
+mknod $LFS/mnt/dev/console c  5  1
+mknod $LFS/mnt/dev/ttyS0   c  4 64
+mknod $LFS/mnt/dev/sr0     b 11  0
+mknod $LFS/mnt/dev/sr1     b 11  1
+mknod $LFS/mnt/dev/sda     b  8  0
+mknod $LFS/mnt/dev/sdb     b  16  0
+mknod $LFS/mnt/dev/sdc     b  32  0
+mknod $LFS/mnt/dev/sdd     b  48  0
+mknod $LFS/mnt/dev/hda     b  3  0
+mknod $LFS/mnt/dev/hdb     b  3  64
+mknod $LFS/mnt/dev/hdc     b  22  0
+mknod $LFS/mnt/dev/hdd     b  22 64
+mknod $LFS/mnt/dev/hde     b  33  0
+#
+cp $LFS/bin/{bash,mount,grep,umount,echo} $LFS/mnt/bin/
+cp $LFS/usr/bin/test $LFS/mnt/bin/
+cp $LFS/usr/sbin/chroot $LFS/mnt/bin/
+cp $LFS/sbin/pivot_root $LFS/mnt/bin/
+ln -s bash $LFS/mnt/bin/sh
+ln -s test $LFS/mnt/bin/[
+#
+cp $LFS/lib/{libncursesw.so.5,libdl.so.2,} $LFS/mnt/lib/
+cp $LFS/lib/{libc.so.6,libreadline.so.6} $LFS/mnt/lib/
+cp $LFS/lib/{libhistory.so.6,libblkid.so.1,libuuid.so.1} $LFS/mnt/lib/
+if [ -f $LFS/lib/ld-linux.so.2 ] 
+then 
+cp -f $LFS/lib/ld-linux.so.2 $LFS/mnt/lib/
+fi
+if [ -f $LFS/lib/ld.so.1 ] 
+then 
+cp -f $LFS/lib/ld.so.1 $LFS/mnt/lib/
+fi
+#
+#
+# cat, sleep & mknod are optional, but often useful to have when something
+# gos wrong so put them in the initrd also.
+#
+cp $LFS/bin/{cat,sleep,mknod} $LFS/mnt/bin/
+#
+#	The first program executed by the kernel is /linuxrc. As it does not
+#	exist we create it. Our script will find the CD in the correct
+#	CD-ROM drive and then mount it as rootfs / and run /sbin/init 3.
+#
+#
+cat > $LFS/mnt/linuxrc << "EOF"
+#!/bin/sh
+
+
+#ID is the volume id / label of the LFS boot CD that will be looked for.
+EOF
+
+echo "ID=\"LFS_$(date +%Y%m%d)\"" >> $LFS/mnt/linuxrc
+
+cat >> $LFS/mnt/linuxrc << "EOF"
+TMP_MOUNT="/mnt"
+
+PATH="/bin:/sbin:/usr/bin:/usr/sbin"
+
+#this script searches for cdrom devices and then tries to find
+#the LFS boot CD in order to mount it as / (rootfs)
+
+#you need following programs:
+#- /bin/sh (e.g. bash)
+#- echo
+#- [ (which is linked to test)
+#- mount
+#- umount
+#- grep
+#- pivot_root
+#- chroot
+
+#you need following devices:
+#- /dev/hd*, /dev/sd*, /dev/sr* or /dev/cdrom*
+#- /dev/null
+
+#you need following directories:
+#- /proc
+#- $TMP_MOUNT
+
+CHECK_TYPE="try_mount"
+
+if [ ! -d "/proc/" ]; then
+  mkdir /proc
+fi
+
+mount -n proc /proc -t proc
+
+#1. Create a list of possible cdrom devices.
+
+CDROM_LIST="/dev/sr0 /dev/sr1 /dev/cdrom /dev/hda /dev/hdb /dev/hdc /dev/hdd
+/dev/hde /dev/sda /dev/sdb"
+
+#2. now we try to find the LFS boot CD (we use ID as identification)
+
+LFS_CDROM_DEVICE=""
+echo "Using $CHECK_TYPE"
+for cdrom_device in $CDROM_LIST
+do
+  echo -n "Checking $cdrom_device ... "
+
+  if [ "$CHECK_TYPE" = "try_mount" ]; then
+    mount -n -t iso9660 $cdrom_device $TMP_MOUNT > /dev/null 2>&1
+    media_found=$?
+  fi
+
+  if [ $media_found -eq 0 ]; then
+
+    echo -n "media found"
+    if [ "$CHECK_TYPE" = "try_mount" ]; then
+      [ -e "$TMP_MOUNT/$ID" ]
+      media_lfs=$?
+    fi
+
+    if [ "$CHECK_TYPE" = "try_mount" ]; then
+      umount -n $cdrom_device > /dev/null 2>&1
+    fi
+
+    if [ $media_lfs -eq 0 ]; then
+      echo ", LFS boot CD found. Ready!"
+      LFS_CDROM_DEVICE="$cdrom_device"
+      break;
+    else
+      echo ", not LFS boot CD."
+    fi
+
+  else
+    echo "no media "
+  fi
+done
+
+
+#3. mount LFS CD as / (root fs)
+if [ "$LFS_CDROM_DEVICE" = "" ]; then
+
+  echo "No LFS boot CD found!!!  You will have to fix this to continue"
+  echo "do: mount -n -o ro -t iso9660 'your cd device' $TMP_MOUNT"
+  echo "Then exit shell to continue"
+  bash
+
+else
+
+  echo "Booting from $LFS_CDROM_DEVICE ...                  "
+
+  mount -n -o ro -t iso9660 $LFS_CDROM_DEVICE $TMP_MOUNT
+fi
+  cd $TMP_MOUNT
+  pivot_root . mnt
+  umount -n /mnt/proc >/dev/null 2>&1
+  exec chroot . sh -c 'umount -n /mnt >/dev/null 2>&1;\
+  exec -a init.new /sbin/init 3'\
+  <dev/console >dev/console 2>&1
+
+EOF
+#
+#	To make this script executable run
+#
+chmod 0755 $LFS/mnt/linuxrc
+#
+#	Ok, that's it. Unmount the image and compress it.
+#
+cd $LFS/
+umount $LFS/mnt
+gzip $LFS/boot/initrd
+#
+#------------------- end copy and paste ---------------------------
+
+
+8) (Optional) compress /usr.
+
+	This step is optional.   It's only needed if your media is
+	too small or if you just want to minimize the size of the ISO 
+	file.
+
+	Before you go further, check the size of your LFS tree:
+
+du -h $LFS/
+
+	Verify that it will fit on your media (approx 700MB for a CD..)
+
+	If it will not fit, and there isn't anything that can easily
+	be removed to make it fit, you can compress the /usr file 
+	system to reduce the size by a couple hundred megabytes.
+
+	To compress your $LFS/usr directory, use mksquashfs to create
+	a 'squashed' version of $LFS/usr, remove the original $LFS/usr
+	and modify $LFS/etc/fstab to mount the squashed /usr during
+	system startup.
+
+	The kernel squashfs support does not universally work with
+	any squashfs filesystems.  Make sure you are using
+	a version of squashfs tools (likely version 4 or better...)
+	which creates squashfs files that are compatible with your
+	kernel.
+
+	chroot is in /usr and must be moved to /sbin if compression
+	is used.
+
+#------------------- copy and paste ------------------------------
+mv $LFS/usr/sbin/chroot $LFS/sbin/chroot
+mksquashfs $LFS/usr $LFS/usr.sqsh
+rm -fr $LFS/usr/*
+cat >> $LFS/etc/fstab << "EOF"
+/usr.sqsh	/usr	squashfs	loop,ro	0 0
+EOF
+#------------------- end copy and paste ---------------------------
+
+
+9. Create Boot CD ISO Image
+   ----------------
+
+	If you have a CD-RW you may want to use it for testing. When
+	your system boots quite good from CD-RW you can burn it on a CD-R.
+	(I give you this advice, because I got the clue after burning
+	about 10 CD-Rs that didn't work ;-)
+
+	Because linuxrc must be able to identify the CD you have to create a
+	file called "LFS_YYYYMMDD".
+
+#------------------- copy and paste ------------------------------
+touch $LFS/LFS_$(date +%Y%m%d)
+#------------------- end copy and paste ---------------------------
+
+	Now create the ISO image of your bootable CD.
+
+# On a X86 do this:
+#------------------- copy and paste ------------------------------
+#
+cd $LFS/
+rm -f lfsbootcd.iso
+mkisofs -R -l -L -D -b isolinux/isolinux.bin -c isolinux/boot.cat \
+-no-emul-boot -boot-load-size 4 -boot-info-table -V "LFS_$(date +%Y%m%d)" \
+$LFS >lfsbootcd.iso
+#
+#------------------- end copy and paste ---------------------------
+
+# On a powerpc do this:
+#------------------- copy and paste ------------------------------
+#
+# Create a mapping file.
+#
+cat > $LFS/boot/map.hfs << "EOF"
+# ext.  xlate  creator  type    comment
+.b Raw 'chrp' 'tbxi' "bootstrap"
+yaboot Raw 'unix' 'boot' "bootstrap"
+.conf Ascii 'unix' 'text' "config"
+.msg Ascii 'unix' 'text' "text"
+* Raw '????' '????' "unknown" 
+EOF
+#
+#
+#
+rm -f lfsbootcd.iso
+mkisofs -r -V "LFS_$(date +%Y%m%d)" -iso-level 4 -chrp-boot -hfs \
+-part -probe -no-desktop \
+-hfs-bless $LFS/ppc/mac -map $LFS/boot/map.hfs \
+-b ppc/mac/yaboot -no-emul-boot \
+-hide-rr-moved -o lfsbootcd.iso $LFS
+#
+#------------------- end copy and paste ---------------------------
+
+
+9a) Burn the ISO image
+
+
+	The ISO image lfsbootcd.iso is complete.   Either use your favorite
+	CD burning tools to burn it or use the cdrecord utility as such:
+
+	Note!
+	dev=0,0,0 is the device number of your CD-Writer
+	Check your SCSI devices with "cdrecord -scanbus"
+	speed=4 should be changed to (max) speed of your CD-Writer.
+	If you are using a CD-RW add blank=fast to the cdrecord-command!
+
+cat lfsbootcd.iso |cdrecord -v -eject dev=0,0,0 speed=4 -
+
+
+10. Reboot and enjoy
+   ----------------
+
+	Reboot and let your Bios boot from CD.  (On PowerPC press the
+	and hold the 'c' key after reset).
+
+	/tmp will have lots of free space (approx 1/2 of your RAM).
+	The remaining 'writable' directories (/home and such) will 
+	have about 10meg of free space for you to use.
+
+	Enjoy the kernel messages and login prompt ;-)
+
+------------------------------------------------------------------
+
+ACKNOWLEDGEMENTS:
+ Special thanks for bug reports and help to:
+ David Maus <oneyed@gmx.de>
+
+CHANGELOG:
+[2002-11-19]
+  * Initial hint.
+	Thomas Foecking <thomas@foecking.de>
+	Christian Hesse <mail@earthworm.de>
+[2011-03-12]
+	Updated: Jimmy Anderson  <jimmy.anderson1057@gmail.com>
+	Updated to current LFS, added /usr/compression and
+	building for PowerPC.   Adjusted hint format to template.

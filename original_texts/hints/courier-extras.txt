@@ -1,0 +1,423 @@
+AUTHOR:         Jim Gifford <lfs-hints at jg555.com>
+
+DATE:		2004-03-25
+
+LICENSE: 	GNU Free Documentation License Version 1.2
+
+SYNOPSIS:	How to setup the Extra Capabilities in Courier
+
+DESCRIPTION:	This hint will show you how to use feature of the Courier Mail
+		Server that are not mentioned in BLFS
+
+PREREQUISITES:  Courier, Mgetty, Virus Scanner
+
+HINT:
+
+------
+
+Courier Maillist List Manager
+
+	This will show you the process on how to setup Courier's Mailing List.
+
+	Step One : Define the location for the mailling list
+		   couriermlm create {directory} {email_address}
+		   Example : couriermlm create /home/test-list ADDRESS=testlist@example.com
+
+	Step Two : Create a user entry for this user.
+		Method A : Add a user to passwd with the home directory the same as create directory above
+		Example : echo "testlist:x:9999:9999:Test Maillist:/home/testlist:/bin/bash" >> /etc/passwd
+
+				
+		Method B : Add a user to virutal suers with the home directory the same as created directory above
+		Example :  mysql -ucourier -p{password} courier-mail
+		           insert into users values ('testlist@example.com','','password',
+                                                     'Test Maillist',9999 ,9999,
+                                                     '/home/test-list','');
+
+	Step Three : Create .courier in the {directory} with the following information
+		| couriermlm msg {directory}
+		Example : couriermlm msg /home/test-list
+			
+	Step Four : Create .courier-default in the {directory} with the following information
+		| couriermlm ctlmsg {directory}
+		Example : couriermlm ctlmsg /home/test-list
+			
+	Step Five : Create .courier-owner in the {directory} with the following information
+		owner_of_list@example.com
+		Example : listmanager@example.com
+
+	Step Six : Create a cron entry that runs every hour with the following information
+		couriermlm hourly {directory}
+		Example : couriermlm hourly /home/test-list
+
+	Step Seven : Create a cron entry that runs once a day with the following information
+		couriermlm daily {directory}
+		Example : couriermlm daily /home/test-list
+		
+
+	You have now created a maillist list under courier. Now you can send a message to your mailist to subscribe
+		Example : testlist-subscribe@example.com
+
+-----
+
+Amavis
+	
+Prerequisites:	A Virus Scanner
+
+	This will show you how to setup Amavis(Mail Virus Scanner) to work with Courier.
+
+	Before you can install Amavis, you will need to install a virus scanner. The one
+	I have been using is Clamav.
+
+	Download location (HTTP):       
+	http://osdn.dl.sourceforge.net/sourceforge/clamav/clamav-0.67.tar.gz
+
+	Installation of Clamav
+	
+        ./configure --prefix=/usr \
+                    --sysconfdir=/etc/clamav
+	make
+	make install
+
+	Now for the installation of Amavis
+
+	Download location (HTTP):       
+	http://osdn.dl.sourceforge.net/sourceforge/amavis/amavis-0.3.12.tar.gz
+	
+	Need Patches
+	http://ftp.jg555.com/patches/amavis/amavis-0.3.12-courier-2.patch
+	http://ftp.jg555.com/patches/amavis/amavis-0.3.12-maildrop-securityhole-1.patch
+
+	Step One - Install Amavis required perl modules
+
+		perl -MCPAN -e 'install IO::String'
+		perl -MCPAN -e 'install Unix::Syslog'
+		perl -MCPAN -e 'install Convert::UUlib'
+		perl -MCPAN -e 'install Convert::TNEF'
+		perl -MCPAN -e 'install Compress::Zlib'
+		perl -MCPAN -e 'install Archive::Tar'
+		perl -MCPAN -e 'install Archive::Zip'
+		perl -MCPAN -e 'install Mail::Address'
+		perl -MCPAN -e 'install MIME::Tools'
+		perl -MCPAN -e 'install libnet'
+
+	Step Two - Create Amavis Executable
+	
+	./reconf
+	./configure --prefix=/usr \
+		    --enable-courier \
+		    --enable-syslog \
+		    --with-syslog-level=mail.info \
+		    --with-amavisuser=amavis	
+
+
+	Step Three - Configure Courier
+
+		In /etc/courier/courierd
+
+		Change the DEFAULTDELIVERY=./Maildir to DEFAULTDELIVERY="| /usr/bin/maildrop"
+
+		For All users
+
+		In /etc/courier/maildroprc
+
+		Add the following:
+
+		# Virus Scan
+		#
+		import SENDER
+		import RECIPIENT
+
+		if ($SENDER ne "")
+			{
+				FROM=escape($SENDER)
+			}
+			else
+			{
+				FROM="unknown@example.com"
+			}
+
+		if ($RECIPIENT ne "")
+			{
+				TO=escape($RECIPIENT)
+			}
+			else
+			{
+				TO="unknown@jg555.com"
+			}
+
+		xfilter "/usr/sbin/amavis $SENDER $RECIPIENT"
+
+		# Drop anything listed as a Virus into .Virus
+		#
+		if (/^Subject:.*VIRUS FROM*/)
+			to "$DEFAULT/.Virus/"
+
+		# Drop anything listed as a Virus into .Virus
+		#
+		if (/^Subject:.*VIRUS TO*/)
+			to "$DEFAULT/.Virus/"
+
+		For Individual Users
+
+		Create the same information as above only as .mailfilter in the users
+		home directory.
+
+-----
+
+Mailing List Filtering
+
+	This will show you how to filter Mailing Lists that you subscribe to into different
+	IMAP folders.
+
+	Step One
+
+		Go to the Maildir in the users home directory. maildirmake .{list_name}.
+		
+		Example : maildirmake .lfs-dev
+
+	Step Two
+
+		Make sure the newly created .{listname} has the proper user permission.
+		chown {user:user} .{listname} -R
+
+		Example chown jim:jim .lfs-dev -R
+
+	Step Three
+
+		Edit .mailfilter in the users home directory. Add the following information to
+		.mailfilter.
+
+		# {list_name}
+		#
+		if (/^List-Post:.*{list_address@*/)
+		        to "$DEFAULT/.{list_name}/"
+
+		You will have to view the headers of the mail from the list server to find a 
+		match criteria you can use. List-Post,list-post,List-ID, and To are the most common
+		match cirteria's to use. 
+
+		# lfs-dev
+		#
+		if (/^List-Id:.*lfs-dev.linuxfromscratch.org*/)
+			to "$DEFAULT/.lfs-dev/"
+
+----
+
+Courier Fax
+
+	This will show you how to setup Faxing within Courier.
+
+	Step One - If mgetty is not installed, follow the mgetty hint.
+		Hint Link : http://www.linuxfromscratch.org/hints/downloads/files/mgetty.txt
+
+	Step Two - Locate Faxq-helper
+
+		Find Mgetty's faxq-helper program and Change into the directory that it is
+		located in.
+
+		How to Locate : find / -name faxq-helper
+		Sample Output : /usr/lib/mgetty+sendfax/faxq-helper
+		Sample cd     : cd /usr/lib/mgetty+sendfax
+
+	Step Three - Create a symlink for new_fax
+
+		ln -sf /usr/share/courier/new_fax
+
+	How to Use
+		
+		Send an email to {phone_number}@fax, this will fax to the phone number specified.
+
+		Note: This does not work with Outlook Express
+
+-----
+
+Courier Filter
+
+	This will show you how to use the Courier::Filter framework with Courier.
+
+	Step One - Install Courier Filter required perl modules
+
+		perl -MCPAN -e 'install Net::RBLClient'
+		perl -MCPAN -e 'install Digest::MD5'
+		perl -MCPAN -e 'install MIME::Tools'
+		perl -MCPAN -e 'install Mail::SPF::Query'
+
+	Step Two - Install Courier Filter
+
+		perl -MCPAN -e 'install Courier::Filter'
+
+	Step Three - Create pureperlfilter.conf
+
+		You can retrieve a sample perlpurefilter.conf from 
+
+		http://www.linuxfromscratch.org/hints/downloads/attachments/courier-extras/pureperlfilter.conf
+
+	Step Four - Edit /usr/lib/perl5/site_perl/{perl_version}/Courier/Config.PM
+		
+		Change 
+
+		use constant COURIER_RUNTIME_DIR    => '/var/run/courier';  # Normally '/var/run/courier'.
+
+		to
+
+		use constant COURIER_RUNTIME_DIR    => '/var/lib/courier';  # Normally '/var/run/courier'.
+
+	Step Five - Create a symlink to pureperlfilter
+
+		ln -s /usr/bin/pureperlfilter /etc/courier/filters/active/
+
+	Step Six - Start the filter
+
+		/etc/rc.d/init.d/courier restart
+
+-----
+
+Dupfilter
+
+	This will show you how to prevent duplicate messages from coming into Courier.
+	This is not a 100% fool proof solution, but it does work.
+
+	Step One - Start the Dupfilter
+
+		courierfilter start dupfilter
+			
+			
+-----	
+
+Spamassassin
+
+	This will show you how to scan for SPAM site wide using Spamassassin with courier. 
+	This works with virtual users but not virtual domains. Virtual domains require an
+	additional module available at http://da.andaka.org/Doku/courier-spamassassin.html.
+
+	Step One - Install Spamassassin
+
+		perl -MCPAN -e shell                    [as root]
+		o conf prerequisites_policy ask
+		install Mail::SpamAssassin
+		quit
+
+	
+	Step Two - Creating a Spam User and Group
+
+		You will need to change ### to a userid.
+
+		echo "spam:x:###:###:Spam Assassin Server:/home/spam:/bin/bash" >> /etc/passwd
+		echo "spam:x:###:" >> /etc/group
+		mkdir /home/spam
+
+	Step Three - Create an init.d script for spamassassin
+
+	# Start /etc/rc.d/init.d/spamd
+	#!/bin/bash
+
+	# SpamAssassin
+
+	source /etc/sysconfig/rc
+	source $rc_functions
+
+	if [ -f /etc/sysconfig/spamd ]
+		then
+			source /etc/sysconfig/spamd
+	fi
+
+
+	case "$1" in
+		start)
+			echo "Starting Spam Assassin Service..."
+			loadproc spamd $OPTIONS
+			;;
+
+		stop)
+			echo "Stopping Spam Assassin Service..."
+			killproc spamd
+			;;
+
+		restart)
+			$0 stop
+			sleep 1
+			$0 start
+			;;
+
+		status)
+			statusproc spamd
+			;;
+
+		*)
+			echo "Usage: $0 {start|stop|restart|status}"
+			exit 1
+			;;
+	esac
+	# End /etc/rc.d/init.d/spamd
+	
+	Step Four - Create an /etc/sysconfig/spamd for spamassassin
+
+	# Start /etc/sysconfig/spamd
+
+	OPTIONS="-d -c -a -q -x -u spam"
+
+	# End /etc/sysconfig/spamd
+
+	Step Five - Make Spamassassin start just before your Mail Server
+
+	cd /etc/rc.d/init.d &&
+	ln -sf ../init.d/spamd ../rc0.d/K26spamd &&
+	ln -sf ../init.d/spamd ../rc1.d/K26spamd &&
+	ln -sf ../init.d/spamd ../rc2.d/K26spamd &&
+	ln -sf ../init.d/spamd ../rc3.d/S34spamd &&
+	ln -sf ../init.d/spamd ../rc4.d/S34spamd &&
+	ln -sf ../init.d/spamd ../rc5.d/S34spamd &&
+	ln -sf ../init.d/spamd ../rc6.d/K26spamd
+
+Other Spamassassin Configuration
+
+	White Listing
+
+	In directory /etc/mail/spamassassin there is a file named local.cf, this contains all
+	the configuration information for your Spam Assassin Configuration. You will need to
+	add the following lines for your internal mail not be to scanned.
+
+	whitelist_from  *@example.com
+
+	If you subscribe to mailling lists, you may want to add the mailling lists in like the
+	following.
+
+	whitelist_to    spamassassin-users@incubator.apache.org
+	whitelist_from	spamassassin-users@incubator.apache.org
+
+	More Rules
+
+	You can add other rules into the /etc/mail/spamassassin directory. All you have to do
+	is either create them or download them. Here is a good one to add for those stupid
+	buy drugs online stuff.
+
+	Download antidrug.cf from http://mywebpages.comcast.net/mkettler/sa/antidrug.cf
+
+	Put the file into /etc/mail/spamassassin and issue the following command
+	/etc/rc.d/init.d/spamd restart
+
+	Where can I get more rules
+
+	You can get more rules from the links below. 
+
+	Note: Check you syslog for message about errors.  
+	If you see an error message, it will tell you what file is having the problem.
+	You can either fix it or remove that rule set.
+
+	Example Error Message : 
+	Subroutine J_CHICKENPOX_65_body_test redefined at /etc/mail/spamassassin/chickenpox.cf
+
+	Rules Links
+
+	http://www.merchantsoverseas.com/wwwroot/gorilla/sa_rules.htm
+	http://wiki.apache.org/spamassassin/CustomRulesets
+
+-----
+
+VERSION: 	1.1
+
+CHANGELOG: 	1.1 Forgot attachment
+		1.0 Initial Version
+
+ New Version of this document can be viewed from http://cvs.jg555.com/viewcvs.cgi/lfs-hints

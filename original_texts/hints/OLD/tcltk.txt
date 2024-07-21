@@ -1,0 +1,149 @@
+TITLE:		Installing tcl/tk
+
+LFS VERSION:	Any.
+
+AUTHOR:		Tushar Teredesai <Tush@Yahoo.Com>
+
+SYNOPSIS:
+	How to install tcl/tk without having to keep the source tree around.
+
+HINT:
+
+The primary location for this site is <http://tushar.lfsforum.org>, thanks to
+Deutsche LFS Foren. The latest version of the hint and any relevant patches are
+available at that site. Please refer to the primary location before submitting
+bug-reports/enhancements to this hint.
+
+You may freely copy this document or create derivate works or distribute the
+document in any format. At your discretion, you may give credit to the original
+author:)
+
+Use the hint at your own risk. Neither the author, nor the Linux From Scratch
+project accepts any reponsibility for anything that happens when using these
+documents or associated files.
+
+An appropriate place to discuss this hint is blfs-support MailingList/NewsGroup
+at LinuxFromScratch.Org.
+
+What is TCL/TK?
+
+From http://www.tck.tk:
+* Tcl (Tool Command Language) is used by over half a million developers
+worldwide and has become a critical component in thousands of corporations. It
+has a simple and programmable syntax and can be either used as a standalone
+application or embedded in application programs. Best of all, Tcl is open source
+so it's completely free.
+* Tk is a graphical user interface toolkit that makes it possible to create
+powerful GUIs incredibly quickly. It proved so popular that it now ships with
+all distributions of Tcl. 
+
+Why the hint?
+
+I needed tcl/tk so that I could run AMSN Messegner to communicate with my
+buddies who have MSN (pretend you didn't hear that). The thing that I found
+idiotic was that even after installing the compiled code, it kept searching for
+files at the location where I compiled the sources. Went digging around and
+ended up at Gentoo. Their instructions were nice, but I needed a way so that I
+could script the entire install and didn't have to change the script with
+every upgrade of tcl/tk. Hence this hint.
+
+Change Log:
+[2002-10-24]
+	* First public version.
+
+Pre-requisites (post LFS):
+	* XFree86
+		<http://freshmeat.net/projects/xfree86/>
+
+Packages to download:
+	* tcl/tk:)
+		<http://freshmeat.net/projects/tcltk/>
+
+
+Installing TCL:
+
+First we define varaibales for the package and the version.
+	PACKAGE=tcl
+	VERSION=8.4.0
+	SRC_FILE=${PACKAGE}${VERSION}-src.tar.gz
+	SRC_DIR=${PACKAGE}${VERSION}
+	V=`echo $VERSION | cut -d "." -f 1,2`
+
+Xtract the archive.
+	tar -xvzf ${SRC_FILE}
+	cd ${SRC_DIR}
+	DIR="${PWD}"
+	cd unix/
+
+Configure and compile the package.
+	./configure --prefix=/usr --disable-symbols --enable-threads
+	make
+
+Now remove the references to the source tree.
+	cp tclConfig.sh tclConfig.sh.orig
+	sed -e "s:${DIR}/unix:/usr/lib:" \
+		-e "s:${DIR}:/usr/include/tcl${V}:" \
+		tclConfig.sh.orig > tclConfig.sh
+
+Install the standard way.
+	make install
+
+Copy the header files.
+	install -d /usr/include/tcl${V}/unix
+	install -m644 *.h /usr/include/tcl${V}/unix/
+	install -d /usr/include/tcl${V}/generic
+	install -c -m644 ../generic/*.h /usr/include/tcl${V}/generic/
+	rm -f /usr/include/tcl${V}/generic/{tcl,tclDecls,tclPlatDecls}.h
+	ln -nsf /usr/include/tcl${V} /usr/lib/tcl${V}/include
+
+Make compatibility links
+	ln -sf libtcl${V}.so /usr/lib/libtcl.so
+	ln -sf libtclstub${V}.a /usr/lib/libtclstub.a
+	ln -sf tclsh${V} /usr/bin/tclsh
+
+
+Installing tk:
+
+First we define varaibales for the package and the version.
+	PACKAGE=tk
+	VERSION=8.4.0
+	SRC_FILE=${PACKAGE}${VERSION}-src.tar.gz
+	SRC_DIR=${PACKAGE}${VERSION}
+	V=`echo $VERSION | cut -d "." -f 1,2`
+
+Xtract the archive.
+	tar -xvzf ${SRC_FILE}
+	cd ${SRC_DIR}
+	DIR="${PWD}"
+	cd unix/
+
+Configure and compile the package.
+	./configure --prefix=/usr --disable-symbols --enable-threads
+	make
+
+Now remove the references to the source tree.
+	cp tkConfig.sh tkConfig.sh.orig
+	sed -e "s:${DIR}/unix:/usr/lib:" \
+		-e "s:${DIR}:/usr/include/tk${V}:" \
+		tkConfig.sh.orig > tkConfig.sh
+
+Install the standard way.
+	make install
+
+Copy the header files.
+	install -d /usr/include/tk${V}/unix
+	install -m644 *.h /usr/include/tk${V}/unix/
+	install -d /usr/include/tk${V}/generic
+	install -m644 ../generic/*.h /usr/include/tk${V}/generic/
+	rm -f /usr/include/tk${V}/generic/{tk,tkDecls,tkPlatDecls}.h
+	ln -nsf /usr/include/tk${V} /usr/lib/tk${V}/include
+
+Make compatibility links
+	# Compatibility links
+	ln -sf libtk${V}.so /usr/lib/libtk.so
+	ln -sf libtkstub${V}.a /usr/lib/libtkstub.a
+	ln -sf wish${V} /usr/bin/wish
+
+
+Don't forget to send me bug reports and enhancements so that I can keep the hint
+updated.

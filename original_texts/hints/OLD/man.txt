@@ -1,0 +1,109 @@
+TITLE:		The Man Hint
+LFS VERSION:	any
+AUTHOR:		Mark Hymers <markh@linuxfromscratch.org>
+
+SYNOPSIS:	Formating and Compression issues for man pages
+
+Note: This hint was previously maintained by 
+Rudolf Floers <r.floers@web.de> 
+and then by Gerard Beekmans <gerard@linuxfromscratch.org>.  
+Thanks to both of them.  Any bugs, however, are still my responsibility!
+
+HINT:
+
+(1)  Compression of man pages
+
+If you want to save a little diskspace, you can safely bzip2 or gzip all
+manpages.   We used to recommend just using gzip /usr/share/man/*/* (or
+the bzip2 equivalent) but that breaks symlinks.  Instead, you can use
+the following script. 
+
+(a copy is available from
+http://www.linuxfromscratch.org/~markh/scripts/compman
+if you want to avoid cutting and pasting it!)
+
+==========================================================================
+#!/bin/sh
+#
+# Compress (with bzip2 or gzip) all man pages in a hierarchy and
+# update symlinks - By Marc Heerdink <marc@koelkast.net>.
+# Modified to be able to gzip or bzip2 files as an option and to deal
+# with all symlinks properly by Mark Hymers <markh@linuxfromscratch.org>
+#
+# WARNING: This script still can't cope with hard-links (suggestions are
+# welcome on how to deal with this)
+# The only time this should be a problem is if you have a symlink to a
+# hardlink; but then, you're sick if you do that anyways :-)
+#
+
+if [ ! -d "$1" -o -z "$1" ] || [ "$2" != "bz2" -a "$2" != "gz" ]; then
+  echo "Usage: $0 <dir> <bz2/gz>"
+  exit 1
+fi
+
+for DIR in $1/man*; do
+  cd $DIR
+
+  for FILE in *; do
+
+    if [ -L "$FILE" ]; then
+        case $FILE in
+        *.bz2)
+            EXT=bz2 ;;
+        *.gz)
+            EXT=gz ;;
+        *)
+            EXT=none ;;
+        esac
+
+        if [ "$EXT" != "none" ]; then
+            LINK=`ls -l $FILE |cut -d ">" -f2 |tr -d " " | sed s/.$EXT$//`
+            NEWNAME=`echo "$FILE" | sed s/\.$EXT$//`
+            mv "$FILE" "$NEWNAME"
+            FILE="$NEWNAME"
+        else
+            LINK=`ls -l $FILE |cut -d ">" -f2 |tr -d " "`
+        fi
+
+        rm -f "$FILE" && ln -s "${LINK}.$2" "${FILE}.$2"
+        echo "Relinked $FILE"
+
+    elif [ -f "$FILE" ]; then
+        case $FILE in
+        *.bz2)
+            bunzip2 $FILE
+            FILE=`echo $FILE | sed s/\.bz2$//`
+        ;;
+        *.gz)
+            gunzip $FILE
+            FILE=`echo $FILE | sed s/\.gz$//`
+        ;;
+        esac
+
+        case $2 in
+        bz2)
+            bzip2 "$FILE" && chmod 644 "${FILE}.${2}";;
+        gz)
+            gzip "$FILE" && chmod 644 "${FILE}.${2}";;
+        esac
+
+        echo "Compressed $FILE"
+
+    fi
+
+  done # for FILE
+done # for DIR
+==========================================================================
+
+Don't forget to set the script to be executable and then run it using 
+something like:
+./compman /usr/share/man bz2
+
+The first option is the tree of man pages to compress.
+The second options is bz2 or gz; it tells the script which compression
+you want to use.
+
+(2)      cat pages
+
+TO BE ADDED - There's a slight problem; I can't get it to work at the
+moment.  Hopefully this'll get fixed soon!

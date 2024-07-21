@@ -1,0 +1,500 @@
+TITLE:		Keeping chapter 5 and chapter 6 separate (v1.1)
+LFS VERSION:	3.1 (may need small changes for later versions)
+AUTHOR:		Matthias S. Benkmann <m.s.b@gmx.net>
+
+SYNOPSIS:
+	The way LFS is built now, the static programs from chapter 5 are
+	overwritten in chapter 6. So when you begin building your chapter 6
+	system, your $LFS filesystem is populated by hundreds of files you
+	don't want to keep. During the chapter 6 process there is
+	a confusing mix of chapter 5 and chapter 6 files and in the end you
+	can't be sure whether your LFS system is really "clean" or retains
+	some "dirt" from the host distro.
+	When I built my first LFS, my host system was very different from 
+	the LFS target (libc5 vs libc6). I ended up with a whole 
+	/usr/lib/gcc-lib/<architecture> directory tree remaining and several
+	unreplaced header files. I've had an uneasy feeling regarding the
+	current building method ever since.
+	But this is over now. With a few changes to the book, you can
+	build chapter 5 and chapter 6 completely separate.
+
+HINT:
+
+##############################################################################
+                           Changelog
+##############################################################################
+
+2002-01-30   -added Changelog
+             -create awk symlink in chapter 5 because gcc needs it
+             -submitted v0.8
+             
+2002-02-06   -added findutils patch instruction
+             -submitted v0.9
+
+2002-03-16   -added remark that "mv chroot ../sbin" needs to be skipped when
+              installing sh-utils in chapter 5
+             -submitted 1.0
+             
+2002-02-19   -changed LFS VERSION header so that I don't have to keep
+              things up-to-date ;-)
+             -submitted v1.1
+
+##############################################################################
+                          Introduction
+##############################################################################
+
+The idea behind this hint is simple: Chapter 5 gets built in $LFS/static
+rather than $LFS. By setting the PATH correctly in chroot, the
+binaries are still accessible, although they don't "pollute" the main
+directory tree. The advantages of this approach are the following:
+
+- no stale files from chapter 5 remain in the LFS system
+
+- you can use the same chapter 5 static tree to build multiple LFS systems
+
+- if you forgot a package from chapter 5 you can safely install it to the
+  static tree later, without the risk of overwriting chapter 6 files
+
+- you can restart chapter 6 after something went wrong without having to
+  redo chapter 5
+  
+- you can build the chapter 5 system on a different partition or mount it
+  from a CD-ROM, etc. to use less disk space on the target LFS partition
+
+- it just feels better
+
+
+##############################################################################
+                           How to do it 
+##############################################################################
+
+Chapter 4:
+  1. You _DON'T_ create the Unix directory tree in chapter 4. After mounting
+     your new partition you only do the following
+       mkdir -p $LFS/static/usr/src
+     
+Chapter 5:
+  1. There is no need to install chapter 5 as root. Just make $LFS/static
+     (and subdirectories) writeable by an ordinary user account and build with
+     that account. It will prevent you from screwing up your host system.
+          
+  2. Keep and unpack all tarballs in (subdirectories of) $LFS/static/usr/src
+     and install from there.
+     
+  3. Install the packages according to the book, but wherever the book
+     uses $LFS, use $LFS/static instead. To make it easier you could instead do
+     `export LFS=$LFS/static'. But be careful with that as it's easy to get
+     confused that way and the rest of this hint will assume you do *not*
+     put "/static" into $LFS.
+
+  4. When building GCC, pass `--prefix=/static/usr' to ./configure instead of
+     `--prefix=/usr'
+     Do NOT create the cpp symlinks. It is not necessary. 
+     The cc symlink is created in $LFS/static/usr/bin.
+  
+  5. Skip the installation of the Linux headers. We'll install them later.
+  
+  6. mawk wants to install a manpage to $LFS/static/usr/share/man/man1 which
+     it doesn't create. You have to create this directory manually before
+     installing mawk. After installing mawk use the command
+        ln -s mawk $LFS/static/usr/bin/awk
+     to create the alias awk for mawk which is needed by GCC in chapter 6.
+     
+  7. When you install sh-utils, skip the command "mv chroot ../sbin".
+     If you install sh-utils as a non-root user you will get a warning
+     message about lack of privileges and the su program will not be
+     installed. Ignore this message. A static su is not needed for building 
+     LFS. In chapter 6 we do the sh-utils installation as root and the dynamic
+     su will be properly installed (just to be overwritten by the one from
+     net-tools later).
+     
+  8. Unpack the util-linux package, enter the util-linux-* directory and
+     compile a static version of the mount utility according to the following
+     instructions. The cp command assumes that /static is not part of your
+     $LFS variable. If it is, drop the /static from the cp command.
+   
+       ./configure &&
+       cp defines.h defines.h.old &&
+       sed /ENABLE_NLS/d defines.h.old >defines.h &&
+       make -C lib &&
+       make -C mount LDFLAGS=-static &&
+       cp mount/{mount,umount} $LFS/static/bin/
+     
+  9. Build a static version of findutils using the following commands
+     (again I assume /static is not part of $LFS):
+  
+       patch -Np1 -i ../findutils-4.1.patch &&
+       ./configure --prefix=$LFS/static/usr --disable-nls &&
+       make LDFLAGS=-static CPPFLAGS=-Dre_max_failures=re_max_f2 &&
+       make libexecdir=$LFS/static/usr/bin install
+  
+Chapter 5 1/2:
+     You have now finished the instructions from the last section in
+     chapter 5 titled "Installing <package>" and have compiled the additional
+     static mount and umount binaries and findutils. The next section in the 
+     book would be "Creating passwd and group files", which I refer to as 
+     chapter 5 1/2.
+     Here is the clean break that this hint gives you. If you keep a copy
+     of your $LFS/static tree you never need to go further back than 
+     chapter 5 1/2 when building an LFS system. You can just start reading
+     here at this point in the hint. The following commands do not assume
+     write access to $LFS/static, so you can burn it on a CD and mount it
+     from there. This will help you save a lot space.
+     
+     Unlike the book which creates part of the LFS system from outside the
+     LFS system, if you follow this hint you create everything from inside
+     the LFS system. To achieve this we enter the chroot environment right
+     now, BEFORE creating the Unix directory structure, passwd or group
+     files,...  This gives us a completely naked system. Everything from
+     the outside world is contained inside the /static directory tree which
+     can be wiped later. Everything we will keep on our LFS system is created
+     from inside the new LFS system.
+     
+     A little side note: You can avoid chroot altogether and just boot a
+     kernel with :
+    
+        init=/static/bin/bash  root=<new LFS partition>
+        
+     For this to work you will need a directory /dev on <new LFS partition>
+     that contains one or more of the following devices
+        /dev/tty1, /dev/console, /dev/tty
+     [IF SOMEONE KNOWS EXACTLY WHICH IS/ARE NEEDED, MAIL ME]
+     
+     
+  1. Enter the chroot environment using the following command (as root): 
+    
+       cd $LFS &&
+       chroot $LFS /static/usr/bin/env -i HOME=/root TERM=$TERM \
+       PATH=/sbin:/bin:/usr/sbin:/usr/bin:/static/bin:/static/usr/bin \
+       SHELL=/static/bin/bash PS1='\u:\w\$ '  /static/bin/bash --login
+     
+     If you get the error message "--login: No such file or directory"
+     you forgot the space between the PS1='\u:\w\$ '  and /static/bin/bash.
+     It's easy to overlook because of the space before the closing quote.
+     
+     Note that the bash prompt will contain "I have no name!" This is normal
+     because Glibc hasn't been installed yet.
+      
+     "And / was without form, and void; and darkness was upon the face of
+      the prompt. And the Spirit of Root moved upon the face of chroot."
+     
+  2. "And Root said, let there be a directory structure in the midst of chroot."
+     
+     Before we start creating directories, we need to check the base system's
+     umask setting. To do this, we run umask. The result should be 022. If it
+     isn't, then run the following command to ensure that the directories will
+     be created with the correct permissions:
+
+       umask 022
+
+     We would advise you to make sure that the umask is set to 022 throughout
+     your LFS installation.
+
+     Let's now create the directory tree on the LFS partition based on the FHS
+     standard, which can be found at http://www.pathname.com/fhs/. Issuing the
+     following commands will create a default directory layout:
+
+   mkdir -p bin boot dev/pts etc/opt home lib mnt proc root sbin tmp var opt
+   for dirname in /usr /usr/local
+      do
+      mkdir $dirname
+      cd $dirname
+      mkdir bin etc include lib sbin share src var
+      ln -s share/man man
+      ln -s share/doc doc
+      ln -s share/info info
+      cd $dirname/share
+      mkdir dict doc info locale man nls misc terminfo zoneinfo
+      cd $dirname/share/man
+      mkdir man{1,2,3,4,5,6,7,8}
+   done
+   cd /var
+   mkdir -p lock log mail run spool tmp opt cache lib/misc local
+   cd /opt
+   mkdir bin doc include info lib man
+   cd /usr
+   ln -s ../var/tmp tmp
+
+     Normally, directories are created with permission mode 755, which isn't
+     desired for all directories. The first change is a mode 0750 for the
+     /root directory. This is to make sure that not just everybody can
+     enter the /root directory (the same a user would do with /home/username
+     directories). The second change is a mode 1777 for the tmp directories.
+     This way, any user can write data to the /tmp or /var/tmp directory but
+     cannot remove another user's files (the latter is caused by the so-called
+     "sticky bit" - bit 1 of the 1777 bit mask).
+
+   cd / &&
+   chmod 0750 root &&
+   chmod 1777 tmp var/tmp     
+     
+  3. "And Root said, Let the processes of the system be gathered together unto
+     one place, and let the proc filesystem appear: and it was so."
+     
+       mount -n -t proc proc /proc
+       
+     If you ever leave the chroot environment for any reason (when
+     rebooting for example) please remember to re-enter chroot and to
+     remount /proc again before continuing with the book.
+  
+  4. Now we create /etc/passwd and /etc/group
+  
+echo "root:x:0:0:root:/root:/bin/bash" > /etc/passwd
+
+cat > /etc/group << "EOF"
+root:x:0:
+bin:x:1:
+sys:x:2:
+kmem:x:3:
+tty:x:4:
+tape:x:5:
+daemon:x:6:
+floppy:x:7:
+disk:x:8:
+lp:x:9:
+dialout:x:10:
+audio:x:11:
+EOF
+     
+  5. Right now we have our tarballs in /static/usr/src but we don't want to
+     build inside that directory (if it's mounted from CDROM we couldn't even
+     if we wanted to). We could copy the tarballs to /usr/src/ but that would be
+     a waste of diskspace, so we use symlinks. We do need to have real
+     subdirectories in /usr/src, though, because symlinks would cause us
+     to write to the /static directory. So what we do is to copy the directory
+     structure of /static/usr/src but symlink the files contained therein:
+     
+   cd /usr/src &&
+   for d in $(find /static/usr/src -type d -not -path "/static/usr/src") ;\
+   do mkdir -p ${d#/static/usr/src/} ; done
+     
+     Be careful with the above command. Do NOT forget the "/" before "}" in
+     "${d#/static/usr/src/}". It is significant!!
+     Now we have the directories. Let's create the symlinks:
+     
+   cd /static/usr &&
+   find src -not -type d -exec ln -s /static/usr/{} /usr/{} \;
+     
+  6. There are some additional symlinks we need to create:
+  
+       ln -s /static/bin/bash /bin/bash &&
+       ln -s /static/bin/sh /bin/sh &&
+       ln -s /static/usr/bin/cpp /lib/cpp &&
+       ln -s /static/bin/pwd /bin/pwd
+       
+     Explanation: cpp is needed for glibc compilation, 
+                  pwd for linux's `make config'
+
+  
+Chapter 6:
+
+  0. First a word of warning: Resist the urge to build several packages in
+     parallel, even if it seems to work. Some packages would hardwire paths
+     to programs in the /static tree into their executables or data files.
+     This does not always show in the build output, the compile will be 
+     successful. You won't notice until a program fails with a
+     "/static/...: no such file or directory" or similar error message.
+
+  1. You may create a $LFS/root/.bash_profile as the book instructs but it
+     is not necessary. The chroot command given above already sets the
+     prompt and the PATH correctly. If you do want to create a .bash_profile,
+     do not forget to make the following change:
+     Instead of 
+     
+       PATH=/bin:/usr/bin:/sbin:/usr/sbin
+ 
+     use
+     
+       PATH=/bin:/usr/bin:/sbin:/usr/sbin:/static/bin:/static/usr/bin
+     
+     i.e. add "/static/bin:/static/usr/bin" at the _end_ of PATH. 
+
+  2. Before we install glibc, we need to install the Linux kernel headers.
+     If you exited chroot for some reason, enter it again (we're doing
+     everything from inside chroot, remember!) and don't forget to remount
+     /proc if it was unmounted.
+     
+     Now install the Linux kernel headers with the following commands
+     (from inside a freshly untarred /usr/src/linux):
+     
+       yes "" | make config &&
+       make include/linux/version.h &&
+       cd include &&
+       cp -a linux /usr/include/ &&
+       chown -R 0.0 /usr/include/linux &&
+       mkdir /usr/include/asm &&
+       cp -a asm/* /usr/include/asm &&
+       chown -R 0.0 /usr/include/asm
+
+
+  3. Now install the chapter 6 packages in the following order (see
+     Appendix A for details about the changes compared to the standard book):
+     
+       glibc (makedev) gcc man-pages findutils mawk ncurses vim bison less 
+       groff textutils sed flex binutils fileutils sh-utils gettext net-tools 
+       perl m4 texinfo autoconf automake bash file libtool bin86 bzip2 
+       ed kbd diffutils e2fsprogs grep gzip man lilo make modutils 
+       netkit-base patch procinfo procps psmisc shadow sysklogd sysvinit 
+       tar util-linux
+   
+     The building instructions for some packages have to be changed slightly:
+     
+     - When installing man, replace the line
+         
+         ./configure -default  &&
+         
+       with the line (Note that the PATH=... is NOT a separate command!)
+         
+         PATH="$PATH:/usr/bin:/bin" ./configure -default  &&
+         
+       Explanation: The paths to some programs get written into man's files.
+       Unfortunately the stupid configure script picks the last 
+       location in PATH rather than the first where a program is found.
+       By appending /usr/bin:/bin to PATH for the ./configure command we make
+       sure that man doesn't use the /static versions of our programs.
+
+     - After installing bash, do the following:
+       
+         cd /bin &&
+         ln -sf bash sh
+      
+       Explanation: Replaces the sh symlink that points to the static shell
+       with the a symlink that points to the new bash.
+       
+       Note: You don't need to do `exec /bin/bash' after installing bash (it
+       doesn't hurt, though), because we didn't overwrite the running shell's
+       binary.
+      
+     - After installing GCC, do the following:
+     
+         cd /lib &&
+         ln -sf ../usr/bin/cpp &&
+         cd /usr/lib &&
+         ln -sf ../bin/cpp &&
+         cd /usr/bin &&
+         ln -sf gcc cc
+  
+       Explanation: These are the same links as created in chapter 5, but
+       in chapter 5 we created them in /static.
+       
+     - After installing Fileutils, do the following:
+       
+         cd /usr/bin &&
+         ln -sf ../../bin/install
+       
+       Explanation: This is the same link as created in chapter 5, but
+       in chapter 5 we created it in /static.
+       
+     - In the installation of bzip2, ignore the line
+          rm /usr/lib/libbz2.a &&
+       because the file has been created in /static/usr/lib during chapter 5,
+       and not in /usr/lib.
+ 
+Configuring essential software
+ 
+  We are now completely back on track with the book (you may or may not
+  want to remove the /static tree now). Continue with the standard
+  instructions from the book at "Configuring essential software".
+
+
+Resolving the /static symlinks
+
+  You may want to replace the symlinks in /usr/src that point into the /static
+  tree with the real files after installing the system. The following script
+  will achieve this:
+  
+#!/bin/sh
+find /usr/src -type l -printf "%l %p %u %g\n" |
+{
+  while [ true ]; do
+    read || break
+    case "$REPLY" in
+      /static/usr/src/*) 
+      		set -- $REPLY
+      		if [ -L $2 ]; then
+      		  rm $2 || exit 1
+      		  cp -a $1 $2 || exit 1
+      		  chown $3.$4 $2 || exit 1
+      		fi  
+      		;;
+    esac
+  done
+}
+
+  
+  
+FINAL NOTE: If you take the time to grep through all your files for 
+  "/static" (Be careful to exclude /proc from your scan as reading some files
+  in /proc can cause disk corruption) you will notice that "/static/*" paths 
+  are still found in many libraries, such as libc.a. 
+  Don't panic. Your system will not break if you delete the /static tree. 
+  This is only debugging information. If you do
+        strip --strip-debug /lib/* /usr/lib/*
+  , these paths will disappear and there will remain no trace of the 
+  /static directory.
+
+
+  
+Appendix A   The package ordering changes (compared to LFS-3.0) in detail:
+    
+     Installing GCC as soon as possible is just a good idea. It is not
+     related to this hint.
+
+     You must install textutils before man, before perl and before bash, 
+     because man hardwires cat's location into its executable and because
+     perl and bash have the path to cat hardwired as /bin/cat or /usr/bin/cat
+     in some configure scripts so that they don't find the /static version.
+     Note that textutils will output a warning if it doesn't find Perl. As
+     the warning says, this is only relevant if you change the textutils
+     sources.
+     
+     You must install sed before Perl because Perl hardwires its location into
+     the perl executable.
+     You must install binutils before Perl because Perl writes the path to
+     ar into Config.pm.
+     
+     Install fileutils before Perl because the path to ln gets written to
+     Config.pm .
+     Note that fileutils will output another one of those warning messages
+     that are only relevant if you change the sources 
+     (or want to use `make check').
+     
+     Perl writes the location of hostname to Config.pm, so net-tools should
+     be installed before Perl. Because net-tools has /usr/bin/env hardwired
+     into its configure script, sh-utils must be installed before net-tools.
+     This means that sh-utils is also installed before Perl and will
+     output one of those annoying but harmless warnings.
+     I am aware of the fact that you could install sh-utils before Perl and
+     install net-tools later, because sh-utils has hostname, too.
+     However, it is a mistake that the book does not have a sed command to 
+     suppress sh-utils hostname and instead relies on the overwriting of 
+     hostname by net-tools later. If the book had this sed, fewer people would
+     encounter the "Why is my machine suddenly called `-f'" problem. People
+     who write install scripts that are supposed to work for reinstalling
+     a package later, MUST suppress sh-utils' hostname and consequently
+     have to install net-tools before Perl.
+  
+     You must install fileutils before kbd because the latter has
+     /usr/bin/install hardwired so that it doesn't find the /static version.
+
+     sh-utils must be installed before net-tools, because the latter has
+     /usr/bin/env hardwired. The LFS package order already has sh-utils
+     before net-tools but impatient people might try to start building
+     net-tools in a different console before sh-utils has finished. Don't
+     do that.
+     
+     gettext needs to be installed before net-tools if you want i18n.
+  
+     Install binutils before libtool because libtool hardwires the paths
+     to ld and nm into its executable.
+  
+     Install sed before e2fsprogs because the latter hardwires sed's location
+     into mk_cmds.
+    
+     You must install gzip, bzip2, textutils and diffutils before man because 
+     man writes their paths into several of its files.
+    
+     Flex is installed before binutils to avoid a warning. As this is another
+     warning that is only relevant if you changed the binutils sources,
+     this is just a cosmetic issue.
+     

@@ -1,0 +1,179 @@
+Title:		mozfire.txt
+LFS Version:	Any
+Author:		Jeremy Utley <jeremy@jutley.org>
+
+Synopsis:
+	How to compile the streamlined Mozilla Firebird browser, either from
+	the source release tarballs or CVS checkout
+
+Hint:
+
+Changelog:
+[8/29/2003]
+	Initial Revision
+
+
+First off, some assumptions must be made in this hint.  For the purpose of
+this hint, I will assume that you have at least the following packages
+(and their dependencies) installed, according to instructions in the BLFS
+book:
+
+XFree86 4.3.0
+glib2 2.2.2
+gtk2 2.2.2
+libIDL 0.8.0
+zip 2.3
+unzip 5.50
+libjpeg 6b
+libpng 1.2.5
+libmng 1.0.5
+which 2.14
+
+(Note these are the same dependencies as the full Mozilla package has.
+Firebird uses the same code as the full Mozilla, just a different build
+process.  Also, if you are not going to be building the full GNOME enviornment,
+you should set the prefix on libIDL to be /usr.)
+
+Once these packages and their dependencies are installed, you're ready to
+get started with Firebird.  You have a choice to make now - you can either
+install from the latest released source code, or do a CVS checkout of the
+latest mozilla source tree.
+
+Step 1: Setting the Firebird configuration:
+
+First we want to set up our mozilla configuration.  Because the Mozilla source
+package has multiple buildable targets in one source, using the standard
+configure/make/make install process does not work.  Create our Mozilla
+configuration with the following commands:
+
+mkdir mozilla &&
+cat > mozilla/.mozconfig << "EOF"
+export MOZ_PHOENIX=1
+export MOZ_XUL_APP=1
+mk_add_options MOZ_PHOENIX=1
+mk_add_options MOZ_XUL_APP=1
+ac_add_options --prefix={installation prefix}
+ac_add_options --with-system-jpeg
+ac_add_options --with-system-zlib
+ac_add_options --with-system-png
+ac_add_options --with-system-mng
+ac_add_options --enable-toolkit=gtk2
+ac_add_options --enable-default-toolkit=gtk2
+ac_add_options --enable-xft
+ac_add_options --disable-mailnews
+ac_add_options --disable-ldap
+ac_add_options --enable-crypto
+ac_add_options --enable-plaintext-editor-only
+ac_add_options --disable-composer
+ac_add_options --enable-extensions="default,-irc,-inspector,-venkman,-content-packs,-help"
+ac_add_options --disable-tests
+ac_add_options --disable-debug
+ac_add_options --enable-reorder
+ac_add_options --enable-strip
+ac_add_options --enable-strip-libs
+ac_add_options --enable-xterm-updates
+ac_add_options --enable-elf-dynstr-gc
+ac_add_options --enable-cpp-rtti
+ac_add_options --enable-optimize="{your options of choice}"
+ac_add_options --with-x
+ac_add_options --disable-calendar
+ac_add_options --disable-pedantic
+ac_add_options --disable-svg
+ac_add_options --without-system-nspr
+ac_add_options --enable-nspr-autoconf
+ac_add_options --enable-xsl
+ac_add_options --enable-xinerama=no
+ac_add_options --with-java-supplement
+ac_add_options --with-pthreads
+ac_add_options --disable-jsd
+ac_add_options --disable-accessibility
+ac_add_options --disable-dtd-debug
+ac_add_options --disable-logging
+ac_add_options --enable-old-abi-compat-wrappers
+EOF
+
+The installation prefix is your choice - for myself, I usually install to
+/opt/firebird, but you can also easily choose to install to /usr.
+
+For optimizations, I've had pretty good luck with the following:
+
+-O2 -march=athlon-tbird -fomit-frame-pointer -pipe -s
+
+However, I've seen some notes that compiling with -fomit-frame-pointer can
+cause Firebird to crash on start.
+
+Special thanks go out to the guys at Gentoo, who's firebird ebuild provided
+a lot of the above options.
+
+Now you have a choice - you can either use a tarball of released source, or
+checkout the latest sources from CVS.
+
+Step 2a:  Installing from release source
+
+The latest source release at the time of this writing was Mozilla
+Firebird 0.6.1.  Unless the mozilla guys change the structure of their
+web site, you can find the release tarballs in directories under the following
+URL:
+
+ftp://ftp.mozilla.org/pub/firebird/releases
+
+For Firebird 0.6.1, the file you want to download is:
+MozillaFirebird-source-0.6.1.tar.bz2.  Once you download this, extract it from
+the same directory in which you created the mozilla directory in the previous
+step.  It will fill up that mozilla directory with the source code.
+
+Once you've extracted the source code, you're ready to build - skip on
+down to "Step 3: Build the Lizard"!
+
+Step 2b: Installing from CVS checkout
+
+For this, you will obviously need the CVS client - instructions are in the
+BLFS book.  Follow these instructions to check out the CVS source (done from
+the same directory in which we created the mozilla directory above):
+
+export CVSROOT=":pserver:anonymous@cvs-mirror.mozilla.org:/cvsroot"
+cvs login
+{for password, use "anonymous"}
+cvs co mozilla/client.mk
+
+Now you've got the one core file that's needed to check out the rest. We also
+have the configuration file (created in step 1) which this file uses to
+determine exactly what mozilla modules to check out.  To check out the full
+source, perform the following:
+
+cd mozilla &&
+make -f client.mk checkout
+
+Go make a pot of coffee, or maybe play a few games of frozen-bubble :)
+The checkout process will take a while.  Once it's finished, you're ready
+to continue!
+
+Step 3: Building the Lizard
+
+The hard part is done at this point.  actually building the program is
+easy.  The command to build is:
+
+make -f client.mk build
+
+Again, go find yourself something to occupy your time, as the process
+will take some time.  Once it's complete, a simple "make install" will
+install Firebird into the prefix you specified.  You can run it with:
+
+{prefix}/bin/MozillaFirebird
+
+Another little trick I have learned is this - Firebird answers the same
+command line parameters as Mozilla does, so for programs that expect to
+call Mozilla, they can easily call Firebird instead by like this:
+
+ln -s MozillaFirebird {prefix}/bin/mozilla
+
+
+CLOSING:
+
+The most up to date version of this hint will always be located at:
+
+http://www.linux-phreak.net/lfs/mozfire.txt
+
+I welcome any comments or improvements to this hint.  You can email them
+to me at the address at the top of this document.
+

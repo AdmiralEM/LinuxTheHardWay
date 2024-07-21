@@ -1,0 +1,163 @@
+AUTHOR: Cedric de Wijs cedric.de.wijs<at>softhome<dot>net
+
+DATE: 2004-04-09
+
+LICENSE: GNU Public Licence
+
+SYNOPSIS: How to install distcc --a free distributed C/C++ compiler system
+
+DESCRIPTION:
+TODO: put some usefull words here
+
+ATTACHMENTS:
+The distcc package, available from:
+http://distcc.samba.org/ftp/distcc/distcc-2.12.1.tar.bz2 (317,8kB)
+
+
+PREREQUISITES:
+This hint expect you to have two working lfs systems with the same version of gcc, binutils and glibc, and functional networking
+
+HINT:
+=================
+TABLE OF CONTENTS
+=================
+
+1 Introduction
+2 Required Files
+3 Installation server
+4 Installation client
+5 Usage
+6 Pitfalls
+7 Recommended reading
+
+===============
+1 Introduction
+===============
+
+Compiling sourcecode can take a long time. This hint describes how to install distcc, a tool that can be used to distribute the compiling across multiple machines in a network. 
+The machine you sit behind and issue the compile from is the client. 
+The machines who are doing the work are the servers.
+Every machine can contain both a server and a client
+
+This text is based upon the documentation of distcc, written by Martin Pool
+
+Estimated build time:           0.20 SBU
+Estimated required disk space:  5.4 MB
+
+=================
+2. REQUIRED FILES
+=================
+The distcc package, available from:
+http://distcc.samba.org/ftp/distcc/distcc-2.12.1.tar.bz2 (317,8kB)
+
+===============
+3. Installation
+===============
+To install the package run the following:
+
+./configure --sysconfdir=/etc &&
+make &&
+make install
+=======================
+3. Configuration server
+=======================
+To make distcc run as a server create a new user. Make sure /tmp is writable by that user:
+
+useradd distcc
+
+
+To start the daemon use the following command:
+
+nice -n 19 distccd --daemon
+
+
+To make distcc start at boottime use this script:
+
+cat > /etc/rc.d/init.d/distcc << "EOF"
+#!/bin/bash
+source /etc/sysconfig/rc
+source $rc_functions
+case "$1" in
+        start)
+                echo "Starting distributed compile daemon"
+                nice -n 19 /usr/local/bin/distccd --daemon
+                ;;
+        stop)
+                echo "Stopping distributed compile daemon"
+                killproc /usr/local/bin/distccd
+                ;;
+        *)
+                echo "Usage: $0 {start|stop|reload|restart|status}"
+                exit 1
+                ;;
+esac
+EOF
+chmod 700 /etc/rc.d/init.d/distcc
+
+And make some symlinks to it:
+
+cd /etc/rc.d/init.d &&
+ln -sf ../init.d/distcc ../rc0.d/K00distcc &&
+ln -sf ../init.d/distcc ../rc2.d/S99distcc &&
+ln -sf ../init.d/distcc ../rc3.d/S99distcc &&
+ln -sf ../init.d/distcc ../rc5.d/S99distcc &&
+ln -sf ../init.d/distcc ../rc6.d/K00distcc
+
+=======================
+4. Configuration client
+=======================
+To make distcc run as a client run the following:
+
+./configure --sysconfdir=/etc &&
+make &&
+make install
+
+To let distcc know who the servers are edit the following file:
+
+mkdir ~/.distcc &&
+cat > /root/.distcc/hosts << "EOF"
+localhost       #your own machine
+192.168.0.201   #the first server,
+192.168.0.202   #and the second server
+EOF
+
+To make sure distcc is found before your real compiler, create some symlinks:
+
+ln -s /usr/local/bin/distcc /bin/c++ &&
+ln -s /usr/local/bin/distcc /bin/cc &&
+ln -s /usr/local/bin/distcc /bin/g++ &&
+ln -s /usr/local/bin/distcc /bin/gcc
+
+========
+5. Usage
+========
+Instead of running the following command:
+./configure && make && make install
+Use these commands:
+./configure && make -j 6 && make install
+
+
+Every server can handle three clients per CPU unless otherwise configured, so the above comand can fill two servers.
+===========
+6. Pitfalls
+===========
+Don't use version 1.12. This version contains a bug causing distccd not to run as user distcc. Older and newer versions should work fine
+
+======================
+7. Recommended reading
+======================
+The documentation included with distcc
+
+The following hints:
+parallelcompiling.txt
+
+
+ACKNOWLEDGEMENTS:
+The programmer of this utility:
+Martin Pool <mbp@samba.org>
+
+The author of parallelcompiling.txt  
+Daniel Baumann <daniel.baumann@panthera-systems.net> 
+
+CHANGELOG:
+2004-04-09 Initial release

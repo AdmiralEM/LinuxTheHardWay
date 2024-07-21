@@ -1,0 +1,19 @@
+#!/bin/bash
+# Begin /etc/rc.d/init.d/mountsys
+
+# Init script to mount sysfs on /sys for Linux-2.6.*
+# Based on the init script template in LFS-5.0
+
+source /etc/sysconfig/rc
+source ${rc_functions}
+
+SYSDIR=/sys
+
+if grep -q 'sysfs' /proc/filesystems; then
+	echo "Mounting sysfs on ${SYSDIR}..."
+	if [ ! -e ${SYSDIR} ]; then
+		mkdir ${SYSDIR} || exit;
+	fi
+	mount -n -t sysfs sysfs ${SYSDIR} >/dev/null 2>&1
+	evaluate_retval
+fi

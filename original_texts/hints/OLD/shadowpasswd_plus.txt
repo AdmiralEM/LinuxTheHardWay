@@ -1,0 +1,479 @@
+TITLE:		Shadow Suite for Linux(tm) - installation, usage, enhancement
+LFS VERSION:	3.0+
+AUTHOR:		Jeffrey Allen Neitzel <jan@belvento.org>
+
+SYNOPSIS:
+	Do you want to know your system is secured with regard to passwords?
+	Do you want to learn more about security?
+	Understanding the usage of passwords on your system is a good place
+	to start since passwords on UNIX(tm) are analogous to the keys for
+	the front door of your home. Shadow Passwords can help to keep these
+	keys from falling into the wrong hands.
+
+HINT:
+
+2001-10-09
+
+Table of Contents
+	Preface
+	Introduction
+		*) Two Approaches
+		*) Terminology
+	Chapter 1
+		- Preliminary Information
+		  *) What is password shadowing?
+		  *) Am I already using it?
+		  *) DES vs. MD5 passwords?
+		  *) Do I want to shadow my password file?
+	Chapter 2
+		- Installing Shadow-20001016
+		  *) Installation Commands
+	Chapter 3
+		- Additional Configuration/Security Steps
+		  *) How do I add a new user?
+		  *) /etc/login.defs (configuring the shadow login suite)
+		  *) Essential Permissions
+	Chapter 4
+		- Conclusion
+	Footnotes
+
+
+==============================================================================
+  PREFACE
+==============================================================================
+
+All of the following modifications and suggestions are based on the
+installation commands as they appear in:
+
+	Linux From Scratch: Version 3.0 (lfs-3.0)
+
+The suggestions here will apply directly to any LFS System which uses the
+shadow password suite (shadow-20001016) as obtained from:
+ftp://ftp.pld.org.pl/software/shadow/
+
+Please refer to the DISCLAIMER at
+http://hints.linuxfromscratch.org/hints/DISCLAIMER
+
+In addition, the author takes no responsibility for the security of your system.
+These are friendly suggestions, but it should not be forgotten that implementing
+security measures for your site is multifaceted. Password security is only one
+part of that.
+
+I assume you are installing the shadow password suite now. You will need
+super-user (root) privileges to perform many of the system-wide configuration
+activities discussed here. This document assumes you have these privileges.
+Because of this, I must leave you with one final thought, "Think before you
+type."
+
+
+==============================================================================
+  INTRODUCTION
+==============================================================================
+
+The primary objective of this document is to complement and extend the LFS BOOK
+in regards to shadow passwords on your LFS System. I will try to detail some
+additional steps to take which can help enhance system security. In doing so,
+I hope the reader finds this to be a valuable extension to the book's methods.
+
+o== Two Approaches ==o
+
+I have tried to split the commands to address both, those individuals who are
+doing the book and reading this document concurrently, and those who are reading
+this after they have already finished the book. To achieve this, the author will
+use the following notations in Chapters 2, 3, and 4:
+
+  # Approach 1
+    will allow the reader to replace commands for installing Shadow-20001016
+    as found in the book with commands listed here.
+
+  # Approach 2
+    will be primarily for those individuals who have already installed
+    Shadow-20001016 previously and now want to check their configuration
+    to be sure all is well, upgrade, modify, etc.
+
+  # BOTH 1+2
+    will apply to both sets of readers.
+
+o== Terminology ==o
+
+I will use the terms password, passphrase, and secret interchangeably. Also,
+rather than use the word "encrypted" to describe the string your password gets
+turned into, I will say "encoded" instead. This is because the password you type
+actually gets encoded using a one way hash function. See crypt(3) for more info.
+I believe the same holds true for MD5-based passwords.
+
+==
+
+I hope to extend on what I have written here as time permits, and I invite the
+reader to contact me to report errors and/or omissions. Of course, all comments
+and questions are welcome.
+
+To begin, I should preface all of the following with the fact that when it
+comes to security and computers there is *always* a balancing act between
+security (paranoia) and convenience, for both system administrators and
+users alike.
+
+Because of this need for compromise and balance, interpretation of security
+requirements differs from site to site. Interpretation of suggested practice
+will usually fall victim to the subjectives inherent in human nature.
+
+On that note, this author approaches security from the PARANOID perspective.
+Reader should balance these suggestions with his/her own need for convenience.
+If the suggestion introduces too much inconvenience relative to added security
+benefit, I invite you to interpret and implement as your needs dictate.
+
+References will be made when necessary to explain more fully about a particular
+topic.
+
+
+==============================================================================
+  Chapter 1 - Preliminary Information
+==============================================================================
+
+o== What is password shadowing? ==o
+
+Password shadowing is a useful tool and one part of securing your system. It is
+a tool to allow protecting password information from those who really have no
+need to see it. Since reams of information exist about passwords and computer
+security I won't go on to duplicate any of it here.
+
+In short, shadowing your password file consists of removing the encoded secrets
+from the necessarily world-readable /etc/password file and instead placing them
+into another file which is not world-readable. This other file is normally
+called /etc/shadow on Linux systems.
+
+It is an idea which is not necessarily new and has been implemented in one way
+or another on a great many UNIX systems. The Shadow Suite for Linux is one of
+these tools. It is only a tool, not security salvation.
+
+o== Am I already using it? ==o
+
+Have you already run the `/usr/sbin/pwconv' command? Have you already given
+root a password by running `/usr/bin/passwd root'? If so, the answer is most
+likely, "YES".
+
+I say "most likely" because I feel that you can never be too certain with
+something this important to the integrity of your system. So, on that note,
+please take a moment now to examine the relevant files if you have not done
+this already.
+
+For more information on the following please refer to the relevant man pages
+which would be:
+PASSWD(5) get there with `man 5 passwd' and/or,
+SHADOW(5) get there with `man 5 shadow'.
+
+For each line in /etc/password, you should see something like this:
+
+  username:password:uid:gid:comment:home_directory:user_shell
+
+The fields are delimited by colons. Field number 2 is the password field.
+One of the following will be true:
+
+  *) password field contains nothing (e.g. username::uid)
+
+     This is a sign of danger! DANGER! You have no password. Please stop now
+     and give yourself a password.
+
+  *) password field contains "x"
+
+     If you see an "x" there this normally means that shadow passwords have
+     been enabled. In such case, your encoded password has moved to the shadow
+     password file (/etc/shadow). If you are the super-user, now might be a
+     good time to go ahead and look at what is in this file. Be sure there is
+     an entry in /etc/shadow for each user in /etc/password. There are occasions
+     where some users in the password file might be missing from the shadow
+     file. This is most likely to happen if you have ever added a user with
+     the vipw program.
+
+  *) password field contains "a_bunch_of_ASCII_characters"
+
+     If you see a bunch of ASCII characters instead of an "x", then you are not
+     using shadow passwords. The ASCII characters make up the encoded string
+     which represents your password.
+
+o== DES vs. MD5 passwords? ==o
+
+There are two different algorithms *commonly* used to encode user passwords.
+One of them uses the crypt function which uses a DES-based algorithm. The
+other method uses a MD5-based algorithm which is substantially better than
+the DES method. There *are* others, but these two are the ones currently
+available on Linux.
+
+Which one am I using?
+You can distinguish one from the other by looking at the encoded password
+string. If it begins with $1$ and is 34 characters long including the $1$,
+this is an MD5-based ciphertext format. DES-based formats are substantially
+shorter, about 13 characters in length if I recall.
+
+o== Do I want to shadow my password file? ==o
+
+Yes, you do! It should be noted, however, that there are apparently some
+situations where you might not want to do this. Since I personally cannot speak
+of these situations I must defer to the experience of others in this regard.
+On the other hand, if your machine is one with user accounts on it (a desktop
+workstation for example) and doesn't mess around with NFS and the like, then
+shadowing your password file certainly can't hurt. In the end of course, it's
+entirely up to you.
+
+Suffice it to say that on any UNIX system passwords are an important part of
+the basic security model and the first step, or front door, into the system.
+If you can protect system integrity in any way by *hiding* these keys, then
+I figure it is a proactive step in the right direction.
+
+
+==============================================================================
+  Chapter 2 - Installing Shadow-20001016
+==============================================================================
+
+o== Installation Commands ==o
+
+I have added comments to elaborate where I feel it necessary. Comments are
+denoted below the same as in any Bourne Shell script. A "#" at the beginning
+of a line marks that line as a comment. I have double-spaced between related
+command blocks for legibility and emphasis.
+
+The meaning of "# Approach 1", "# Approach 2", and "# BOTH 1+2" notations is
+detailed above in the Introduction.
+
+############################################################
+# Approach 1
+cd /path/to/your/sources/shadow-20001016
+
+# Begin installation commands.
+cp src/useradd.c src/useradd.c.backup &&
+sed 's/\(.*\) (nflg || \(.*\))\(.*\)/\1\2\3/' \
+   src/useradd.c.backup > src/useradd.c &&
+
+# Want md5crypt? This capability is now compiled-in by default.
+./configure --prefix=/usr &&
+make &&
+make install &&
+cd etc &&
+cp limits login.access /etc &&
+
+# The second expression below will enable MD5-based password
+# encoding in your /etc/login.defs file.
+sed 's%/var/spool/mail%/var/mail%
+     s%^#MD5_CRYPT_ENAB.*no%MD5_CRYPT_ENAB yes%' login.defs.linux \
+   > /etc/login.defs &&
+
+# Move some libs around and make a couple symlinks.
+cd /lib &&
+mv libshadow.a libshadow.la /usr/lib &&
+ln -sf libshadow.so.0 libshadow.so &&
+cd /usr/lib &&
+ln -sf ../../lib/libshadow.so
+
+############################################################
+# Approach 2
+# If you are reading this hint after the shadow password installation
+# and you have performed that installation by-the-lfs-book, then run
+# these commands to turn on MD5 support.
+cp /etc/login.defs /etc/login.defs.working &&
+sed 's%^#MD5_CRYPT_ENAB.*no%MD5_CRYPT_ENAB yes%' /etc/login.defs.working \
+   > /etc/login.defs
+
+############################################################
+# BOTH 1+2
+# Make these symlinks if you want vigr . Just a nice addition.
+cd /usr/sbin &&
+ln -sf vipw vigr &&
+cd /usr/share/man/man8 &&
+ln -sf vipw.8 vigr.8
+
+
+==============================================================================
+  Chapter 3 - Additional Configuration/Security Steps # BOTH 1+2
+==============================================================================
+
+o== How do I add a new user? ==o
+
+Well, there is more than one way to do this of course, but we want the easiest
+way. Right? First, please note that the relevant man pages are USERADD(8) and
+GROUPADD(8). I mention the man pages because the following example is the
+simplest possible way to do this. This will leave a lot to be desired, and you
+will certainly want to refine the example to suit your needs.
+
+Example: You want to add a new user "joe". He will be in group "users".
+         What to do?
+
+Does group "users" already exist on your system? If not, add this new group
+by doing:
+/usr/sbin/groupadd users
+
+Now you can add user "joe" by doing:
+/usr/sbin/useradd -g users joe
+
+Ok, now that this has been done... Can joe really use this account yet? No.
+Why is this? Well, he doesn't have a password yet. The account is currently
+locked. Also, by using the commands exactly as above, his home directory does
+not yet exist on the system.
+
+You can give joe a password by doing:
+/usr/bin/passwd joe
+
+That's all for now. Please refer to USERADD(8) for further info. There are a
+great many additional options you can use. You can also create a shell script
+to automate the procedure so that the results are always consistent. I may
+include an example script here in time.
+
+o== /etc/login.defs (configuring the shadow login suite) ==o
+
+This is a very important configuration file for your system. I highly recommend
+that you take a few moments to familiarize yourself with it. Since it has a
+great many configuration definitions, it is almost required to know exactly
+what is there. Besides, if you have a little time to play around with this file
+it's actually kind of fun! ;o)
+
+Before you change this file, make a backup of it for obvious reasons.
+A good way to get an overview of this file is to simply `less /etc/login.defs'.
+It has comments to describe what each definition does. You can also have a look
+at LOGIN(5), `man 5 login.defs', if you need more info than these comments
+provide.
+
+In time, I will add an example /etc/login.defs file below ([3] /etc/login.defs)
+with further information about what I believe are the best settings to use and
+why.
+
+o== Essential Permissions ==o
+
+If you want to take maximum advantage of password shadowing and add some extra
+security to your system I recommend to take the following steps. This is really
+intended for the paranoid. In my opinion, computer security and paranoia go
+hand-in-hand! Paranoia is good! Let me take this moment and invite you again to
+balance these suggestions with your own needs.
+
+#
+# Restrict permissions on /bin/login and /bin/su .
+# Refer to [1] below for explanation of why.
+#
+# Before restricting su to a privileged group, you must first create this
+# group with groupadd (man 8 groupadd for details) or vigr . For example,
+# replace "admin" below with whatever groupname you chose to use. Then, be
+# sure to add yourself, or whoever this privileged user is, to your newly
+# created "admin" group. Then run the following commands.
+chmod -c 0700 /bin/login &&
+chgrp -c admin /bin/su &&
+chmod -c o-rx /bin/su
+
+#
+# Some other programs that should be restricted.
+# Refer to [2] below for explanation of why.
+#
+# The following will remove group/other execute permissions from these programs.
+# Since only root can effectively use any of these you might as well make them
+# to be 0700 and be done with it. Then, privileged user can su to root and do
+# user administration.
+cd /usr/sbin &&
+chmod -c go-rx chpasswd dpasswd group* grp[cu]* logoutd \
+               mkpasswd newusers pw[cu]* user* vipw
+
+#
+#== Exercise for the reader ==#
+#
+# Will you really use any of these programs on a daily basis? If not, you could
+# possibly remove them from the system entirely, put them on a CD, and mount the
+# CD when you need to do user administration. This *is* possible by the way, but
+# you need to weigh the costs/benefits of doing so. It's up to you in the end.
+#
+
+
+==============================================================================
+  Chapter 4 - Conclusion
+==============================================================================
+
+After all of this, I assume you want to enable password shadowing... =)
+
+############################################################
+# Approach 1
+If you are still running within chroot on your host system and haven't booted
+your new LFS System yet, then run:
+
+/usr/sbin/pwconv
+
+Then run:
+
+/usr/bin/passwd root
+
+############################################################
+# Approach 2
+Before you run the following command, be absolutely certain that you have
+taken a copy of your currently unshadowed password file, put it somewhere
+safe, and chmod it to 0600 . Better safe than sorry. If something were to
+go foul, recovery is easy. After taking the previous precautionary measure,
+be sure you are root and are logged in on more than one console/terminal.
+
+Then run:
+/usr/sbin/pwconv
+
+On the second, and/or third, terminal(s) you are logged into do some tests
+to be certain that you get the expect results (i.e., you can login). On some
+other terminal try logging into your normal user account. Success? Good!
+Now, try to `su - root' . If you don't see any anomalous behaviour then you
+should be good to go.
+
+If you added passwords to your system before you changed /etc/login.defs to
+allow MD5 support, please note that the old passwords do not get converted
+automatically. The old password strings will still be encoded using the
+DES-based algorithm. To change these old passwords so they will use the
+MD5-based ciphertext format, simply run `/usr/bin/passwd <username>' for
+each username where this is true.
+
+The new encoded string will now be MD5-based. If you want to keep the original
+password for each account run passwd twice for each one. First, change to some
+temporary value, and then change to original.
+
+############################################################
+# BOTH 1+2
+Congratulations! You have done very well indeed! =)
+
+
+==============================================================================
+  FOOTNOTES
+==============================================================================
+
+[1] login and su should not be world executable!
+
+ login:
+        As far as I have ever seen, login is only started by a getty
+        or some other root-owned process. Sometimes sshd might be setup
+        to use login. Since sshd normally runs as root, or some other
+        privileged user, this should not cause any problem.
+        No guarantee on that, can someone confirm?
+
+ su:
+     This program should be tightly restricted. It is suid root.
+     Security would dictate that all privileged users who might be
+     permitted to use su, should be members of a privileged group
+     whose membership consists only of trusted admins.
+
+     I always use wheel or admin for this, pick whatever group name
+     you want. /etc/login.defs has an avenue to restrict use of su.
+     Also, the su program itself has a config file you can opt to
+     configure: /etc/suauth .
+
+     This file is not created by default. `man 5 suauth' will give
+     the details on this file. In short, do look over these
+     possibilities for restricting su usage. Until then, removing
+     world execute from /bin/su is a good place to start.
+
+
+[2] Change some other modes as an additional safeguard.
+
+ There are a whole slew of programs installed as part of the
+ shadow-suite into /usr/sbin . These programs should also be tightly
+ restricted to admins only. Only root can effectively use any of these
+ So, administrator does a su to root, does admin duties, and goes back
+ to his/her normal user account.
+
+ Note: Some of the programs do give errors if joe user is trying to
+       use one of them. If your system permissions in /etc are set
+       correctly, joe user won't be able to obtain a lock on any of
+       the relevant files in /etc/{passwd,shadow,group,gshadow} .
+       Because of this, it makes sense to simply restrict permissions
+       on these programs.
+
+
+[3] /etc/login.defs
+
+ This will be added soon.

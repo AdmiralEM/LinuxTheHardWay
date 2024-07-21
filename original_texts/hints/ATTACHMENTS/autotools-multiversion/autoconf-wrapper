@@ -1,0 +1,22 @@
+#!/bin/sh
+
+# Dir where all executables reside
+LOCATION="/usr/bin"
+
+COMMAND=${0##*/}
+
+# Default Version
+if [ -z "$WANT_AUTOCONF" ]
+then
+	WANT_AUTOCONF="2.59"
+fi
+
+# Execute the command if found
+if [ -x $LOCATION/$COMMAND-$WANT_AUTOCONF ]
+then
+	exec $LOCATION/$COMMAND-$WANT_AUTOCONF $@
+else
+	echo "Cannot find $COMMAND"
+	exit 1
+fi
+

@@ -1,0 +1,215 @@
+AUTHOR: Martin Schaffner <schaffner@gmx.li>
+DATE: 2004-03-28
+LICENSE: GPL
+VERSION: 1.0
+
+SYNOPSIS: Cross-compiling LFS 5.0 from a Mac OS X 10.3 host system
+
+DESCRIPTION: This hint lets you install LFS on a (newworld) Macintosh without first installing a binary distribution. This is accomplished by cross-compiling everything in chapter 5, and then rebooting instead of chrooting. This hint doesn't repeat anything from the LFS 5.0 book, it only tells what to do differently. Maybe it is also helpful if someone tries to compile LFS from another system (MinGW and Cygwin come to mind), I'm interested to know if you try.
+
+PREREQUISITES:
+* Mac OS X 10.3 on a partitioned hard disk
+* Use fink (http://fink.sourceforge.net/) to install "gawk", "sed", "wget". You'll also want "fileutils", so you can do "ls foo -al".
+* ext2fsx (http://sourceforge.net/projects/ext2fsx), latest version
+* crosstool (http://kegel.com/crosstool/), at least 0.28-rc1: http://kegel.com/crosstool/crosstool-0.28-rc1.tar.gz
+* yaboot: http://penguinppc.org/projects/yaboot/yaboot-1.3.11.tar.gz
+* hfsutils (http://www.mars.org/home/rob/proj/hfs/): ftp://ftp.mars.org/pub/hfs/hfsutils-3.2.6.tar.gz
+* powerpc-utils (http://packages.debian.org/stable/base/powerpc-utils): download http://ftp.debian.org/debian/pool/main/p/powerpc-utils/powerpc-utils_1.1.3.orig.tar.gz and http://ftp.debian.org/debian/pool/main/p/powerpc-utils/powerpc-utils_1.1.3-5.diff.gz
+* the following patches from the lfs-patches project:
+    bash-2.05b-crosscompile.patch
+    coreutils-5.0-remove_du.patch
+    linux-2.4.23-nognuexpr.patch
+    sed-4.0.7-cross_hack_for_powerpc_linux_gnu.patch
+    yaboot-1.3.11-crosscompile.patch
+
+
+HINT:
+
+Partitioning
+------------
+
+I don't know of any tool which lets you resize HFS/HFS+ partitions, so after repartitioning, any data on such partitions, including installed Mac OS systems, will be lost.  Also, Apple's partitioning tools formats all partitions when repartitioning, even those whose layout doesn't change. To partition with Apple's tool, use a boot CD. On the OS X installer disk, the partitioning tool (part of "disk tools") can be found in the "Installer" menu.
+
+Recommended partitions for GNU/Linux on a newworld mac:
+* a 800k bootstrap partition (HFS format) for yaboot (this is the minimum size for HFS partitions).
+* a swap partition of approx. the amount of RAM in the machine
+* a root partition of type Apple_UNIX_SVR2. Apple's disk utility can create those.
+Of course, you need also a HFS+ partition with Mac OS X from where to install LFS.
+Maybe you want to create an exchange partition with the FAT32 format. To do this, create a partition in any format, and once LFS is installed, use mac-fdisk to change its type to Windows_FAT_32, then format it.
+
+When the hard disk is partitioned and OS X re-installed, write down the partition map, which can be optained with:
+echo "L" | sudo pdisk
+
+Install ext2fsx in OS X. Create the ext2 filesystems for the GNU/Linux root partition with "newfs_ext2". To label ext2 partitions, unmount them with "disktool -p disk?s?", then run /usr/local/sbin/e2label. Remount with "disktool -m disk?s?".
+
+You can't create the linux swap partition from Mac OS X. Do this after having installed util-linux in chapter 6.
+
+
+Chapters 1 to 4
+---------------
+
+Make sure you have the 3.3 compiler selected: "sudo gcc_select 3.3".
+
+On the Mac, volumes are mounted automatically. The mount point for volumes is: /Volumes/label_of_volume
+
+To create a user, use the "Accounts" control panel.
+
+
+Chapter 5
+---------
+
+To create the temporary system, we can't just follow the book. The new system we build in /tools has to be bootable, because we can't just "chroot" into it, since the kernel of the host system is the Mac OS X kernel.
+
+After setting up the environnement, instead of installing pass 1 of gcc and binutils, we create a cross-compiler in /opt, on the Mac OS X partition. The PATH variable shouldn't contain "/tools/bin", since Mac OS X can't execute those programs. After creating the cross-compiler, we install linux and the linux headers, and then we continue, cross-compiling everything in this chapter.
+
+All GNU packages use the autotools (autoconf, automake, libtool), which makes it easier to cross-compile them. The autotools were used by the package maintainers to create a "configure" script, which is run before running "make".
+To allow cross-compiling, the configure scripts can take the arguments are --build, --host, and --target.
+The build triplet tells the configure script what machine the "make" command will be run on.
+The host triplet tells the configure script what machine the compiled program will run on.
+For programs creating programs (gcc and binutils), the target triplet tells what machine the program's output will run on.
+Mac OS X 10.3 is called powerpc-apple-darwin7.2.0
+GNU/Linux on a G3 processor is called powerpc-750-linux-gnu
+
+To install the cross-compiler, use crosstool.
+As root, "mkdir -p /opt/crosstool", and "chown <your_login>.<your_login> /opt/crosstool".
+As user, in the crosstool directory, run "bash demo-ppc750.sh". This gives you a cross-compiler in /opt/crosstool. It takes some time: on my ibook@600Mhz, it took:
+  real    275m1.076s
+  user    128m25.250s
+  sys     52m41.810s
+
+For me, one SBU was:
+  real    10m3.755s
+  user    4m50.220s
+  sys     3m12.140s
+
+After installing crosstool, set the PATH variable to include the cross-compiler:
+export PATH=/opt/crosstool/powerpc-750-linux-gnu/gcc-3.3.3-glibc-2.3.2/bin:$PATH
+You may want to put this into your ~/.bash_profile file.
+Next, you need to "lock" the cross-compiler to the glibc library which will be in /tools: Edit /opt/crosstool/powerpc-750-linux-gnu/gcc-3.3.3-glibc-2.3.2/lib/gcc-lib/*/*/specs by putting "/tools" in front of all occurences of "/lib/".
+
+Next, you need to install linux and the linux headers. I used linux-2.4.25, which has HFS+ support. linux-2.6.4 also has that, but has some problems compiling on Mac OS X.
+Apply linux-2.4.23-nognuexpr.patch
+For all invocations of "make", append: 
+CROSS_COMPILE=powerpc-750-linux-gnu- ARCH=ppc
+Follow the book's section "installing linux headers".
+make menuconfig, keeping in mind that the temporary system will not be able to load modules, nor to mount partitions (it is OK to configure with modules, as long as they are not necessary in chapter 6). You can just use the defaults, that should work.
+make
+cp vmlinux $LFS/tools/
+mkdir $LFS/dev
+
+Since we are cross-compiling everything in chapter 5, append to all invocations of a configure script:
+--build=powerpc-apple-darwin7.2.0 --host=powerpc-750-linux-gnu
+Further, you can't do any testing in chapter 5.
+Below is a list of packages to install from chapter 5, together with notes where special care is required.
+
+* glibc: prefix the configure command with BUILD_CC=gcc CC=powerpc-750-linux-gnu-gcc AR=powerpc-750-linux-gnu-ar RANLIB=powerpc-750-linux-gnu-ranlib (still suffix with --target=... of course). remove "--with-binutils" flag. Don't install the locales.
+* gcc (pass 2): "expect" is not installed so the test at the beginning does not work. Only enable-languages=c (no c++). After installing, change the specs file in /tools/lib/gcc-lib/*/*/specs by removing all occurences of "/tools", and changing the number after "cross-compile" to 0 instead of 1.
+* binutils (pass 2): append "--disable-nls" to the configure command. Don't prepare for re-adjusting.
+* gawk
+* coreutils: apply coreutils-5.0-remove_du.patch before running configure.
+* bzip2: append to the make command: CC=powerpc-750-linux-gnu-gcc AR=powerpc-750-linux-gnu-ar RANLIB=powerpc-750-linux-gnu-ranlib
+* gzip
+* diffutils
+* findutils
+* make
+* grep
+* sed: apply sed-4.0.7-cross_hack_for_powerpc_linux_gnu.patch before running configure
+* gettext
+* patch: remove "setmode" from the configure script, append to make: CC=powerpc-750-linux-gnu-gcc
+* tar
+* bash: apply bash-2.05b-crosscompile.patch and run "autoconf" before running "configure", ignore error for make and make install, don't reload bash
+* util-linux: prepend configure with CC=powerpc-750-linux-gnu-gcc CFLAGS=-I/opt/crosstool/powerpc-750-linux-gnu/gcc-3.3.2-glibc-2.3.2/include/ and don't build or install "more". You can use "tail -n <line_count> <file>" if you want to see a part of a file.
+
+It is not necessary to install tcl, expect, dejagnu, ncurses, perl, texinfo
+
+
+
+Before getting to chapter 6, we need to make our system in $LFS/tools bootable.
+Unpack yaboot, and apply: yaboot-1.3.11-crosscompile.patch
+Compile and install with:
+make yaboot CROSS=powerpc-750-linux-gnu-
+cp second/yaboot /
+Create a file /yaboot.conf similar to the following example, adjusting the partition numbers; in this example, I have Mac OS Classic on partition 15, Mac OS X and yaboot on partition 13, and LFS on partition 12 (you can find out partition numbers of volumes with "mount"):
+macosx=hd:13
+macos=hd:15
+enablecdboot
+enableofboot
+defaultos=macosx
+ofboot=hd:13
+delay=30
+default=linux
+timeout=50
+image=hd:12,/tools/vmlinux
+  label=linux
+  root=/dev/hda12
+  read-write
+  append="devfs=mount init=/tools/bin/bash"
+image=hd:12,/tools/vmlinux
+  label=nodevfs
+  root=/dev/hda12
+  read-write
+  append="init=/tools/bin/bash"
+
+
+Chapter 6
+---------
+
+Don't bother removing the debuggin symbols
+
+Instead of doing "chroot", you have to reboot into your minimal but (hopefully) working bootstrap GNU/Linux system.
+Warning: the system does no file system check, it just mounts the root partition. It directly executes bash, without any init system. To reboot, you have to hit ctrl-command-power, but be sure to do "sync" first!!!. If you don't, you will have an inconsistent file system!
+After such a reboot, it is a good idea to boot into Mac OS X' single user mode (hit command-s after the chime, until you get text mode), and then type: "fsck_ext2 /dev/disk0s12" (or whatever the ext2 partition is).
+Further, you will not have virtual terminals, and "ctrl-c" will not work.
+
+To boot into the minimal system, reboot, and right after the chime hit command-alt-o-f, and at the open firmware prompt, type (changing the number to the partition number where you installed yaboot):
+boot hd:13,yaboot
+Then type:
+linux
+
+After booting, type:
+export PATH=/bin:/usr/bin:/sbin:/usr/sbin:/tools/bin
+export HOME=/root
+
+When creating devices, we can't do that in /dev, since /dev is handled by devfs. Instead, we do:
+mkdir /dev2; cd /dev2
+There we expand MAKEDEV, and execute:
+./MAKEDEV -v generic
+./MAKEDEV -v nvram
+After that, we sync, then reboot into Mac OS X (single user mode), where we fsck_ext2 our LFS partition, mount_ext2 it, then move $LFS/dev to $LFS/dev-old, then move $LFS/dev2 to $LFS/dev. After that, we do "reboot", and tell yaboot to boot "nodevfs". After booting, we set $PATH and $HOME again.
+
+Unfortunately, since we couldn't cross-compile all packages in chapter 5, we can't install the linuxthread man pages at the beginning of chapter 6, and some tests will fail (e.g. because perl is not installed). These things have to wait until the packages left out from chapter 5 have been installed. Also, since "expect" is not installed, the test on the first line of the binutils section will not work.
+
+When re-adjusting the toolchain, we can't do the first step, adjusting the linker.
+
+Instead of grub, we install yaboot. yaboot requires:
+* hfsutils. install with:
+    ./configure --prefix=/usr && make && make install
+* nvsetenv. install with:
+    tar xvzf powerpc-utils_1.1.3.orig.tar.gz
+    cd pmac-utils
+    zcat ../src/powerpc-utils_1.1.3-5.diff.gz | patch
+    make nvsetenv
+    cp nvsetenv /sbin/
+Install yaboot:
+    make install
+
+As soon as you have util-linux installed, you can create your swap filesystem, with "mkswap".
+
+For the keymap, take one from /usr/share/kbd/keymaps/mac/all/
+
+
+Chapters 7 to 9
+---------------
+
+To make the system bootable, edit /etc/yaboot.conf:
+* change all partition numbers
+* add lines "macos=hd:15", "macosx=hd:13" and "defaultos=[linux|macos|macosx]" if you wish to be able to boot into Mac OS after executing ybin
+* remove "local/" from the pathnames
+Execute (replacing "9" with your bootstrap partition number):
+mount proc /proc -t proc
+hformat /dev/hda9
+/usr/sbin/ybin
+
+At the end, instead of logging out, do "sync", followed by a forced reboot (ctrl-command-power).
+
+CHANGELOG:

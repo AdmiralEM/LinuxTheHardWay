@@ -1,0 +1,1496 @@
+TITLE:		More control and package management using package users (v0.8)
+LFS VERSION:	3.1 (should work with later versions with minor changes)
+AUTHOR:		Matthias S. Benkmann <m.s.b@gmx.net>
+
+SYNOPSIS:
+	-You want to know which packages your files belong to ?
+	-You want to deinstall software that doesn't have make uninstall ?
+	-You are bothered by programs installed setuid root behind your back ?
+	-You don't want packages to overwrite files from other packages ?
+	-You don't like package managers like RPM ?
+	-YOU WANT TOTAL CONTROL USING ONLY UNIX BUILTINS ?
+
+HINT:
+
+LEGALESE: The author does not take responsibility for any damage of any kind
+caused directly or indirectly by applying the methods described below. 
+There is no warranty of any kind, not even the implied warranty of fitness for
+the purposes mentioned in the text, on any of the programs/scripts/commands 
+listed below and the author may not be held liable for any damage of any kind 
+caused by the execution of said programs/scripts/commands.
+Proceed at your own risk!
+
+########################################################################### 
+ Changelog
+###########################################################################
+
+2002-01-30  -added Changelog
+            -moved "chown 0.10000 `cat /tmp/installdirs`" command up (before
+             glibc package user is created)
+            -add_package_user: create home directory with "mkdir -p"
+                               use $grpfile everywhere instead of /etc/group
+            -improved mammoth sentence in Introduction
+            -added note about possibility to have user name==group name
+            -source bashrc_basic in bashrc_package
+            -minor textual changes
+
+2002-02-18
+            -added section "Security issues with NFS"
+            -submitted v0.7
+            
+2002-03-16  -added note, that on Linux make doesn't need to be setgid kmem
+
+2002-04-20
+            -changed LFS VERSION header to be more conservative
+            -added <br> tags to the synopsis for the sake of the hints 
+             index
+            -added group mmedia to the list of suggested groups 
+            -submitted v0.8
+            
+
+
+########################################################################### 
+ Introduction
+###########################################################################
+
+Let's say I have written a program that you would like to use. To make it
+easier for you I come over to install it for you. Would you give me the root
+account and then leave the room ? No ? Then why do you give it to complete
+strangers who you have never seen in your life, to install software packages
+pulled from some Internet server, that come with no warranty and don't even 
+list their contents in the README, although they will happily spread them all 
+over your system ?
+It is a mystery why Unix admins who wouldn't even trust their employer with
+more than a normal user account carelessly execute complex and incomprehensible
+installation scripts with full root rights.
+
+Users and groups are the basic security principle in a Unix system. They have
+been used successfully for a long time to control who has created a file and 
+who is allowed to delete or change this file. But this control has only been
+imposed on the files of ordinary users. What a waste! I suggest to extend
+this control to all system files.
+
+
+#############################################################################
+ Package users
+#############################################################################
+
+The basic idea of this scheme is easily explained. Every package belongs to a 
+certain "package user". This is a special user account whose HOME directory
+is /usr/src/<package> (or wherever you keep the tarballs for the package).
+Usually this account has no password so that only root can su to a package 
+user, which ensures that package users do not open an additional way into the 
+system and undermine security.
+Of course you *may* set passwords anyway to allow a co-admin who you want to
+be able to install and maintain certain software packages to do so without 
+having access to the actual root account. This co-admin could for instance
+install, delete, change additional libraries which might be necessary for his
+workgroup. He would be unable, though, to remove or modify libraries which 
+don't belong to him/her, such as libc.
+
+Every package user has a primary group that reflects the purpose of the
+package, such as "system" for essential packages, "devel" for packages
+related to software development and so on. There are other useful
+organizational schemes, of course. You might want to have the group reflect
+the workgroup of the above-mentioned co-admin who installed the file for 
+instance. Another possibility is to create a new group for every package
+user with the same name as the user name. That way, even if a file needs to
+be setuid root (and consequently has to be owned by root), the group of the
+file tells you about the package where it originates. 
+
+In addition to the primary group, there is the secondary group which is the
+same for all package users. This is the "install" group. All directories
+that packages are allowed to install stuff in belong to the install group.
+This includes directories such as /bin and /usr/bin but excludes directories
+like /root or /. The directories owned by the install group are always
+group-writeable. Without further preparation this does not give added security
+or control because every package could replace the files from a different
+package (the change would be visible in the output from ls -la, though).
+For this reason we make all install directories sticky. The sticky attribute
+allows users to create new files and delete or modify their own files in
+the directory while preventing them from writing or deleting files from other
+users.
+
+
+############################################################################
+ How to install software
+############################################################################
+
+Isn't this all very tedious ? Not if you use this script:
+
+-------------------- begin $LFS/sbin/install_package ------------------------
+#!/bin/sh
+if [ $# -ne 3 ]; then
+echo USAGE: install_package description name group
+echo "!!Don't forget to put description in quotes if it contains spaces.!!"
+echo "This will create a new package user name in group. This will set up"
+echo "a home directory for this package user. After that, this script will"
+echo "automatically su to the new user so that you can begin with the"
+echo "installation right away. "
+exit 1
+fi
+
+if [ $UID -ne 0 ]; then echo Please run this script as root. ; exit 1; fi
+add_package_user "${1}" $2 10000 20000 $3 10000 20000 || exit 1
+su $2
+------------------- end $LFS/sbin/install_package ----------------------------
+
+The above script is a shortcut for the following script, which does the
+actual adding of the package user in a certain range of UIDs and GIDs:
+
+-------------------- begin $LFS/sbin/add_package_user -----------------------
+#!/bin/sh
+
+if [ $# -lt 7 ]; then
+echo 'Copyright (c) 2000 Matthias Benkmann'
+echo 'USAGE: '
+echo 'add_package_user description name minuid maxuid group mingid maxgid [-d home]'
+echo 
+echo Don\'t forget to put description in quotes. 
+echo description must be valid for a /etc/passwd entry, that means especially
+echo that it must not contain \":\".
+echo If group doesn\'t exist, it will be added. 
+echo group will be the user\'s main group. 
+echo 'The user will also belong to group "install" (created if necessary).'
+echo 'A home directory /usr/src/name (or home if -d home specified) 
+echo will be created if it doesn\'t exist
+echo 'and the files from /etc/skel-package will be copied into it (existing'
+echo 'target files will *not* be overwritten)'
+echo 'minuid (incl.) and maxuid (excl.)  determine'
+echo 'the range of UIDs used by this script. The script will pick the first'
+echo 'UID greater than all UIDs from this range already in use.' 
+echo 'If that UID is out of range (i.e. equal to maxuid), the'
+echo 'script will pick the first available UID in this range. If the range is'
+echo 'full, the script will give up. This process ensures that UIDs for packages'
+echo that have been removed, don\'t get reassigned unless really necessary.
+echo 'This avoids trouble if some files were overlooked when removing the package.'
+echo 'Otherwise these files might be assigned to the wrong package.'
+echo 'mingid (incl.) and maxgid (excl.) define'
+echo 'the permissible range for the GID of group if it has to be added (and '
+echo 'the install group if it must be added).'
+exit 1
+fi
+
+grpfile=/etc/group
+passwd=/etc/passwd
+homebase=/usr/src
+skel=/etc/skel-package
+description=$1
+name=$2
+minuid=$3
+maxuid=$4
+gname=$5
+mingid=$6
+maxgid=$7
+home=$homebase/$name
+
+set -- "$@" _eNd_OF_lisT_
+while [ "$1" != "_eNd_OF_lisT_" ]; do
+  case "$1" in
+    -d) shift 1
+        if [ "$1" = "_eNd_OF_lisT_" ]; then
+          echo 1>&2 "-d directory name missing!"
+          exit 1
+        fi
+        home="$1"
+        shift 1
+        ;;
+    *) temp="$1" 
+       shift 1
+       set -- "$@" "$temp"
+       ;;
+  esac     
+done
+shift 1 #throw away _eNd_OF_lisT_
+
+if [ $UID -ne 0 ]; then echo Please run this script as root. ; exit 1; fi
+
+#test if user already exists
+grep "^$name:.*" $passwd
+if [ $? -eq 0 ]; then 
+  echo 'Package user does already exist! Do su '$name' to do maintenance work.'
+  exit 1
+fi 
+
+#test if minuid, maxuid, mingid and maxgid are integers, otherwise set
+#to defaults.
+error=0
+expr ${minuid} + 1 2>/dev/null 1>&2 || error=1
+expr ${maxuid} + 1 2>/dev/null 1>&2 || error=1
+expr ${mingid} + 1 2>/dev/null 1>&2 || error=1
+expr ${maxgid} + 1 2>/dev/null 1>&2 || error=1
+
+if [ $error -eq 1 ]; then
+  echo Error: Illegal numeric value!
+  exit 1
+fi
+
+if [ $minuid -ge $maxuid ]; then
+  echo 'Error: minuid must be less than maxuid !' 
+  exit 1
+fi
+
+if [ $mingid -ge $maxgid ]; then
+  echo 'Error: mingid must be less than maxgid !' 
+  exit 1
+fi
+
+
+uidlist=`cut -d : -f 3 $passwd | sort -n`
+
+#find last used UID within range
+u=0
+for i in $uidlist
+do
+  if [ $i -ge $maxuid ]; then break; fi
+  if [ $i -ge $minuid ]; then u=$i; fi 
+done
+
+#if no UID from the range is used, pick the first, otherwise pick the one
+#immediately following the last UID in use.
+if [ $u -eq 0 ]; then u=$minuid; else u=`expr $u + 1`; fi
+
+#if the last UID used from the range is maxuid-1, i.e. we may 
+#not use its successor as UID, then we look for the first unused uid
+#in the range.
+if [ $u -ge $maxuid ]; then
+  u=$minuid
+  for i in $uidlist
+  do
+    if [ $u -eq $i ]; then u=`expr $u + 1` ; fi
+    if [ $i -ge $maxuid ]; then break; fi
+  done  
+
+  if [ $u -ge $maxuid ]; then
+    echo Error: UID range is full!
+    exit 1
+  fi
+fi
+
+echo Will create user $name with uid: $u
+
+unset uidlist
+
+#############################################################################
+#                                 group
+#############################################################################
+
+#execute the following for gname and "install" to get gids for those 2 groups
+
+g=0
+creategroup=0
+for group in install $gname
+do
+  oldg=$g #save gid from previous run
+  createinstall=$creategroup
+  creategroup=0
+ 
+  #test if group already exists and extract gid if so
+  g=`grep ^${group}:.\* $grpfile | cut -d : -f 3 -`
+
+  #if group does not exist, then check range for a free gid
+  if [ z$g = z ]; then 
+    creategroup=1
+    
+    gidlist=`cut -d : -f 3 $grpfile | sort -n`
+
+    #find last used GID within range
+    g=0
+    for i in $gidlist
+    do
+      if [ $i -ge $maxgid ]; then break; fi
+      if [ $i -ge $mingid ]; then g=$i; fi
+    done
+
+    #if no GID from the range is used, pick the first, otherwise pick the one
+    #immediately following the last GID in use.
+    if [ $g -eq 0 ]; then g=$mingid; else g=`expr $g + 1`; fi
+    
+    #don't reuse gid from previous run 
+    if [ $g -eq $oldg ]; then g=`expr $g + 1`; fi
+
+    #if the last GID used from the range is maxgid-1, i.e. we may 
+    #not use its successor as GID, then we look for the first unused gid
+    #in the range.
+    if [ $g -ge $maxgid ]; then
+      g=$mingid
+      for i in $gidlist
+      do
+        if [ $g -eq $i ]; then g=`expr $g + 1` ; fi
+        if [ $g -eq $oldg ]; then g=`expr $g + 1` ; fi
+        if [ $i -ge $maxgid ]; then break; fi
+      done  
+
+      if [ $g -ge $maxgid ]; then
+        echo Error: GID range is full!
+        exit 1
+      fi
+    fi
+  fi
+done
+
+unset gidlist
+
+if [ $createinstall -eq 1 ]; then
+  echo Creating group install with gid $oldg
+  groupadd -g $oldg install || exit 1
+else
+  echo Group install has gid $oldg
+fi
+if [ $creategroup -eq 1 ]; then
+  echo Creating group $gname with gid $g
+  groupadd -g $g $gname || exit 1
+else 
+  echo Group $gname has gid $g
+fi
+
+
+
+useradd -c "${description}" -d ${home} -g ${gname} -G install \
+        -s /bin/bash -u ${u} ${name}  || exit 1
+
+mkdir -p $home || exit 1
+
+yes n|cp -ai -R ${skel}/{[^.],.[^.],..?}* ${home} 2>/dev/null >/dev/null
+
+cd ${home}
+chown --recursive ${u}.${g} .
+
+
+exit 0
+-------------------- end $LFS/sbin/add_package_user ------------------------
+
+
+If you use these scripts, you can install a new package like this
+
+install_package 'Foo description' foo foogroup
+
+and the package user foo will be created and you will automatically be su'd to 
+it and put into the package user's home directory. Now just copy the tarball
+from your download directory, untar and install. It's no more work than
+doing it as root.
+
+
+############################################################################
+ Pitfalls and Solutions
+############################################################################
+ 
+There are some pitfalls when you use this system. The following situations are
+common:
+
+1. A package install script is poorly written and insists on changing
+   ownership/permissions of system directories or its own files.
+   
+2. A package install script has a legitimate reason to change 
+   ownership/permissions of files it installs.
+   
+3. Package A contains a program that is also part of package B. Package B
+   was installed first.
+   
+4. A package tests if the user installing it is root and does not install
+   certain programs otherwise.
+   
+5. A package creates a directory that other packages need to write to.
+
+1-3 usually result in an "Operation not permitted" error during make install.
+Note that this is not actually a flaw of the package user scheme, it's a
+feature. It's the reason why we made the install directories sticky and use
+package users in the first place. We don't want stuff like this to happen
+without our (divine :-) intervention. Fixing these issues is usually easy:
+
+1. Look at the output from "make install". It will contain the offending
+   command such as "install --owner root foo /bin" right before the
+   "Operation not permitted" error. grep through the Makefiles of the package
+   and remove the offending switch (in this case "--owner foo"). 
+   Sometimes you may not want to remove it altogether but may need to change 
+   it to something harmless. For instance "install -m 4755 ..." which tries to 
+   set the setuid bit should be changed to "install -m 755 ...".
+   You can automate these changes with a sed script or use a wrapper script
+   around install (see below) to avoid having to manually change Makefiles.
+   Note that you either have to perform these changes *after* the configure
+   step or you have to modify the source Makefiles (usually Makefile.in or
+   Makefile.am).
+
+2. This is basically like 1 but in this case the package actually has a reason
+   (that you accept) for doing what it does. This is seldom but happens for
+   some packages that install setuid root programs that you want to have
+   setuid root, such as ping. In this case, act like in case 1 and execute
+   the appropriate changes manually as root afterwards,
+   such as chown root.root /bin/ping && chmod 4755 /bin/ping.
+   
+3. In this case you have to decide which package you actually want to provide
+   the program in question. If you want to replace package B's program with
+   that of package A, simply delete the program manually as root.
+   If you don't want package A to overwrite the program with its own,
+   grep through the Makefiles for the name of the program in question (and
+   its manpages). Usually you will find a list like
+   PROGRAMS=foo bar fubar barfu
+   and it is sufficient to remove the program from this list. In very rare
+   cases you may need to remove some "install <programname> <destination>"
+   lines from the Makefile.
+   
+4. This case is usually documented in the INSTALL file of the package and a 
+   make target to install the programs left out, such as "install-root", is 
+   provided. So this is not normally an issue.
+
+5. This case is easy to fix by assigning the directory in question to the 
+   install group and making it group-writeable and sticky. This does not even
+   have to be done as root. The package user who created the directory has the
+   permissions to do it. So you can insert an appropriate line into the 
+   Makefile.
+
+Manually changing Makefiles is annoying, even if it happens only occasionally.
+Sed scripts do help but they have to be custom fitted to every package that
+needs them. There is a better solution, though. While building LFS with the
+package user scheme, I have noticed that although there are a lot of possible
+things a Makefile could contain which would trigger an 
+"Operation not permitted" error, only few of them are actually used.
+So far I have only encountered these problems in connection with mkdir, chgrp,
+chown and install. 
+I have written the following scripts to handle them automatically. If you make
+sure the directory where these scripts are located (in my case /usr/src/lfs)
+is the first in the PATH for every package user, you should be able to install
+most LFS packages without having to fix any Makefiles manually. 
+
+ATTENTION! These wrapper scripts allow "make install" to complete without
+aborting due to "Operation not permitted" errors. However, some of the
+operations that are suppressed this way are legitimate (see 2. above).
+For that reason, the wrapper scripts output lines beginning with "***"
+to stderr that contain the original command that the installation wanted to
+execute. 
+You *must* check these lines and if it was a legitimate operation you have to
+take appropriate action manually or the programs in question will not
+work properly. The following is a list of things you should look for and
+what you have to do:
+
+1. "*** install -m 4xxx -o root" : This wants to make a binary setuid root.
+   The important thing here is "-m 4x". Many install scripts try to use
+   "install -m 755 -o root" or something similar. This can be ignored. The
+   owner (specified with "-o owner") is only important for binaries with mode
+   4xxx (specified with "-m 4xxx").  If you decide that the binary really 
+   should be setuid root (for the LFS base packages this is usually okay)
+   you have to do
+       chown root.root <binaryname>
+       chmod u+s <binaryname>
+
+2. "*** chgrp xxx" : This wants to change the group of a binary. This is
+   usually only done if a binary is made setgid. You will see that in the
+   output of "ls -l" like this
+   rwxr-sr-x   1 util-lin tty          8348 Dec  3  2000 write
+   The "s" in the group field tells you this is a setgid binary.
+   Right now the chgrp wrapper below only intercepts chgrp for xxx=tty
+   because that is the only thing needed for installing LFS. 
+   If such a call has been intercepted and you want the binary to be setgid,
+   you have to do the following:
+   	chgrp xxx <binaryname>
+   	chmod g+s <binaryname>
+
+TIP:
+    It is important that you check the error log religiously when installing
+    a package as a package user, especially if you use the scripts below.
+    
+    To make this easier, install like this
+    
+      make install 3>&1 1>&2 2>&3 | tee install.err
+      
+    This will give you the normal make output (i.e. errors and normal messages)
+    to the screen but in addition to that it will put a copy of all error 
+    messages into install.err. You can "cat install.err" after the installation
+    to examine error messages.
+    Note that "make install | tee install.err" does *not* work. This would
+    copy all normal messages *without* the errors.
+    
+    If you want to redirect screen output (i.e. the complete install log,
+    including errors and non-errors) to a file, do it like this
+
+      { make install 3>&1 1>&2 2>&3 | tee install.err ;} &>install.log
+
+    You should probably create a shell function for this to save you typing.
+
+
+Here are the wrapper scripts:
+
+------------- begin $LFS/usr/src/lfs/wrappers/mkdir --------------------------
+#!/bin/sh
+
+DAISY_CHAIN=""
+
+for p in $(type -ap mkdir) ; do
+  if [ ! $p -ef $0 ]; then DAISY_CHAIN=$p ; break ; fi
+done
+
+if [ ! -n "$DAISY_CHAIN" ]; then
+  echo Cannot find real ${0##*/} command 
+  exit 1
+fi
+
+if [ $UID == 0 ]; then
+  exec $DAISY_CHAIN "$@"
+fi
+
+watchdir=/usr/share/locale
+
+cmdline="$@"
+
+dirs=""
+for((i=$#; $i>0;))
+do
+  a="$1"
+  shift 1; i=$(($i-1))
+  case "$a" in
+    $watchdir/*) dirs="$dirs ""`expr $a : "$watchdir/\(.*\)"`" 
+                 set -- "$@" "$a" 
+                 ;;
+    *) set -- "$@" "$a" ;;
+  esac
+done
+
+$DAISY_CHAIN "$@" || exit $?
+
+test z"$dirs" != z &&
+echo 1>&2 '***' mkdir "$cmdline"
+for dir in $dirs ; do
+  cumuldir=""
+  for d in `echo $dirs | sed 's#/# #g' -` ; do
+    cumuldir=$cumuldir$d/
+    chgrp install $watchdir/$cumuldir
+    chmod g+w,o+t $watchdir/$cumuldir
+  done  
+done
+exit 0
+------------ end $LFS/usr/src/lfs/wrappers/mkdir --------------------------
+
+------------ begin $LFS/usr/src/lfs/wrappers/chgrp ------------------------
+#!/bin/sh
+
+DAISY_CHAIN=""
+
+for p in $(type -ap chgrp) ; do
+  if [ ! $p -ef $0 ]; then DAISY_CHAIN=$p ; break ; fi
+done
+
+if [ ! -n "$DAISY_CHAIN" ]; then
+  echo Cannot find real ${0##*/} command 
+  exit 1
+fi
+
+if [ $UID == 0 ]; then
+  exec $DAISY_CHAIN "$@"
+fi
+
+if [ "$1" == "tty" ]; then
+  echo 1>&2 '***' chgrp "$@"  
+else
+  $DAISY_CHAIN "$@" || exit $?
+fi
+
+exit 0
+------------ end $LFS/usr/src/lfs/wrappers/chgrp --------------------------
+
+------------ begin $LFS/usr/src/lfs/wrappers/chown ------------------------
+#!/bin/sh
+
+DAISY_CHAIN=""
+
+for p in $(type -ap chown) ; do
+  if [ ! $p -ef $0 ]; then DAISY_CHAIN=$p ; break ; fi
+done
+
+if [ ! -n "$DAISY_CHAIN" ]; then
+  echo Cannot find real ${0##*/} command 
+  exit 1
+fi
+
+if [ $UID == 0 ]; then
+  exec $DAISY_CHAIN "$@"
+fi
+
+if [ "$1" == "root.root" ]; then
+  echo 1>&2 '***' chown "$@"  
+else
+  $DAISY_CHAIN "$@" || exit $?
+fi
+
+exit 0
+-------------- end $LFS/usr/src/lfs/wrappers/chown ------------------------
+
+------------ begin $LFS/usr/src/lfs/wrappers/install ----------------------
+#!/bin/sh
+
+localedir=/usr/share/locale
+cmdline="$@"
+manpagesowner=man-pages
+
+DAISY_CHAIN=""
+
+for p in $(type -ap install) ; do
+  if [ ! $p -ef $0 ]; then DAISY_CHAIN=$p ; break ; fi
+done
+
+if [ ! -n "$DAISY_CHAIN" ]; then
+  echo Cannot find real ${0##*/} command 
+  exit 1
+fi
+
+if [ $UID == 0 ]; then
+  exec $DAISY_CHAIN "$@"
+fi
+
+
+	#********** test if we create directories ********************
+if [ \( z"$1" = z"-d" \) -o \( z"$1" = z"-m" -a z"$3" = z"-d" \) ]; then  
+  locdirs=""
+  notify=0
+  havedir=0
+  for((i=$#; $i>0; ))
+  do
+    a="$1"
+    shift 1; i=$(($i-1))
+    case "$a" in
+      -o|-g|--owner|--group) notify=1 
+      			shift 1; i=$(($i-1))
+          		set -- "$@" 
+          ;;
+      $localedir/*) if [ ! -d "$a" ]; then
+      		      locdirs="$locdirs ""`expr $a : "$localedir/\(.*\)"`" 
+                      set -- "$@" "$a"
+                      havedir=1
+                    else
+                      notify=1
+                      set -- "$@"
+                    fi  
+                   ;;
+      */*|/sbin) if [ ! -d "$a" ]; then 
+      	     set -- "$@" "$a" 
+      	     havedir=1
+      	   else
+      	     notify=1
+      	     set -- "$@"
+      	   fi             
+      	   ;;
+      *) set -- "$@" "$a" ;;
+    esac
+  done
+  
+  test $notify -eq 1 -o z"$locdirs" != z && \
+  					echo 1>&2 '***' install "$cmdline"
+
+  test $havedir -eq 0 && exit 0
+
+  $DAISY_CHAIN "$@" || exit $?
+  
+  test z"$locdirs" != z &&
+  for dir in $locdirs ; do
+    cumuldir=""
+    for d in `echo $locdirs | sed 's#/# #g' -` ; do
+      cumuldir=$cumuldir$d/
+      if [ -d $localedir/$cumuldir ]; then
+        chgrp install $localedir/$cumuldir
+        chmod g+w,o+t $localedir/$cumuldir
+      fi  
+    done  
+  done
+
+else  #if "$1" != "-d"  ,i.e. we do not create directories *****************
+  notify=0
+  for((i=$# ; $i>0; ))
+  do
+    a="$1"
+    shift 1; i=$(($i-1))
+    case "$a" in
+     -m)      set -- "$@" "$a" 
+              a="$1"
+              shift 1; i=$(($i-1))
+              case "$a" in
+                4755) notify=1 ; set -- "$@" "755" ;;
+                *) set -- "$@" "$a"  ;;
+              esac
+          ;;
+      -m4755) notify=1 ; set -- "$@" "-m755" ;;
+      -o|-g|--owner|--group)    notify=1 
+      		shift 1; i=$(($i-1))
+          	set -- "$@" 
+          ;;
+      */man/man?/*) 
+                if [ -e "$a" -a ! -O "$a" ]; then
+                  if [ `find "$a" -printf \%u` = $manpagesowner ]; then
+                    notify=1
+                    set -- "$@" not_installed
+                  else
+                    set -- "$@" "$a"
+                  fi  
+                else
+                  set -- "$@" "$a"
+                fi
+          ;;    
+      *) set -- "$@" "$a" ;;
+    esac
+  done
+
+  test $notify -eq 1 && echo 1>&2 '***' install "$cmdline"
+
+  $DAISY_CHAIN "$@" || exit $?
+fi
+
+exit 0
+----------- end $LFS/usr/src/lfs/wrappers/install --------------------------
+
+If you improve any of these scripts, I would be grateful if you could mail
+me your changes together with a note saying which package prompted the
+change. Note that these scripts are supposed to have minimal intrusiveness.
+So writing a common case "-m*)" instead of the case "-m4755" is undesirable.
+The scripts should only deal with the problems that have actually been
+encountered, not all possible problems.
+
+#############################################################################
+ LFS specifics
+#############################################################################
+ 
+For the user name of the package users I always use the name of the package
+without the version number, including dashes and possibly exceeding 8
+characters in length, e.g. "util-linux". 
+Aside from ls -l which chops off the last characters
+of the user name I have not noticed any problems with this. The other programs
+I have tested seem to deal with these user names just fine. 
+If you encounter problems, please report them to me.
+
+Now how do we apply the above to the building of an LFS system ?
+
+##########################################################################
+Pre-chroot phase 
+##########################################################################
+
+We don't use package users in the pre-chroot phase. This does not mean we
+install as root. I suggest building the pre-chroot system as a normal user.
+That way, you can later distinguish files created inside chroot (these
+have uid 0 or the uid of a package user) and remaining files created during 
+the pre-chroot phase (these carry the uid of your normal user account on
+your host system). Building as an ordinary user also protects you against 
+typos that might otherwise cause a package to overwrite files on your host
+system.
+
+The actual commands of the pre-chroot phase don't need be changed but you
+have to do some additional things.
+The first problem is that we need find right after installing glibc inside
+chroot. The best thing to do is to build a static version during the 
+pre-chroot phase like this:
+
+./configure --prefix=$LFS/usr --disable-nls &&
+make LDFLAGS=-static CPPFLAGS=-Dre_max_failures=re_max_f2 &&
+make libexecdir=$LFS/usr/bin install
+
+Another problem is that some programs such as chown can not resolve usernames
+before glibc is installed. Fortunately most programs accept a numeric UID
+or GID. There is one nasty exception, though: su. The most fundamental
+program when using package users doesn't swallow numeric ids :-|
+
+Now how do we become a package user before glibc is installed ? 
+If you guessed that I have a written a script to replace it, you guessed ...
+... wrong :-) I have written a C program to replace it. 
+
+It just happens that sh-utils
+contains an su program which is not used in LFS. It gets installed 
+statically linked during the pre-chroot phase, is never used there (assuming
+a standard LFS build), gets replaced with a dynamically linked version when 
+sh-utils is reinstalled and then is finally replaced by the su from shadow 
+which is the version we will use when the LFS system is finished. So all
+you need to do is to replace the file src/su.c in the sh-utils source tree
+with the following file before compiling your chapter 5 sh-utils.
+Note that if you compile chapter 5 as non-root, you need to issue the command
+`make install-root' after `make install' or sh-utils won't install su.
+
+-------- begin $LFS/usr/src/sh-utils/sh-utils-<version>/src/su.c ------------
+#include <stdio.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <string.h>
+#include <ctype.h>
+#include <grp.h>
+
+#define NUMGIDS 1024
+
+int main(int argc,char* argv[])
+{
+  char* Res;
+  char Buffy[4096];
+  uid_t tuid=-1,uid;
+  gid_t gid;
+  int i;
+  FILE* File;
+  char* command=NULL;
+  char* shell;
+  char* HOME;
+  gid_t gid_list[NUMGIDS];
+  ssize_t NumGids=0;
+
+  if (argc>1) 
+  {
+    if (strcmp(argv[1],"--help")==0) 
+      { fprintf(stdout,"There is no help!\n"); exit(0);}
+    if (strcmp(argv[1],"--version")==0) {fprintf(stdout,"0.6\n"); exit(0); }
+  }
+
+  if ((argc==4) && (strcmp(argv[2],"-c")==0)) command=argv[3]; else
+  if (argc!=2)
+  {
+    fprintf(stdout,"USAGE: su username|uid [-c command]\n");
+    return 1;
+  };
+
+  i=0;
+  while(isdigit(argv[1][i])) ++i;
+  if (argv[1][i]==0) tuid=atol(argv[1]);
+
+  File=fopen("/etc/passwd","rb");
+  if (File==NULL) {perror("/etc/passwd"); return 1;};
+  
+  while(1)
+  {
+    errno=0;
+    Res=fgets(Buffy,1024,File);
+    if (Res==NULL) {
+      if (errno!=0) perror("/etc/passwd"); 
+        else fprintf(stderr,"su: User not found!\n");
+      return 1;
+    };
+    
+    Res=strtok(Buffy,":");
+    if (Res==NULL) continue;
+    strtok(NULL,":");
+    uid=atol(strtok(NULL,":"));
+    gid=atol(strtok(NULL,":"));
+    strtok(NULL,":");
+    HOME=strtok(NULL,":");
+    shell=strtok(NULL,":");
+    if (tuid==uid) {argv[1]=strdup(Buffy); break;}
+    if (strcmp(argv[1],Buffy)==0) break;
+  };
+  HOME=strdup(HOME);
+  shell=strdup(shell);
+  
+  File=fopen("/etc/group","rb");
+  if (File==NULL) {perror("/etc/group"); return 1;};
+  
+  while(1)
+  {
+ContinueReadingEtcGroup:
+    errno=0;
+    Res=fgets(Buffy,1024,File);
+    if (Res==NULL) {
+      if (errno!=0) {perror("/etc/group"); return 1;} else break;
+    };
+    
+    Res=strtok(Buffy,":,\n");
+    if (Res==NULL) continue;
+    strtok(NULL,":,\n");
+    gid_list[NumGids]=atol(strtok(NULL,":,\n"));
+    Res=strtok(NULL,":,\n");
+
+    while(Res!=NULL)
+    {
+      if (strcmp(Res,argv[1])==0) 
+      {
+        ++NumGids;
+        if (NumGids>=NUMGIDS) goto SetNewIdentity; 
+        		 else goto ContinueReadingEtcGroup;
+      };
+      Res=strtok(NULL,":,\n");
+    };
+  };
+
+SetNewIdentity:
+  if (command==NULL) command=shell;
+  setenv("HOME",HOME,1);
+  setgroups(NumGids,gid_list);
+  setgid(gid);
+  setuid(uid);
+  errno=0;
+  i=system(command);
+  if (((i<0) || (i==127)) && (errno!=0)) {perror("/bin/sh"); return 1;};
+  return i;
+};
+-------- end $LFS/usr/src/sh-utils/sh-utils-<version>/src/su.c ------------
+
+This su program accepts user names as well as numeric UIDs. It does its own
+name resolution using /etc/passwd so it works even without glibc being
+installed. 
+Note that sh-utils installs the su program with the setuid bit set. 
+If you install the pre-chroot system as an ordinary user (which you should 
+for safety reasons), this will result in a su that doesn't work even when 
+executed by root. Simply remove the setuid bit like this
+
+chmod u-s $LFS/bin/su
+
+and su will work fine once we have entered the chroot environment (where
+we work as root). Note that this allows you to su from root to a package
+user but not the other way around. If you want to be able to su from a package
+user to root you will have to make su setuid root 
+(i.e. chown root.root $LFS/bin/su && chmod u+s $LFS/bin/su). Make sure that
+you don't keep such an su lying around on a system that others have access to.
+The above su does not check for a password, so if you make it setuid root,
+everyone can use it to become root without a password!
+
+
+##########################################################################  
+ Chroot phase - preparing the LFS system: 
+##########################################################################
+ 
+This is the tricky part. Once we
+have entered chroot, we have to assign install directories to the
+install group and make them group-writeable. However, since glibc is not
+yet installed, we can't use user names, yet. Furthermore, groupadd and useradd
+which are part of the shadow package are not installed, yet.
+This means that we can't create any package users, at least not without
+editing /etc/group and /etc/passwd manually. 
+But don't despair. The following
+scripts make nice replacements for useradd and groupadd as long as shadow
+isn't there. Note that they only accept the exact syntax with which the
+useradd and groupadd commands are used in the add_package_user script.
+I assume you will be using the install_package/add_package_user scripts to
+add package users to the system. Here are the scripts:
+
+--------------------- begin $LFS/usr/sbin/useradd ----------------------------  
+#!/bin/sh
+if [ $# -ne 13 -o z$1 != z-c -o z$3 != z-d -o z$5 != z-g -o z$7 != z-G -o z$9 != z-s -o z${11} != z-u ]; then
+echo 1>&2 USAGE: useradd -c description -d home -g maingroup -G addgroup -s shell -u uid login 
+exit 1
+fi
+
+#test if user already exists
+grep "^${13}:.*" /etc/passwd 
+if [ $? -eq 0 ]; then
+  echo 1>&2 $0: User does already exist
+  exit 1
+fi       
+
+g=`grep ^${6}:.\* /etc/group | cut -d : -f 3 -`
+if [ z${g} = z ]; then
+  echo 1>&2 $0: Group ${6} does not exist!
+  exit 1
+fi
+
+grep ^${8}:.\* /etc/group >/dev/null || \
+{
+  echo 1>&2 $0: Group ${8} does not exist!
+  exit 1
+}
+
+
+cp /etc/passwd /tmp/passwd123456
+echo "${13}:x:${12}:$g:$2:$4:/bin/bash" \
+| sort -t : -k3,3n -m /tmp/passwd123456 - > /etc/passwd
+
+
+cp /etc/group /tmp/group123456
+sed  -e 's/^\('"${8}"':[^:]*:[0-9]*:..*\)$/\1,'"${13}"'/' \
+     -e 's/^\('"${8}"':[^:]*:[0-9]*\):$/\1:'"${13}"'/' \
+     						/tmp/group123456 >/etc/group
+---------------------- end $LFS/usr/sbin/useradd ----------------------------  
+
+--------------------- begin $LFS/usr/sbin/groupadd --------------------------
+#!/bin/sh
+if [ $# -ne 3 -o z$1 != z-g ]; then
+echo 1>&2 USAGE: groupadd -g gid groupname
+exit 1
+fi
+
+#test if group already exists
+grep "^${3}:.*" /etc/group 
+if [ $? -eq 0 ]; then
+  echo 1>&2 $0: Group does already exist
+  exit 1
+fi       
+
+cp /etc/group /tmp/group123456
+echo ${3}:x:${2}: | sort -t : -k3,3n -m /tmp/group123456 - > /etc/group
+--------------------- end $LFS/usr/sbin/groupadd ----------------------------
+
+These scripts overcome the problem of the missing shadow utilities. 
+
+With the above scripts and su program we now have everything we need to
+begin our chroot phase. 
+
+###########################################################################
+ Tips before you chroot
+###########################################################################
+ 
+Whenever add_package_user creates a new package user it copies the files
+from /etc/skel-package (if you create this directory) to the new package
+user's home directory. Symlinks are copied as symlinks.
+A useful symlink to place in /etc/skel-package is one like
+
+.bashrc -> /etc/bashrc_package 
+
+with something like the following:
+
+------------------ begin $LFS/etc/bashrc_package --------------------------
+#first load basic configuration to make system work normal
+source /etc/bashrc_basic
+
+export PATH=/usr/src/lfs/wrappers:$PATH
+
+#make prompt reflect that we are a package user. Do it via USER_PROMPT_COMMAND
+#rather than PROMPT_COMMAND because we want to keep root's prompt if we su to root
+export USER_PROMPT_COMMAND='PS1="package \u:"`pwd`"> "'
+
+alias mafobu='make -f /usr/src/lfs/mafobu'
+
+#The following command will put us in the home directory. 
+cd
+------------------ end $LFS/etc/bashrc_package ----------------------------
+
+------------------ begin $LFS/etc/bashrc_basic ----------------------------
+#This file should be sourced by all users' .bashrc files
+
+if [ $UID -eq 0 ]; then
+  export PATH=/usr/local/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+else
+  export PATH=/usr/local/bin:/bin:/usr/bin
+fi
+
+  #set a red prompt when user is root. If a user wants to override this
+  #s/he should use USER_PROMPT_COMMAND instead of PROMPT_COMMAND in order to 
+  #keep 
+  #root's prompt when su'ed to root. If a user wants to change PS1 directly
+  #s/he should do "unset USER_PROMPT_COMMAND".
+export PROMPT_COMMAND='if [ $UID -eq 0 ]; then \
+  PS1="\[\033[0;31m\]root@\h:"`pwd -P`"# \[\033[0m\]" ; \
+    else eval $USER_PROMPT_COMMAND ; fi'
+  #make PROMPT_COMMAND read-only to protect against careless users
+declare -r PROMPT_COMMAND
+  #set a reasonable default USER_PROMPT_COMMAND
+export USER_PROMPT_COMMAND='PS1="\u@\h:"`pwd`"> "'
+
+  #make keys (del, bs, home, end,...) work normal
+export INPUTRC=/etc/inputrc
+bind -f $INPUTRC
+------------------ end $LFS/etc/bashrc_basic ------------------------------
+
+
+
+Another useful file to place in /etc/skel-package is a .project file like
+this:
+
+------------------ begin $LFS/etc/skel-package/.project ------------------
+DESCRIPTION:
+  bogus package
+CONTENTS:
+  foo,bar,fubar
+LAST UPDATED:
+  30 Feb 2042
+DOWNLOAD LOCATION:
+  ftp://ftp.gnu.org/gnu/foo/
+WEB SITE:
+  <none>
+INSTALL NOTES:
+GENERAL NOTES:
+----------------- end $LFS/etc/skel-package/.project ------------------
+
+Update this file whenever you re/install a package. It is called .project
+so that it is automatically displayed when you issue the command 
+"finger <package>" or "pinky -l <package>".
+
+
+###########################################################################
+ Inside the chroot environment
+###########################################################################
+
+After you have chroot'ed do
+
+groupadd -g 10000 install
+
+which will create the install group. Now use 
+
+chown 0.10000 `cat /tmp/installdirs`
+chmod ug=rwx,o=rx `cat /tmp/installdirs`
+
+to assign directories to the install group. Note that we do not make the
+directories sticky, yet. This is because they still contain files belonging
+to root or some unknown user (if you installed pre-chroot as non-root). These
+files must be overwriteable. The file /tmp/installdirs is the following list:
+
+----------------- begin $LFS/tmp/installdirs ------------------------------
+/usr/bin
+/usr/etc
+/usr/sbin
+/usr/include
+/usr/lib
+/usr/man/man?
+/usr/doc
+/usr/info
+/usr/local/man/man?
+/usr/local/doc
+/usr/share
+/usr/share/dict
+/usr/share/doc
+/usr/share/info
+/usr/share/locale
+/usr/share/man/man1
+/usr/share/man/man2
+/usr/share/man/man3
+/usr/share/man/man4
+/usr/share/man/man5
+/usr/share/man/man6
+/usr/share/man/man7
+/usr/share/man/man8
+/usr/share/nls
+/usr/share/misc
+/usr/share/terminfo
+/usr/share/zoneinfo
+/usr/share/i18n
+/usr/share/aclocal
+/usr/local/bin
+/usr/local/etc
+/usr/local/include
+/usr/local/lib
+/usr/local/sbin
+/usr/local/share
+/usr/local/share/dict
+/usr/local/share/doc
+/usr/local/share/info
+/usr/local/share/locale
+/usr/local/share/man/man1
+/usr/local/share/man/man2
+/usr/local/share/man/man3
+/usr/local/share/man/man4
+/usr/local/share/man/man5
+/usr/local/share/man/man6
+/usr/local/share/man/man7
+/usr/local/share/man/man8
+/usr/local/share/nls
+/usr/local/share/misc
+/usr/local/share/terminfo
+/usr/local/share/zoneinfo
+/etc
+/sbin
+/bin
+/lib
+----------------- end $LFS/tmp/installdirs --------------------------------
+
+Now do
+
+chown 0.10000 /usr/share/info/dir
+chmod ug=rw,o=r /usr/share/info/dir
+
+which makes sure packages can install their info pages. 
+
+
+
+#########################################################################
+ Chroot phase -installing the packages 
+#########################################################################
+
+Now we can finally install glibc. Create /dev/null as root by doing
+
+mknod -m 0666 /dev/null c 1 3
+
+then do
+
+install_package "GNU C library" glibc system
+
+which will create the system group and a user glibc and will also su to the new
+glibc package user. Note that the mkdir and install wrapper
+don't work properly during the installation of glibc because they use
+the name "install" rather than the gid. This means we have to do the
+following *after* installing glibc:
+
+find /usr/share/locale/* -type d -user glibc -exec chmod ug=rwx,o=rxt \{\} \;\
+					 -exec chgrp install \{\} \;
+
+
+Now do
+
+exit
+
+to become root and begin installing the rest of the packages. Use the command
+
+install_package <description> <packagename> <group>
+
+to create and become the package user. Then unpack in that user's home 
+directory and use the guidelines below and the book's directions to 
+install each package.
+
+############################################################################
+ Group guidelines
+############################################################################
+
+I recommend the following groups for use with package users:
+
+devel: development related stuff, e.g. compilers. This is not restricted to
+       software development. TeX for instance would belong in this group.
+       
+utils: Most software fits into this category, even somewhat essential software 
+       like grep or text editors.
+      
+net: network related stuff such as an ftp daemon or a web browser. This
+     group overlaps with other groups to a large extent. It should be used
+     in preference of the other groups whenever a package is clearly focused
+     towards Internet, LAN, WWW,... A utility like wget for instance would
+     go in net rather than utils. Exceptions from this rule are the groups
+     docs, addons, games and mmedia. If a package fits into one of those 
+     groups, use the respective group instead of net.
+     
+docs: Documentation related packages, such as a tarball with Linux howtos.
+      Note that software to create documentation such as XML processors should
+      probably go in devel and software to view or post-process documentation
+      such as man or groff should probably go in utils.
+      
+system: important system software, such as bash. This group should be used
+        only for really essential packages. Most packages you would put in 
+        this group are better put into "utils". Vi for instance belongs in 
+        utils. 
+        It is unlikely that any package not part of basic LFS belongs in the
+        system group.
+        
+libs: What utils is for executables, libs is for libraries. Libraries that are
+      not strongly related to any of the other categories should go here, such
+      as zlib or libpng.
+      Essential system libraries such as glibc, ncurses or gettext should
+      go in system instead.
+      The libs group is also used for run-time environments such as the
+      Java Virtual Machine, dosemu and wine. Other emulators like MAME for
+      instance should probably go into games instead. 
+     
+games: what do you expect ;-)
+
+mmedia: This is the group for audio and video editors, mp3 players etc.
+
+apps: Applications such as spreadsheets and word processors (not text editors)
+      but also CAD software and graphics software such as Gimp.
+      The apps group is a bit like utils, but apps are usually more user 
+      friendly and more streamlined and focused than utils. 
+      Apps feel less geekish and nerdish than
+      utils. Emacs for instance belongs in utils, not in apps.
+      
+addons: plugins, filters and similar that are meant to be used in conjunction
+       with another package.
+       
+x: software that relates to the X Window System in general and does not fit
+   into any of the other categories, such as the X server itself or window 
+   managers.
+   Most X software should be put into other more specific groups.
+   A game like xmines would go in games for instance and a text editor for
+   X would go in utils.
+   
+kde: Software that relates to KDE and does not fit into
+     any other category. This group should be used with care. 
+     Do *not* use it for all KDE software. K Office for instance belongs in
+     apps. Konqueror belongs in net.
+     
+gnome: Software that relates to GNOME and does not fit into
+       any other category. This group should be used with care. 
+       Do *not* use it for all GNOME software. Gimp for instance belongs 
+       in apps. A GNOME-aware window manager that works with plain X should
+       go in the x group.
+
+The following is a list of the LFS packages with the user.group assignments
+I think are appropriate. The user name in general should be the name of
+the main tarball without extensions and version. The groups try to follow
+the guidelines above but sometimes it is hard to find the "correct" group.
+The list also contains some notes I made when I installed them. 
+If you use the mkdir, chgrp and install wrappers, you should
+not have any trouble.
+
+glibc.system:
+  see above.
+
+MAKEDEV: not installed as a package user
+
+man-pages.docs
+findutils.utils
+mawk.devel:
+	rm /usr/bin/mawk /usr/share/man/man1/mawk.1 
+	as root before `make install'
+ncurses.system
+vim.utils
+ed.utils
+gcc.devel:
+	Before `make install' assign the /usr/lib/gcc-lib and /usr/include/g++
+	to the gcc package user by doing (as root)
+	  chown -R gcc. /usr/lib/gcc-lib /usr/include/g++
+bison.devel
+less.utils
+groff.utils
+man.utils
+perl.utils
+m4.devel
+texinfo.utils
+autoconf.devel
+automake.devel:
+	Creates the directory /usr/share/aclocal. This directory is written to
+	by other packages, so chgrp install and chmod g+w,o+t it.
+
+bash.system:
+	When ./configure is done as a package user (more precisely when done 
+	in a su environment), it will fail to detect /dev/stdin. This will 
+	cause bash to compile an emulation of /dev/std* and /dev/fd/*. 
+	I actually prefer this emulation because it matches the description 
+	in the manpage while the normal behaviour (i.e. to open the 
+	respective device) does not always.  If a normal bash is desired, 
+	use sed to change configure and replace 
+	"test -r /dev/stdin" with "test -e /dev/stdin" (same for /dev/fd). 
+	[ This information is for bash 2.05, I reported the issue so it may
+	be fixed in future versions. ]
+flex.devel
+file.utils
+libtool.devel
+bin86.devel
+binutils.devel
+bzip2.utils
+gettext.system
+kbd.system
+diffutils.utils
+e2fsprogs.utils
+fileutils.system
+grep.utils
+gzip.utils
+lilo.system
+make.devel:
+	make wants to be setgid kmem in order for the -l option to work.
+	If you are not a developer who knows what this option does, you
+	don't need it and should not give make special privileges.
+	[UPDATE] On Linux the -l option seems to work even if make is not
+	setgid kmem.
+
+linux kernel: not installed as package user
+modutils.system:
+	The modutils check if modules are owned by root before using them.
+	This is the reason why the linux kernel should be compiled and
+	installed as root, rather than as a package user.
+
+netkit-base.net
+patch.utils
+procinfo.utils
+procps.utils
+psmisc.utils
+sed.utils
+sh-utils.system
+net-tools.net
+shadow.system:
+	This package installs quite a few setuid root progs. If you're not
+	religious about package users you might want to install this one
+	as root.root to make life easier for yourself.
+	If you do install as package user don't forget to make the
+	binaries in question setuid root manually afterwards.
+	After installing shadow make sure that the useradd and groupadd
+	scripts have been properly replaced. Execute
+	  find / -maxdepth 3 -name groupadd
+	to make sure that you don't have 2 copies (e.g. one in /sbin and
+	one in /usr/sbin)  
+	
+
+sysklogd.system
+	This package has /usr/bin/install hardwired, so install with
+	  make INSTALL=install install
+	to make it use the wrapper.
+
+sysvinit.system:
+	This one is a bit tricky. You have to create /dev/initctl manually
+	as root	*before* doing "make install" because a package user does
+	not have permission to write to /dev. So do (as root!!)
+	  rm -f /dev/initctl
+	  mknod -m 600 /dev/initctl p
+
+tar.utils
+textutils.utils
+util-linux.system:
+	Don't forget to make mount and umount setuid root manually after
+	installing this package. And the write program wants to be
+	setgid tty.
+
+###########################################################################
+ Final steps
+###########################################################################
+
+After installing everything, make the install directories sticky:
+
+chmod ug=rwx,o=rxt `cat /tmp/installdirs`
+
+If you installed pre-chroot as a normal user there are now some directories
+owned by that user even though they should be owned by a package user. This
+happens because the package users in question did not/could not recreate
+these directories. The following script will fix that. It works by looking
+for directories not owned by a registered user (-nouser option). The list
+of these directories is processed in a for loop. For each directory find is
+then used to look for all files owned by a registered user and to list those
+users. With "sort -u" (unique) we get a list of registered users that have
+files in the directory in question and wc tells us how many of these users
+there are. If there is only one such user (i.e. all files in the directory
+belong either to an unregistered user or the one registered user we 
+identified) then we assign the directory to this user.
+
+----------------- begin $LFS/usr/src/lfs/fixowner -------------------------
+#!/bin/sh   
+#find all directories owned by an unknown user (i.e. the normal user
+#account you installed pre-chroot with, if you installed as a normal
+#user) and assign those that have an unambiguous intended owner (i.e.
+#only files belonging to a single owner aside from the unknown one
+#are found in the directory) to that owner.
+get_dir_owners() 
+{ 
+  owners=`find $1 -not -nouser -printf "%u\n" | sort -u `
+  num=`echo $owners | wc -w | tr -d " "`
+} 
+
+for dir in `find / -path "/proc" -prune -or -type d -nouser -print` 
+do 
+  get_dir_owners $dir 
+  if [ $num == 1 ]; then 
+    chown `echo $owners | tr -d " "`. $dir 
+    chmod u=rwx,go=rx $dir 
+    echo "Assigning $dir to $owners"
+  fi  
+done
+----------------- end $LFS/usr/src/lfs/fixowner ---------------------------
+
+Finally you should
+use find to find files that still belong to the user you
+installed pre-chroot with. You can also use find to identify any directories
+that are group-writeable and not sticky. You should also check for setuid
+and setgid programs that don't belong to root. Apply your common sense to
+deal with these files (or send me a mail so I can mention the issue here).
+
+find / -path "/proc/*" -prune -or -perm +u+s -printf "%p: suid %u\n"
+find / -path "/proc/*" -prune -or -perm +g+s -printf "%p: sgid %g\n"
+find / -path "/proc/*" -prune -or \
+       -type d -perm +o+w -not -perm +o+t -printf "%p: world-writeable\n"
+find / -path "/proc/*" -prune -or -type d -perm +g+w -not -perm +o+w \
+                             -not -perm +o+t -printf "%p: group-writeable\n"
+find / -path "/proc/*" -prune -or \
+       -not -type d -not -type l -perm +o+w -printf "%p: world-writeable\n"
+find / -path "/proc/*" -prune -or -path "/dev/*" -prune -or \
+       -not -type d -not -type l -perm +g+w -not -perm +o+w \
+                                           -printf "%p: group-writeable\n"
+find / -path "/proc/*" -prune -or -nouser -printf "%p: unknown user: %u\n"
+find / -path "/proc/*" -prune -or -nogroup -printf "%p: unknown group: %g\n"
+
+
+
+###########################################################################
+ Security issues with NFS
+###########################################################################
+
+If you use the network filesystem NFS, there are some things you need to
+look out for when using the package user system described in this hint.
+A fundamental security problem with NFS is that it blindly trusts the uid and 
+gid of the client. If an attacker can get access to the root account on a
+system in your network that is allowed to mount NFS shares from your server,
+or if the attacker can attach his own computer to your network, then this
+attacker can pretend to be anyone. NFS will happily allow the attacker to
+work in the NFS exported directory as any user he wants to be.
+The only exception is the root account. By default NFS exports directories 
+with the root_squash option that maps all incoming requests from uid 0 to 
+anonuid (65534 unless set in /etc/exports) and gid 0 to anongid
+(65534 unless set in /etc/exports). This protects files owned by 
+root.root. On a normal system this includes most files in /bin, /etc, /lib
+and most other directories except /home. If you use the package user scheme,
+however, most of these files are owned by package users. These files are
+not protected by the root_squash option. 
+In order to make NFS exports secure, you have to add the option "all_squash"
+to every entry in /etc/exports that exports a directory that contains 
+files owned by package users. Note that all_squash is always a good idea
+because even systems that don't use package users usually have some programs 
+owned by other users such as daemon or bin and other groups such as tty, 
+because they need to be setuid or setgid.

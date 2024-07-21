@@ -1,0 +1,128 @@
+AUTHOR : Denis Mugnier <myou72 at orange point fr>
+
+DATE : 2012-15-06
+
+LICENSE : Creative Commons Attribution-Share Alike 3.0
+         (http://creativecommons.org/licenses/by-sa/3.0/)
+
+SYNOPSIS : Installation of syslinux instead of grub
+
+DESCRIPTION :
+ Syslinux is a small and fast bootloader.
+
+PRE-REQUISITIES :
+A working LFS (tested with a LFS 7.0). 
+  It is useful to have a LFS with GRUB installed, which can already boot.
+nasm (see BLFS)
+python (see BLFS : python 2.7)
+
+HINT:
+
+The purpose of this hint is to replace GRUB, in a working LFS, or install Syslinux
+in a LFS you are building
+
+ATTENTION : the tricks of this hint will install a bootloader; these tricks
+are potentially dangerous for your system. If there is a problem, the system may
+not boot anymore.
+
+Step 1 : Downloading the source and untar them
+You can download the source at:
+
+http://www.kernel.org/pub/linux/utils/boot/syslinux/syslinux-4.05.tar.xz
+
+Next, you need to untar them
+
+tar -xf syslinux-4.05.tar.xz
+
+The source also contains the binaries of the files. If desired, it is possible to
+skip compilation.
+
+Step 2  : Compilation
+
+The compilation is quite simple:
+
+make
+
+Note: The compilation needs nasm and python .
+
+Step 3 : Installation of the binaries
+
+Using the following command:
+
+make install
+
+The "syslinux" installers are now installed on your LFS
+
+Step 4 : Booting with Syslinux
+
+Here is the interesting part of the hint. Note that this hint only deals with
+using extlinux, which enables a system to boot from an ext2, ext3 or ext4
+partition. It is possible to use syslinux to boot from a CD, a FAT disk, etc...
+For more information about the other methods, see the official website 
+(www.syslinux.org)
+
+You need to create a directory to install the bootloader 
+
+mkdir /boot/extlinux
+
+then use extlinux to install the bootloader
+
+extlinux --install /boot/extlinux
+
+Step 5 : Configuring
+
+The configuration will be in a /boot/extlinux/syslinux.conf file
+
+In its shortest aspect, this file will contain:
+
+DEFAULT lfs
+LABEL lfs
+   KERNEL /boot/vmlinuz.img
+   APPEND ro root=/dev/xxx
+
+vmlinuz.img : kernel image, or some symlink to the kernel image
+/dev/xxx : partition which contains your system
+
+For more information about the configuration file, I suggest you to see
+the documentation. It is possible to have a menu and choose what system you would
+like to boot, boot in PXE, display a file, ...
+
+You need to check that your partition is configured properly to boot (with the
+boot flag) 
+
+To set this flag:
+
+fdisk /dev/yyy  (with yyy the disk name e.g. sda, sdb, etc)
+then, choice a
+then give the partition number which should have the Boot flag.
+Press w to save
+
+For example, to set the /dev/sda1 partition with the boot flag:
+
+fdisk /dev/sda
+Command (m for help): a
+Partition number (1-4): 1
+Command (m for help): w
+
+Then, you need to set the mbr (it will replace the grub installation if it has
+already been installed)
+
+In the source tree, change to the mbr directory
+
+then run the command
+
+cat mbr > /dev/yyy (with yyy the boot disk name, e.g. sda, sdb ...)
+
+Step 6 : test
+
+Now the installation is completed, the system must be rebooted to check that
+syslinux works properly.
+
+ATTENTION : You should create a rescue boot media for your system. If 
+syslinux has a problem, your system will not reboot. You should have a
+liveCD, to rescue if you have a problem.
+
+Normally, with the minimal configuration file created above, your computer should
+start directly on the LFS kernel.
+
+Syslinux is installed.

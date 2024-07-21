@@ -1,0 +1,27 @@
+TITLE:		Remote X
+LFS VERSION:	any
+AUTHOR:		Ron885 <ron885@linuxfreemail.com>
+
+SYNOPSIS: This hint explains how to setup and and get working remote X.
+
+HINT:
+
+Setting up remote X is very simple.  You need two computers... one will be
+called A and one will be called B.  An X server needs to be running on A.  To
+allow computer B to connect to computer A's X server, you need to run
+'xhost +Bip' on computer A.  Than you have to follow the directions based on
+how you are connecting to computer B.
+
+If you are using ssh and have 'ForwardX11 yes' in your config:
+	You don't have to setup anything special, all you have to do is ssh
+	into computer B from computer A and run the programs normally, the ssh
+	will do everything for you.
+
+If you are using telnet or you can't put 'ForwardX11 yes' in your config:
+	Make sure port 6000 is open on computer A.  Telnet or ssh into computer
+	B and type 'export DISPLAY=Aip:0'.  Then you can just run programs like
+	you normally would.
+
+If it works, you should see the program you ran display on computer A.
+
+Enjoy!

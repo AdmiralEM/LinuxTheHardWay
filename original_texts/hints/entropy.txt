@@ -1,0 +1,440 @@
+AUTHOR:		Robert Connolly <robert at linuxfromscratch dot org> (ashes)
+
+DATE:		2007-05-16
+
+LICENSE:	Public Domain
+
+SYNOPSIS:	Entropy and random number generators in Linux
+
+PRIMARY URL:	http://www.linuxfromscratch.org/hints/
+
+DESCRIPTION:
+The word "entropy" generally means "chaos", "disorder", or "uncertainty". In
+this hint "entropy" is used to describe random computer data.
+
+Many system components depend on entropy (random numbers) for various tasks.
+One of the simplest examples would be the fortune(6) program, which gives a
+random quote from a list when we log in. Another simple example is a solitaire
+card game, or the shuffle option in a music player. Without random numbers
+these programs would generate the same results every time they run. The above
+examples are low security applications. It is not critical for them to use
+high quality random numbers, and in applications like these the current system
+time and date is usually an adequate source of entropy.
+
+Examples of medium security uses for entropy would be applications like
+mktemp(1), password salt, or the Stack Smashing Protector (SSP) GCC feature.
+These applications need unpredictable entropy to function securely, but the
+life span of these applications is generally short, so they do not need to use
+the highest quality entropy available. Using the system time is unsafe for
+these applications because it is predictable.
+
+Cryptographic keys tend to have a very long life, often several years. Even
+after the key is eventually replaced, everything it was used to encrypt remains
+only as safe as the entropy used to generate the key. For cryptography we want
+to use the best entropy possible, and conserve this high quality entropy
+specifically for cryptography.
+
+Generating true entropy in a computer is fairly difficult because nothing,
+outside of quantum physics, is random. The Linux kernel uses keyboard, mouse,
+network, and disc activities, with a cryptographic algorithm (SHA1), to
+generate data for the /dev/random device. One of the problems with this is that
+the input is not constant, so the kernel entropy pool can easily become empty.
+The /dev/random device is called a "blocking device". This means if the entropy
+pool is empty applications trying to use /dev/random will have to wait,
+indefinitely, until something refills the pool. This is both a feature and a
+nuisance, and can cause a denial of service depending on the application.
+Another problem with using the keyboard, mouse, network, and disc activity is
+that on idle, unmanned, and disc-less systems there is very little, or no, input
+of this kind. It is also theoretically possible for an observer (keyboard or
+network sniffer) to predict the entropy pool without having root level access.
+The only real solution to these vulnerabilities is in using a hardware-based
+random number generator. These hardware devices usually use electrical static
+as a source of entropy, because there is currently no technology that can
+reliably predict this. The best hardware random number generators use
+radioactive decay as an entropy source.
+
+The /dev/urandom device is referred to as a pseudo-random device (like-random),
+although /dev/random is also pseudo-random but to a lesser extent. /dev/urandom
+uses small amounts of data from /dev/random to seed a secondary entropy pool.
+This has the effect of inflating the real entropy so it can be conserved. Using
+/dev/urandom can cause /dev/random's pool to become empty, but if this happens
+/dev/urandom will not block, and it will continue using the last available
+seed. This makes /dev/urandom theoretically vulnerable to outputting repeating
+data, depending on the limitations of the algorithm used, but this is extremely
+rare and to my knowledge has never actually happened. /dev/urandom is widely
+considered safe for all cryptographic purposes, except by the most paranoid
+people.
+
+This hint contains links to web sites and patches to help you get more entropy,
+and use it more conservatively.
+
+PREREQUISITES:
+Glibc-2.5, for the arc4random patch.
+The entropy daemons have no prerequisites.
+
+HINT:
+
+	Contents:
+		Gkernel hwrandom daemon
+		Audio/Video entropy daemon
+		LavaRnd entropy daemon
+		Frandom and Erandom kernel drivers
+		Fortuna kernel driver
+		Arc4random library
+		Entropy pool size
+		OpenSSL modifications
+		Testing
+
+- Gkernel hwrandom daemon:
+http://linuxcertified.com/hw_random.html
+Some systems have hardware devices for random numbers. The kernel supports
+many of them. For more information check the above web site. Also see:
+http://sourceforge.net/projects/gkernel/
+
+The installation is strait forward for Glibc:
+
+./configure --prefix=/usr &&
+make &&
+make install
+
+--- End Glibc installation ---
+
+The installation is a little messy for uClibc:
+uClibc does not have argp, because argp is not defined by any standard and
+does not belong in a C library (it's Glibc specific). So get the stand-alone
+argp library:
+http://www.lysator.liu.se/~nisse/misc/argp-standalone-1.3.tar.gz
+
+For uClibc first unpack argp-standalone, we don't need to install this:
+
+cd argp-standalone-1.3 &&
+./configure --prefix=/usr && make
+
+Then unpack rng-tools:
+
+cd rng-tools-2 &&
+env LIBS=-largp \
+        CFLAGS="-O2 -L../argp-standalone-1.3 -I../argp-standalone-1.3" \
+        ./configure --prefix=/usr && make && make install
+
+--- End uClibc installation ---
+
+rng-tools expects to find /dev/hw_random. This device was renamed to
+/dev/hwrandom in Linux-2.6, so you may need to start 'rngd' like this:
+
+rngd -r /dev/hw_random
+
+This should be started on boot just like audio-entropyd, below.
+
+This package comes with a test program named 'rngtest'.
+
+- Audio/Video entropy daemon:
+http://www.vanheusden.com/aed/
+http://www.vanheusden.com/ved/
+These two daemons use either the static noise from the sound card, or the video
+frames from a video4linux device. These devices have a never ending supply of
+entropy created by thermal fluctuation and electric fields on the devices.
+These entropy gathering daemons depend on the kernel driver for your hardware,
+to work properly, be it your sound or video card. These programs will refill
+the kernel entropy pool as needed. The programs can be used together in
+combination, including with Gkernel, to maintain a kernel entropy pool which
+uses several different sources.
+
+http://www.vanheusden.com/aed/audio-entropyd-0.0.6.tgz
+
+make &&
+install -g 0 -o 0 -m 755 audio-entropyd /usr/sbin/audio-entropyd
+
+Edit your /etc/rc.d/init.d/random and start audio-entropyd just after seeding
+urandom, and stop it just after saving random-seed. Or use the boot script
+template and make a dedicated boot script. The PID file will be in /var/run.
+You don't need to reboot to use it, but you do need your sound card driver
+loaded, and be root. Add something like this:
+
+if [ -f /usr/sbin/audio-entropyd ] && [ -c /dev/dsp ]; then
+        echo "Starting audio entropy daemon..."
+        loadproc /usr/sbin/audio-entropyd
+fi
+
+and...
+
+echo "Stopping audio entropy daemon..."
+killproc /usr/sbin/audio-entropyd
+
+http://www.vanheusden.com/ved/video_entropyd-0.7.tgz
+
+make &&
+install -g 0 -o 0 -m 755 video_entropyd /usr/sbin/video_entropyd
+
+Add this to root's crontab every minute or so. It can not run as a daemon
+because it will lock the video device. Depends on video4linux. Using one or
+both of these daemons should be adequate for sustained moderate-to-heavy use.
+
+Nothing else needs to be done, applications can continue to use /dev/random
+and /dev/urandom normally. You should notice crypt keys get made faster.
+
+Note: I have not personally used video_entropyd.
+
+- LavaRnd entropy daemon:
+http://www.lavarnd.org/
+This uses hardware as a source of entropy much like Video Entropy Daemon.
+I have not personally used this daemon.
+
+- Frandom and Erandom kernel drivers:
+http://frandom.sourceforge.net/
+Frandom stands for "fast random". Erandom stands for "economical random".
+They both use the arcfour algorithm
+
+The /dev/frandom device is similar to /dev/urandom except that it only takes
+one single seed from /dev/random, each time it is opened. As a result it is
+able to output random data much faster than /dev/urandom because there is
+no stirring of frandom's pool. This is ideal for wiping discs, or any time you
+need gigabytes of random data.
+
+The /dev/erandom device uses the constantly changing state of frandom's pool,
+in a read-only mode, for entropy. /dev/erandom consumes no entropy from
+/dev/random, and is ideal for applications that want to open the device
+thousands of times, such as Stack Smashing Protector. /dev/erandom is also
+well suited for any medium security application, and should be used for any
+non-cryptographic application instead of /dev/urandom. /dev/erandom will
+eventually output repeating data, but can be reinitialized by using
+/dev/frandom (dumping one block from /dev/frandom to /dev/null). This is
+done automatically after each reboot, and should be done once per week.
+
+http://www.linuxfromscratch.org/patches/downloads/linux/
+	linux-2.6.21.1-frandom-1.patch
+
+	CONFIG_FRANDOM is in "Character Devices" and "UserMode" menus.
+
+Add Udev permissions with the following command:
+echo 'NAME=="erandom", MODE="0444"
+NAME=="frandom", MODE="0444"' >>/etc/udev/rules.d/25-lfs.rules
+
+Add this to your crontab, so /dev/erandom will be reinitialized weekly:
+0 0 * * 1 /bin/dd if=/dev/frandom of=/dev/null count=1 >/dev/null 2>&1
+
+Note: The sysctl interfaces are considered obsolete in the latest Linux-2.6
+kernels, and may not be supported much longer. As a result the SYSCTL_ERANDOM
+interface is no longer recommended, but it's there if you want it.
+
+- Fortuna kernel driver:
+http://jlcooke.ca/random
+http://en.wikipedia.org/wiki/Fortuna_(PRNG)
+The Fortuna driver is a complete replacement for the Linux random number
+driver. While the vanilla kernel uses the SHA1 algorithm, the Fortuna driver
+uses AES and SHA-256, and is capable of producing far more volume of random
+data from the same entropy, due to using superior algorithms. The Fortuna
+driver is also able to use any other algorithms supplied by the Linux crypto
+API. The Fortuna driver includes several other improvements to the vanilla
+driver.
+
+At the time of this writing the patch on the Fortuna home page does not build
+with linux-2.6.21.1, because of changes to the crypto api.
+
+	CONFIG_CRYPTO_RANDOM_FORTUNA - This depends on CONFIG_CRYPTO, SHA256,
+					and AES, in the crypto menu.
+
+- Arc4random library:
+The arc4random interfaces were designed by OpenBSD to solve the problem of
+emptying the kernel entropy pool with non-cryptographic applications. In
+Linux this is solved with /dev/erandom. The arc4random library function is
+a companion function. It is designed to never fail.
+
+For example, a program can be coded to try to use /dev/urandom for entropy,
+and use the gettimeofday library function if /dev/urandom fails (like in a
+chroot). The problem with this is that when the gettimeofday function is
+being used it is fairly obvious that the output has a sequence, and it tells
+an attacker that the system time is being used for entropy in this program.
+The arc4random library function also uses /dev/urandom (or /dev/erandom),
+and the gettimeofday library function if /dev/urandom fails, except that the
+entropy is digested by the arcfour algorithm. The result is that even with a
+one microsecond difference from gettimeofday, arc4random's output will be
+completely different, and it is impossible for an attacker to know whether
+the entropy came from /dev/urandom or the system time. Furthermore, even if
+/dev/urandom (or /dev/erandom), and gettimeofday fail, arc4random will use the
+uninitialized variables in a large character array (garbage data in memory).
+
+Many packages will use the arc4random library function if it is found, such as
+OpenSSL, OpenSSH, OpenNTPD, and Bind9.
+
+The arc4random library function discards the first 256 bytes of the stream to
+deal with the early key stream weakness, which is described in the paper below.
+
+This function is included with uClibc. There is a patch below for Glibc.
+
+Read more about Arcfour here:
+Paper describing Arcfour -
+http://www.mozilla.org/projects/security/pki/nss/\
+	draft-kaukonen-cipher-arcfour-03.txt
+Paper describing the RC4 (and arcfour) weakness -
+http://www.wisdom.weizmann.ac.il/~itsik/RC4/Papers/Rc4_ksa.ps
+
+This patch adds the arc4random library function, and uses arc4random() in
+tempname so it is used by the mktemp() family of functions, instead of
+gettimeofday(), and to res_init, res_mkquery, and bindrsvprt to improve the
+resolver and port number randomization, instead of using getpid().
+
+http://www.linuxfromscratch.org/patches/downloads/glibc/
+	glibc-2.5-arc4_prng-1.patch
+
+This patch also adds the --with-prng-device option. If you're using
+/dev/erandom then use '--with-prng-device=/dev/erandom' when configuring Glibc.
+
+Install the arc4random.3 manual page with this command:
+install -m644 ../glibc-2.5/manual/arc4random.3 /usr/share/man/man3
+
+OpenSSL will not detect arc4random. If you want to use arc4random with OpenSSL
+instead of /dev/urandom then use the following command in OpenSSL's source:
+
+sed -e 's/__OpenBSD__/__linux__/' -i crypto/rand/rand_unix.c
+
+This is used with RAND_add, for RAND_bytes and RAND_pseudo_bytes, to re-seed the
+random number generator for each thread.
+
+- Entropy pool size:
+You can increase the size of your kernel entropy pool. This will help you
+retain entropy when it's available for when you need it. You can see the
+current size with:
+cat /proc/sys/kernel/random/poolsize
+or
+sysctl kernel.random.poolsize
+
+This was recently increased from 512 bytes to 4096 bytes. This /proc file, and
+sysctl, is read-only, and can not be changed without hard coding it in the
+kernel.
+
+If you want to increase this then I suggest you use the Grsecurity kernel patch
+at: http://www.grsecurity.net/
+
+And enable the "Larger entropy pools" option to double the size:
+	CONFIG_GRKERNSEC_RANDNET
+
+- OpenSSL modifications:
+OpenSSL command line tools will try to use the $RANDFILE, $HOME/.rnd, or
+$(pwd)/.rnd file to initially seed its random number generator. If none are
+found then the "PRNG not seeded" error message may occur. We can build OpenSSL
+with a contingency plan, to use /dev/urandom, instead of causing an error.
+
+Do this with the following command in the OpenSSL source:
+
+sed -e 's/__OpenBSD__/__linux__/' \
+	-e 's/arandom/urandom/' -i crypto/rand/randfile.c
+
+- Testing entropy quantity
+You should try to test this on an idle machine. Nothing compiling in
+background, no updatedb running, etc. Moving/clicking the mouse, keyboard, and
+even network traffic will create entropy in the pool, and affect results.
+
+Fetch this:
+http://www.linuxfromscratch.org/~robert/hlfs/hints/attachments/entropy/
+	entropy_avail.sh
+
+Open two windows with non-root login. This is easiest to do in X, else split
+a console window in two. In one window do this:
+
+sh ./entropy_avail.sh
+
+In the next window do something like this:
+
+dd if=/dev/{u,f,e}random of=/dev/null bs=1 count=1024
+
+If one or both of the entropyd programs are running you should see the pool
+being refilled. Kill the entropyd program(s) and you should see it does not
+refill so quickly. Move the mouse and play with it if you like. If you use a
+small count like count=512 the entropyd program(s) may not refill immediately
+because the pool is still large enough. This is to improve performance.
+
+You might want to delete entropy_avail.log when you're done.
+
+- Testing entropy quality
+The 'ent' program runs various tests on data you supply to check for patterns.
+For a better description see:
+http://www.fourmilab.ch/random/
+
+Download the 'ent' program from here:
+http://www.fourmilab.ch/random/random.zip
+
+This package will unpack to your current directory, so it is best to make a
+new empty directory and unpack random.zip in there. This package only needs a
+'make' command to compile.
+
+To test your random generators do something like this:
+
+dd if=/dev/erandom of=erandom.txt count=100
+./ent erandom.txt
+
+or:
+
+dd if=/dev/erandom count=512|./ent -b
+
+These tests can take a very long time.
+
+From the people who made Audio/Video entropy daemon there is another randomness
+test program:
+http://www.vanheusden.com/Linux/RNGTEST.tgz
+
+To compile RNGTEST:
+
+gcc -o RNGTEST RNGTEST.c
+
+To use RNGTEST:
+
+dd if=/dev/frandom count=2048 | RNGTEST
+and:
+cat /bin/true | RNGTEST
+
+You'll notice /bin/true fails the RNGTEST multiple times.
+
+ACKNOWLEDGMENTS:
+* Thanks to Eli Billauer for the Frandom suite.
+	http://frandom.sourceforge.net/
+	http://www.billauer.co.il/
+* Thanks to OpenBSD for the arc4random library.
+	http://www.openbsd.org/cgi-bin/cvsweb/src/lib/libc/crypt/arc4random.c
+* Thanks to hlfs-dev at linuxfromscratch.org
+
+CHANGELOG:
+[2004-03-29]
+* Initial post
+[2004-03-30]
+* Added test.
+[2004-04-18]
+* Added frandom/erandom.
+[2004-04-25]
+* Added hardware random url and notes.
+* Switched the entropy_avail program to a more simple shell script.
+[2004-05-07]
+* Added patch for kernel 2.6 and for mktemp.
+* Added LavaRnd.
+[2004-10-01]
+* Added libc-headers patch.
+[2004-10-28]
+* New patch tarball url added.
+* Added second url for linux-libc-headers patch.
+[2004-11-03]
+* Added Libarc4random.
+* Changed Mktemp patch from frandom to libarc4random.
+[2004-11-28]
+* Added patch for linux-2.6.7 and older kernels because the 2.6.9 patch
+  does not compile on older kernel versions.
+[2005-02-05]
+* Added bootscript example for aed.
+[2005-02-12]
+* Added pseudo_random kernel patch and integrated arc4random with libc.
+* Added help for increasing entropy pool size.
+[2005-02-15]
+* Added patch for OpenSSL.
+[2005-04-04]
+* Update the kernel random poolsize modification method. This must be hard coded
+  now.
+[2005-04-09]
+* Add argp standalone library so rng-tools will build on uClibc.
+[2007-05-16]
+* Updated the description.
+* Added Fortuna kernel driver.
+* Added some OpenSSL additions.
+* Updated arc4random Glibc patch.
+* Updated Frandom kernel patch.
+* Added table of contents.
+* Added entropy quality tests.
+* Fixed the Udev config thanks to Bryan Kadzban.

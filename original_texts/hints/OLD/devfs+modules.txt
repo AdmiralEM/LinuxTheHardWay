@@ -1,0 +1,238 @@
+TITLE:		Devfs with kernel modules
+LFS VERSION:	All
+AUTHOR:		Mark Ellis (mark.uzumati@virgin.net)
+
+SYNOPSIS:
+	How to use kernel module autoloading with devfs and devfsd
+
+HINT:
+--------------------------------------------------------------------------------
+Devfs is a virtual filesystem, like /proc, that an appropriately configured
+kernel generates to replace the device nodes found in /dev, used to access the
+hardware, but you probably already knew that. For more see
+
+http://www.atnf.csiro.au/people/rgooch/linux/
+
+and the kernel docs (linux/Documentation/filesystems/devfs).
+
+A common problem when using devfs appears to be the use of auto loaded kernel
+modules that provide device nodes under /dev. It's a chicken and egg problem,
+modules are loaded when the node is accessed in /dev, but until the module loads
+there is no device node. This hint attempts to explain how auto loading using
+devfs is done the way it was intended, the "intended" part being important
+because there are a number of workarounds, all of which duplicate to a certain
+extent functionality that is already present.
+
+All of this is to my personal understanding, particulary the why's which I have
+deduced from scatterings of documentation and the functionality i have found,
+if anyone knows that it is wrong, mistaken or otherwise, please shout :)
+
+Throughout this hint I'm going to use ALSA, the Advanced Linux Sound
+Architecture modules, as an example, primarily because they are the most complex
+set of modules i have come across and involve practically everything you need to
+know about modules, and also because it crops up time and again on the BLFS
+support mailing list. This hint will probably look like it is actually for ALSA,
+but everything here should hopefully be applicable to any kernel module.
+
+
+1) Aliasing device nodes to modules
+-----------------------------------
+
+I'm assuming you know the basics of module configuration, particularly aliases,
+using /etc/modules.conf. If not, go and have a look at the modutils
+documentation.
+
+The ALSA documentation gives a basic setup for autoloading modules using a
+normal /dev directory, it looks something like this :-
+
+       alias char-major-116 snd
+       options snd snd_major=116 snd_cards_limit=1
+       alias snd-card-0 snd-<your sound card>
+       options snd-<your sound card> snd_index=0 snd_id="GusPnP"
+
+The important part for us is the first line, which essentially says, when a
+device node is accessed that has a major number of 116, we need the module
+called snd.o. This won't work with devfs because we dont have the device file
+until the module is loaded.
+
+This is the one of the functions associated with devfsd, the devfs daemon. A lot
+of people think that devfsd is only needed to provide all those backwards
+compatible symlinks for non-devfs aware applications, but it also helps fix this
+non-existent device file problem, which devfs alone cannot do. You'll therefore
+need to start devfsd at boot, see the appendix if you don't already have it
+set up.
+
+Now for a more helpful alias in modules.conf.
+
+	alias snd-card-0 snd-<your sound card>
+	alias /dev/snd* snd-card-0
+
+ALSA with devfs puts all the native sound device files in the /dev/snd/
+directory, so now whenever a node in /dev/snd/ is accessed, and that includes
+listing the directory, devfsd notices the node does not exist, finds that the
+node(s) are aliased to snd-whatever, and requests that the module be loaded.
+The modules create the devices and the application doesn't know they weren't
+there a second ago.
+
+
+An alternative to aliasing in modules.conf is available, using the devfsd
+configuration file /etc/devfsd.conf directly. I prefer the method above, it
+comes across as being a little more straightforward, but if you want to try
+something like :-
+
+	LOOKUP snd MODLOAD snd-<your sound card>
+
+in devfsd.conf, this should give similar results.
+
+
+Enabling OSS emulation with ALSA requires a little more work. The ALSA
+documentation says :-
+
+	alias sound-slot-0 snd-card-0
+	alias sound-service-0-0 snd-mixer-oss
+	alias sound-service-0-1 snd-seq-oss
+	alias sound-service-0-3 snd-pcm-oss
+	alias sound-service-0-8 snd-seq-oss
+	alias sound-service-0-12 snd-pcm-oss
+
+The first number in "sound-service-?-?" corresponds to the number of the sound
+card, in many cases literally the slot it occupies on the motherboard, and
+corresponds to the "sound-slot-?" entry.
+The second number is the minor number of the corresponding device file, so
+/dev/sound/dsp has a minor number of 3, and requires the snd-pcm-oss module. In
+devfs speak this translates to :-
+
+	alias /dev/sound snd-card-0
+	alias /dev/sound/mixer snd-mixer-oss
+	alias /dev/sound/sequencer* snd-seq-oss
+	alias /dev/sound/dsp* snd-pcm-oss
+	alias /dev/sound/audio* snd-pcm-oss
+	alias /dev/sound/adsp* snd-pcm-oss
+
+Note that different sound cards will support different features, and these
+entries may be more than enough or insufficient for your needs. I deduced most of
+these using an ISA PnP SoundBlaster 16, but the adsp* entry isn't relevant for
+me, it came out of devices.txt in the kernel documentation, must reading for any
+LFSer :) If you have problems with specific features of your card under OSS
+emulation, manually modprobe each oss mudule in turn and see what devices it
+creates.
+
+If you want your entries in devfsd.conf rather than modules.conf :-
+
+	LOOKUP sound MODLOAD snd-<your sound card>
+	LOOKUP sound/mixer MODLOAD snd-mixer-oss
+	LOOKUP sound/sequencer MODLOAD snd-seq-oss
+	LOOKUP sound/dsp MODLOAD snd-pcm-oss
+	LOOKUP sound/audio MODLOAD snd-pcm-oss
+	LOOKUP sound/adsp MODLOAD snd-pcm-oss
+
+
+
+You should hopefully now have a setup that will at least auto load modules for
+sound applications run as root that can work with devfs naming schemes.
+
+
+2) Adding entries for backward compatibility
+--------------------------------------------
+
+Alas many (most ?) applications do not yet support the relatively new naming
+scheme used by devfs. In some cases it is easy to re-configure these programs
+to point to the new namespace, and for the rest devfsd will happily create
+a host of symlinks to point from the old names to the new. However, it must be
+told which of the old names correspond to modules that need to be loaded, in the
+same way as the 'true' devices. It's easy to find out what you need, just
+modprobe the modules by hand and see where the symlinks go.
+
+Native ALSA devices all live in /dev/snd/ whether you use devfs or a static
+/dev, so you'll only need backwards compatibility for OSS devices :-
+
+	alias /dev/mixer snd-mixer-oss
+	alias /dev/sequencer* snd-seq-oss
+	alias /dev/dsp* snd-pcm-oss
+	alias /dev/audio* snd-pcm-oss
+	alias /dev/adsp* snd-pcm-oss
+
+	alias /dev/dmfm snd-card-0
+	alias /dev/dmmidi snd-card-0
+	alias /dev/midi00 snd-card-0
+ 
+Notice the last three entries. With the old naming scheme there is no common
+element we can use to autoload the basic functionality, such as a shared
+directory name, so each entry must be listed individually.
+
+So assuming you remembered to turn on compatibility mode in devfsd (the first
+REGISTER/UNREGISTER lines in devfsd.conf), accessing /dev/dsp will load the
+oss module and create a symlink to /dev/sound/dsp.
+
+Again, if you'd rather use devfsd.conf :-
+
+	LOOKUP mixer MODLOAD snd-mixer-oss
+	LOOKUP sequencer MODLOAD snd-seq-oss
+	LOOKUP dsp MODLOAD snd-pcm-oss
+	LOOKUP audio MODLOAD snd-pcm-oss
+	LOOKUP adsp MODLOAD snd-pcm-oss
+
+	LOOKUP dmfm MODLOAD snd-<your sound card>
+	LOOKUP dmmidi MODLOAD snd-<your sound card>
+	LOOKUP midi00 MODLOAD snd-<your sound card>
+
+
+
+3) More configuration
+---------------------
+
+You've got your modules autoloading by device entry, and compatibility
+symlinks, which is suffucient for many uses.
+
+Devfs by default creates device nodes owned by user and group root,
+with restrictive permissions in most cases, not much use unless you like
+danger and always login as root :)
+
+For our ALSA setup, a good solution is to create an 'audio' group and
+give its members read/write access to the audio devices. The following
+in devfsd.conf accomplishes just that:-
+
+	REGISTER       ^sound$		PERMISSIONS root.audio 0750
+	REGISTER       ^sound/.*	PERMISSIONS root.audio 0660
+	REGISTER       ^snd$		PERMISSIONS root.audio 0750
+	REGISTER       ^snd/.*		PERMISSIONS root.audio 0660
+
+If you use compatibility symlinks and find the permissions on these are
+not to your liking, remember to add entries for these as well.
+
+
+Finally, since modules may be loaded and unloaded a number of times,
+any extra configuration related to devices may be lost, hence the
+'post-install' and 'pre-remove' entries in modules.conf, which
+do exectly that, run arbitrary commands after module loading and
+before unloading. The ALSA sound channels are muted by default,
+you must unmute them the first time they are used. To retain your
+volume settings, in modules.conf use :-
+
+post-install snd-sb16 /usr/sbin/alsactl restore
+pre-remove snd-sb16 /usr/sbin/alsactl store
+
+which store the settings when the modules are unloaded, and restore
+them the next time the modules are loaded.
+
+For other modules these commands can be anything you like. For example
+when i hotplug my USB mouse, the hotplug system inserts the
+appropriate modules, then i have a post-install entry to start gpm.
+
+
+Appendix
+--------
+Installing devfsd is easy. Get it from the devfs web page above.
+After unpacking, edit the GNUmakefile for stuff like CFLAGS if you
+want, then just:-
+
+make
+make install
+
+which puts the daemon in /sbin and a couple of config files in /etc.
+
+Make an addition to your bootscripts to run '/sbin/devfsd /dev' as the
+very first thing that happens. Thats it !
+
+The default devfsd.conf enables all those compatibility symlinks. If
+you don't need them coment out the first REGISTER/UNREGISTER lines.

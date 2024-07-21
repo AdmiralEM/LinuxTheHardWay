@@ -1,0 +1,219 @@
+TITLE:		Setting up Automount
+LFS VERSION:	Any
+AUTHOR:		R. Cort Tompkins <rtompkin@cs.odu.edu>
+SPECIAL THANKS TO:
+	Tan Siong Hua <stsh@pd.jaring.my>
+
+SYNOPSIS:
+	The mounting and unmounting of removable media is a tedious task, 
+especially when it needs to be done by unprivileged users.  Automount is a 
+utility that will automatically unmount specified devices after a given 
+interval, and then remount them automatically upon subsequent access.  This 
+makes the mount/unmount process relatively transparent to the end user.  
+
+HINT:
+To get started you'll need a few things:
+1) Automount support in the kernel.  This is compiled into the kernel by 
+default unless you explicitly removed it during kernel configuration.  If this 
+is the case, reconfigure your kernel (i.e. "make menuconfig" in your kernel 
+source directory) and enable Automount v4 as a built-in feature under the 
+"File Systems" heading.
+
+2) The automount user utilities.  Download the latest version 3 utilities from 
+ftp://ftp.kernel.org/pub/linux/daemons/autofs (autofs-3.1.7.tar.bz2 at the time
+of this writing).  Extract this archive and cd into it.  Before compilation
+and installation, we'll take preemptive action to stop a compile-time error:
+
+	$ cp modules/lookup_program.c modules/lookup_program.c.old
+	$ sed "s/OPEN_MAX/FOPEN_MAX/" modules/lookup_program.c.old > \ 
+	  modules/lookup_program.c
+
+	$ ./configure --prefix=/usr --sbindir=/sbin
+	$ make
+	$ make install
+
+If you look in the sample subdirectory, you'll find rc.autofs, a startup script
+designed to help automate the automounting process.  Use this if you wish, but 
+I will give instructions for creating a slightly simpler script which should 
+help you better understand the workings of automount.
+
+First we'll create the script itself, as root:
+
+$ cat > /etc/rc.d/init.d/auto_mount << "EOF"
+#!/bin/bash
+# Begin /etc/rc.d/init.d/auto_mount
+#
+# Automount script by Cort Tompkins - rtompkin@cs.odu.edu, derived
+# from ethnet script by Gerard Beekmans - gerard@linuxfromscratch.org
+
+source /etc/rc.d/init.d/functions
+
+case "$1" in
+	start)
+
+	for mountspec in $(/bin/ls /etc/sysconfig/automount-config/*.auto)
+	do
+		source $mountspec
+		MOUNT_BASE=${mountspec%.auto}
+		echo "Starting automount for group ${MOUNT_BASE##*/}  ..."
+		/sbin/automount --timeout=${TIMEOUT} $MOUNTPOINT file \
+		$MOUNT_BASE.map
+		evaluate_retval
+	done
+	;;
+	
+	# assume all instances of automount were started by this script
+	stop)
+		echo -n "Stopping automount ..."
+		# Unmount everything mounted by automount
+		/bin/killall -USR1 automount
+		/bin/killall automount
+		evaluate_retval
+		;;
+	restart)
+		$0 stop
+		sleep 1
+		$0 start
+		;;
+	*)
+		echo "Usage: $0 {start|stop|restart}"
+		exit 1
+		;;
+esac
+# End /etc/rc.d/init.d/auto_mount
+EOF
+
+Please resist the temptation to name the startup script "automount."  This
+means that the script will get the same kill signals we send to automount
+proper.
+
+Give the script proper permissions:
+$ chmod 754 /etc/rc.d/init.d/auto_mount
+
+Since I use automount for network shares, I only want it to be running when
+in a networkable state.  On the very rare occasion that you find yourself in
+an unnetworked runlevel, you can always mount your removable devices manually.
+$ cd /etc/rc.d
+$ for rl in $(seq 0 2; echo 6); do
+  > cd rc${rl}.d 
+  > ln -s ../init.d/auto_mount K45auto_mount
+  > cd ..
+  > done
+$ for rl in $(seq 3 5); do
+  > cd rc${rl}.d
+  > ln -s ../init.d/auto_mount S25auto_mount
+  > cd ..
+  > done
+
+Create the sysconfig directory that the script will use:
+$ mkdir /etc/sysconfig/automount-config
+
+Inside /etc/sysconfig/automount-config/, you'll create pairs of files for each 
+group of devices you wish to automount.  The format of the files is as follows:
+
+xxxx.auto:
+MOUNTPOINT=/path/to/mountdir
+TIMEOUT=999
+
+xxxx.map:
+MOUNTNAME	-fstype=FSTYPE[,OPTIONS]	:/path/to/device
+MOUNTNAME	-fstype=FSTYPE[,OPTIONS]	:/path/to/device
+
+DO NOT create the "MOUNTNAME" directory under the "MOUNTPOINT" yourself.
+Automount will create and remove this directory as needed.
+
+The format of the .auto files is arbitrarily determined by the workings of the 
+auto_mount script; more information on the format of the .map files can be 
+found using "man 5 autofs".  The OPTIONS used in the .map file are the same 
+options you would pass to mount with the -o flag.  Note that you can have 
+multiple entries in a .map file, but they will all assume the same mountpoint 
+and timeout specified in the corresponding .auto file of the same prefix.  The 
+auto_mount script can handle any number of .map/.auto pairs (so long as the 
+pairs both have the same prefix).  Here are some examples:
+
+--
+cdrom.auto:
+MOUNTPOINT=/mnt
+TIMEOUT=5
+
+cdrom.map:
+cd	-fstype=iso9660,ro	:/dev/cdrom
+--
+The above pair will automount /dev/cdrom at /mnt/cd with a timeout of 5 
+seconds.  This means that after five seconds of inactivity the cdrom device will
+be automatically unmounted, allowing you to put in a new CD to be automatically
+remounted upon subsequent access.  You can verify this after initializing
+automount:
+
+$ ls /mnt/cd; mount
+
+You will see that the cdrom is mounted. Wait five seconds.
+
+$ mount
+
+If everything is working properly, automount will have unmounted the cdrom.
+Subsequent access to /mnt/cd will cause it to be remounted.
+
+Most CD drives lock their CD trays while mounted, preventing you from removing 
+the media while the drive is mounted.  Floppy drives, on the other hand, have 
+no such protection; it is best to keep their timeout value as small as possible:
+--
+floppy.auto:
+MOUNTPOINT=/mnt
+TIMEOUT=1
+
+floppy.map:
+flop	-fstype=auto	:/dev/fd0
+--
+This mounts the floppy drive at /mnt/flop.  Note that a timeout of 0 will 
+disable the automatic unmounting altogether.  
+
+Automount can also be used to mount network shares:
+--
+samba.auto:
+MOUNTPOINT=/smb/win2kbox
+TIMEOUT=300
+
+samba.map:
+c -fstype=smbfs,username=samba,password=xxxx	://win2kbox/c
+d -fstype=smbfs,username=samba,password=xxxx	://win2kbox/d
+--
+The two samba shares specified will be automounted at /smb/win2kbox/c and 
+/smb/win2kbox/d
+
+One final note of caution (from the autofs man page):
+
+UNSUPPORTED:
+   The  automounter  does  not  support  direct  maps or mount
+   trees (more than one file system to be mounted under a spe-
+   cific automount point)...
+
+This (unfortunately) means that you can't have separate 
+.auto/.map pairs with the same MOUNTPOINT.  Thus, the individual
+floppy and cdrom examples used above cannot be used together!  The
+best alternative in this case is to combine them into one file pair:
+
+--
+removables.auto:
+MOUNTPOINT=/mnt
+TIMEOUT=1
+
+removable.map:
+cd	-fstype=iso9660,ro	:/dev/cdrom
+flop	-fstype=auto	:/dev/fd0
+--
+
+The more adventurous among you may also consider compiling and 
+installing automount v4 (beta). Its compilation and installation 
+is virtually identical to that outlined above, with the 
+exception of the patching of lookup_module.c (the first block of 
+commands).  Upgrading is as simple as:
+
+	$ tar xvfj autofs-4.0.0pre10.tar.bz2
+	$ cd autofs-4.0.0pre10
+	$ ./configure --prefix=/usr --sbindir=/sbin && make &&
+	  make install
+	$ /etc/rc.d/init.d/auto_mount restart
+
+Feel free to e-mail me with questions or suggestions.
+

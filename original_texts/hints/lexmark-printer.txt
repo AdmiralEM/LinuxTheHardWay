@@ -1,0 +1,86 @@
+AUTHOR: Richard A Downing <richard at linuxfromscratch dot org>
+
+DATE: 2005-08-20
+
+LICENSE: Creative Commons  Attribution-NonCommercial-ShareAlike 2.0
+
+SYNOPSIS: How to install Lexmark's binary printer drivers.
+
+DESCRIPTION:
+
+Lexmark publish printer drivers for a number of their printers on their
+website.  Unfortunately, these are binary drivers, not source code, so if
+you have one of these printers you have no choice but to use the binary
+driver.  This hint explains how to get the driver packages, extract the
+binary drivers, and install them on a LFS/BLFS system.
+
+ATTACHMENTS:
+
+None
+
+PREREQUISITES:
+
+You'll need to have installed CUPS and a compatible Ghostscript using the
+BLFS instructions.
+
+The Lexmark drivers are currently compiled using libstdc++.so.5, so install
+gcc-3.3.x from BLFS if you use gcc-3.4 or later.
+
+You will also need rpm2targz, from:
+     http://downloads.linuxfromscratch.org/rpm2targz.tar.bz2.
+
+HINT:
+
+Get the Lexmark package from http://www.lexmark.com.  I have a Z515 so I used:
+http://downloads.lexmark.com/cgi-perl/downloads.cgi?ccs=229:1:0:389:0:0&emeaframe=&fileID=1151
+
+Unpack the tarball like this:
+
+mkdir sandbox
+cd sandbox
+tar -xvf ../CJLZ600LE-CUPS-1.0-1.TAR.gz
+
+This gets you a script, but it won't work for LFS/BLFS setups (we don't
+have rpm for a start), so strip the script from the data with:
+
+tail -n +143 z600cups-1.0-1.gz.sh > install.tar.gz
+
+and unpack that tarball:
+
+tar -xvf install.tar.gz
+
+which gives you a lot of files, including two rpms.  These need to be 
+converted to tarballs:
+
+rpm2targz z600cups-1.0-1.i386.rpm
+rpm2targz z600llpddk-2.0-1.i386.rpm
+
+Now, providing your cups installation is standard (like BLFS), install the
+driver with:
+
+tar -xvzf z600cups-1.0-1.i386.tar.gz -C /
+tar -xvzf z600llpddk-2.0-1.i386.tar.gz -C /
+
+You can test that all is well by running the cups backend for the printer:
+
+/usr/lib/cups/backend/z600
+
+which should return something like:
+
+direct z600:/dev/usb/lp0 "Lexmark Lexmark 510 Series" "Lexmark Printer"
+
+Now restart your cups daemon:
+
+/etc/rc.d/init.d/cups restart
+
+You can now use either lpadmin or the web interface to set up your printer.
+
+ACKNOWLEDGEMENTS:
+
+  * The GENTOO Wiki of this topic:
+      http://gentoo-wiki.com/HOWTO_Lexmark_Printers
+
+CHANGELOG:
+
+[2005-08-20]
+  * Initial hint.

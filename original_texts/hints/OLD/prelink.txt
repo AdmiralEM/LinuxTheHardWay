@@ -1,0 +1,151 @@
+TITLE:		Prelinking
+
+LFS VERSION:	glibc-2.3+ based LFS
+
+AUTHOR:         Tushar Teredesai <Tushar@LinuxFromScratch.Org>
+
+SYNOPSIS:
+	Use prelinking - the official way to optimize!
+
+HINT:
+
+Primary Location of this hint:
+        http://www.linuxfromscratch.org/~tushar/
+The latest version of the hint and any relevant patches are available at that
+site. Please refer to the primary location before submitting
+bug-reports/enhancements to this hint.
+
+You may freely copy this document or create derivate works or distribute the
+document in any format. At your discretion, you may give credit to the original
+author:)
+
+Use the hint at your own risk. Neither the author, nor the Linux From Scratch
+project accept any responsibility for anything that happens when using these
+documents or associated files.
+
+An appropriate place to discuss this hint is blfs-support MailingList/NewsGroup
+at LinuxFromScratch.Org. I welcome bug reports but for support requests, please
+use the support list.
+
+Change Log:
+[2003-03-05]
+	* Added explaination for objprelink (which many confuse with prelink).
+	* Added a cron script to run prelink periodically.
+	* Added note that making a backup is optional.
+[2003-03-02]
+	* Added -f flag to force prelink.
+[2002-12-25]
+        * Changed primary location and e-mail address.
+[2002-10-24]
+	* First public version.
+
+Pre-requisites (post LFS):
+	* libelf - 0.8.2
+		<http://freshmeat.net/projects/libelf/>
+
+Packages to download:
+	* prelink - 20021002
+		<http://freshmeat.net/projects/prelink/>
+
+WARNING:
+* I have tested the hint on a glibc-2.3.1 system. Check out the lfs-dev archives
+  since October 2002 for how to upgrade to glibc-2.3.1.
+* Prelinking *can* mess up your system. So make appropriate backups.
+* Don't try to prelink during the chroot phase.
+
+What is prelinking? (From the horse's mouth - the man page)
+
+prelink is a program which modifies ELF shared libraries and ELF dynamically
+linked binaries, so that the time which dynamic linker needs for their
+relocation at startup significantly decreases and also due to fewer relocations
+the run-time memory consumption decreases too (especially number of unshareable
+pages). Such prelinking information is only used if all its dependant libraries
+have not changed since prelinking, otherwise programs are relocated normally.
+
+prelink first collects ELF binaries which should be prelinked and all the ELF
+shared libraries they depend on. Then it assigns a unique virtual address space
+slot for each library and relinks the shared library to that base address. When
+the dynamic linker attempts to load such a library, unless that virtual address
+space slot is already occupied, it will  map it into the given slot. After this
+is done, prelink with the help of dynamic linker resolves all relocations in the
+binary or library against its dependant libraries and stores the relocations
+into the ELF object. It also stores a list of all dependant libraries together
+with their checksums into the binary or library. For binaries, it also computes
+a list of conflicts (relocations which resolve differently in the binary's
+symbol search scope than in the smaller search scope in which the dependant
+library was resolved) and stores it into a special ELF section.
+
+At runtime, the dynamic linker first checks whether all dependant libraries were
+successfully mapped into their designated address space slots and whether they
+have not changed since the prelinking was done. If all checks are successful,
+the dynamic linker just replays the list of conflicts (which is usually
+significantly shorter than total number of relocations) instead of relocating
+each library.
+
+Previous prelinking efforts:
+
+Many people confuse prelink with a previous (and now obsolete) technique
+objprelink <http://freshmeat.net/projects/objprelink/>. Objprelink1 was first
+used as an optimization technique for KDE, but is now obsolete with the newer
+version of binutils that use combreloc. combreloc is now enabled by default in
+binutils. There is a newer version of objprelink (objprelink2) but according to
+the authors of objprelink, the technique does not provide any significant speed
+improvements over combreloc. Also objprelink2 does not work with gcc-3.x based
+compilers.
+
+Installing libelf:
+
+	./configure --prefix=/usr --enable-shared
+	make all install
+
+Installing prelink:
+
+	./configure --prefix=/usr
+	make all install
+
+Creating /etc/prelink.conf:
+
+The configuration file used by prelink is /etc/prelink.conf. It is to be
+populated by directories where your binaries and applications are located. In
+the following, replace DIRS by the list of directories you want prelink to
+search automatically.
+	DIRS="/bin /lib /sbin /usr /opt"
+	for i in $DIRS; do echo "-l $i"; done > /etc/prelink.conf
+
+Prelinking, the real deal:
+
+Check out the man page for prelink to get familiar with the various options that
+prelink accepts.
+
+I use the following steps for prelinking.
+
+Prelink has an undo option to revert the system back to a pre-prelink stage. But
+if you are paranoid, make a backup of the files that will be modified by prelink
+by performing a dry run. For the record, I don't:-)
+	cd /var/tmp
+	prelink -vnamRf 2>/dev/null > dry-run
+	cat dry-run | grep "Would prelink" | sed -e "s:Would prelink ::" > bkup
+	for f in `cat bkup`
+	do
+		d=`dirname ${f}`
+		install -d /var/tmp${d}
+		cp -Lv $f /var/tmp${f}
+	done
+
+Now do the actual prelinking.
+	prelink -vamRf 2>&1 > log
+
+Remember that you need to re-prelink the binaries on every upgrade. I use the
+following script which is run by cron:
+	if [ -f /var/lib/misc/runPrelink ]
+	then
+		prelink -au
+		prelink -vamRf --ld-library-path=/usr/lib/mozilla
+		rm -f /var/lib/misc/runPrelink
+	fi
+The /var/lib/misc/runPrelink file is created each time a package is upgraded on
+my system.
+
+
+Don't forget to send me bug reports and enhancements so that I can keep the hint
+updated.

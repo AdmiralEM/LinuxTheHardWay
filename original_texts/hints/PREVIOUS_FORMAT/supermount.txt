@@ -1,0 +1,124 @@
+TITLE:		Supermount Hint
+LFS VERSION:	ALL
+AUTHOR:		Dave Watson <djwatson@u.washington.edu>
+
+SYNOPSIS:
+	This hint explains how to get supermount and install it.
+	Supermount is a kernel patch that allows one to use removable 
+	media without mounting/unmounting it.
+
+HINT:
+
+	First off, a little background.   As far as I know, the newest
+supermount that exists 'officially' is for version 2.4.0 of the kernel.   There
+also exists a version for 2.4.5, ported by Jonas Berlin.   Also, Mandrake has
+a version of supermount in their 8.1 relase, with kernel 2.4.8.  These are the 
+latest patches I could find, so you need to be using one of these kernel
+versions, or do the porting yourself.
+
+Update 20/4/03:
+	Moritz Moeller-Herrmann says one can find patches for 2.4.20 kernels
+	here: http://members.optusnet.com.au/ckolivas/kernel/
+
+Update 14/5/02:
+       Michael Monreal pointed out that supermount patches agains the linus'
+tree can be found at the address below for 2.4.18.   Also, it seems
+-jp7 patchset has removed the supermount patch for the time being, the
+link is marked below as (old), so use the new link for the time
+being.   Also noted that supermount should be added to the 2.5 tree soon.
+
+Update 20/3/02: 
+       Michael Wu was kind enough to let me know that there is now a new supermount
+available for kernel versions 2.4.18 (may work on other close relatives also).
+
+Download
+--------
+You can download supermount here:
+2.4.5	http://outerspace.dyndns.org/html/personal_pages/xkr47/kernel-patches/
+2.4.0	http://www.geocities.com/alexismikhailov/supermount.html
+2.4.8	http://www.linux-mandrake.com/
+2.4.18  (old) http://infolinux.de/jp7
+2.4.18  http://people.mandrakesoft.com/~quintela/supermount/
+2.4.20  http://members.optusnet.com.au/ckolivas/kernel/004_supermount_030408_ck_2.4.20.patch.bz2
+
+As far as I know Mandrake has not released a seperate patch for the 2.4.8 
+kernel, so the whole Mandrake linux kernel must be used.   Personally I use
+kernel 2.4.18.
+
+New kernels can be gotten here:
+
+http://www.kernel.org/
+
+Make sure you download the correct version.
+
+Installation
+------------
+
+Unpack the kernel somewhere under /usr/src, just like you did for the book.
+For this example, we'll be using /usr/src/linux-2.4.5.   Put the supermount
+patch in /usr/src.   After the kernel is unpacked, change into the directory:
+
+cd /usr/src/linux-2.4.5
+
+Then, apply the supermount patch...
+
+Kernels 2.4.5 and earlier:
+
+patch -Np1 -i ../supermount-0.5.3-2.4.5.diff
+
+Kernel 2.4.18 and newer:
+[new]
+Apply all patches at the web-address given above that pertain to your
+kernel version (either 2.4.18 or 2.4.18-pre8).
+
+[jp7 -- old]
+You need the jp7 patchset, and after bunzip *bz2 in the patchset
+directory, you need to install patches 22-27, or all of them, to make it work.
+Something like this should work to apply all the patchs:
+patch -p1<../directory/to/patches/[00-99]*
+
+Finally, follow the kernel installation as in the lfs book, but make sure you
+enable the option 'Supermount removable media support' under 'file systems'
+when you configure the kernel.   After you build/install the kernel, your'e 
+done!
+
+Configuration
+-------------
+The only file you should need to edit is /etc/fstab.  To enable supermount
+support for a cdrom, do something like this:
+
+/dev/hdc /mnt/cdrom supermount fs=iso9660,dev=/dev/hdc 0 0
+
+This will mount device hdc on /mnt/cdrom (this directory must exist), using
+the supermount file system, allow users to mount/umount it (no su'ing needed),
+tell supermount to mount using iso9660 filesystem, and then tell supermount 
+where the device is.  This is only an example, change the paramaters to your 
+needs.   Here is another example for a floppy:
+
+/dev/fd0 /mnt/floppy supermount fs=vfat,dev=/dev/fd0 0 0
+
+Same as before, but use fd0, mount on /mnt/floppy, and use the vfat filesystem.
+
+More detailes on exactly what options can be passed are available under the kernel
+tree in Documentation/filesystems/supermount.txt, after the tree has been patched.
+
+Using
+-----
+Simple.  After you have everything set up correctly, simply change to 
+/mnt/cdrom, or any directory you specified in /etc/fstab, and if there is 
+media in the drive it will be automatically mounted.  Unmounting is even more
+simple....just eject the cd or floppy!   Commands such as cp or mv will not
+return until they finish with the write, so as long as no commands are running
+on the device, it is ok to remove them.
+
+Corrections
+-----------
+If you notice something wrong here, please let djwatson@u.washington.edu
+know so that he can fix it.  I personally have only tested supermount on kernels
+2.4.5 and 2.4.18, so I know both of these work.   I have also seen a working
+Mandrake distro, and I know it works there...but I haven't tested it myself.
+
+Thanks
+------
+Michael Monreal for letting my know about 2.4.18 version for linus' kernel.
+Michael Wu for letting me know about 2.4.18-jp7 supermount version.

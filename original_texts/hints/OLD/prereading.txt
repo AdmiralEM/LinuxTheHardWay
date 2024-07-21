@@ -1,0 +1,242 @@
+TITLE:		Essential pre-reading for life with LFS
+LFS VERSION:	any and all, including the next one.
+AUTHOR:		Richard A Downing FBCS<richard.downing@bcs.org.uk>
+(Author's version number 3. Links checked 20030417)
+
+SYNOPSIS:
+--------------------------------------------------------------------------
+This hint is a list of good documents that you can get for free 
+on the Internet, together with some advice from me and my friends. It will 
+help you get 'educated' to a level where you can:
+
+  1)  build LFS successfully
+  2)  ask sensible questions on the LFS lists and understand the replies.
+  3)  stay sane while doing all this.
+  
+In the LFS book, Gerard says:
+
+  "This book assumes that its reader has a good deal of knowledge about 
+  using and installing Linux software."
+
+Gerard then suggests some reading.  I suggest some more here, and some 
+exercises to go with them.
+
+---------------------------------------------------------------------------
+Please help me improve this hint!
+
+1) This is a 'work in progress' and I'm missing a good reference 
+   on some stuff. So, if you know of, or find a good one, please write me.   
+   
+2) Sometimes the hyperlinks go out of date - the date I last checked them
+   is stated above. If you find that a link is broken, please start by using
+   google (see below) to try and find the new home.
+   In any case, if you succeed or not, please send me an email so that I
+   can update the hint.
+   
+3) Also I just like feedback, so it never hurts to send an email.
+   
+   
+HINT:
+---------------------------------------------------------------------------
+
+Part 1. Social stuff. (MOST important)
+-----------------------------------------
+
+Many people ask questions badly on the LFS mailing lists.  Sometimes they 
+get rude replies.  Read this to stay sane.
+
+    http://www.catb.org/~esr/faqs/smart-questions.html
+
+Please note that all the LFS mailing lists expect:
+
+  1) plain text email.  No HTML.
+  2) bottom posting.  Add your bit UNDERNEATH the bit you quoted.
+  3) pruned quotes.  Don't quote everything, just the significant bit.
+  4) no cross-posts.  Just use the right list.
+  5) thick skins.  Don't respond to rudeness, just ignore it.
+  6) zazen.  (Just Sitting) If others have a flame-war, just sit and watch.
+  
+Before asking questions on lfs lists, please search the archives:
+ 
+    http://search.linuxfromscratch.org
+    
+AND PLEASE READ THE FAQ.  Read the latest copy, not some 
+old thing you downloaded last week.
+
+    http://www.linuxfromscratch.org/faq/
+
+If you ask a question that is in the FAQ, you are being extremely rude, 
+not least to Seth who maintains it (wonderfully).  So you rightly WILL get 
+flamed.
+
+Special note:
+---------------
+If someone tells you to RTFM, they are not, repeat NOT, being rude 
+or getting at you.  This is the accepted phrase indicating that you need to 
+Read The Friendly Manual.  If you have previously been told that a 
+certain Old Low Dutch word is referred to by the 'F', please be assured 
+that this is just a myth .:-) 
+
+Part 2. Technical stuff.
+-------------------------
+
+Many people attempt to build LFS without sufficient understanding 
+or experience with LINUX.  Here is an excerpt from the tar manual:
+
+   "you should understand something about how Unix-type operating systems
+    work, and you should know how to use some basic utilities.  
+    For example, you should know how to create, list, copy, rename, 
+    edit, and delete files and directories; how to change between 
+    directories; and how to figure out where you are in the filesystem. 
+    You should have some basic understanding of directory structure and 
+    how files are named according to which directory they are in.  You 
+    should understand concepts such as standard output and standard 
+    input, what various definitions of the term "argument" mean, the    
+    differences between relative and absolute path names"
+   
+In the LFS book, Gerard says:
+    
+  "We are going to build the LFS system by using a 
+   previously installed Linux distribution such as Debian, SuSE, Slackware, 
+   Mandrake, RedHat, etc. We will use the existing Linux system as the 
+   development platform, because we need tools like a compiler, linker, 
+   text   editor, and other development tools to build our system.
+
+Choosing a distro is only hard because of the choice, my 
+advice is to choose a modern cheap one because once you have learned
+a bit and then built LFS you will junk it.
+I got mine (Mandrake-8) free with a magazine, I've also used Debian.
+
+If you are confused about distros this may help:
+
+    http://tldp.org/HOWTO/CD-Distributions-EN-HOWTO/index.html
+
+Unlike Windows, Unix requires you to understand what you are doing to get 
+anything much out of it.  Both Windows and Unix require deep understanding 
+to get the best out of them.  This document is very basic, but will help 
+you if you are coming from Windows, or just starting out understanding 
+computing:
+
+    http://tldp.org/HOWTO/Unix-and-Internet-Fundamentals-HOWTO/
+
+The next one is also good, yes, it's dated, but still worth reading:
+
+    http://tldp.org/LDP/gs/
+    
+A recent new guide geared for the newbie is this one, I like it as it has
+exercises, so you'll know if you've understood:
+
+    http://tldp.org/LDP/intro-linux/html/index.html
+
+If you have read those, then you are aware that we drive Unix though a 
+shell, which provides the command line interface.  The shell we use in LFS, 
+as in most of the Linux world, is bash (The Bourne Again Shell).  You need 
+to be fluent in using bash, this is a good tutorial:
+
+    http://tldp.org/LDP/abs/html/index.html
+
+(Yes, I know it says 'Advanced', but read it anyway, do you want to be a 
+newbie forever?)
+
+Then there are three books that you ought to have available from or on your 
+box for easy reference, skim read them now so you know how to use them:
+
+The Linux User's Guide (this is out of date and so, unfortunately,
+http://tidp.org doesn't keep it in html but if this link fails try there).  
+
+    http://espc22.murdoch.edu.au/~stewart/guide/guide.html
+
+The Linux Systems Administrators Guide
+
+    http://tldp.org/LDP/sag/index.html
+
+The Linux Network Administrators Guide, Second Edition
+
+    http://tldp.org/LDP/nag2/index.html
+
+Having got yourself a LINUX system, and played a bit, you now will know a 
+little about the subject, but before moving on to the building of LFS you 
+should learn how to build packages from source code.  This is an area 
+where it's hard to find good references.  Gerard suggests this one in the 
+LFS book:
+
+    http://tldp.org/HOWTO/Software-Building-HOWTO.html
+
+And this is good too, particularly if you want to write Linux software
+eventually:
+
+    http://sources.redhat.com/autobook/autobook/autobook_toc.html
+
+It's very important that you have some experience installing a 
+package from source on your distro before attempting LFS.
+  
+One good choice would be GNU-emacs.  Check out it's homepage at:
+
+    http://www.gnu.org/software/emacs/emacs.html
+
+Another, suggested by others, is mplayer.  This is a good 
+challenge and a test of your developing skills.  Mplayer's home website is 
+at:
+
+    http://www.mplayerhq.hu/homepage/
+
+IBM, once Big Bad Blue, is now a great supporter of OpenSource and Linux.  
+They have some free tutorials on their website:
+
+    http://www-106.ibm.com/developerworks/linux/
+
+Look for the 'Tutorials' link (currently top right) and look especially 
+for the following:
+
+  Compiling and installing software from sources
+  Compiling the Linux kernel
+  Using regular expressions
+
+but there are rich pickings here, even for the experienced.
+
+
+Part 3.  Other stuff.
+---------------------
+
+My starting point for any query or gap in my knowledge is google, yours 
+should be too.  Go to the google page, and hit the advanced search button.  
+Learn the full capabilities of this essential tool, spend at least a whole 
+day on this.  Truely, you can't live without it.
+
+    http://www.google.com
+
+There is a whole heap of documentation at the Linux Documentation Project, 
+some of which I've quoted above.  Learn to go there regularly and just poke 
+about, it's a great storehouse of knowledge.  Beware though a lot of it is 
+out of date.
+
+   http://tldp.org/
+
+You might want to find some other software for your Linux box.  Start with:
+
+   http://beyond.linuxfromscratch.org
+   
+And then another place to search is:
+
+   http://freshmeat.net/
+
+And finally, whatever you read or don't read concerning LFS, before 
+asking questions, START by reading the FAQ.  FAQ stands for 'Frequently 
+Asked Questions'.  We don't want to answer them again, so don't ask them.  
+Read the FAQ.
+
+    http://www.linuxfromscratch.org/faq/
+
+---------------------------------------------------------------------------
+Acknowledgements
+----------------
+I have received encouragement and advice from the following, but the words 
+are my fault alone:
+Dagmar D'Surreal, Tushar Teredesai, Ken Dyke, James Robertson, Eric Miller, 
+and lots of others on lfs-chat.  Recent feedback from Jeroen Coumans
+reminded me to check the links again.
+But nothing would have been done at all without the LFS project 
+that Gerard Beekmans started:  www.linuxfromscratch.org
+
+Good luck,
+Richard. #207.

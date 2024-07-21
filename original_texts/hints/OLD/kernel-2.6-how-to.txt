@@ -1,0 +1,100 @@
+AUTHOR: zippo zippo752001@comcast.net or #lfs-support
+DATE: 2004-01-25
+LICENSE: GNU General Public License
+SYNOPSIS: Build LFS with the 2.6.* kernel
+Primary URL: zippo01.ath.cx
+DESCRIPTION: This is a most wonder How-to for LFS users that want the new 2.6.0
+Kernel from build. If you want it but don't want the hassile just build
+it with the 2.4.* kernel and upgrade to the 2.6.0 kernel. 
+
+PREREQUISITES:
+
+First you will need a few different things.
+The kernel: www.kernel.org
+
+Nice clean headers: Here you can make our own or use the ones on my
+http."they might or might not be up todate".
+
+http://zippo01.ath.cx/glibc-kernheaders.tar.bz2
+
+To make them: 
+
+get: http://download.fedora.redhat.com/pub/fedora/linux/core/development/SRPMS
+you will need the glibc-kernheaders-* file. 
+get: http://www.iagora.com/~espel/rpm2cpio 
+run: perl rpm2cpio glib* > glibc-kernelheaders.tmp //converts the
+src.rpm to a cpio
+Then run: cpio -d -i < ./glibc-kernelheaders.tmp //makes it into a nice bz2
+file
+All you will need is the glibc-kernelheaders.tar.bz2 file
+
+Modules-utils: ftp://ftp.kernel.org/pub/linux/kernel/people/rusty/modules/
+
+thats all you will need.
+
+HINT:
+
+Chapter 5 -- Installing 2.6 kernel
+Use "make include/asm" instead of "make symlinks"
+
+Chapter 6 -- Installing 2.6 kernel
+	make mrproper &&
+	make include/linux/version.h &&
+        make include/asm &&
+        mkdir /usr/src/glibcheaders &&
+        cp -HR include/asm /usr/src/glibcheaders &&
+        cp -R include/asm-generic /usr/src/glibcheaders &&
+        cp -R include/linux /usr/src/glibcheaders &&
+        touch /usr/src/glibcheaders/linux/autoconf.h
+
+Chapter 6 -- Installing Glibc
+Use this to configure the Glibc
+	../glibc-2.3.2/configure --prefix=/usr \
+	--disable-profile --enable-add-ons \
+	--libexecdir=/usr/lib --with-headers=/usr/src/glibcheaders
+
+Chapter 6 -- Installing sanitized kernel headers
+After you install the glibc you should do this.
+	tar jxvf glibc-kernelheaders.tar.bz2
+	cd usr/include
+	***NOTE*** if your arch is something other then i386 then you
+should change the next line to fit. EX. asm-ppc, to see all possible
+ones just ls. :-p	
+	cp -R asm-i386 /usr/include/asm    
+	cp -R linux /usr/include
+
+Chapter 6 -- Installing Modutils
+Instead of Modutils we will use Module-init-tools
+	./configure --prefix=/
+	make
+	make install
+
+Chapter 8 -- Makeing the Kernel:
+With 2.6.* The kernel build is somewhat different. 
+	cd /usr/src #this is where i put my kernel source, so should you
+	tar -jxvf /path/to/soutce/linux-2.6.X.tar.bz2
+	cd linux-2.6.X
+	make mrproper
+	make menuconfig
+	make CC=/opt/gcc-2.95.3/bin/gcc bzImage
+	make CC=/opt/gcc-2.95.3/bin/gcc modules
+	make CC=/opt/gcc-2.95.3/bin/gcc modules_install		
+	make mandocs
+	cp -a Documentation/man /usr/share/man/man9
+	cp arch/i386/boot/bzImage /boot/lfskernel260
+	cp System.map /boot
+
+Other then that Follow the book.
+
+Acknowledgements: J_MAN!!!	
+
+CHANGELOG:
+
+	3/24/04 0.0.3
+		*fixed link for headers
+		*added kernel how-to
+	1/27/04 0.0.2
+		*fixed format
+		*added how-to for different arches
+
+	1/25/04 0.0.1
