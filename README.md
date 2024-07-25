@@ -4,16 +4,16 @@ Welcome to "Learn Linux the Hard Way: Build, Extend, and Secure Your Own Distro.
 
 ## Table of Contents
 
-1. [Introduction](docs/introduction.md)
-2. [Setting Up the Environment with VirtualBox](docs/virtualbox_setup.md)
-3. [Building Linux From Scratch](docs/lfs_build.md)
-4. [Beyond Linux From Scratch](docs/blfs_extension.md)
-5. [System Hardening](docs/system_hardening.md)
-6. [Advanced Topics](docs/advanced_topics.md)
-7. [Acknowledgements](docs/acknowledgements.md)
-8. [Resources](docs/resources.md)
-9. [Glossary](docs/glossary.md)
-10. [Index](docs/index.md)
+1. [Introduction](01-Introduction/01-introduction.md)
+2. [Setting Up the Environment with VirtualBox](02-VirtualBox-Setup/01-overview.md)
+3. [Building Linux From Scratch](03-LFS-Build/01-introduction.md)
+4. [Beyond Linux From Scratch](04-BLFS-Extension/01-introduction.md)
+5. [System Hardening](05-System-Hardening/01-introduction.md)
+6. [Advanced Topics](06-Advanced-Topics/01-introduction.md)
+7. [Acknowledgements](07-Acknowledgements/01-acknowledgements.md)
+8. [Resources](08-Resources/01-resources.md)
+9. [Glossary](09-Glossary/01-glossary.md)
+10. [Index](10-Index/01-index.md)
 
 ## About
 
